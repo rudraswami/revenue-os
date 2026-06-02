@@ -1,0 +1,17 @@
+node_modules
+.turbo
+dist
+.next
+.env
+.env.local
+.env.*.local
+*.log
+coverage
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.tsbuildinfo
+apps/api/dist
+packages/database/prisma/migrations/**/migration_lock.toml

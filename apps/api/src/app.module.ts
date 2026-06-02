@@ -1,0 +1,43 @@
+import { BullModule } from "@nestjs/bullmq";
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { EventEmitterModule } from "@nestjs/event-emitter";
+import { AuthModule } from "./modules/auth/auth.module";
+import { ConversationsModule } from "./modules/conversations/conversations.module";
+import { HealthModule } from "./modules/health/health.module";
+import { LeadsModule } from "./modules/leads/leads.module";
+import { OrganizationsModule } from "./modules/organizations/organizations.module";
+import { PrismaModule } from "./modules/prisma/prisma.module";
+import { RealtimeModule } from "./modules/realtime/realtime.module";
+import { WhatsappModule } from "./modules/whatsapp/whatsapp.module";
+import { validateEnv } from "./config/env.validation";
+import { QUEUES } from "@revenue-os/shared";
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validateEnv,
+    }),
+    EventEmitterModule.forRoot(),
+    BullModule.forRoot({
+      connection: {
+        url: process.env.REDIS_URL ?? "redis://localhost:6379",
+      },
+    }),
+    BullModule.registerQueue(
+      { name: QUEUES.WHATSAPP_INBOUND },
+      { name: QUEUES.AI_CLASSIFY },
+      { name: QUEUES.AI_RESPOND },
+    ),
+    PrismaModule,
+    HealthModule,
+    AuthModule,
+    OrganizationsModule,
+    WhatsappModule,
+    ConversationsModule,
+    LeadsModule,
+    RealtimeModule,
+  ],
+})
+export class AppModule {}

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: revenue_os
+          POSTGRES_PASSWORD: revenue_os_dev
+          POSTGRES_DB: revenue_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U revenue_os -d revenue_os"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+
+      - run: pnpm db:push
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+
+      - run: pnpm typecheck
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          JWT_SECRET: ci-test-secret-minimum-32-characters-long
+          REDIS_URL: redis://localhost:6379
+
+      - run: pnpm build
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          JWT_SECRET: ci-test-secret-minimum-32-characters-long
