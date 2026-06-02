@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "dotenv -e ../../.env -- next dev --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -32,6 +32,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "dotenv-cli": "^8.0.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.2",

@@ -6,13 +6,26 @@ class EnvironmentVariables {
   @IsNotEmpty()
   DATABASE_URL!: string;
 
+  /** Supabase direct connection (port 5432) — used by Prisma migrate / db push */
+  @IsString()
+  @IsNotEmpty()
+  DIRECT_URL!: string;
+
   @IsString()
   @IsNotEmpty()
   JWT_SECRET!: string;
 
   @IsString()
+  @IsNotEmpty()
+  REDIS_URL!: string;
+
+  @IsString()
   @IsOptional()
-  REDIS_URL?: string;
+  SUPABASE_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  SUPABASE_SERVICE_ROLE_KEY?: string;
 
   @IsString()
   @IsOptional()

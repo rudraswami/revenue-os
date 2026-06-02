@@ -17,6 +17,7 @@ import { QUEUES } from "@revenue-os/shared";
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [".env", "../../.env"],
       validate: validateEnv,
     }),
     EventEmitterModule.forRoot(),

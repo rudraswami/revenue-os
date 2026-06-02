@@ -1,9 +1,13 @@
 node_modules
+.local/
 .turbo
 dist
 .next
 .env
 .env.local
+supabase/.temp
+supabase/.branches
+packages/shared/src/supabase.types.ts
 .env.*.local
 *.log
 coverage

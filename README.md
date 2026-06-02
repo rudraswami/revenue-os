@@ -19,24 +19,28 @@ See [docs/architecture](./docs/architecture/) for system design.
 
 - Node.js 20+
 - pnpm 9+
-- Docker (PostgreSQL + Redis)
+- [Supabase](https://supabase.com) project (database)
+- [Upstash](https://upstash.com) Redis (queues) — free tier
 
-## Quick Start
+## Quick Start (Supabase)
 
-```bash
-# Clone and install
+```powershell
 cd revenue-os
 cp .env.example .env
+# Edit .env — Supabase DATABASE_URL + DIRECT_URL, Upstash REDIS_URL
+
 pnpm install
+pnpm setup:supabase
+pnpm dev
+```
 
-# Start infrastructure
+See **[docs/SUPABASE.md](./docs/SUPABASE.md)** for step-by-step CLI setup.
+
+### Optional: Docker (local Postgres + Redis)
+
+```powershell
 pnpm docker:up
-
-# Database
-pnpm db:generate
 pnpm db:push
-
-# Run platform
 pnpm dev
 ```
 

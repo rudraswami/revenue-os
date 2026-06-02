@@ -118,4 +118,4 @@ revenue-os/
 3. **M3 — AI Engine**: Classification, replies, memory, RAG
 4. **M4 — Pipeline & Analytics**: Kanban, funnel, insights
 5. **M5 — Automations & Agents**: Rules, multi-agent orchestration
-6. **M6 — Enterprise**: Billing, SSO, advanced observability
+6. **M6 — Later**: Billing, optional SSO (only if needed), observability
