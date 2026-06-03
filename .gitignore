@@ -19,3 +19,5 @@ coverage
 *.tsbuildinfo
 apps/api/dist
 packages/database/prisma/migrations/**/migration_lock.toml
+.vercel
+.env*.local
