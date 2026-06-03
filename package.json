@@ -38,7 +38,10 @@
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.yml down",
     "prepare": "husky || true",
-    "postinstall": "pnpm db:generate"
+    "postinstall": "node scripts/postinstall-prisma.js"
+  },
+  "prisma": {
+    "schema": "packages/database/prisma/schema.prisma"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

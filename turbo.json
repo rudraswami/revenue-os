@@ -1,10 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [".env"],
+  "envMode": "loose",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**", "packages/shared/dist/**", "packages/database/dist/**"]
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**",
+        "packages/shared/dist/**",
+        "packages/database/dist/**"
+      ]
+    },
+    "generate": {
+      "cache": true,
+      "outputs": ["node_modules/.prisma/**"]
     },
     "dev": {
       "cache": false,

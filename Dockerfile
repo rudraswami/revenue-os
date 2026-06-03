@@ -8,7 +8,6 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api ./apps/api
 COPY packages ./packages
 RUN pnpm install --frozen-lockfile
-RUN pnpm db:generate
 RUN pnpm turbo run build --filter=@revenue-os/api
 
 FROM base AS runner
