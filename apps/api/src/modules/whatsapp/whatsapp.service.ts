@@ -24,6 +24,11 @@ export interface WhatsappWebhookPayload {
   }>;
 }
 
+export interface InboundMessageEvent {
+  organizationId: string;
+  conversationId: string;
+}
+
 @Injectable()
 export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
@@ -74,7 +79,9 @@ export class WhatsappService {
     return { received: true, eventId: event.id };
   }
 
-  async processInboundPayload(payload: WhatsappWebhookPayload) {
+  async processInboundPayload(payload: WhatsappWebhookPayload): Promise<InboundMessageEvent[]> {
+    const events: InboundMessageEvent[] = [];
+
     for (const entry of payload.entry ?? []) {
       for (const change of entry.changes ?? []) {
         if (change.field !== "messages") continue;
@@ -92,7 +99,13 @@ export class WhatsappService {
 
         if (change.value.messages?.length) {
           for (const msg of change.value.messages) {
-            await this.persistInboundMessage(account.organizationId, account.id, change.value, msg);
+            const event = await this.persistInboundMessage(
+              account.organizationId,
+              account.id,
+              change.value,
+              msg,
+            );
+            if (event) events.push(event);
           }
         }
 
@@ -103,6 +116,8 @@ export class WhatsappService {
         }
       }
     }
+
+    return events;
   }
 
   private async persistInboundMessage(
@@ -142,7 +157,7 @@ export class WhatsappService {
     const existing = await this.prisma.message.findUnique({
       where: { organizationId_waMessageId: { organizationId, waMessageId } },
     });
-    if (existing) return existing;
+    if (existing) return null;
 
     const type = this.mapMessageType(String(msg.type ?? "text"));
     const content = this.extractText(msg);
@@ -160,7 +175,7 @@ export class WhatsappService {
       },
     });
 
-    await this.prisma.lead.upsert({
+    const lead = await this.prisma.lead.upsert({
       where: { organizationId_phone: { organizationId, phone: from } },
       create: {
         organizationId,
@@ -173,7 +188,17 @@ export class WhatsappService {
       },
     });
 
-    return message;
+    if (conversation.leadId !== lead.id) {
+      await this.prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { leadId: lead.id },
+      });
+    }
+
+    return {
+      organizationId,
+      conversationId: conversation.id,
+    };
   }
 
   private async updateMessageStatus(organizationId: string, status: Record<string, unknown>) {

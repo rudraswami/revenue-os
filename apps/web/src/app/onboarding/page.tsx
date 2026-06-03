@@ -1,0 +1,152 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api-client";
+import { useAuthStore } from "@/stores/auth-store";
+import { cn } from "@/lib/utils";
+
+const WhatsappConnect = dynamic(() => import("@/components/settings/whatsapp-connect"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+    </div>
+  ),
+});
+
+export default function OnboardingPage() {
+  const router = useRouter();
+  const token = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
+  const organization = useAuthStore((s) => s.organization);
+  const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
+
+  const { data: accounts } = useQuery({
+    queryKey: ["whatsapp-accounts"],
+    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
+      token: token ?? undefined,
+    }),
+    enabled: !!token,
+    refetchInterval: 3000,
+  });
+
+  const { data: convStats } = useQuery({
+    queryKey: ["conversation-stats"],
+    queryFn: () =>
+      apiFetch<{ inboundMessages: number }>("/conversations/stats", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+    refetchInterval: 5000,
+  });
+
+  const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;
+  const firstMessageReceived = (convStats?.inboundMessages ?? 0) > 0;
+
+  useEffect(() => {
+    if (whatsappConnected) {
+      patchOnboarding({
+        whatsappConnected: true,
+        firstMessageReceived,
+        complete: true,
+      });
+    }
+  }, [whatsappConnected, firstMessageReceived, patchOnboarding]);
+
+  const steps = [
+    {
+      id: "account",
+      title: "Workspace created",
+      done: true,
+      description: organization?.name ?? "Your workspace is ready.",
+    },
+    {
+      id: "whatsapp",
+      title: "Connect WhatsApp Business",
+      done: whatsappConnected,
+      description: "Link the number your customers message today.",
+    },
+    {
+      id: "inbox",
+      title: "Receive your first message",
+      done: firstMessageReceived,
+      description: "Send a test WhatsApp from your phone after connecting.",
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border px-6 py-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between">
+          <div>
+            <p className="text-sm text-accent">Getting started</p>
+            <h1 className="text-xl font-bold">
+              Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
+            </h1>
+          </div>
+          {whatsappConnected && (
+            <Button onClick={() => router.push("/dashboard")}>
+              Go to dashboard
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-3xl px-6 py-8">
+        <ol className="mb-10 space-y-3">
+          {steps.map((step, i) => (
+            <li
+              key={step.id}
+              className={cn(
+                "flex gap-4 rounded-xl border p-4",
+                step.done ? "border-success/30 bg-success/5" : "border-border bg-card",
+              )}
+            >
+              <div className="mt-0.5 shrink-0">
+                {step.done ? (
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Step {i + 1}
+                </p>
+                <p className="font-medium">{step.title}</p>
+                <p className="text-sm text-muted-foreground">{step.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        {!whatsappConnected ? (
+          <WhatsappConnect />
+        ) : (
+          <div className="rounded-2xl border border-success/30 bg-success/5 p-6 text-center">
+            <CheckCircle2 className="mx-auto h-10 w-10 text-success" />
+            <h2 className="mt-4 text-lg font-semibold">You&apos;re all set!</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Send a WhatsApp to your business number — it will appear in Inbox instantly.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button asChild>
+                <Link href="/dashboard/inbox">Open Inbox</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/dashboard">Go to Home</Link>
+              </Button>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

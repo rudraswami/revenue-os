@@ -34,6 +34,30 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   WHATSAPP_APP_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  WEBHOOK_PUBLIC_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  WHATSAPP_API_VERSION?: string;
+
+  @IsString()
+  @IsOptional()
+  META_APP_ID?: string;
+
+  @IsString()
+  @IsOptional()
+  META_APP_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  META_EMBEDDED_SIGNUP_CONFIG_ID?: string;
+
+  @IsString()
+  @IsOptional()
+  META_WABA_REGISTER_PIN?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

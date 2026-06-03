@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from "@nestjs/common";
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from "class-validator";
 import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
@@ -32,10 +32,26 @@ class ToggleAiDto {
   aiEnabled!: boolean;
 }
 
+class SendMessageDto {
+  @IsString()
+  @IsNotEmpty()
+  content!: string;
+}
+
 @Controller("conversations")
 @UseGuards(JwtAuthGuard)
 export class ConversationsController {
   constructor(private readonly conversations: ConversationsService) {}
+
+  @Get("stats")
+  stats(@CurrentUser() user: JwtPayload) {
+    return this.conversations.getStats(user);
+  }
+
+  @Get("capabilities")
+  capabilities() {
+    return this.conversations.getCapabilities();
+  }
 
   @Get()
   list(@CurrentUser() user: JwtPayload, @Query() query: ListQueryDto) {
@@ -45,6 +61,20 @@ export class ConversationsController {
   @Get(":id")
   get(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.conversations.getById(user, id);
+  }
+
+  @Post(":id/messages")
+  sendMessage(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: SendMessageDto,
+  ) {
+    return this.conversations.sendMessage(user, id, dto.content);
+  }
+
+  @Post(":id/suggest-reply")
+  suggestReply(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.conversations.suggestReply(user, id);
   }
 
   @Patch(":id/assign")

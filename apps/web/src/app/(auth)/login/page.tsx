@@ -1,72 +1,142 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { apiFetch } from "@/lib/api-client";
-import { useAuthStore } from "@/stores/auth-store";
-
-export default function LoginPage() {
+import { apiFetch, ApiError } from "@/lib/api-client";
+import { applySession, postAuthPath } from "@/lib/auth-session";
+import type { AuthSession, LoginResult, OrganizationOption } from "@/lib/auth-types";
+import { isAuthSession } from "@/lib/auth-types";
+function LoginForm() {
   const router = useRouter();
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const searchParams = useSearchParams();
+  const resetDone = searchParams.get("reset") === "1";
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [organizations, setOrganizations] = useState<OrganizationOption[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function submitLogin(organizationId?: string) {
     setLoading(true);
     setError(null);
-    const form = new FormData(e.currentTarget);
     try {
-      const res = await apiFetch<{
-        accessToken: string;
-        refreshToken: string;
-        organization: { slug: string };
-      }>("/auth/login", {
+      const res = await apiFetch<LoginResult>("/auth/login", {
         method: "POST",
-        body: JSON.stringify({
-          email: form.get("email"),
-          password: form.get("password"),
-          organizationSlug: form.get("organizationSlug"),
-        }),
+        body: JSON.stringify({ email, password, organizationId }),
       });
-      setTokens(res.accessToken, res.refreshToken, res.organization.slug);
-      router.push("/dashboard");
+
+      if (!isAuthSession(res)) {
+        setOrganizations(res.organizations);
+        setLoading(false);
+        return;
+      }
+
+      applySession(res as AuthSession);
+      setLoading(false);
+      router.push(postAuthPath(res.onboarding));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
+      setError(err instanceof ApiError ? err.message : "Sign in failed. Please try again.");
       setLoading(false);
     }
   }
 
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    void submitLogin();
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center grid-bg px-4">
-      <Card className="w-full max-w-md glow-primary">
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>Access your Revenue OS command center</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <Input name="organizationSlug" placeholder="Organization slug" required />
-            <Input name="email" type="email" placeholder="Email" required />
-            <Input name="password" type="password" placeholder="Password" required />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            No account?{" "}
-            <Link href="/register" className="text-primary hover:underline">
-              Register
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthShell title="Welcome back" description="Sign in to your workspace to manage WhatsApp sales.">
+      {resetDone && (
+        <p className="mb-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+          Password updated. Sign in with your new password.
+        </p>
+      )}
+      {!organizations ? (
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
+              Work email
+            </label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label htmlFor="password" className="text-sm font-medium">
+                Password
+              </label>
+              <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                Forgot password?
+              </Link>
+            </div>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">Choose a workspace to open:</p>
+          <ul className="space-y-2">
+            {organizations.map((org) => (
+              <li key={org.id}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-auto w-full justify-start py-3"
+                  disabled={loading}
+                  onClick={() => void submitLogin(org.id)}
+                >
+                  <span className="font-medium">{org.name}</span>
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setOrganizations(null)}>
+            Back
+          </Button>
+        </div>
+      )}
+
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        New here?{" "}
+        <Link href="/register" className="font-medium text-primary hover:underline">
+          Create a free workspace
+        </Link>
+      </p>
+    </AuthShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

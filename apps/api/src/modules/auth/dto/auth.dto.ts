@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
 
 export class RegisterDto {
   @IsEmail()
@@ -24,13 +24,35 @@ export class LoginDto {
   @IsString()
   password!: string;
 
+  /** Required when user belongs to multiple workspaces */
   @IsString()
-  @IsNotEmpty()
-  organizationSlug!: string;
+  @IsOptional()
+  organizationId?: string;
 }
 
 export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty()
   refreshToken!: string;
+}
+
+export class LogoutDto {
+  @IsString()
+  @IsNotEmpty()
+  refreshToken!: string;
+}
+
+export class ForgotPasswordDto {
+  @IsEmail()
+  email!: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @IsNotEmpty()
+  token!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
 }

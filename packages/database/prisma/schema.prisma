@@ -119,8 +119,9 @@ model User {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  memberships       OrganizationMember[]
-  refreshTokens     RefreshToken[]
+  memberships           OrganizationMember[]
+  refreshTokens         RefreshToken[]
+  passwordResetTokens   PasswordResetToken[]
   assignedConversations Conversation[] @relation("AssignedAgent")
   auditLogs         AuditLog[]
   notifications     Notification[]
@@ -130,17 +131,34 @@ model User {
 }
 
 model RefreshToken {
-  id        String   @id @default(cuid())
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  tokenHash      String   @unique
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  revokedAt      DateTime?
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([organizationId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
   userId    String
-  tokenHash String   @unique
+  tokenHash String    @unique
   expiresAt DateTime
-  createdAt DateTime @default(now())
-  revokedAt DateTime?
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@map("refresh_tokens")
+  @@map("password_reset_tokens")
 }
 
 model Organization {
@@ -154,6 +172,7 @@ model Organization {
   updatedAt   DateTime @updatedAt
 
   members            OrganizationMember[]
+  refreshTokens      RefreshToken[]
   workspaces         Workspace[]
   whatsappAccounts   WhatsappAccount[]
   conversations      Conversation[]

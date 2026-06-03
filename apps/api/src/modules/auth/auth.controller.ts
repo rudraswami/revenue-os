@@ -1,6 +1,16 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import type { JwtPayload } from "@revenue-os/shared";
 import { AuthService } from "./auth.service";
-import { LoginDto, RefreshTokenDto, RegisterDto } from "./dto/auth.dto";
+import {
+  ForgotPasswordDto,
+  LoginDto,
+  LogoutDto,
+  RefreshTokenDto,
+  RegisterDto,
+  ResetPasswordDto,
+} from "./dto/auth.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -19,5 +29,26 @@ export class AuthController {
   @Post("refresh")
   refresh(@Body() dto: RefreshTokenDto) {
     return this.auth.refresh(dto.refreshToken);
+  }
+
+  @Post("logout")
+  logout(@Body() dto: LogoutDto) {
+    return this.auth.logout(dto.refreshToken);
+  }
+
+  @Get("me")
+  @UseGuards(JwtAuthGuard)
+  me(@CurrentUser() user: JwtPayload) {
+    return this.auth.getMe(user);
+  }
+
+  @Post("forgot-password")
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.auth.forgotPassword(dto);
+  }
+
+  @Post("reset-password")
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto);
   }
 }

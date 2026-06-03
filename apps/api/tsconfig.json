@@ -16,8 +16,7 @@
     "strictNullChecks": true,
     "noImplicitAny": true,
     "paths": {
-      "@/*": ["src/*"],
-      "@revenue-os/shared": ["../../packages/shared/src/index.ts"]
+      "@/*": ["src/*"]
     }
   },
   "include": ["src/**/*"]

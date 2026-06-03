@@ -4,6 +4,7 @@ import { QUEUES } from "@revenue-os/shared";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { WhatsappWebhookController } from "./whatsapp-webhook.controller";
 import { WhatsappInboundProcessor } from "./processors/whatsapp-inbound.processor";
+import { WhatsappMessagingService } from "./whatsapp-messaging.service";
 import { WhatsappService } from "./whatsapp.service";
 
 @Module({
@@ -12,7 +13,7 @@ import { WhatsappService } from "./whatsapp.service";
     RealtimeModule,
   ],
   controllers: [WhatsappWebhookController],
-  providers: [WhatsappService, WhatsappInboundProcessor],
-  exports: [WhatsappService],
+  providers: [WhatsappService, WhatsappMessagingService, WhatsappInboundProcessor],
+  exports: [WhatsappService, WhatsappMessagingService],
 })
 export class WhatsappModule {}

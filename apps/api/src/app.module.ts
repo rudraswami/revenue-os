@@ -9,6 +9,7 @@ import { LeadsModule } from "./modules/leads/leads.module";
 import { OrganizationsModule } from "./modules/organizations/organizations.module";
 import { PrismaModule } from "./modules/prisma/prisma.module";
 import { RealtimeModule } from "./modules/realtime/realtime.module";
+import { WhatsappAccountsModule } from "./modules/whatsapp-accounts/whatsapp-accounts.module";
 import { WhatsappModule } from "./modules/whatsapp/whatsapp.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@revenue-os/shared";
@@ -36,6 +37,7 @@ import { QUEUES } from "@revenue-os/shared";
     AuthModule,
     OrganizationsModule,
     WhatsappModule,
+    WhatsappAccountsModule,
     ConversationsModule,
     LeadsModule,
     RealtimeModule,

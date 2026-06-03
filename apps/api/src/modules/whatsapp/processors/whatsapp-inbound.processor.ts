@@ -3,8 +3,8 @@ import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { QUEUES } from "@revenue-os/shared";
 import { PrismaService } from "../../prisma/prisma.service";
-import { WhatsappService, type WhatsappWebhookPayload } from "../whatsapp.service";
 import { RealtimeGateway } from "../../realtime/realtime.gateway";
+import { WhatsappService, type WhatsappWebhookPayload } from "../whatsapp.service";
 
 interface InboundJobData {
   webhookEventId: string;
@@ -26,25 +26,21 @@ export class WhatsappInboundProcessor extends WorkerHost {
   async process(job: Job<InboundJobData>) {
     const { webhookEventId, payload } = job.data;
     try {
-      await this.whatsapp.processInboundPayload(payload);
+      const events = await this.whatsapp.processInboundPayload(payload);
       await this.prisma.webhookEvent.update({
         where: { id: webhookEventId },
         data: { processedAt: new Date() },
       });
 
-      for (const entry of payload.entry ?? []) {
-        for (const change of entry.changes ?? []) {
-          const phoneNumberId = change.value.metadata?.phone_number_id;
-          if (!phoneNumberId) continue;
-          const account = await this.prisma.whatsappAccount.findFirst({
-            where: { phoneNumberId },
-          });
-          if (account) {
-            this.realtime.emitToOrganization(account.organizationId, "inbox.updated", {
-              phoneNumberId,
-            });
-          }
-        }
+      const orgIds = new Set<string>();
+      for (const event of events) {
+        orgIds.add(event.organizationId);
+        this.realtime.emitMessageNew(event.organizationId, {
+          conversationId: event.conversationId,
+        });
+      }
+      for (const orgId of orgIds) {
+        this.realtime.emitInboxUpdated(orgId);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
