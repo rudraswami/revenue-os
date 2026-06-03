@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { GROWTHSYNC_EMAIL_FROM } from "@growthsync/shared";
 
 @Injectable()
 export class EmailService {
@@ -9,8 +10,7 @@ export class EmailService {
 
   async sendPasswordReset(email: string, resetUrl: string): Promise<void> {
     const apiKey = this.config.get<string>("RESEND_API_KEY");
-    const from =
-      this.config.get<string>("EMAIL_FROM") ?? "GrowthSync <onboarding@resend.dev>";
+    const from = this.config.get<string>("EMAIL_FROM") ?? GROWTHSYNC_EMAIL_FROM;
 
     if (!apiKey) {
       this.logger.warn(`Password reset (dev): ${email} → ${resetUrl}`);

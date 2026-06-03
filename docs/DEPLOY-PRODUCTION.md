@@ -57,15 +57,15 @@ If the dashboard has **Output Directory = public**, clear it — that causes `No
 | `JWT_REFRESH_EXPIRES_IN` | `7d` |
 | `NODE_ENV` | `production` |
 | `API_PORT` | `4000` |
-| `NEXT_PUBLIC_APP_URL` | `https://app.yourdomain.com` |
-| `CORS_ORIGINS` | `https://app.yourdomain.com` |
-| `WEBHOOK_PUBLIC_URL` | `https://api.yourdomain.com` |
+| `NEXT_PUBLIC_APP_URL` | `https://growthsync.in` |
+| `CORS_ORIGINS` | `https://growthsync.in,https://www.growthsync.in` |
+| `WEBHOOK_PUBLIC_URL` | `https://api.growthsync.in` |
 | `WHATSAPP_VERIFY_TOKEN` | random string |
 | `WHATSAPP_APP_SECRET` | Meta app secret |
 | `META_APP_ID` / `META_APP_SECRET` | Meta developer app |
 | `META_EMBEDDED_SIGNUP_CONFIG_ID` | Embedded Signup config |
 | `RESEND_API_KEY` | (password reset emails) |
-| `EMAIL_FROM` | `GrowthSync <noreply@yourdomain.com>` |
+| `EMAIL_FROM` | `GrowthSync <noreply@growthsync.in>` |
 
 ### Railway
 
@@ -87,9 +87,9 @@ If the dashboard has **Output Directory = public**, clear it — that causes `No
 
 | Variable | Value |
 |----------|--------|
-| `NEXT_PUBLIC_API_URL` | `https://<api-domain>/api/v1` |
-| `NEXT_PUBLIC_WS_URL` | `wss://<api-domain>` |
-| `NEXT_PUBLIC_APP_URL` | `https://app.yourdomain.com` |
+| `NEXT_PUBLIC_API_URL` | `https://api.growthsync.in/api/v1` |
+| `NEXT_PUBLIC_WS_URL` | `wss://api.growthsync.in` |
+| `NEXT_PUBLIC_APP_URL` | `https://growthsync.in` |
 | `NEXT_PUBLIC_META_APP_ID` | Meta app id |
 | `NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID` | Config id |
 

@@ -1,4 +1,5 @@
 import { Controller, Get } from "@nestjs/common";
+import { GROWTHSYNC_WEB_URL } from "@growthsync/shared";
 import { sanitizeEnvValue } from "../../config/cors-origins";
 
 /** Public landing so Vercel / browser visits to `/` are not a scary 404. */
@@ -13,7 +14,7 @@ export class RootController {
       message: webApp
         ? "This is the API server only — open webApp for the GrowthSync website."
         : "API is running. Deploy apps/web on Vercel for the login UI.",
-      webApp: webApp ?? "https://your-web-project.vercel.app",
+      webApp: webApp ?? GROWTHSYNC_WEB_URL,
       health: "/api/v1/health",
       auth: "/api/v1/auth/login",
       webhook: "/api/v1/webhooks/whatsapp",

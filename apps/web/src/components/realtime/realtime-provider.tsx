@@ -16,7 +16,10 @@ export function useRealtime() {
 }
 
 function wsBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_WS_URL ?? "http://127.0.0.1:4000";
+  const raw = (process.env.NEXT_PUBLIC_WS_URL ?? "http://127.0.0.1:4000")
+    .replace(/\\r\\n/g, "")
+    .replace(/[\r\n]+/g, "")
+    .trim();
   return raw.replace(/\/$/, "");
 }
 
