@@ -2,7 +2,9 @@ import type { AuthSession } from "@/lib/auth-types";
 import { useAuthStore } from "@/stores/auth-store";
 
 function resolveApiBase(): string {
-  const raw = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000").replace(/\/$/, "");
+  const raw = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000")
+    .trim()
+    .replace(/\/$/, "");
   return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
 }
 
