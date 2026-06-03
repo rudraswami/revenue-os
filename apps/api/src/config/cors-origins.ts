@@ -4,10 +4,10 @@ export function sanitizeEnvValue(value: string | undefined): string | undefined 
   return trimmed || undefined;
 }
 
-/** Production: custom domain + Vercel preview aliases (incl. legacy growthsync-web). */
+/** Custom domain + Vercel preview aliases (legacy revenue-os-web project names included). */
 const ALLOWED_ORIGIN_PATTERNS = [
   /^https:\/\/([\w-]+\.)?growthsync\.in$/,
-  /^https:\/\/growthsync-web[\w.-]*\.vercel\.app$/,
+  /^https:\/\/revenue-os-web[\w.-]*\.vercel\.app$/,
   /^https:\/\/growthsync-web[\w.-]*\.vercel\.app$/,
 ];
 

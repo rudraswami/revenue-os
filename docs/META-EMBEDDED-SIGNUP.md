@@ -17,7 +17,8 @@ Customers click **Continue with Facebook** in Settings. This doc is for **you** 
 - Enforce HTTPS: **Yes**
 - Embedded Browser OAuth Login: **Yes**
 - Login with JavaScript SDK: **Yes**
-- **Allowed domains:** `localhost`, `growthsync.in`, `www.growthsync.in`
+- **Allowed domains:** `localhost`, `growthsync.in`, `www.growthsync.in`  
+  See **[META-FACEBOOK-GROWTHSYNC.md](./META-FACEBOOK-GROWTHSYNC.md)** if you get **JSSDK unknown error** after changing domains.
 - **Valid OAuth redirect URIs:** same origins with `https://`
 
 ### 2. Create configuration (Embedded Signup v4)
@@ -34,7 +35,7 @@ META_APP_ID=your-app-id
 META_APP_SECRET=your-app-secret
 META_EMBEDDED_SIGNUP_CONFIG_ID=your-config-id
 WHATSAPP_APP_SECRET=your-app-secret
-WEBHOOK_PUBLIC_URL=https://your-api-domain.com
+WEBHOOK_PUBLIC_URL=https://api.growthsync.in
 WHATSAPP_VERIFY_TOKEN=your-verify-token
 WHATSAPP_API_VERSION=v21.0
 

@@ -11,12 +11,14 @@ declare global {
         callback: (response: {
           authResponse?: { code?: string };
           status?: string;
+          error?: string;
+          errorMessage?: string;
         }) => void,
         options: {
           config_id: string;
           response_type: string;
           override_default_response_type: boolean;
-          extras?: { setup?: Record<string, unknown> };
+          extras?: Record<string, unknown>;
         },
       ) => void;
     };
@@ -26,25 +28,45 @@ declare global {
 
 let sdkPromise: Promise<void> | null = null;
 
+function normalizeGraphVersion(version: string): string {
+  const trimmed = version.trim();
+  return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
+}
+
 export function loadFacebookSdk(appId: string, graphApiVersion: string): Promise<void> {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Facebook SDK requires a browser"));
+  }
+
+  const id = appId?.trim();
+  if (!id) {
+    return Promise.reject(
+      new Error(
+        "WhatsApp connection is not configured (missing Meta App ID). Contact support or check server env META_APP_ID.",
+      ),
+    );
   }
 
   if (window.FB) {
     return Promise.resolve();
   }
 
+  const version = normalizeGraphVersion(graphApiVersion || "v21.0");
+
   if (!sdkPromise) {
     sdkPromise = new Promise((resolve, reject) => {
       window.fbAsyncInit = () => {
-        window.FB?.init({
-          appId,
-          autoLogAppEvents: true,
-          xfbml: true,
-          version: graphApiVersion,
-        });
-        resolve();
+        try {
+          window.FB?.init({
+            appId: id,
+            autoLogAppEvents: true,
+            xfbml: true,
+            version,
+          });
+          resolve();
+        } catch (e) {
+          reject(e instanceof Error ? e : new Error("Facebook SDK init failed"));
+        }
       };
 
       const existing = document.getElementById("facebook-jssdk");
@@ -139,7 +161,34 @@ export function listenEmbeddedSignup(
   return () => window.removeEventListener("message", handler);
 }
 
+function formatFbLoginError(response: {
+  status?: string;
+  error?: string;
+  errorMessage?: string;
+}): string {
+  const detail = response.errorMessage ?? response.error;
+  if (detail) {
+    return detail;
+  }
+  if (response.status === "unknown") {
+    return (
+      "Facebook could not complete login (JSSDK unknown error). " +
+      "Use https://www.growthsync.in, allow popups, and ensure Meta app settings list growthsync.in and www.growthsync.in under Allowed Domains with Login with JavaScript SDK enabled."
+    );
+  }
+  return "Could not authorize with Facebook. Please try again.";
+}
+
 export function launchEmbeddedSignup(configId: string): Promise<string> {
+  const cfg = configId?.trim();
+  if (!cfg) {
+    return Promise.reject(
+      new Error(
+        "WhatsApp connection is not configured (missing Embedded Signup config ID). Set META_EMBEDDED_SIGNUP_CONFIG_ID on the API.",
+      ),
+    );
+  }
+
   return new Promise((resolve, reject) => {
     if (!window.FB) {
       reject(new Error("Facebook SDK not ready"));
@@ -154,16 +203,19 @@ export function launchEmbeddedSignup(configId: string): Promise<string> {
           return;
         }
         if (response.status === "unknown" || !response.authResponse) {
-          reject(new Error("Facebook login was cancelled."));
+          reject(new Error(formatFbLoginError(response)));
           return;
         }
-        reject(new Error("Could not authorize with Facebook. Please try again."));
+        reject(new Error(formatFbLoginError(response)));
       },
       {
-        config_id: configId,
+        config_id: cfg,
         response_type: "code",
         override_default_response_type: true,
-        extras: { setup: {} },
+        extras: {
+          setup: {},
+          sessionInfoVersion: "3",
+        },
       },
     );
   });

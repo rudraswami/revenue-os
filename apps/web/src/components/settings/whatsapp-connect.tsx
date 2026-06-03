@@ -162,7 +162,12 @@ export default function WhatsappConnect() {
       tryComplete();
     } catch (e) {
       setPhase("error");
-      setError(e instanceof Error ? e.message : "Could not open Facebook setup.");
+      const msg = e instanceof Error ? e.message : "Could not open Facebook setup.";
+      setError(
+        msg.includes("JSSDK") || msg.includes("Facebook")
+          ? msg
+          : `${msg} If this persists, see docs/META-FACEBOOK-GROWTHSYNC.md (Meta Allowed Domains + www.growthsync.in).`,
+      );
     }
   }
 
