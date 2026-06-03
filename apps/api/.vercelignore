@@ -1,13 +1,14 @@
-# Shared ignores for Vercel Git deploys (API + web monorepo projects)
+# API project: shrink CLI uploads; Git deploy uses repo root with Root Directory = apps/api
 node_modules
 **/node_modules/**
+apps/web
+docs
+**/.next/**
 **/.git/**
 .turbo
 **/.turbo/**
-**/.next/cache/**
 *.log
 .env*
 **/.env.check
 **/.env.verify*
 **/.env.api.check
-.vercel.web.bak
