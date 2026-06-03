@@ -9,9 +9,7 @@ COPY apps/api ./apps/api
 COPY packages ./packages
 RUN pnpm install --frozen-lockfile
 RUN pnpm db:generate
-RUN pnpm --filter @revenue-os/shared build 2>/dev/null || true
-RUN pnpm --filter @revenue-os/database build 2>/dev/null || true
-RUN pnpm --filter @revenue-os/api build
+RUN pnpm turbo run build --filter=@revenue-os/api
 
 FROM base AS runner
 ENV NODE_ENV=production
