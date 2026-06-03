@@ -1,4 +1,4 @@
-import { ValidationPipe } from "@nestjs/common";
+import { RequestMethod, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import cookieParser = require("cookie-parser");
@@ -31,8 +31,9 @@ async function bootstrap() {
   });
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
   app.useWebSocketAdapter(new IoAdapter(app));
-  app.setGlobalPrefix("api/v1");
-  app.useGlobalPipes(
+  app.setGlobalPrefix("api/v1", {
+    exclude: [{ path: "", method: RequestMethod.GET }],
+  });  app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
