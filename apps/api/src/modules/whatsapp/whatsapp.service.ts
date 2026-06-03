@@ -66,6 +66,20 @@ export class WhatsappService {
       },
     });
 
+    // Vercel serverless has no background workers — process inline.
+    if (process.env.VERCEL === "1") {
+      try {
+        await this.processInboundPayload(payload);
+        await this.prisma.webhookEvent.update({
+          where: { id: event.id },
+          data: { processedAt: new Date() },
+        });
+      } catch (err) {
+        this.logger.error(`Inline webhook processing failed: ${String(err)}`);
+      }
+      return { received: true, eventId: event.id };
+    }
+
     const jobId = createHash("sha256")
       .update(JSON.stringify({ id: event.id, entry: payload.entry }))
       .digest("hex");

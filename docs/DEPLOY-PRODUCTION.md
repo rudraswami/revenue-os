@@ -28,7 +28,22 @@ pnpm db:seed
 
 ---
 
-## 3. API (Railway or Render)
+## 3. API (Vercel or Railway)
+
+### Vercel (NestJS serverless)
+
+**Project settings:**
+
+| Setting | Value |
+|---------|--------|
+| Root Directory | `apps/api` |
+| Framework Preset | **NestJS** (or auto from `vercel.json`) |
+| Output Directory | **Leave empty** — do NOT set `public` |
+| Build Command | *(use `apps/api/vercel.json`)* |
+| Install Command | *(use `apps/api/vercel.json`)* |
+
+`apps/api/vercel.json` must include `"framework": "nestjs"`.  
+If the dashboard has **Output Directory = public**, clear it — that causes `No Output Directory named "public" found`.
 
 ### Environment variables
 

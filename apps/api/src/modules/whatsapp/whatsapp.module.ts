@@ -7,13 +7,19 @@ import { WhatsappInboundProcessor } from "./processors/whatsapp-inbound.processo
 import { WhatsappMessagingService } from "./whatsapp-messaging.service";
 import { WhatsappService } from "./whatsapp.service";
 
+const isVercel = process.env.VERCEL === "1";
+
 @Module({
   imports: [
     BullModule.registerQueue({ name: QUEUES.WHATSAPP_INBOUND }),
     RealtimeModule,
   ],
   controllers: [WhatsappWebhookController],
-  providers: [WhatsappService, WhatsappMessagingService, WhatsappInboundProcessor],
+  providers: [
+    WhatsappService,
+    WhatsappMessagingService,
+    ...(isVercel ? [] : [WhatsappInboundProcessor]),
+  ],
   exports: [WhatsappService, WhatsappMessagingService],
 })
 export class WhatsappModule {}
