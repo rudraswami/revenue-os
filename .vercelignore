@@ -1,7 +1,16 @@
 # Safe ignores for Vercel Git deploys (both API and web monorepo projects)
 node_modules
+**/node_modules/**
 **/.git/**
 .turbo
 **/.turbo/**
+**/.next/**
 **/.next/cache/**
+apps/web
+docs
 *.log
+.env*
+**/.env.check
+**/.env.verify*
+**/.env.api.check
+.vercel.web.bak

@@ -1,11 +1,12 @@
 import { Controller, Get } from "@nestjs/common";
+import { sanitizeEnvValue } from "../../config/cors-origins";
 
 /** Public landing so Vercel / browser visits to `/` are not a scary 404. */
 @Controller()
 export class RootController {
   @Get()
   root() {
-    const webApp = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+    const webApp = sanitizeEnvValue(process.env.NEXT_PUBLIC_APP_URL)?.replace(/\/$/, "");
     return {
       service: "revenue-os-api",
       status: "ok",
