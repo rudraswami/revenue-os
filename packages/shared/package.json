@@ -1,5 +1,5 @@
 {
-  "name": "@revenue-os/shared",
+  "name": "@growthsync/shared",
   "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",

@@ -8,10 +8,10 @@ export class RootController {
   root() {
     const webApp = sanitizeEnvValue(process.env.NEXT_PUBLIC_APP_URL)?.replace(/\/$/, "");
     return {
-      service: "revenue-os-api",
+      service: "growthsync-api",
       status: "ok",
       message: webApp
-        ? "This is the API server only — open webApp for the Revenue OS website."
+        ? "This is the API server only — open webApp for the GrowthSync website."
         : "API is running. Deploy apps/web on Vercel for the login UI.",
       webApp: webApp ?? "https://your-web-project.vercel.app",
       health: "/api/v1/health",

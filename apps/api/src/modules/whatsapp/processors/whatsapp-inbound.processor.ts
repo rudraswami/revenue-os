@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
-import { QUEUES } from "@revenue-os/shared";
+import { QUEUES } from "@growthsync/shared";
 import { PrismaService } from "../../prisma/prisma.service";
 import { RealtimeGateway } from "../../realtime/realtime.gateway";
 import { WhatsappService, type WhatsappWebhookPayload } from "../whatsapp.service";

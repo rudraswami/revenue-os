@@ -4,7 +4,7 @@
 
 | File / place | Used when |
 |--------------|-----------|
-| **`c:\Users\DELL\revenue-os\.env`** | Only when you run **`pnpm dev` on your PC** |
+| **`c:\Users\DELL\growthsync\.env`** | Only when you run **`pnpm dev` on your PC** |
 | **Vercel → Project → Settings → Environment Variables** | When users hit your **live** API and web |
 
 Vercel **never reads** your local `.env` file.  
@@ -12,12 +12,12 @@ Localhost values in `.env` are **correct for local dev**.
 
 You need **two Vercel projects** with **different** variables:
 
-1. **revenue-os-api** (`apps/api`) — backend  
-2. **revenue-os-web** (`apps/web`) — frontend  
+1. **growthsync-api** (`apps/api`) — backend  
+2. **growthsync-web** (`apps/web`) — frontend  
 
 ---
 
-## 1) Vercel API project (`revenue-os-api`)
+## 1) Vercel API project (`growthsync-api`)
 
 **Required** (production will not work without these):
 
@@ -32,7 +32,7 @@ NODE_ENV=production
 NEXT_PUBLIC_APP_URL=https://YOUR-WEB-DOMAIN.vercel.app
 CORS_ORIGINS=https://YOUR-WEB-DOMAIN.vercel.app
 WEBHOOK_PUBLIC_URL=https://YOUR-API-DOMAIN.vercel.app
-WHATSAPP_VERIFY_TOKEN=revenue-os-webhook-verify
+WHATSAPP_VERIFY_TOKEN=growthsync-webhook-verify
 WHATSAPP_API_VERSION=v21.0
 META_APP_ID=your_meta_app_id
 META_APP_SECRET=your_meta_app_secret
@@ -52,9 +52,9 @@ WHATSAPP_APP_SECRET=your_meta_app_secret
 
 - `YOUR_PASSWORD` — Supabase DB password (URL-encoded `@` as `%40`)
 - `REDIS_URL` — from [Upstash](https://console.upstash.com) (not `127.0.0.1`)
-- `YOUR-API-DOMAIN` — e.g. `revenue-os-api.vercel.app`
-- `YOUR-WEB-DOMAIN` — e.g. `revenue-os-web.vercel.app`
-- Meta values — from Meta Developer → Revenue OS app
+- `YOUR-API-DOMAIN` — e.g. `growthsync-api.vercel.app`
+- `YOUR-WEB-DOMAIN` — e.g. `growthsync-web.vercel.app`
+- Meta values — from Meta Developer → GrowthSync app
 
 **Meta webhook callback (paste in Meta dashboard, not env):**
 
@@ -64,7 +64,7 @@ https://YOUR-API-DOMAIN.vercel.app/api/v1/webhooks/whatsapp
 
 ---
 
-## 2) Vercel Web project (`revenue-os-web`)
+## 2) Vercel Web project (`growthsync-web`)
 
 **Required:**
 

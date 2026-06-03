@@ -1,7 +1,7 @@
-# Revenue OS — Supabase CLI configuration
+# GrowthSync — Supabase CLI configuration
 # Docs: https://supabase.com/docs/guides/cli/config
 
-project_id = "revenue-os"
+project_id = "growthsync"
 
 [api]
 enabled = true

@@ -1,6 +1,6 @@
 # Meta Embedded Signup — operator setup
 
-Customers click **Continue with Facebook** in Settings. This doc is for **you** (Revenue OS operator), not end users.
+Customers click **Continue with Facebook** in Settings. This doc is for **you** (GrowthSync operator), not end users.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ Customers click **Continue with Facebook** in Settings. This doc is for **you** 
 - Enforce HTTPS: **Yes**
 - Embedded Browser OAuth Login: **Yes**
 - Login with JavaScript SDK: **Yes**
-- **Allowed domains:** `localhost`, your production domain (e.g. `app.revenue-os.com`)
+- **Allowed domains:** `localhost`, `growthsync.in`, `www.growthsync.in`
 - **Valid OAuth redirect URIs:** same origins with `https://`
 
 ### 2. Create configuration (Embedded Signup v4)
@@ -49,7 +49,7 @@ Restart API after changes.
 1. Customer clicks **Continue with Facebook**
 2. Meta popup — login, pick business, pick/verify WhatsApp number
 3. Browser receives `code` + `phone_number_id` + `waba_id`
-4. Revenue OS server (within 30 seconds):
+4. GrowthSync server (within 30 seconds):
    - Exchanges code → business token
    - Subscribes app webhooks on customer WABA
    - Optionally registers phone (if `META_WABA_REGISTER_PIN` set)

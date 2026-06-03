@@ -9,7 +9,7 @@ export default function HomePage() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
-          <span className="font-semibold">Revenue OS</span>
+          <span className="font-semibold">GrowthSync</span>
         </div>
         <div className="flex gap-3">
           <Button variant="ghost" asChild>
@@ -23,20 +23,20 @@ export default function HomePage() {
         </div>
       </header>
       <main className="mx-auto max-w-4xl px-6 py-24 text-center">
-        <p className="mb-4 text-sm font-medium text-accent">AI Revenue Operating System</p>
+        <p className="mb-4 text-sm font-medium text-accent">growthsync.in</p>
         <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
           Turn WhatsApp conversations into{" "}
           <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            predictable revenue
+            measurable growth
           </span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-          Autonomous AI sales agents, pipeline intelligence, and real-time funnel analytics —
-          built for enterprise WhatsApp-first businesses.
+          One inbox, a clear pipeline, and simple WhatsApp Business setup — built for teams that
+          sell and support on WhatsApp.
         </p>
         <div className="mt-10 flex justify-center gap-4">
           <Button size="lg" asChild>
-            <Link href="/register">Launch command center</Link>
+            <Link href="/register">Get started</Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
             <Link href="/login">View demo workspace</Link>

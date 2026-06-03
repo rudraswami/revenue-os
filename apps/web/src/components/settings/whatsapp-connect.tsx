@@ -318,7 +318,7 @@ export default function WhatsappConnect() {
           </Button>
 
           <p className="mt-3 max-w-md text-xs text-muted-foreground">
-            Secure connection powered by Meta. Revenue OS never sees your Facebook password.
+            Secure connection powered by Meta. GrowthSync never sees your Facebook password.
           </p>
         </div>
       </div>

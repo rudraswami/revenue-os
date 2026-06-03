@@ -18,13 +18,13 @@ export function AuthShell({
         <div className="pointer-events-none absolute inset-0 grid-bg opacity-40" />
         <Link href="/" className="relative flex items-center gap-2">
           <Sparkles className="h-7 w-7 text-primary" />
-          <span className="text-lg font-semibold">Revenue OS</span>
+          <span className="text-lg font-semibold">GrowthSync</span>
         </Link>
         <div className="relative space-y-4">
           <h2 className="text-3xl font-bold leading-tight">
             WhatsApp conversations,
             <br />
-            turned into revenue.
+            synced for growth.
           </h2>
           <p className="max-w-md text-muted-foreground">
             One inbox for your team, a clear pipeline for every customer, and a simple way to connect
@@ -38,7 +38,7 @@ export function AuthShell({
         <div className="mx-auto w-full max-w-md">
           <Link href="/" className="mb-8 flex items-center gap-2 lg:hidden">
             <Sparkles className="h-6 w-6 text-primary" />
-            <span className="font-semibold">Revenue OS</span>
+            <span className="font-semibold">GrowthSync</span>
           </Link>
           <div className="mb-8">
             <h1 className="text-2xl font-bold tracking-tight">{title}</h1>

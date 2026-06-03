@@ -10,7 +10,7 @@ export class EmailService {
   async sendPasswordReset(email: string, resetUrl: string): Promise<void> {
     const apiKey = this.config.get<string>("RESEND_API_KEY");
     const from =
-      this.config.get<string>("EMAIL_FROM") ?? "Revenue OS <onboarding@resend.dev>";
+      this.config.get<string>("EMAIL_FROM") ?? "GrowthSync <onboarding@resend.dev>";
 
     if (!apiKey) {
       this.logger.warn(`Password reset (dev): ${email} → ${resetUrl}`);
@@ -26,9 +26,9 @@ export class EmailService {
       body: JSON.stringify({
         from,
         to: [email],
-        subject: "Reset your Revenue OS password",
+        subject: "Reset your GrowthSync password",
         html: `
-          <p>You requested a password reset for Revenue OS.</p>
+          <p>You requested a password reset for GrowthSync.</p>
           <p><a href="${resetUrl}">Reset your password</a></p>
           <p>This link expires in 1 hour. If you did not request this, ignore this email.</p>
         `,

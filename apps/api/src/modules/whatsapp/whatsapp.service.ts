@@ -4,7 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { createHash } from "crypto";
-import { QUEUES } from "@revenue-os/shared";
+import { QUEUES } from "@growthsync/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface WhatsappWebhookPayload {

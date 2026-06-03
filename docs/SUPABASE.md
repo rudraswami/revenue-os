@@ -1,6 +1,6 @@
-# Supabase setup (Revenue OS)
+# Supabase setup (GrowthSync)
 
-Revenue OS uses:
+GrowthSync uses:
 
 | Service | Provider | Purpose |
 |---------|----------|---------|
@@ -36,7 +36,7 @@ Paste both into `.env` at the repo root.
 ## 3. CLI workflow (from repo root)
 
 ```powershell
-cd C:\Users\DELL\revenue-os
+cd C:\Users\DELL\growthsync
 pnpm install
 
 # Interactive setup
@@ -75,7 +75,7 @@ pnpm dev
 
 **Demo login** (after seed):
 
-- Email: `demo@revenue-os.local`
+- Email: `demo@growthsync.in`
 - Password: `demo123456`
 - Org slug: `demo-company`
 

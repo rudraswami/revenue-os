@@ -1,6 +1,6 @@
-# Run Revenue OS locally (your Supabase project)
+# Run GrowthSync locally (your Supabase project)
 
-Project: **revenue-os** · `qzeiggsgnruvxbvdesfd` · Sydney (`ap-southeast-2`)
+Project: **growthsync** · `qzeiggsgnruvxbvdesfd` · Sydney (`ap-southeast-2`)
 
 ## Security
 
@@ -14,7 +14,7 @@ Never commit `.env` to GitHub.
 
 ## Step 1 — `.env` is already configured
 
-`C:\Users\DELL\revenue-os\.env` contains your Supabase URLs (password is URL-encoded).
+`C:\Users\DELL\growthsync\.env` contains your Supabase URLs (password is URL-encoded).
 
 ---
 
@@ -32,7 +32,7 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 **B) CLI**
 
 ```powershell
-cd C:\Users\DELL\revenue-os
+cd C:\Users\DELL\growthsync
 pnpm exec supabase link --project-ref qzeiggsgnruvxbvdesfd
 pnpm supabase:push
 ```
@@ -42,7 +42,7 @@ pnpm supabase:push
 ## Step 3 — Create tables + demo user
 
 ```powershell
-cd C:\Users\DELL\revenue-os
+cd C:\Users\DELL\growthsync
 pnpm db:push
 pnpm db:seed
 ```
@@ -75,7 +75,7 @@ pnpm dev
 |---|---|
 | App | http://localhost:3000 |
 | API | http://localhost:4000/api/v1/health |
-| Login | `demo@revenue-os.local` / `demo123456` (email + password only) |
+| Login | `demo@growthsync.in` / `demo123456` (email + password only) |
 
 ---
 

@@ -3,7 +3,7 @@ import { IsEnum, IsOptional, IsString } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { LeadsService } from "./leads.service";
-import type { JwtPayload, LeadStage } from "@revenue-os/shared";
+import type { JwtPayload, LeadStage } from "@growthsync/shared";
 
 class UpdateStageDto {
   @IsEnum(["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON", "LOST"])

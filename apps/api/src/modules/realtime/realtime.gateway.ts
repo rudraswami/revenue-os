@@ -6,7 +6,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
-import type { JwtPayload } from "@revenue-os/shared";
+import type { JwtPayload } from "@growthsync/shared";
 import { Server, Socket } from "socket.io";
 
 export interface MessageNewEvent {

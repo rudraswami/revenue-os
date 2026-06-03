@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const SESSION_COOKIE = "revenue-os-session";
+const SESSION_COOKIE = "growthsync-session";
 
 function hasSession(request: NextRequest) {
   return request.cookies.get(SESSION_COOKIE)?.value === "1";

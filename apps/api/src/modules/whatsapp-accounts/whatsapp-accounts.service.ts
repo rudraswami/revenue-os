@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { JwtPayload } from "@revenue-os/shared";
+import type { JwtPayload } from "@growthsync/shared";
 import { decryptSecret, encryptSecret } from "../../common/crypto/token-cipher";
 import { PrismaService } from "../prisma/prisma.service";
 import { ConnectWhatsappDto, CreateWhatsappAccountDto, UpdateWhatsappAccountDto } from "./dto/whatsapp-account.dto";

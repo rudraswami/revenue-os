@@ -1,8 +1,8 @@
-# Revenue OS
+# GrowthSync
 
-**AI Revenue Operating System** for WhatsApp-first businesses.
+**WhatsApp growth platform** — [growthsync.in](https://growthsync.in)
 
-Enterprise-grade, multi-tenant SaaS platform for autonomous AI sales operations: conversation management, lead intelligence, pipeline automation, and real-time revenue analytics.
+Multi-tenant SaaS for WhatsApp-first businesses: shared inbox, pipeline, onboarding, and Meta WhatsApp Business API integration.
 
 ## Architecture
 
@@ -25,7 +25,7 @@ See [docs/architecture](./docs/architecture/) for system design.
 ## Quick Start (Supabase)
 
 ```powershell
-cd revenue-os
+cd growthsync
 cp .env.example .env
 # Edit .env — Supabase DATABASE_URL + DIRECT_URL, Upstash REDIS_URL
 

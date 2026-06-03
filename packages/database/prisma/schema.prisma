@@ -1,4 +1,4 @@
-// Revenue OS — Enterprise multi-tenant schema
+// GrowthSync — Enterprise multi-tenant schema
 // https://pris.ly/d/prisma-schema
 
 generator client {

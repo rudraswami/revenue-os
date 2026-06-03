@@ -97,7 +97,7 @@ export default function RegisterPage() {
       </form>
 
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        By signing up you agree to use Revenue OS for your business communications.
+        By signing up you agree to use GrowthSync for your business communications.
       </p>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">

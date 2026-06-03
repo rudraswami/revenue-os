@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
-import type { JwtPayload } from "@revenue-os/shared";
+import type { JwtPayload } from "@growthsync/shared";
 import { AuthService } from "./auth.service";
 import {
   ForgotPasswordDto,

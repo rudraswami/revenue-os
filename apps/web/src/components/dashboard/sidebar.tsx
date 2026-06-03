@@ -58,7 +58,7 @@ export function Sidebar() {
           <Sparkles className="h-5 w-5" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{organization?.name ?? "Revenue OS"}</p>
+          <p className="truncate text-sm font-semibold">{organization?.name ?? "GrowthSync"}</p>
           <p className="text-xs text-muted-foreground">WhatsApp sales hub</p>
         </div>
       </div>

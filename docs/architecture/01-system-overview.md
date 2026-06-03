@@ -1,8 +1,8 @@
-# Revenue OS — System Architecture Overview
+# GrowthSync — System Architecture Overview
 
 ## Vision
 
-Revenue OS is an **AI-native Revenue Operating System** for WhatsApp-first businesses. It autonomously manages conversations, lead intelligence, pipeline movement, analytics, and sales workflows—not a chatbot wrapper.
+GrowthSync is an **AI-native Revenue Operating System** for WhatsApp-first businesses. It autonomously manages conversations, lead intelligence, pipeline movement, analytics, and sales workflows—not a chatbot wrapper.
 
 ## High-Level Architecture
 
@@ -46,7 +46,7 @@ Revenue OS is an **AI-native Revenue Operating System** for WhatsApp-first busin
 ## Monorepo Structure
 
 ```
-revenue-os/
+growthsync/
 ├── apps/
 │   ├── api/                 # NestJS — domain modules, webhooks, workers
 │   └── web/                 # Next.js — AI-native dashboard

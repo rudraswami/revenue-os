@@ -1,4 +1,4 @@
-# Deploy Revenue OS to production
+# Deploy GrowthSync to production
 
 Stack: **Supabase** (Postgres) · **Upstash** (Redis) · **Railway/Render** (API) · **Vercel** (Web)
 
@@ -11,7 +11,7 @@ Stack: **Supabase** (Postgres) · **Upstash** (Redis) · **Railway/Render** (API
 3. Apply schema:
 
 ```powershell
-cd C:\Users\DELL\revenue-os
+cd C:\Users\DELL\growthsync
 pnpm db:push
 pnpm supabase:push
 pnpm db:seed
@@ -65,11 +65,11 @@ If the dashboard has **Output Directory = public**, clear it — that causes `No
 | `META_APP_ID` / `META_APP_SECRET` | Meta developer app |
 | `META_EMBEDDED_SIGNUP_CONFIG_ID` | Embedded Signup config |
 | `RESEND_API_KEY` | (password reset emails) |
-| `EMAIL_FROM` | `Revenue OS <noreply@yourdomain.com>` |
+| `EMAIL_FROM` | `GrowthSync <noreply@yourdomain.com>` |
 
 ### Railway
 
-1. New project → **Deploy from GitHub** → repo `revenue-os`.
+1. New project → **Deploy from GitHub** → repo `growthsync`.
 2. Uses root `Dockerfile` + `railway.toml`.
 3. Set all env vars above.
 4. Generate domain → set `WEBHOOK_PUBLIC_URL=https://<api-domain>`.
@@ -119,7 +119,7 @@ If the dashboard has **Output Directory = public**, clear it — that causes `No
 
 ## 7. Demo login (after seed)
 
-- Email: `demo@revenue-os.local`
+- Email: `demo@growthsync.in`
 - Password: `demo123456`
 
 No org slug required.

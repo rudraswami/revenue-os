@@ -12,7 +12,7 @@ Messages appear in **Inbox** automatically.
 
 ---
 
-## For Revenue OS operators
+## For GrowthSync operators
 
 See **[META-EMBEDDED-SIGNUP.md](./META-EMBEDDED-SIGNUP.md)** for Meta app configuration.
 

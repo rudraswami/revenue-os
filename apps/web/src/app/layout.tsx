@@ -6,8 +6,8 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Revenue OS — AI Revenue Operating System",
-  description: "Enterprise AI-native revenue platform for WhatsApp-first businesses",
+  title: "GrowthSync — WhatsApp growth platform",
+  description: "Turn WhatsApp conversations into pipeline, inbox, and growth — growthsync.in",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

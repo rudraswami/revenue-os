@@ -1,5 +1,5 @@
 {
-  "name": "@revenue-os/api",
+  "name": "@growthsync/api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -22,8 +22,8 @@
     "@nestjs/platform-socket.io": "^10.4.15",
     "@nestjs/websockets": "^10.4.15",
     "@prisma/client": "^6.1.0",
-    "@revenue-os/database": "workspace:*",
-    "@revenue-os/shared": "workspace:*",
+    "@growthsync/database": "workspace:*",
+    "@growthsync/shared": "workspace:*",
     "bcrypt": "^5.1.1",
     "bullmq": "^5.34.3",
     "class-transformer": "^0.5.1",

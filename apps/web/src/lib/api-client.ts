@@ -40,7 +40,7 @@ async function rawFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     res = await fetch(`${API_URL}${path}`, { ...options, headers });
   } catch {
     throw new ApiError(
-      `Cannot reach API at ${API_URL}. Start the API: cd revenue-os && pnpm dev:api`,
+      `Cannot reach API at ${API_URL}. Start the API: cd growthsync && pnpm dev:api`,
       0,
     );
   }

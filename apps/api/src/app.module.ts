@@ -12,7 +12,7 @@ import { RealtimeModule } from "./modules/realtime/realtime.module";
 import { WhatsappAccountsModule } from "./modules/whatsapp-accounts/whatsapp-accounts.module";
 import { WhatsappModule } from "./modules/whatsapp/whatsapp.module";
 import { validateEnv } from "./config/env.validation";
-import { QUEUES } from "@revenue-os/shared";
+import { QUEUES } from "@growthsync/shared";
 
 @Module({
   imports: [

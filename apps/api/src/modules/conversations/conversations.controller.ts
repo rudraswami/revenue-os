@@ -4,7 +4,7 @@ import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { ConversationsService } from "./conversations.service";
-import type { JwtPayload } from "@revenue-os/shared";
+import type { JwtPayload } from "@growthsync/shared";
 
 class ListQueryDto {
   @IsOptional()

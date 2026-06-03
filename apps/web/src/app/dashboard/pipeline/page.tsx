@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import type { LeadStage } from "@revenue-os/shared";
+import type { LeadStage } from "@growthsync/shared";
 
 const STAGES: LeadStage[] = [
   "NEW",

@@ -4,9 +4,12 @@ export function sanitizeEnvValue(value: string | undefined): string | undefined 
   return trimmed || undefined;
 }
 
-/** Production Vercel aliases for revenue-os-web (preview + production). */
-const REVENUE_OS_WEB_VERCEL =
-  /^https:\/\/revenue-os-web[\w.-]*\.vercel\.app$/;
+/** Production: custom domain + Vercel preview aliases (incl. legacy growthsync-web). */
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/([\w-]+\.)?growthsync\.in$/,
+  /^https:\/\/growthsync-web[\w.-]*\.vercel\.app$/,
+  /^https:\/\/growthsync-web[\w.-]*\.vercel\.app$/,
+];
 
 export function isAllowedCorsOrigin(origin: string | undefined): boolean {
   if (!origin) {
@@ -15,7 +18,7 @@ export function isAllowedCorsOrigin(origin: string | undefined): boolean {
   if (getAllowedOrigins().includes(origin)) {
     return true;
   }
-  return REVENUE_OS_WEB_VERCEL.test(origin);
+  return ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
 }
 
 export function getAllowedOrigins(): string[] {
