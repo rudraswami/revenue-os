@@ -11,6 +11,7 @@ import { PrismaModule } from "./modules/prisma/prisma.module";
 import { RealtimeModule } from "./modules/realtime/realtime.module";
 import { WhatsappAccountsModule } from "./modules/whatsapp-accounts/whatsapp-accounts.module";
 import { WhatsappModule } from "./modules/whatsapp/whatsapp.module";
+import { AiModule } from "./modules/ai/ai.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growthsync/shared";
 
@@ -37,6 +38,7 @@ import { QUEUES } from "@growthsync/shared";
     AuthModule,
     OrganizationsModule,
     WhatsappModule,
+    AiModule,
     WhatsappAccountsModule,
     ConversationsModule,
     LeadsModule,

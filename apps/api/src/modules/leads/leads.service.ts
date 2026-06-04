@@ -62,6 +62,89 @@ export class LeadsService {
     return updated;
   }
 
+  async getTimeline(user: JwtPayload, id: string) {
+    const lead = await this.prisma.lead.findFirst({
+      where: { id, organizationId: user.organizationId },
+      include: {
+        stageHistory: { orderBy: { createdAt: "desc" }, take: 50 },
+        conversation: {
+          select: {
+            id: true,
+            aiRuns: {
+              where: { type: "classify", status: "COMPLETED" },
+              orderBy: { createdAt: "desc" },
+              take: 20,
+            },
+          },
+        },
+      },
+    });
+    if (!lead) throw new NotFoundException();
+
+    type TimelineEntry = {
+      id: string;
+      type: "stage_change" | "ai_classify";
+      at: string;
+      title: string;
+      detail?: string;
+      metadata?: Record<string, unknown>;
+    };
+
+    const events: TimelineEntry[] = [];
+
+    for (const entry of lead.stageHistory) {
+      events.push({
+        id: entry.id,
+        type: "stage_change",
+        at: entry.createdAt.toISOString(),
+        title: entry.fromStage
+          ? `${entry.fromStage} → ${entry.toStage}`
+          : `Stage set to ${entry.toStage}`,
+        detail: entry.reason ?? undefined,
+        metadata: {
+          fromStage: entry.fromStage,
+          toStage: entry.toStage,
+          aiRunId: entry.aiRunId,
+          changedBy: entry.changedBy,
+        },
+      });
+    }
+
+    for (const run of lead.conversation?.aiRuns ?? []) {
+      const output = run.output as {
+        stage?: string;
+        confidence?: number;
+        intent?: string;
+        requiresHuman?: boolean;
+      } | null;
+      events.push({
+        id: run.id,
+        type: "ai_classify",
+        at: run.createdAt.toISOString(),
+        title: "AI classified conversation",
+        detail: output?.intent
+          ? `${output.intent} → ${output.stage ?? "?"} (${Math.round((output.confidence ?? 0) * 100)}%)`
+          : undefined,
+        metadata: output ?? undefined,
+      });
+    }
+
+    events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+    return {
+      lead: {
+        id: lead.id,
+        stage: lead.stage,
+        score: lead.score,
+        aiConfidence: lead.aiConfidence,
+        lastClassifiedAt: lead.lastClassifiedAt,
+        displayName: lead.displayName,
+        phone: lead.phone,
+      },
+      events,
+    };
+  }
+
   async funnelMetrics(user: JwtPayload) {
     const counts = await this.prisma.lead.groupBy({
       by: ["stage"],

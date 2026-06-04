@@ -59,4 +59,36 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   emitInboxUpdated(organizationId: string) {
     this.server?.to(`org:${organizationId}`).emit("inbox.updated", {});
   }
+
+  emitLeadStageChanged(
+    organizationId: string,
+    data: {
+      leadId: string;
+      fromStage: string;
+      toStage: string;
+      confidence?: number;
+    },
+  ) {
+    this.server?.to(`org:${organizationId}`).emit("lead.stage.changed", data);
+  }
+
+  emitLeadClassified(
+    organizationId: string,
+    data: {
+      leadId: string;
+      conversationId: string;
+      stage: string;
+      confidence: number;
+      stageChanged: boolean;
+    },
+  ) {
+    this.server?.to(`org:${organizationId}`).emit("lead.classified", data);
+  }
+
+  emitLeadHandoff(
+    organizationId: string,
+    data: { conversationId: string; leadId: string; reason: string },
+  ) {
+    this.server?.to(`org:${organizationId}`).emit("lead.handoff", data);
+  }
 }

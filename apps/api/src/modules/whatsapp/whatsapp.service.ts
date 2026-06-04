@@ -27,7 +27,11 @@ export interface WhatsappWebhookPayload {
 export interface InboundMessageEvent {
   organizationId: string;
   conversationId: string;
+  messageId: string;
+  leadId: string;
 }
+
+import { AiClassifyService } from "../ai/ai-classify.service";
 
 @Injectable()
 export class WhatsappService {
@@ -37,6 +41,7 @@ export class WhatsappService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     @InjectQueue(QUEUES.WHATSAPP_INBOUND) private readonly inboundQueue: Queue,
+    private readonly aiClassify: AiClassifyService,
   ) {}
 
   verifySignature(rawBody: Buffer, signature: string | undefined): boolean {
@@ -69,11 +74,14 @@ export class WhatsappService {
     // Vercel serverless has no background workers — process inline.
     if (process.env.VERCEL === "1") {
       try {
-        await this.processInboundPayload(payload);
+        const events = await this.processInboundPayload(payload);
         await this.prisma.webhookEvent.update({
           where: { id: event.id },
           data: { processedAt: new Date() },
         });
+        for (const inbound of events) {
+          await this.aiClassify.enqueue(inbound);
+        }
       } catch (err) {
         this.logger.error(`Inline webhook processing failed: ${String(err)}`);
       }
@@ -212,6 +220,8 @@ export class WhatsappService {
     return {
       organizationId,
       conversationId: conversation.id,
+      messageId: message.id,
+      leadId: lead.id,
     };
   }
 

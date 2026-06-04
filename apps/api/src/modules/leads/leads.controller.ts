@@ -29,6 +29,11 @@ export class LeadsController {
     return this.leads.funnelMetrics(user);
   }
 
+  @Get(":id/timeline")
+  timeline(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.leads.getTimeline(user, id);
+  }
+
   @Patch(":id/stage")
   updateStage(
     @CurrentUser() user: JwtPayload,

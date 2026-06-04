@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Loader2, Send, Sparkles } from "lucide-react";
+import { Loader2, Send, Sparkles, Clock } from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -34,9 +34,28 @@ interface ConversationDetail {
   contactName: string | null;
   contactPhone: string;
   unreadCount: number;
-  lead: { id: string; stage: string } | null;
+  lead: { id: string; stage: string; score?: number; aiConfidence?: number | null } | null;
   messages: Message[];
   whatsappAccount: { displayPhoneNumber: string; isActive: boolean };
+}
+
+interface TimelineEvent {
+  id: string;
+  type: "stage_change" | "ai_classify";
+  at: string;
+  title: string;
+  detail?: string;
+}
+
+interface LeadTimeline {
+  lead: {
+    id: string;
+    stage: string;
+    score: number;
+    aiConfidence: number | null;
+    lastClassifiedAt: string | null;
+  };
+  events: TimelineEvent[];
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -89,6 +108,16 @@ export default function InboxPage() {
       apiFetch<ConversationDetail>(`/conversations/${selectedId}`, { token: token ?? undefined }),
     enabled: !!token && !!selectedId,
     refetchInterval: live ? false : 8_000,
+  });
+
+  const leadId = thread?.lead?.id;
+
+  const { data: timeline } = useQuery({
+    queryKey: ["lead-timeline", leadId],
+    queryFn: () =>
+      apiFetch<LeadTimeline>(`/leads/${leadId}/timeline`, { token: token ?? undefined }),
+    enabled: !!token && !!leadId,
+    refetchInterval: live ? false : 12_000,
   });
 
   const { data: capabilities } = useQuery({
@@ -245,17 +274,25 @@ export default function InboxPage() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : thread ? (
-          <>
+          <div className="flex flex-1 min-w-0">
+            <div className="flex flex-1 flex-col min-w-0">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div>
                 <p className="font-semibold">{thread.contactName ?? thread.contactPhone}</p>
                 <p className="text-xs text-muted-foreground">{thread.contactPhone}</p>
               </div>
-              {thread.lead && (
-                <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
-                  {STAGE_LABELS[thread.lead.stage] ?? thread.lead.stage}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {thread.lead?.score != null && thread.lead.score > 0 && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    Score {thread.lead.score}
+                  </span>
+                )}
+                {thread.lead && (
+                  <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                    {STAGE_LABELS[thread.lead.stage] ?? thread.lead.stage}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -331,7 +368,55 @@ export default function InboxPage() {
                 </Button>
               </div>
             </form>
-          </>
+            </div>
+
+            {thread.lead && (
+              <aside className="hidden w-72 shrink-0 flex-col border-l border-border lg:flex">
+                <div className="border-b border-border p-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <h2 className="text-sm font-semibold">Lead timeline</h2>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    AI classification and pipeline changes after each message
+                  </p>
+                  {timeline?.lead.aiConfidence != null && (
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      AI confidence: {Math.round(timeline.lead.aiConfidence * 100)}%
+                    </p>
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto p-4">
+                  {!timeline?.events.length && (
+                    <p className="text-xs text-muted-foreground">
+                      Timeline fills in after the next customer message is classified.
+                    </p>
+                  )}
+                  <ul className="space-y-3">
+                    {timeline?.events.map((ev) => (
+                      <li key={ev.id} className="relative border-l-2 border-border pl-3">
+                        <p className="text-xs font-medium">
+                          {ev.type === "ai_classify" ? "🤖 " : "📊 "}
+                          {ev.title}
+                        </p>
+                        {ev.detail && (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">{ev.detail}</p>
+                        )}
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {new Date(ev.at).toLocaleString([], {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </aside>
+            )}
+          </div>
         ) : null}
       </div>
     </div>

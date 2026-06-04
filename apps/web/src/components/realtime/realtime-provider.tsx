@@ -62,6 +62,24 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       refresh();
     });
 
+    socket.on("lead.stage.changed", (payload: { leadId?: string }) => {
+      refresh();
+      if (payload?.leadId) {
+        void queryClient.invalidateQueries({ queryKey: ["lead-timeline", payload.leadId] });
+      }
+    });
+
+    socket.on("lead.classified", (payload: { conversationId?: string; leadId?: string }) => {
+      refresh(payload?.conversationId);
+      if (payload?.leadId) {
+        void queryClient.invalidateQueries({ queryKey: ["lead-timeline", payload.leadId] });
+      }
+    });
+
+    socket.on("lead.handoff", (payload: { conversationId?: string }) => {
+      refresh(payload?.conversationId);
+    });
+
     return () => {
       socket.disconnect();
       setConnected(false);

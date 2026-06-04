@@ -17,6 +17,16 @@ export const DOMAIN_EVENTS = {
   AUTOMATION_TRIGGERED: "automation.triggered",
 } as const;
 
+export const LEAD_STAGE_ORDER = [
+  "NEW",
+  "CONTACTED",
+  "QUALIFIED",
+  "PROPOSAL",
+  "NEGOTIATION",
+  "WON",
+  "LOST",
+] as const;
+
 export const DEFAULT_PIPELINE_STAGES = [
   { stage: "NEW", name: "New", order: 0, color: "#6366f1" },
   { stage: "CONTACTED", name: "Contacted", order: 1, color: "#8b5cf6" },

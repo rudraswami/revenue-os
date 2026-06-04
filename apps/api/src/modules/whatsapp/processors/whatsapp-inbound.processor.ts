@@ -5,6 +5,7 @@ import { QUEUES } from "@growthsync/shared";
 import { PrismaService } from "../../prisma/prisma.service";
 import { RealtimeGateway } from "../../realtime/realtime.gateway";
 import { WhatsappService, type WhatsappWebhookPayload } from "../whatsapp.service";
+import { AiClassifyService } from "../../ai/ai-classify.service";
 
 interface InboundJobData {
   webhookEventId: string;
@@ -19,6 +20,7 @@ export class WhatsappInboundProcessor extends WorkerHost {
     private readonly whatsapp: WhatsappService,
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly aiClassify: AiClassifyService,
   ) {
     super();
   }
@@ -38,6 +40,7 @@ export class WhatsappInboundProcessor extends WorkerHost {
         this.realtime.emitMessageNew(event.organizationId, {
           conversationId: event.conversationId,
         });
+        await this.aiClassify.enqueue(event);
       }
       for (const orgId of orgIds) {
         this.realtime.emitInboxUpdated(orgId);
