@@ -6,7 +6,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <AuthGuard>
       <OnboardingGate>
-        <div className="flex min-h-screen bg-background">
+        <div className="flex min-h-screen app-shell">
           <Sidebar />
           <main className="flex-1 overflow-auto">{children}</main>
         </div>

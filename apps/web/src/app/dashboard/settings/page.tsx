@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { PageHeader } from "@/components/dashboard/page-header";
 
 const WhatsappConnect = dynamic(() => import("@/components/settings/whatsapp-connect"), {
   ssr: false,
@@ -9,13 +10,11 @@ const WhatsappConnect = dynamic(() => import("@/components/settings/whatsapp-con
 
 export default function SettingsPage() {
   return (
-    <div className="mx-auto max-w-2xl p-8">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">WhatsApp</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Connect the number your customers message — messages appear in Inbox automatically.
-        </p>
-      </header>
+    <div className="mx-auto max-w-2xl p-6 md:p-8">
+      <PageHeader
+        title="WhatsApp"
+        description="Connect the number your customers message — messages appear in Inbox automatically."
+      />
       <WhatsappConnect />
     </div>
   );

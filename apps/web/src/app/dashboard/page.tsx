@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { MessageSquare, TrendingUp, Users } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
@@ -58,17 +59,17 @@ export default function DashboardPage() {
     })) ?? [];
 
   return (
-    <div className="p-8">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Home</h1>
-        <p className="text-muted-foreground">Your WhatsApp sales at a glance</p>
-      </header>
+    <div className="p-6 md:p-8">
+      <PageHeader
+        title="Home"
+        description="Your WhatsApp sales at a glance"
+      />
 
       {!hasWhatsapp && (
-        <Card className="mb-8 border-primary/30 bg-primary/5">
+        <Card className="mb-8 border-primary/20 bg-secondary/50">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
             <div>
-              <p className="font-medium">Connect WhatsApp to get started</p>
+              <p className="font-semibold text-secondary-foreground">Connect WhatsApp to get started</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Link your business number and customer messages will appear in your Inbox.
               </p>
@@ -108,7 +109,7 @@ export default function DashboardPage() {
           title="Win rate"
           value={funnel && funnel.total > 0 ? `${(funnel.conversionRate * 100).toFixed(0)}%` : "—"}
           trend="neutral"
-          icon={<TrendingUp className="h-4 w-4 text-accent" />}
+          icon={<TrendingUp className="h-4 w-4 text-primary" />}
         />
       </div>
 
@@ -121,16 +122,17 @@ export default function DashboardPage() {
             {hasLeads && chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
-                  <XAxis dataKey="stage" stroke="#71717a" fontSize={12} />
-                  <YAxis stroke="#71717a" fontSize={12} allowDecimals={false} />
+                  <XAxis dataKey="stage" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={12} allowDecimals={false} tickLine={false} axisLine={false} />
                   <Tooltip
                     contentStyle={{
-                      background: "#18181b",
-                      border: "1px solid #27272a",
-                      borderRadius: 8,
+                      background: "#ffffff",
+                      border: "1px solid #e8eaed",
+                      borderRadius: 12,
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.07)",
                     }}
                   />
-                  <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill="#4c6ef5" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -138,14 +140,14 @@ export default function DashboardPage() {
                 {hasWhatsapp ? (
                   <>
                     <p>Leads appear when customers message you</p>
-                    <Link href="/dashboard/inbox" className="text-primary hover:underline">
+                    <Link href="/dashboard/inbox" className="font-medium text-primary hover:underline">
                       Open Inbox
                     </Link>
                   </>
                 ) : (
                   <>
                     <p>Connect WhatsApp to start tracking leads</p>
-                    <Link href="/dashboard/settings" className="text-primary hover:underline">
+                    <Link href="/dashboard/settings" className="font-medium text-primary hover:underline">
                       Connect WhatsApp
                     </Link>
                   </>

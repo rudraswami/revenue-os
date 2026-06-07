@@ -184,9 +184,9 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex h-screen">
-      <div className="flex w-80 shrink-0 flex-col border-r border-border">
-        <div className="border-b border-border p-4">
+    <div className="flex h-screen bg-background">
+      <div className="flex w-80 shrink-0 flex-col border-r border-border bg-background">
+        <div className="border-b border-border bg-muted/30 p-4">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold">Inbox</h1>
             {live && (
@@ -198,7 +198,7 @@ export default function InboxPage() {
           <p className="text-xs text-muted-foreground">Customer WhatsApp messages</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
           {listLoading && (
             <p className="text-sm text-muted-foreground">
               <Loader2 className="inline h-4 w-4 animate-spin" /> Loading…
@@ -233,8 +233,10 @@ export default function InboxPage() {
                 type="button"
                 onClick={() => selectConversation(c.id)}
                 className={cn(
-                  "w-full rounded-lg px-3 py-3 text-left transition-colors",
-                  selectedId === c.id ? "bg-primary/15" : "hover:bg-muted/60",
+                  "w-full rounded-xl px-3 py-3 text-left transition-all",
+                  selectedId === c.id
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "hover:bg-muted",
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -247,11 +249,21 @@ export default function InboxPage() {
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                <p
+                  className={cn(
+                    "mt-0.5 truncate text-xs",
+                    selectedId === c.id ? "text-primary-foreground/80" : "text-muted-foreground",
+                  )}
+                >
                   {c.messages[0]?.content ?? "No messages"}
                 </p>
                 {c.lead && (
-                  <span className="mt-1 inline-block text-[10px] uppercase text-muted-foreground">
+                  <span
+                    className={cn(
+                      "mt-1 inline-block text-[10px] uppercase",
+                      selectedId === c.id ? "text-primary-foreground/70" : "text-muted-foreground",
+                    )}
+                  >
                     {STAGE_LABELS[c.lead.stage] ?? c.lead.stage}
                   </span>
                 )}
@@ -276,7 +288,7 @@ export default function InboxPage() {
         ) : thread ? (
           <div className="flex flex-1 min-w-0">
             <div className="flex flex-1 flex-col min-w-0">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+            <div className="flex items-center justify-between border-b border-border bg-muted/30 px-6 py-4">
               <div>
                 <p className="font-semibold">{thread.contactName ?? thread.contactPhone}</p>
                 <p className="text-xs text-muted-foreground">{thread.contactPhone}</p>
@@ -295,7 +307,7 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="flex-1 overflow-y-auto bg-muted/20 px-6 py-4 custom-scrollbar">
               <div className="mx-auto flex max-w-2xl flex-col gap-3">
                 {thread.messages.map((m) => (
                   <div
@@ -325,7 +337,7 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <form onSubmit={handleSend} className="border-t border-border p-4">
+            <form onSubmit={handleSend} className="border-t border-border bg-background p-4">
               {sendError && (
                 <p className="mb-2 text-center text-xs text-destructive">{sendError}</p>
               )}

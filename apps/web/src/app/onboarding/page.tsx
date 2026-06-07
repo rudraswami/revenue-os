@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { Logo } from "@/components/marketing/logo";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
@@ -81,14 +82,15 @@ export default function OnboardingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border px-6 py-4">
+    <div className="min-h-screen bg-muted/40">
+      <header className="border-b border-border bg-background px-6 py-4">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <div>
-            <p className="text-sm text-accent">Getting started</p>
-            <h1 className="text-xl font-bold">
+            <Logo href="/onboarding" />
+            <h1 className="mt-4 text-xl font-bold">
               Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
             </h1>
+            <p className="text-sm text-muted-foreground">Let&apos;s connect your WhatsApp in a few steps</p>
           </div>
           {whatsappConnected && (
             <Button onClick={() => router.push("/dashboard")}>

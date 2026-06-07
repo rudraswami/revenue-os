@@ -2,8 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import type { LeadStage } from "@growthsync/shared";
@@ -26,6 +28,16 @@ const STAGE_LABELS: Record<LeadStage, string> = {
   NEGOTIATION: "Negotiation",
   WON: "Won",
   LOST: "Lost",
+};
+
+const STAGE_COLORS: Record<LeadStage, string> = {
+  NEW: "bg-blue-500",
+  CONTACTED: "bg-violet-500",
+  QUALIFIED: "bg-indigo-500",
+  PROPOSAL: "bg-amber-500",
+  NEGOTIATION: "bg-orange-500",
+  WON: "bg-success",
+  LOST: "bg-muted-foreground",
 };
 
 interface PipelineLead {
@@ -73,11 +85,11 @@ export default function PipelinePage() {
   const totalLeads = STAGES.reduce((sum, s) => sum + (data?.[s]?.length ?? 0), 0);
 
   return (
-    <div className="flex h-full flex-col p-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold">Pipeline</h1>
-        <p className="text-muted-foreground">Track customers from first message to closed deal</p>
-      </header>
+    <div className="flex h-full flex-col p-6 md:p-8">
+      <PageHeader
+        title="Pipeline"
+        description="Track customers from first message to closed deal"
+      />
 
       {!hasWhatsapp && (
         <Card className="mb-6 border-dashed">
@@ -104,14 +116,17 @@ export default function PipelinePage() {
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading pipeline…</p>}
 
-      <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
+      <div className="flex flex-1 gap-4 overflow-x-auto pb-4 custom-scrollbar">
         {STAGES.map((stage) => (
-          <div key={stage} className="min-w-[260px] shrink-0">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-medium">{STAGE_LABELS[stage]}</h2>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{data?.[stage]?.length ?? 0}</span>
+          <div key={stage} className="min-w-[272px] shrink-0">
+            <div className="mb-3 flex items-center gap-2">
+              <div className={cn("h-2 w-2 rounded-full", STAGE_COLORS[stage])} />
+              <h2 className="text-sm font-semibold">{STAGE_LABELS[stage]}</h2>
+              <span className="ml-auto rounded-full bg-background px-2.5 py-0.5 text-xs font-medium text-muted-foreground shadow-sm">
+                {data?.[stage]?.length ?? 0}
+              </span>
             </div>
-            <div className="space-y-2">
+            <div className="min-h-[200px] space-y-2 rounded-xl bg-muted/50 p-2">
               {(data?.[stage] ?? []).map((lead) => (
                 <Card key={lead.id}>
                   <CardHeader className="p-4 pb-2">
@@ -119,7 +134,7 @@ export default function PipelinePage() {
                   </CardHeader>
                   <CardContent className="space-y-3 p-4 pt-0">
                     <select
-                      className="w-full rounded-md border border-border bg-muted/50 px-2 py-1.5 text-xs"
+                      className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
                       value={lead.stage}
                       disabled={stageMutation.isPending}
                       onChange={(e) => {
