@@ -132,7 +132,7 @@ export default function DashboardPage() {
                       boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.07)",
                     }}
                   />
-                  <Bar dataKey="count" fill="#4c6ef5" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="count" fill="#6043d0" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (

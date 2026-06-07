@@ -233,9 +233,9 @@ export default function InboxPage() {
                 type="button"
                 onClick={() => selectConversation(c.id)}
                 className={cn(
-                  "w-full rounded-xl px-3 py-3 text-left transition-all",
+                  "w-full rounded-lg px-3 py-3 text-left transition-all",
                   selectedId === c.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-primary-soft text-primary"
                     : "hover:bg-muted",
                 )}
               >
@@ -252,7 +252,7 @@ export default function InboxPage() {
                 <p
                   className={cn(
                     "mt-0.5 truncate text-xs",
-                    selectedId === c.id ? "text-primary-foreground/80" : "text-muted-foreground",
+                    selectedId === c.id ? "text-primary/70" : "text-muted-foreground",
                   )}
                 >
                   {c.messages[0]?.content ?? "No messages"}
@@ -261,7 +261,7 @@ export default function InboxPage() {
                   <span
                     className={cn(
                       "mt-1 inline-block text-[10px] uppercase",
-                      selectedId === c.id ? "text-primary-foreground/70" : "text-muted-foreground",
+                      selectedId === c.id ? "text-primary/60" : "text-muted-foreground",
                     )}
                   >
                     {STAGE_LABELS[c.lead.stage] ?? c.lead.stage}
