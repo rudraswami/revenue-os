@@ -32,10 +32,10 @@ export function Hero() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/login"
+              href="/demo"
               className="text-[14px] font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              View demo workspace →
+              View interactive demo →
             </Link>
           </div>
         </div>

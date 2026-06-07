@@ -3,9 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PipelineBoard, type PipelineLead } from "@/components/dashboard/pipeline-board";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { PipelineSkeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import type { LeadStage } from "@growthsync/shared";
@@ -40,15 +41,6 @@ const STAGE_COLORS: Record<LeadStage, string> = {
   LOST: "bg-muted-foreground",
 };
 
-interface PipelineLead {
-  id: string;
-  displayName: string | null;
-  phone: string;
-  score: number;
-  stage: LeadStage;
-  conversation: { id: string } | null;
-}
-
 export default function PipelinePage() {
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
@@ -56,7 +48,9 @@ export default function PipelinePage() {
   const { data, isLoading } = useQuery({
     queryKey: ["pipeline"],
     queryFn: () =>
-      apiFetch<Record<string, PipelineLead[]>>("/leads/pipeline", { token: token ?? undefined }),
+      apiFetch<Record<string, PipelineLead[]>>("/leads/pipeline", {
+        token: token ?? undefined,
+      }),
     enabled: !!token,
   });
 
@@ -75,7 +69,34 @@ export default function PipelinePage() {
         token: token ?? undefined,
         body: JSON.stringify({ stage }),
       }),
-    onSuccess: () => {
+    onMutate: async ({ leadId, stage }) => {
+      await queryClient.cancelQueries({ queryKey: ["pipeline"] });
+      const previous = queryClient.getQueryData<Record<string, PipelineLead[]>>(["pipeline"]);
+      if (previous) {
+        const next = { ...previous };
+        let movedLead: PipelineLead | undefined;
+        for (const s of STAGES) {
+          const col = [...(next[s] ?? [])];
+          const idx = col.findIndex((l) => l.id === leadId);
+          if (idx >= 0) {
+            movedLead = { ...col[idx], stage };
+            col.splice(idx, 1);
+            next[s] = col;
+          }
+        }
+        if (movedLead) {
+          next[stage] = [...(next[stage] ?? []), movedLead];
+        }
+        queryClient.setQueryData(["pipeline"], next);
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["pipeline"], context.previous);
+      }
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       void queryClient.invalidateQueries({ queryKey: ["funnel-metrics"] });
     },
@@ -88,13 +109,15 @@ export default function PipelinePage() {
     <div className="flex h-full flex-col p-6 md:p-8">
       <PageHeader
         title="Pipeline"
-        description="Track customers from first message to closed deal"
+        description="Drag leads between stages — changes save automatically"
       />
 
       {!hasWhatsapp && (
         <Card className="mb-6 border-dashed">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
-            <p className="text-sm text-muted-foreground">Connect WhatsApp to build your pipeline from real conversations.</p>
+            <p className="text-sm text-muted-foreground">
+              Connect WhatsApp to build your pipeline from real conversations.
+            </p>
             <Button asChild size="sm">
               <Link href="/dashboard/settings">Connect WhatsApp</Link>
             </Button>
@@ -106,7 +129,9 @@ export default function PipelinePage() {
         <Card className="mb-6 border-dashed">
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
             <p className="font-medium text-foreground">No leads yet</p>
-            <p className="mt-1">When someone messages your business on WhatsApp, they appear here automatically.</p>
+            <p className="mt-1">
+              When someone messages your business on WhatsApp, they appear here automatically.
+            </p>
             <Button asChild size="sm" className="mt-4">
               <Link href="/dashboard/inbox">Go to Inbox</Link>
             </Button>
@@ -114,59 +139,18 @@ export default function PipelinePage() {
         </Card>
       )}
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading pipeline…</p>}
+      {isLoading && <PipelineSkeleton />}
 
-      <div className="flex flex-1 gap-4 overflow-x-auto pb-4 custom-scrollbar">
-        {STAGES.map((stage) => (
-          <div key={stage} className="min-w-[272px] shrink-0">
-            <div className="mb-3 flex items-center gap-2">
-              <div className={cn("h-2 w-2 rounded-full", STAGE_COLORS[stage])} />
-              <h2 className="text-sm font-semibold">{STAGE_LABELS[stage]}</h2>
-              <span className="ml-auto rounded-full bg-background px-2.5 py-0.5 text-xs font-medium text-muted-foreground shadow-sm">
-                {data?.[stage]?.length ?? 0}
-              </span>
-            </div>
-            <div className="min-h-[200px] space-y-2 rounded-xl bg-muted/50 p-2">
-              {(data?.[stage] ?? []).map((lead) => (
-                <Card key={lead.id}>
-                  <CardHeader className="p-4 pb-2">
-                    <CardTitle className="text-sm">{lead.displayName ?? lead.phone}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 p-4 pt-0">
-                    <select
-                      className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      value={lead.stage}
-                      disabled={stageMutation.isPending}
-                      onChange={(e) => {
-                        const next = e.target.value as LeadStage;
-                        if (next !== lead.stage) {
-                          stageMutation.mutate({ leadId: lead.id, stage: next });
-                        }
-                      }}
-                    >
-                      {STAGES.map((s) => (
-                        <option key={s} value={s}>
-                          {STAGE_LABELS[s]}
-                        </option>
-                      ))}
-                    </select>
-                    {lead.conversation?.id ? (
-                      <Link
-                        href={`/dashboard/inbox?c=${lead.conversation.id}`}
-                        className="block text-xs text-primary hover:underline"
-                      >
-                        Open chat
-                      </Link>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">No chat linked</span>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      {!isLoading && totalLeads > 0 && (
+        <PipelineBoard
+          stages={STAGES}
+          stageLabels={STAGE_LABELS}
+          stageColors={STAGE_COLORS}
+          data={data}
+          isPending={stageMutation.isPending}
+          onMoveLead={(leadId, stage) => stageMutation.mutate({ leadId, stage })}
+        />
+      )}
     </div>
   );
 }

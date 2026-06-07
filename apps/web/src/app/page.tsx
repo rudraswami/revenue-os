@@ -1,6 +1,6 @@
 import { MarketingHeader } from "@/components/marketing/header";
 import { Hero } from "@/components/marketing/hero";
-import { LogoStrip } from "@/components/marketing/logo-strip";
+import { PartnerLogos } from "@/components/marketing/partner-logos";
 import { BentoFeatures } from "@/components/marketing/bento-features";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { AiSection } from "@/components/marketing/ai-section";
@@ -16,7 +16,7 @@ export default function HomePage() {
       <MarketingHeader />
       <main>
         <Hero />
-        <LogoStrip />
+        <PartnerLogos />
         <BentoFeatures />
         <HowItWorks />
         <AiSection />

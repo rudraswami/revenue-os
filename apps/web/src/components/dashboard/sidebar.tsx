@@ -3,7 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Inbox, Kanban, LayoutDashboard, LogOut, Settings } from "lucide-react";
+import {
+  BarChart3,
+  Bot,
+  Inbox,
+  Kanban,
+  LayoutDashboard,
+  Lightbulb,
+  LogOut,
+  Settings,
+  Zap,
+} from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { Logo } from "@/components/marketing/logo";
 import { Button } from "@/components/ui/button";
@@ -16,6 +26,10 @@ const nav = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/inbox", label: "Inbox", icon: Inbox, exact: false },
   { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban, exact: false },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, exact: false },
+  { href: "/dashboard/ai", label: "AI", icon: Bot, exact: false },
+  { href: "/dashboard/automations", label: "Automations", icon: Zap, exact: false },
+  { href: "/dashboard/insights", label: "Insights", icon: Lightbulb, exact: false },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },
 ];
 
@@ -63,7 +77,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </div>
 
-      <nav className="flex-1 space-y-0.5 p-3">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3 custom-scrollbar">
         {nav.map((item) => {
           const active = item.exact
             ? pathname === item.href

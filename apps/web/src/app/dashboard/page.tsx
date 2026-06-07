@@ -2,8 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Inbox, Kanban, MessageSquare, Settings, TrendingUp, Users } from "lucide-react";
+import { Inbox, Kanban, MessageSquare, TrendingUp, Users } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,13 +22,14 @@ import {
 const quickActions = [
   { href: "/dashboard/inbox", label: "Open Inbox", icon: Inbox, desc: "Reply to customers" },
   { href: "/dashboard/pipeline", label: "View Pipeline", icon: Kanban, desc: "Track deal stages" },
-  { href: "/dashboard/settings", label: "WhatsApp Settings", icon: Settings, desc: "Manage connection" },
+  { href: "/dashboard/analytics", label: "Analytics", icon: TrendingUp, desc: "Sales performance" },
+  { href: "/dashboard/insights", label: "Insights", icon: MessageSquare, desc: "AI recommendations" },
 ];
 
 export default function DashboardPage() {
   const token = useAuthStore((s) => s.accessToken);
 
-  const { data: funnel } = useQuery({
+  const { data: funnel, isLoading: funnelLoading } = useQuery({
     queryKey: ["funnel-metrics"],
     queryFn: () =>
       apiFetch<{ total: number; won: number; conversionRate: number; byStage: { stage: string; count: number }[] }>(
@@ -37,7 +39,7 @@ export default function DashboardPage() {
     enabled: !!token,
   });
 
-  const { data: convStats } = useQuery({
+  const { data: convStats, isLoading: convLoading } = useQuery({
     queryKey: ["conversation-stats"],
     queryFn: () =>
       apiFetch<{ totalConversations: number; unreadMessages: number }>("/conversations/stats", {
@@ -64,6 +66,8 @@ export default function DashboardPage() {
       count: s.count,
     })) ?? [];
 
+  const isLoading = funnelLoading || convLoading;
+
   return (
     <div className="p-6 md:p-8">
       <PageHeader
@@ -88,7 +92,7 @@ export default function DashboardPage() {
       )}
 
       {hasWhatsapp && (
-        <div className="mb-8 grid gap-3 sm:grid-cols-3">
+        <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => (
             <Link
               key={action.href}
@@ -107,6 +111,9 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {isLoading ? (
+        <MetricCardsSkeleton />
+      ) : (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Conversations"
@@ -138,6 +145,7 @@ export default function DashboardPage() {
           icon={<TrendingUp className="h-4 w-4 text-primary" />}
         />
       </div>
+      )}
 
       <div className="mt-8">
         <Card>
@@ -145,7 +153,9 @@ export default function DashboardPage() {
             <CardTitle>Leads by stage</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
-            {hasLeads && chartData.length > 0 ? (
+            {isLoading ? (
+              <ChartSkeleton />
+            ) : hasLeads && chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <XAxis dataKey="stage" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />

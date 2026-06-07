@@ -16,6 +16,7 @@ const plans = [
   {
     name: "Starter",
     price: 15,
+    custom: false,
     description: "For small teams — access essentials for a simple workflow",
     features: ["1 WhatsApp number", "2,500 leads", "Basic pipeline", "2 team members"],
     popular: false,
@@ -23,6 +24,7 @@ const plans = [
   {
     name: "Growth",
     price: 25,
+    custom: false,
     description: "For growing teams — automate chats with smarter AI tools",
     features: [
       "3 WhatsApp numbers",
@@ -36,6 +38,7 @@ const plans = [
   {
     name: "Scale",
     price: 45,
+    custom: false,
     description: "For mature teams — scale with advanced AI automation",
     features: [
       "Unlimited WhatsApp numbers",
@@ -43,6 +46,20 @@ const plans = [
       "Priority AI features",
       "Custom automations",
       "Unlimited team members",
+    ],
+    popular: false,
+  },
+  {
+    name: "Enterprise",
+    price: null,
+    custom: true,
+    description: "Custom CRM with top-grade security, control and support",
+    features: [
+      "Unlimited everything",
+      "Dedicated account manager",
+      "Custom integrations",
+      "SLA & priority support",
+      "SSO & advanced security",
     ],
     popular: false,
   },
@@ -81,23 +98,21 @@ export function Pricing() {
           </div>
         </div>
 
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => (
             <div
               key={plan.name}
               className={cn(
                 "relative flex flex-col overflow-hidden rounded-2xl border bg-white",
-                plan.popular ? "border-primary shadow-xl" : "border-border shadow-sm",
+                plan.popular ? "border-primary shadow-xl xl:scale-[1.02]" : "border-border shadow-sm",
               )}
             >
               {plan.popular && (
-                <>
-                  <div className="bg-gradient-to-r from-primary via-[#7c5ce0] to-[#9b7bff] px-7 py-3 text-center">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-white">
-                      Most popular
-                    </span>
-                  </div>
-                </>
+                <div className="bg-gradient-to-r from-primary via-[#7c5ce0] to-[#9b7bff] px-7 py-3 text-center">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-white">
+                    Most popular
+                  </span>
+                </div>
               )}
 
               <div className="flex flex-1 flex-col p-7">
@@ -107,14 +122,25 @@ export function Pricing() {
                 </p>
 
                 <div className="mt-6">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-[13px] font-medium text-muted-foreground">$</span>
-                    <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
-                  </div>
-                  <p className="text-[13px] text-muted-foreground">USD per user/month</p>
-                  <p className="mt-2 text-[12px] text-muted-foreground">
-                    Billed ${plan.price * months}/user for {periods[periodIdx].label}
-                  </p>
+                  {plan.custom ? (
+                    <>
+                      <span className="text-3xl font-bold">Custom</span>
+                      <p className="mt-1 text-[13px] text-muted-foreground">
+                        Depends on your setup
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[13px] font-medium text-muted-foreground">$</span>
+                        <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
+                      </div>
+                      <p className="text-[13px] text-muted-foreground">USD per user/month</p>
+                      <p className="mt-2 text-[12px] text-muted-foreground">
+                        Billed ${(plan.price ?? 0) * months}/user for {periods[periodIdx].label}
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 <ul className="mt-6 flex-1 space-y-3 border-t border-border pt-6">
@@ -131,7 +157,9 @@ export function Pricing() {
                   variant={plan.popular ? "default" : "outline"}
                   asChild
                 >
-                  <Link href="/register">Try it free</Link>
+                  <Link href={plan.custom ? "/login" : "/register"}>
+                    {plan.custom ? "Contact sales" : "Try it free"}
+                  </Link>
                 </Button>
               </div>
             </div>

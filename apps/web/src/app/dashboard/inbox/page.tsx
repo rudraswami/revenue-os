@@ -7,6 +7,7 @@ import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InboxListSkeleton, InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -199,11 +200,7 @@ export default function InboxPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-          {listLoading && (
-            <p className="text-sm text-muted-foreground">
-              <Loader2 className="inline h-4 w-4 animate-spin" /> Loading…
-            </p>
-          )}
+          {listLoading && <InboxListSkeleton />}
 
           {!listLoading && !hasWhatsapp && (
             <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
@@ -282,9 +279,7 @@ export default function InboxPage() {
             )}
           </div>
         ) : threadLoading && !thread ? (
-          <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <InboxThreadSkeleton />
         ) : thread ? (
           <div className="flex flex-1 min-w-0">
             <div className="flex flex-1 flex-col min-w-0">
