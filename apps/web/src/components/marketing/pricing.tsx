@@ -55,7 +55,7 @@ export function Pricing() {
   return (
     <section id="pricing" className="surface-muted py-24 md:py-32">
       <div className="mx-auto max-w-[1120px] px-6">
-        <div className="mx-auto max-w-[560px] text-center">
+        <div className="mx-auto max-w-[640px] text-center">
           <h2 className="display-lg text-foreground">
             Go from overwhelmed to slam-dunk success
           </h2>
@@ -86,48 +86,54 @@ export function Pricing() {
             <div
               key={plan.name}
               className={cn(
-                "relative flex flex-col rounded-2xl border bg-white p-7",
-                plan.popular ? "border-primary shadow-lg" : "border-border",
+                "relative flex flex-col overflow-hidden rounded-2xl border bg-white",
+                plan.popular ? "border-primary shadow-xl" : "border-border shadow-sm",
               )}
             >
               {plan.popular && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
-                  Most popular
-                </span>
+                <>
+                  <div className="bg-gradient-to-r from-primary via-[#7c5ce0] to-[#9b7bff] px-7 py-3 text-center">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white">
+                      Most popular
+                    </span>
+                  </div>
+                </>
               )}
 
-              <h3 className="text-lg font-bold">{plan.name}</h3>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                {plan.description}
-              </p>
-
-              <div className="mt-6">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[13px] font-medium text-muted-foreground">$</span>
-                  <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
-                  <span className="text-[13px] text-muted-foreground">USD per user/month</span>
-                </div>
-                <p className="mt-2 text-[12px] text-muted-foreground">
-                  Billed ${plan.price * months}/user for {periods[periodIdx].label}
+              <div className="flex flex-1 flex-col p-7">
+                <h3 className="text-lg font-bold">{plan.name}</h3>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                  {plan.description}
                 </p>
+
+                <div className="mt-6">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[13px] font-medium text-muted-foreground">$</span>
+                    <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
+                  </div>
+                  <p className="text-[13px] text-muted-foreground">USD per user/month</p>
+                  <p className="mt-2 text-[12px] text-muted-foreground">
+                    Billed ${plan.price * months}/user for {periods[periodIdx].label}
+                  </p>
+                </div>
+
+                <ul className="mt-6 flex-1 space-y-3 border-t border-border pt-6">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-[13px]">
+                      <span className="mt-0.5 text-primary">✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <Button
+                  className={cn("mt-7 w-full", plan.popular && "btn-gradient border-0")}
+                  variant={plan.popular ? "default" : "outline"}
+                  asChild
+                >
+                  <Link href="/register">Try it free</Link>
+                </Button>
               </div>
-
-              <ul className="mt-6 flex-1 space-y-3 border-t border-border pt-6">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[13px]">
-                    <span className="mt-0.5 text-primary">✓</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                className="mt-7 w-full"
-                variant={plan.popular ? "default" : "outline"}
-                asChild
-              >
-                <Link href="/register">Try it free</Link>
-              </Button>
             </div>
           ))}
         </div>

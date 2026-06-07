@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { DashboardMock, InboxMock, PipelineMock } from "./mocks/product-mocks";
+import {
+  AnimatedDashboardShowcase,
+  AnimatedInboxShowcase,
+  AnimatedPipelineShowcase,
+} from "./animated-showcases";
 
 const views = [
   { id: "inbox", label: "Inbox" },
@@ -13,18 +17,34 @@ const views = [
 
 type ViewId = (typeof views)[number]["id"];
 
-const components: Record<ViewId, React.FC> = {
-  inbox: InboxMock,
-  pipeline: PipelineMock,
-  dashboard: DashboardMock,
+const components: Record<ViewId, React.FC<{ paused?: boolean }>> = {
+  inbox: AnimatedInboxShowcase,
+  pipeline: AnimatedPipelineShowcase,
+  dashboard: AnimatedDashboardShowcase,
 };
 
 export function ProductShowcase() {
   const [active, setActive] = useState<ViewId>("inbox");
+  const [paused, setPaused] = useState(false);
   const View = components[active];
 
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => {
+      setActive((current) => {
+        const idx = views.findIndex((v) => v.id === current);
+        return views[(idx + 1) % views.length].id;
+      });
+    }, 7000);
+    return () => clearInterval(t);
+  }, [paused]);
+
   return (
-    <div className="w-full">
+    <div
+      className="w-full"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       <div className="mb-6 flex justify-center gap-1">
         {views.map((view) => (
           <button
@@ -51,12 +71,12 @@ export function ProductShowcase() {
         <AnimatePresence mode="wait">
           <motion.div
             key={active}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
-            <View />
+            <View paused={paused && active !== "inbox"} />
           </motion.div>
         </AnimatePresence>
       </div>
