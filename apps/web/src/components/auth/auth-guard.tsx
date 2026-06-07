@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -17,20 +17,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, accessToken, router]);
 
-  if (!hydrated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!accessToken) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+  if (!hydrated || !accessToken) {
+    return <LoadingScreen message="Loading your workspace…" />;
   }
 
   return <>{children}</>;
@@ -48,11 +36,7 @@ export function GuestGuard({ children }: { children: React.ReactNode }) {
   }, [hydrated, accessToken, onboarding, router]);
 
   if (!hydrated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (accessToken) {

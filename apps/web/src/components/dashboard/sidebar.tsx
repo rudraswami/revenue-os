@@ -19,7 +19,7 @@ const nav = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const token = useAuthStore((s) => s.accessToken);
@@ -74,6 +74,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
                 active

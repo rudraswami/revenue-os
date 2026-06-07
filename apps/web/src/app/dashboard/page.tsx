@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { MessageSquare, TrendingUp, Users } from "lucide-react";
+import { Inbox, Kanban, MessageSquare, Settings, TrendingUp, Users } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
+const quickActions = [
+  { href: "/dashboard/inbox", label: "Open Inbox", icon: Inbox, desc: "Reply to customers" },
+  { href: "/dashboard/pipeline", label: "View Pipeline", icon: Kanban, desc: "Track deal stages" },
+  { href: "/dashboard/settings", label: "WhatsApp Settings", icon: Settings, desc: "Manage connection" },
+];
 
 export default function DashboardPage() {
   const token = useAuthStore((s) => s.accessToken);
@@ -79,6 +85,26 @@ export default function DashboardPage() {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {hasWhatsapp && (
+        <div className="mb-8 grid gap-3 sm:grid-cols-3">
+          {quickActions.map((action) => (
+            <Link
+              key={action.href}
+              href={action.href}
+              className="group flex items-center gap-4 rounded-xl border border-border bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                <action.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">{action.label}</p>
+                <p className="text-xs text-muted-foreground">{action.desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

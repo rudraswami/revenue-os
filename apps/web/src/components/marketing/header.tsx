@@ -11,7 +11,7 @@ const navLinks = [
   { href: "#features", label: "Product" },
   { href: "#ai", label: "AI" },
   { href: "#pricing", label: "Pricing" },
-  { href: "#testimonials", label: "Customers" },
+  { href: "#faq", label: "FAQ" },
 ];
 
 export function MarketingHeader() {
@@ -35,6 +35,12 @@ export function MarketingHeader() {
         </nav>
 
         <div className="hidden items-center gap-5 md:flex">
+          <Link
+            href="/login"
+            className="text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Get a demo
+          </Link>
           <Link
             href="/login"
             className="text-[14px] font-medium text-foreground transition-colors hover:text-primary"

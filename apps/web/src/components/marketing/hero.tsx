@@ -43,10 +43,6 @@ export function Hero() {
         <div className="mt-14 md:mt-16">
           <ProductShowcase />
         </div>
-
-        <p className="mt-12 text-center text-[13px] font-medium text-muted-foreground">
-          Loved by small businesses &amp; entrepreneurs in 40+ countries
-        </p>
       </div>
     </section>
   );

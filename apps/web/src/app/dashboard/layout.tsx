@@ -1,15 +1,12 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { OnboardingGate } from "@/components/auth/onboarding-gate";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
       <OnboardingGate>
-        <div className="flex min-h-screen app-shell">
-          <Sidebar />
-          <main className="flex-1 overflow-auto">{children}</main>
-        </div>
+        <DashboardShell>{children}</DashboardShell>
       </OnboardingGate>
     </AuthGuard>
   );

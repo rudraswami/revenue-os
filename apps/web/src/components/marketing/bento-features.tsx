@@ -30,7 +30,7 @@ export function BentoFeatures() {
   const [pipelineStage, setPipelineStage] = useState(0);
 
   return (
-    <section id="features" className="py-24 md:py-32">
+    <section id="features" className="scroll-mt-20 py-24 md:py-32">
       <div className="mx-auto max-w-[1120px] px-6">
         <div className="mx-auto max-w-[560px] text-center">
           <h2 className="display-lg text-foreground">

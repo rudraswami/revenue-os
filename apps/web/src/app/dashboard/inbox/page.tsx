@@ -184,7 +184,7 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-[calc(100dvh-57px)] bg-background lg:h-screen">
       <div className="flex w-80 shrink-0 flex-col border-r border-border bg-background">
         <div className="border-b border-border bg-muted/30 p-4">
           <div className="flex items-center gap-2">

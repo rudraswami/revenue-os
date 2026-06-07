@@ -53,7 +53,7 @@ export function Pricing() {
   const months = periods[periodIdx].months;
 
   return (
-    <section id="pricing" className="surface-muted py-24 md:py-32">
+    <section id="pricing" className="scroll-mt-20 surface-muted py-24 md:py-32">
       <div className="mx-auto max-w-[1120px] px-6">
         <div className="mx-auto max-w-[640px] text-center">
           <h2 className="display-lg text-foreground">

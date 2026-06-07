@@ -81,19 +81,16 @@ export default function OnboardingPage() {
     },
   ];
 
+  const completedCount = steps.filter((s) => s.done).length;
+  const progress = Math.round((completedCount / steps.length) * 100);
+
   return (
     <div className="min-h-screen bg-muted/40">
-      <header className="border-b border-border bg-background px-6 py-4">
+      <header className="border-b border-border bg-white px-6 py-4">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <div>
-            <Logo href="/onboarding" />
-            <h1 className="mt-4 text-xl font-bold">
-              Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
-            </h1>
-            <p className="text-sm text-muted-foreground">Let&apos;s connect your WhatsApp in a few steps</p>
-          </div>
+          <Logo href="/onboarding" />
           {whatsappConnected && (
-            <Button onClick={() => router.push("/dashboard")}>
+            <Button size="sm" onClick={() => router.push("/dashboard")}>
               Go to dashboard
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -102,13 +99,34 @@ export default function OnboardingPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold">
+            Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Let&apos;s connect your WhatsApp in a few steps
+          </p>
+          <div className="mt-5">
+            <div className="mb-2 flex justify-between text-[12px] font-medium text-muted-foreground">
+              <span>Setup progress</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-border">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
         <ol className="mb-10 space-y-3">
           {steps.map((step, i) => (
             <li
               key={step.id}
               className={cn(
-                "flex gap-4 rounded-xl border p-4",
-                step.done ? "border-success/30 bg-success/5" : "border-border bg-card",
+                "flex gap-4 rounded-xl border p-4 transition-colors",
+                step.done ? "border-success/30 bg-success/5" : "border-border bg-white",
               )}
             >
               <div className="mt-0.5 shrink-0">
@@ -130,11 +148,13 @@ export default function OnboardingPage() {
         </ol>
 
         {!whatsappConnected ? (
-          <WhatsappConnect />
+          <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+            <WhatsappConnect />
+          </div>
         ) : (
-          <div className="rounded-2xl border border-success/30 bg-success/5 p-6 text-center">
-            <CheckCircle2 className="mx-auto h-10 w-10 text-success" />
-            <h2 className="mt-4 text-lg font-semibold">You&apos;re all set!</h2>
+          <div className="rounded-2xl border border-success/30 bg-success/5 p-8 text-center">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
+            <h2 className="mt-4 text-xl font-semibold">You&apos;re all set!</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Send a WhatsApp to your business number — it will appear in Inbox instantly.
             </p>

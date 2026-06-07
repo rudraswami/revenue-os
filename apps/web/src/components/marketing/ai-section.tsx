@@ -16,7 +16,7 @@ const benefits = [
 
 export function AiSection() {
   return (
-    <section id="ai" className="surface-ai py-24 md:py-32">
+    <section id="ai" className="scroll-mt-20 surface-ai py-24 md:py-32">
       <div className="mx-auto max-w-[1120px] px-6">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div>
