@@ -35,10 +35,10 @@ importers:
 
   apps/api:
     dependencies:
-      '@growthsync/database':
+      '@growvisi/database':
         specifier: workspace:*
         version: link:../../packages/database
-      '@growthsync/shared':
+      '@growvisi/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@nestjs/bullmq':
@@ -153,7 +153,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@growthsync/shared':
+      '@growvisi/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@radix-ui/react-avatar':

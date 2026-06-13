@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = "growthsync-automations";
+const STORAGE_PREFIX = "growvisi-automations";
 
 export type AutomationId = "welcome" | "followup" | "stage" | "notify";
 

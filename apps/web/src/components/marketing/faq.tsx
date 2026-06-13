@@ -9,7 +9,7 @@ import { ScrollReveal } from "./scroll-reveal";
 const faqs = [
   {
     q: "Do I need a WhatsApp Business account?",
-    a: "Yes. GrowthSync connects to your WhatsApp Business API number through Meta's official embedded signup. If you use WhatsApp on your phone for business today, we guide you through linking it.",
+    a: "Yes. Growvisi connects to your WhatsApp Business API number through Meta's official embedded signup. If you use WhatsApp on your phone for business today, we guide you through linking it.",
   },
   {
     q: "How long does setup take?",
@@ -25,7 +25,7 @@ const faqs = [
   },
   {
     q: "Is there a free trial?",
-    a: "Yes — try GrowthSync free for 14 days with full access. No credit card required to start.",
+    a: "Yes — try Growvisi free for 14 days with full access. No credit card required to start.",
   },
   {
     q: "Can I cancel anytime?",

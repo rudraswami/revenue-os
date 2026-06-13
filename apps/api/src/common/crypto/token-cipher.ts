@@ -3,8 +3,8 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypt
 const ALGORITHM = "aes-256-gcm";
 
 function getKey(): Buffer {
-  const secret = process.env.JWT_SECRET ?? "growthsync-dev-key";
-  return scryptSync(secret, "growthsync-whatsapp-token", 32);
+  const secret = process.env.JWT_SECRET ?? "growvisi-dev-key";
+  return scryptSync(secret, "growvisi-whatsapp-token", 32);
 }
 
 export function encryptSecret(plain: string): string {

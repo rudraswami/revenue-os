@@ -5,7 +5,7 @@ import { useState } from "react";
 import { GripVertical } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { LeadStage } from "@growthsync/shared";
+import type { LeadStage } from "@growvisi/shared";
 
 export interface PipelineLead {
   id: string;

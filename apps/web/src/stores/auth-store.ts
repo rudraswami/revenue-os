@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: () => !!get().accessToken,
     }),
     {
-      name: "growthsync-auth",
+      name: "growvisi-auth",
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,

@@ -1,4 +1,4 @@
-const COOKIE_NAME = "growthsync-session";
+const COOKIE_NAME = "growvisi-session";
 
 export function syncAuthCookie(active: boolean) {
   if (typeof document === "undefined") return;

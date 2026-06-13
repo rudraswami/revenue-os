@@ -21,7 +21,7 @@ export function AiSection() {
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-1.5 text-[13px] font-semibold text-primary shadow-sm">
-              ✦ GrowthSync AI
+              ✦ Growvisi AI
             </div>
             <h2 className="display-lg text-foreground">
               The AI teammate your sales team deserves

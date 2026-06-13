@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { PipelineSkeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import type { LeadStage } from "@growthsync/shared";
+import type { LeadStage } from "@growvisi/shared";
 
 const STAGES: LeadStage[] = [
   "NEW",

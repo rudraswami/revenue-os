@@ -1,7 +1,7 @@
-# GrowthSync — Supabase CLI configuration
+# Growvisi — Supabase CLI configuration
 # Docs: https://supabase.com/docs/guides/cli/config
 
-project_id = "growthsync"
+project_id = "growvisi"
 
 [api]
 enabled = true

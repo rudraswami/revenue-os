@@ -2,7 +2,7 @@
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
-Write-Host "`n=== GrowthSync: Local setup ===`n" -ForegroundColor Cyan
+Write-Host "`n=== Growvisi: Local setup ===`n" -ForegroundColor Cyan
 
 # Redis (portable)
 $redis = ".\.local\redis\redis-server.exe"
@@ -31,4 +31,4 @@ pnpm db:seed
 Write-Host "`n=== Done ===" -ForegroundColor Green
 Write-Host "Run: pnpm dev"
 Write-Host "Open: http://localhost:3000"
-Write-Host "Login: demo@growthsync.in / demo123456  (org slug: demo-company)`n"
+Write-Host "Login: demo@growvisi.com / demo123456  (org slug: demo-company)`n"

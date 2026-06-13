@@ -7,8 +7,8 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { createHash, randomBytes } from "crypto";
-import type { JwtPayload } from "@growthsync/shared";
-import { DEFAULT_PIPELINE_STAGES, GROWTHSYNC_WEB_URL } from "@growthsync/shared";
+import type { JwtPayload } from "@growvisi/shared";
+import { DEFAULT_PIPELINE_STAGES, GROWVISI_WEB_URL } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "./email.service";
 import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto } from "./dto/auth.dto";
@@ -279,7 +279,7 @@ export class AuthService {
 
       const appUrl = (
         this.config.get<string>("NEXT_PUBLIC_APP_URL") ??
-        (process.env.NODE_ENV === "production" ? GROWTHSYNC_WEB_URL : "http://localhost:3000")
+        (process.env.NODE_ENV === "production" ? GROWVISI_WEB_URL : "http://localhost:3000")
       ).replace(/\/$/, "");
       const resetUrl = `${appUrl}/reset-password?token=${plainToken}`;
 

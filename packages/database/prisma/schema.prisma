@@ -1,4 +1,4 @@
-// GrowthSync — Enterprise multi-tenant schema
+// Growvisi — Enterprise multi-tenant schema
 // https://pris.ly/d/prisma-schema
 
 generator client {

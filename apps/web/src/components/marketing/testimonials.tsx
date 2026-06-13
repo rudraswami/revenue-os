@@ -25,7 +25,7 @@ const testimonials = [
     color: "bg-violet-100 text-violet-700",
   },
   {
-    quote: "GrowthSync AI is not just automation — it's the engine that propelled our sales by up to 67% last year. Immediate response is the key to success.",
+    quote: "Growvisi AI is not just automation — it's the engine that propelled our sales by up to 67% last year. Immediate response is the key to success.",
     highlight: "up to 67% last year",
     name: "Rodrigo Batista",
     role: "Partner & CTO, Benexia",
@@ -33,7 +33,7 @@ const testimonials = [
     color: "bg-blue-100 text-blue-700",
   },
   {
-    quote: "Our sales performance increased by 40% with GrowthSync. We're tremendously comfortable using it every day with our WhatsApp customers.",
+    quote: "Our sales performance increased by 40% with Growvisi. We're tremendously comfortable using it every day with our WhatsApp customers.",
     highlight: "increased by 40%",
     name: "Selda Öztürk",
     role: "Founder, Selda Center",

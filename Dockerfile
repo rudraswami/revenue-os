@@ -1,4 +1,4 @@
-# GrowthSync API — production image (monorepo)
+# Growvisi API — production image (monorepo)
 FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 WORKDIR /app
@@ -8,7 +8,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api ./apps/api
 COPY packages ./packages
 RUN pnpm install --frozen-lockfile
-RUN pnpm turbo run build --filter=@growthsync/api
+RUN pnpm turbo run build --filter=@growvisi/api
 
 FROM base AS runner
 ENV NODE_ENV=production

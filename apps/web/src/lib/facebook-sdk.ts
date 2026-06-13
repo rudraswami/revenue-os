@@ -173,7 +173,7 @@ function formatFbLoginError(response: {
   if (response.status === "unknown") {
     return (
       "Facebook could not complete login (JSSDK unknown error). " +
-      "Use https://www.growthsync.in, allow popups, and ensure Meta app settings list growthsync.in and www.growthsync.in under Allowed Domains with Login with JavaScript SDK enabled."
+      "Use https://www.growvisi.com, allow popups, and ensure Meta app settings list growvisi.com and www.growvisi.com under Allowed Domains with Login with JavaScript SDK enabled."
     );
   }
   return "Could not authorize with Facebook. Please try again.";

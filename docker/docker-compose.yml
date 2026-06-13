@@ -1,30 +1,30 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: growthsync-postgres
+    container_name: growvisi-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: growthsync
-      POSTGRES_PASSWORD: growthsync_dev
-      POSTGRES_DB: growthsync
+      POSTGRES_USER: growvisi
+      POSTGRES_PASSWORD: growvisi_dev
+      POSTGRES_DB: growvisi
     volumes:
-      - growthsync_pgdata:/var/lib/postgresql/data
+      - growvisi_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U growthsync -d growthsync"]
+      test: ["CMD-SHELL", "pg_isready -U growvisi -d growvisi"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   redis:
     image: redis:7-alpine
-    container_name: growthsync-redis
+    container_name: growvisi-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
-      - growthsync_redis:/data
+      - growvisi_redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -32,5 +32,5 @@ services:
       retries: 10
 
 volumes:
-  growthsync_pgdata:
-  growthsync_redis:
+  growvisi_pgdata:
+  growvisi_redis:

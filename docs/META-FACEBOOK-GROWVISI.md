@@ -1,11 +1,11 @@
-# Meta Facebook Login — growthsync.in setup
+# Meta Facebook Login — growvisi.com setup
 
 Use this when **Continue with Facebook** shows **JSSDK unknown error** or fails after moving to custom domains.
 
 ## Important: www redirect
 
-Vercel sends **`growthsync.in` → `www.growthsync.in`**.  
-Always open the app at **https://www.growthsync.in** (or configure both in Meta — see below).
+Vercel sends **`growvisi.com` → `www.growvisi.com`**.  
+Always open the app at **https://www.growvisi.com** (or configure both in Meta — see below).
 
 ---
 
@@ -22,8 +22,8 @@ Always open the app at **https://www.growthsync.in** (or configure both in Meta 
 ### Valid OAuth Redirect URIs (add all four)
 
 ```
-https://growthsync.in/
-https://www.growthsync.in/
+https://growvisi.com/
+https://www.growvisi.com/
 http://localhost:3000/
 http://127.0.0.1:3000/
 ```
@@ -31,8 +31,8 @@ http://127.0.0.1:3000/
 ### Allowed Domains for the JavaScript SDK (no `https://`)
 
 ```
-growthsync.in
-www.growthsync.in
+growvisi.com
+www.growvisi.com
 localhost
 ```
 
@@ -58,7 +58,7 @@ Redeploy **API** after changing.
 
 Meta → WhatsApp → Configuration:
 
-- Callback: `https://api.growthsync.in/api/v1/webhooks/whatsapp`
+- Callback: `https://api.growvisi.com/api/v1/webhooks/whatsapp`
 - Verify token: same as `WHATSAPP_VERIFY_TOKEN` on API
 
 ---
@@ -71,17 +71,17 @@ Meta → WhatsApp → Configuration:
 META_APP_ID=your_app_id
 META_APP_SECRET=your_app_secret
 META_EMBEDDED_SIGNUP_CONFIG_ID=your_config_id
-WEBHOOK_PUBLIC_URL=https://api.growthsync.in
-NEXT_PUBLIC_APP_URL=https://www.growthsync.in
-CORS_ORIGINS=https://growthsync.in,https://www.growthsync.in
+WEBHOOK_PUBLIC_URL=https://api.growvisi.com
+NEXT_PUBLIC_APP_URL=https://www.growvisi.com
+CORS_ORIGINS=https://growvisi.com,https://www.growvisi.com
 ```
 
 ### Web (`revenue-os-web`)
 
 ```env
-NEXT_PUBLIC_APP_URL=https://www.growthsync.in
-NEXT_PUBLIC_API_URL=https://api.growthsync.in/api/v1
-NEXT_PUBLIC_WS_URL=wss://api.growthsync.in
+NEXT_PUBLIC_APP_URL=https://www.growvisi.com
+NEXT_PUBLIC_API_URL=https://api.growvisi.com/api/v1
+NEXT_PUBLIC_WS_URL=wss://api.growvisi.com
 ```
 
 Redeploy **web** after `NEXT_PUBLIC_*` changes.
@@ -90,7 +90,7 @@ Redeploy **web** after `NEXT_PUBLIC_*` changes.
 
 ## 5. Browser checklist
 
-- Allow popups for `growthsync.in` / `www.growthsync.in`
+- Allow popups for `growvisi.com` / `www.growvisi.com`
 - Use **Chrome** with third-party cookies allowed for Facebook (or complete login in the popup)
 - Hard refresh (Ctrl+Shift+R) after deploy
 
@@ -105,6 +105,6 @@ Redeploy **web** after `NEXT_PUBLIC_*` changes.
 
 ## Still failing?
 
-1. Confirm API: `GET https://api.growthsync.in/api/v1/whatsapp-accounts/embedded-signup/config` (with auth) returns `"enabled": true` and non-empty `appId`.
+1. Confirm API: `GET https://api.growvisi.com/api/v1/whatsapp-accounts/embedded-signup/config` (with auth) returns `"enabled": true` and non-empty `appId`.
 2. Meta → App roles → your Facebook user is **Administrator** or **Developer**.
 3. Complete **Business verification** if partner sharing failed earlier.

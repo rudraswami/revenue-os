@@ -3,8 +3,8 @@ import { ConfigService } from "@nestjs/config";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { createHash } from "crypto";
-import type { AiClassificationResult, LeadStage } from "@growthsync/shared";
-import { LEAD_STAGE_ORDER, QUEUES } from "@growthsync/shared";
+import type { AiClassificationResult, LeadStage } from "@growvisi/shared";
+import { LEAD_STAGE_ORDER, QUEUES } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 

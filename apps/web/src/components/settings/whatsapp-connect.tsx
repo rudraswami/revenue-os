@@ -166,7 +166,7 @@ export default function WhatsappConnect() {
       setError(
         msg.includes("JSSDK") || msg.includes("Facebook")
           ? msg
-          : `${msg} If this persists, see docs/META-FACEBOOK-GROWTHSYNC.md (Meta Allowed Domains + www.growthsync.in).`,
+          : `${msg} If this persists, see docs/META-FACEBOOK-GROWVISI.md (Meta Allowed Domains + www.growvisi.com).`,
       );
     }
   }
@@ -323,7 +323,7 @@ export default function WhatsappConnect() {
           </Button>
 
           <p className="mt-3 max-w-md text-xs text-muted-foreground">
-            Secure connection powered by Meta. GrowthSync never sees your Facebook password.
+            Secure connection powered by Meta. Growvisi never sees your Facebook password.
           </p>
         </div>
       </div>

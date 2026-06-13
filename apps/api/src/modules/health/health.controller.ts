@@ -10,7 +10,7 @@ export class HealthController {
     await this.prisma.$queryRaw`SELECT 1`;
     return {
       status: "ok",
-      service: "growthsync-api",
+      service: "growvisi-api",
       timestamp: new Date().toISOString(),
     };
   }

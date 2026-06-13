@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Set GrowthSync domain env vars on Vercel (no trailing CRLF). */
+/** Set Growvisi domain env vars on Vercel (no trailing CRLF). */
 const { execSync } = require("child_process");
 const path = require("path");
 
@@ -26,15 +26,15 @@ const root = path.join(__dirname, "..");
 const webDir = path.join(root, "apps", "web");
 const apiDir = path.join(root, "apps", "api");
 
-console.log("Updating Vercel web (revenue-os-web)…");
-setEnv(webDir, "NEXT_PUBLIC_APP_URL", "https://www.growthsync.in");
-setEnv(webDir, "NEXT_PUBLIC_API_URL", "https://api.growthsync.in/api/v1");
-setEnv(webDir, "NEXT_PUBLIC_WS_URL", "wss://api.growthsync.in");
+console.log("Updating Vercel web (growvisi-web)…");
+setEnv(webDir, "NEXT_PUBLIC_APP_URL", "https://www.growvisi.com");
+setEnv(webDir, "NEXT_PUBLIC_API_URL", "https://api.growvisi.com/api/v1");
+setEnv(webDir, "NEXT_PUBLIC_WS_URL", "wss://api.growvisi.com");
 
-console.log("Updating Vercel API (revenue-os-api)…");
-setEnv(apiDir, "NEXT_PUBLIC_APP_URL", "https://www.growthsync.in");
-setEnv(apiDir, "CORS_ORIGINS", "https://growthsync.in,https://www.growthsync.in");
-setEnv(apiDir, "WEBHOOK_PUBLIC_URL", "https://api.growthsync.in");
+console.log("Updating Vercel API (growvisi-api)…");
+setEnv(apiDir, "NEXT_PUBLIC_APP_URL", "https://www.growvisi.com");
+setEnv(apiDir, "CORS_ORIGINS", "https://growvisi.com,https://www.growvisi.com");
+setEnv(apiDir, "WEBHOOK_PUBLIC_URL", "https://api.growvisi.com");
 
 for (const name of ["NEXT_PUBLIC_API_URL", "NEXT_PUBLIC_WS_URL"]) {
   for (const env of ["production", "preview"]) {

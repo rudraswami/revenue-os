@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { JwtPayload } from "@growthsync/shared";
+import type { JwtPayload } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";

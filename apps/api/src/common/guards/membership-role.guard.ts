@@ -5,7 +5,7 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import type { JwtPayload, MembershipRole } from "@growthsync/shared";
+import type { JwtPayload, MembershipRole } from "@growvisi/shared";
 import { ROLES_KEY } from "../decorators/roles.decorator";
 
 @Injectable()

@@ -6,9 +6,9 @@ export function sanitizeEnvValue(value: string | undefined): string | undefined 
 
 /** Custom domain + Vercel preview aliases (legacy revenue-os-web project names included). */
 const ALLOWED_ORIGIN_PATTERNS = [
-  /^https:\/\/([\w-]+\.)?growthsync\.in$/,
+  /^https:\/\/([\w-]+\.)?growvisi\.com$/,
   /^https:\/\/revenue-os-web[\w.-]*\.vercel\.app$/,
-  /^https:\/\/growthsync-web[\w.-]*\.vercel\.app$/,
+  /^https:\/\/growvisi-web[\w.-]*\.vercel\.app$/,
 ];
 
 export function isAllowedCorsOrigin(origin: string | undefined): boolean {

@@ -1,4 +1,4 @@
-# Deploy GrowthSync to production
+# Deploy Growvisi to production
 
 Stack: **Supabase** (Postgres) · **Upstash** (Redis) · **Railway/Render** (API) · **Vercel** (Web)
 
@@ -11,7 +11,7 @@ Stack: **Supabase** (Postgres) · **Upstash** (Redis) · **Railway/Render** (API
 3. Apply schema:
 
 ```powershell
-cd C:\Users\DELL\growthsync
+cd C:\Users\DELL\growvisi
 pnpm db:push
 pnpm supabase:push
 pnpm db:seed
@@ -57,19 +57,19 @@ If the dashboard has **Output Directory = public**, clear it — that causes `No
 | `JWT_REFRESH_EXPIRES_IN` | `7d` |
 | `NODE_ENV` | `production` |
 | `API_PORT` | `4000` |
-| `NEXT_PUBLIC_APP_URL` | `https://growthsync.in` |
-| `CORS_ORIGINS` | `https://growthsync.in,https://www.growthsync.in` |
-| `WEBHOOK_PUBLIC_URL` | `https://api.growthsync.in` |
+| `NEXT_PUBLIC_APP_URL` | `https://growvisi.com` |
+| `CORS_ORIGINS` | `https://growvisi.com,https://www.growvisi.com` |
+| `WEBHOOK_PUBLIC_URL` | `https://api.growvisi.com` |
 | `WHATSAPP_VERIFY_TOKEN` | random string |
 | `WHATSAPP_APP_SECRET` | Meta app secret |
 | `META_APP_ID` / `META_APP_SECRET` | Meta developer app |
 | `META_EMBEDDED_SIGNUP_CONFIG_ID` | Embedded Signup config |
 | `RESEND_API_KEY` | (password reset emails) |
-| `EMAIL_FROM` | `GrowthSync <noreply@growthsync.in>` |
+| `EMAIL_FROM` | `Growvisi <noreply@growvisi.com>` |
 
 ### Railway
 
-1. New project → **Deploy from GitHub** → repo `growthsync`.
+1. New project → **Deploy from GitHub** → repo `growvisi`.
 2. Uses root `Dockerfile` + `railway.toml`.
 3. Set all env vars above.
 4. Generate domain → set `WEBHOOK_PUBLIC_URL=https://<api-domain>`.
@@ -87,9 +87,9 @@ If the dashboard has **Output Directory = public**, clear it — that causes `No
 
 | Variable | Value |
 |----------|--------|
-| `NEXT_PUBLIC_API_URL` | `https://api.growthsync.in/api/v1` |
-| `NEXT_PUBLIC_WS_URL` | `wss://api.growthsync.in` |
-| `NEXT_PUBLIC_APP_URL` | `https://growthsync.in` |
+| `NEXT_PUBLIC_API_URL` | `https://api.growvisi.com/api/v1` |
+| `NEXT_PUBLIC_WS_URL` | `wss://api.growvisi.com` |
+| `NEXT_PUBLIC_APP_URL` | `https://growvisi.com` |
 | `NEXT_PUBLIC_META_APP_ID` | Meta app id |
 | `NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID` | Config id |
 
@@ -119,7 +119,7 @@ If the dashboard has **Output Directory = public**, clear it — that causes `No
 
 ## 7. Demo login (after seed)
 
-- Email: `demo@growthsync.in`
+- Email: `demo@growvisi.com`
 - Password: `demo123456`
 
 No org slug required.

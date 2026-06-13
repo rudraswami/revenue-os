@@ -1,6 +1,6 @@
-# Supabase setup (GrowthSync)
+# Supabase setup (Growvisi)
 
-GrowthSync uses:
+Growvisi uses:
 
 | Service | Provider | Purpose |
 |---------|----------|---------|
@@ -36,7 +36,7 @@ Paste both into `.env` at the repo root.
 ## 3. CLI workflow (from repo root)
 
 ```powershell
-cd C:\Users\DELL\growthsync
+cd C:\Users\DELL\growvisi
 pnpm install
 
 # Interactive setup
@@ -75,7 +75,7 @@ pnpm dev
 
 **Demo login** (after seed):
 
-- Email: `demo@growthsync.in`
+- Email: `demo@growvisi.com`
 - Password: `demo123456`
 - Org slug: `demo-company`
 

@@ -7,8 +7,8 @@ import { MarketingFooter } from "@/components/marketing/footer";
 import { ChannelIcons } from "@/components/marketing/channel-icons";
 
 export const metadata = {
-  title: "Demo — GrowthSync",
-  description: "Explore the GrowthSync WhatsApp CRM in an interactive demo.",
+  title: "Demo — Growvisi",
+  description: "Explore the Growvisi WhatsApp CRM in an interactive demo.",
 };
 
 export default function DemoPage() {
@@ -23,7 +23,7 @@ export default function DemoPage() {
               <p className="section-label">Interactive demo</p>
               <ChannelIcons />
               <h1 className="display-xl mt-2 text-foreground">
-                See GrowthSync in action
+                See Growvisi in action
               </h1>
               <p className="body-lg mx-auto mt-6 max-w-[560px]">
                 Explore a live preview of Inbox, Pipeline, and Dashboard. No signup required —

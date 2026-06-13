@@ -50,7 +50,7 @@ export default function ContactPage() {
             <ScrollReveal>
               <p className="section-label">Get a demo</p>
               <h1 className="display-lg mt-3 text-foreground">
-                See how GrowthSync fits your business
+                See how Growvisi fits your business
               </h1>
               <p className="body-lg mt-4">
                 Book a demo or contact our sales team for Enterprise pricing. We&apos;ll show you

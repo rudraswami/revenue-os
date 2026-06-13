@@ -13,7 +13,7 @@ import { WhatsappAccountsModule } from "./modules/whatsapp-accounts/whatsapp-acc
 import { WhatsappModule } from "./modules/whatsapp/whatsapp.module";
 import { AiModule } from "./modules/ai/ai.module";
 import { validateEnv } from "./config/env.validation";
-import { QUEUES } from "@growthsync/shared";
+import { QUEUES } from "@growvisi/shared";
 
 @Module({
   imports: [

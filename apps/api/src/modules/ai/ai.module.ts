@@ -1,6 +1,6 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { QUEUES } from "@growthsync/shared";
+import { QUEUES } from "@growvisi/shared";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { AiClassifyService } from "./ai-classify.service";
 import { AiClassifyProcessor } from "./processors/ai-classify.processor";

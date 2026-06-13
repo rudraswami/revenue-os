@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-const STORAGE_KEY = "growthsync-cookie-consent";
+const STORAGE_KEY = "growvisi-cookie-consent";
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const SESSION_COOKIE = "growthsync-session";
+const SESSION_COOKIE = "growvisi-session";
 
 function hasSession(request: NextRequest) {
   return request.cookies.get(SESSION_COOKIE)?.value === "1";

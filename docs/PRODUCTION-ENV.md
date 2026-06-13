@@ -10,7 +10,7 @@
 
 |--------------|-----------|
 
-| **`growthsync/.env`** | Only when you run **`pnpm dev` on your PC** |
+| **`growvisi/.env`** | Only when you run **`pnpm dev` on your PC** |
 
 | **Vercel → Project → Settings → Environment Variables** | When users hit your **live** API and web |
 
@@ -26,9 +26,9 @@ You need **two Vercel projects** with **different** variables:
 
 
 
-1. **revenue-os-api** / **growthsync-api** (`apps/api`) — backend → **api.growthsync.in**  
+1. **revenue-os-api** / **growvisi-api** (`apps/api`) — backend → **api.growvisi.com**  
 
-2. **revenue-os-web** / **growthsync-web** (`apps/web`) — frontend → **growthsync.in**  
+2. **revenue-os-web** / **growvisi-web** (`apps/web`) — frontend → **growvisi.com**  
 
 
 
@@ -36,7 +36,7 @@ You need **two Vercel projects** with **different** variables:
 
 
 
-## 1) Vercel API project (`api.growthsync.in`)
+## 1) Vercel API project (`api.growvisi.com`)
 
 
 
@@ -60,13 +60,13 @@ JWT_REFRESH_EXPIRES_IN=7d
 
 NODE_ENV=production
 
-NEXT_PUBLIC_APP_URL=https://growthsync.in
+NEXT_PUBLIC_APP_URL=https://growvisi.com
 
-CORS_ORIGINS=https://growthsync.in,https://www.growthsync.in
+CORS_ORIGINS=https://growvisi.com,https://www.growvisi.com
 
-WEBHOOK_PUBLIC_URL=https://api.growthsync.in
+WEBHOOK_PUBLIC_URL=https://api.growvisi.com
 
-WHATSAPP_VERIFY_TOKEN=growthsync-webhook-verify
+WHATSAPP_VERIFY_TOKEN=growvisi-webhook-verify
 
 WHATSAPP_API_VERSION=v21.0
 
@@ -104,7 +104,7 @@ WHATSAPP_APP_SECRET=your_meta_app_secret
 
 ```text
 
-https://api.growthsync.in/api/v1/webhooks/whatsapp
+https://api.growvisi.com/api/v1/webhooks/whatsapp
 
 ```
 
@@ -114,7 +114,7 @@ https://api.growthsync.in/api/v1/webhooks/whatsapp
 
 
 
-## 2) Vercel Web project (`growthsync.in`)
+## 2) Vercel Web project (`growvisi.com`)
 
 
 
@@ -124,11 +124,11 @@ https://api.growthsync.in/api/v1/webhooks/whatsapp
 
 ```env
 
-NEXT_PUBLIC_API_URL=https://api.growthsync.in/api/v1
+NEXT_PUBLIC_API_URL=https://api.growvisi.com/api/v1
 
-NEXT_PUBLIC_WS_URL=wss://api.growthsync.in
+NEXT_PUBLIC_WS_URL=wss://api.growvisi.com
 
-NEXT_PUBLIC_APP_URL=https://growthsync.in
+NEXT_PUBLIC_APP_URL=https://growvisi.com
 
 NEXT_PUBLIC_META_APP_ID=your_meta_app_id
 
@@ -184,9 +184,9 @@ You can still use **Supabase** `DATABASE_URL` / `DIRECT_URL` locally (same as pr
 
 ```env
 
-NEXT_PUBLIC_API_URL=https://api.growthsync.in/api/v1
+NEXT_PUBLIC_API_URL=https://api.growvisi.com/api/v1
 
-NEXT_PUBLIC_WS_URL=wss://api.growthsync.in
+NEXT_PUBLIC_WS_URL=wss://api.growvisi.com
 
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
@@ -202,9 +202,9 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 
 
-- [ ] API health: `https://api.growthsync.in/api/v1/health` → `ok`
+- [ ] API health: `https://api.growvisi.com/api/v1/health` → `ok`
 
-- [ ] Web loads: `https://growthsync.in/register`
+- [ ] Web loads: `https://growvisi.com/register`
 
 - [ ] `REDIS_URL` on Vercel API is **Upstash** (`rediss://...`), not localhost
 
@@ -228,8 +228,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 - Web: `docs/vercel-web.env.example`
 
-- Domain DNS: `docs/GROWTHSYNC-DOMAIN.md`
+- Domain DNS: `docs/GROWVISI-DOMAIN.md`
 
-- CLI update: `node scripts/set-vercel-growthsync-env.js`
+- CLI update: `node scripts/set-vercel-growvisi-env.js`
 
 

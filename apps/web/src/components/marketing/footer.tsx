@@ -49,7 +49,7 @@ export function MarketingFooter() {
           ))}
         </div>
         <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-8 text-[13px] text-muted-foreground">
-          <p>© {new Date().getFullYear()} GrowthSync</p>
+          <p>© {new Date().getFullYear()} Growvisi</p>
           <div className="flex gap-6">
             <Link href="/login" className="hover:text-foreground">
               Log in

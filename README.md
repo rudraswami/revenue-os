@@ -1,6 +1,6 @@
-# GrowthSync
+# Growvisi
 
-**WhatsApp growth platform** — [growthsync.in](https://growthsync.in)
+**WhatsApp growth platform** — [growvisi.com](https://growvisi.com)
 
 Multi-tenant SaaS for WhatsApp-first businesses: shared inbox, pipeline, onboarding, and Meta WhatsApp Business API integration.
 
@@ -25,7 +25,7 @@ See [docs/architecture](./docs/architecture/) for system design.
 ## Quick Start (Supabase)
 
 ```powershell
-cd growthsync
+cd growvisi
 cp .env.example .env
 # Edit .env — Supabase DATABASE_URL + DIRECT_URL, Upstash REDIS_URL
 

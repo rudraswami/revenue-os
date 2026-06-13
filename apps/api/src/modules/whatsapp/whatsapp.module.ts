@@ -1,6 +1,6 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { QUEUES } from "@growthsync/shared";
+import { QUEUES } from "@growvisi/shared";
 import { AiModule } from "../ai/ai.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { WhatsappWebhookController } from "./whatsapp-webhook.controller";

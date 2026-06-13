@@ -1,6 +1,6 @@
 # Meta Embedded Signup — operator setup
 
-Customers click **Continue with Facebook** in Settings. This doc is for **you** (GrowthSync operator), not end users.
+Customers click **Continue with Facebook** in Settings. This doc is for **you** (Growvisi operator), not end users.
 
 ## Prerequisites
 
@@ -17,8 +17,8 @@ Customers click **Continue with Facebook** in Settings. This doc is for **you** 
 - Enforce HTTPS: **Yes**
 - Embedded Browser OAuth Login: **Yes**
 - Login with JavaScript SDK: **Yes**
-- **Allowed domains:** `localhost`, `growthsync.in`, `www.growthsync.in`  
-  See **[META-FACEBOOK-GROWTHSYNC.md](./META-FACEBOOK-GROWTHSYNC.md)** if you get **JSSDK unknown error** after changing domains.
+- **Allowed domains:** `localhost`, `growvisi.com`, `www.growvisi.com`  
+  See **[META-FACEBOOK-GROWVISI.md](./META-FACEBOOK-GROWVISI.md)** if you get **JSSDK unknown error** after changing domains.
 - **Valid OAuth redirect URIs:** same origins with `https://`
 
 ### 2. Create configuration (Embedded Signup v4)
@@ -35,7 +35,7 @@ META_APP_ID=your-app-id
 META_APP_SECRET=your-app-secret
 META_EMBEDDED_SIGNUP_CONFIG_ID=your-config-id
 WHATSAPP_APP_SECRET=your-app-secret
-WEBHOOK_PUBLIC_URL=https://api.growthsync.in
+WEBHOOK_PUBLIC_URL=https://api.growvisi.com
 WHATSAPP_VERIFY_TOKEN=your-verify-token
 WHATSAPP_API_VERSION=v21.0
 
@@ -50,7 +50,7 @@ Restart API after changes.
 1. Customer clicks **Continue with Facebook**
 2. Meta popup — login, pick business, pick/verify WhatsApp number
 3. Browser receives `code` + `phone_number_id` + `waba_id`
-4. GrowthSync server (within 30 seconds):
+4. Growvisi server (within 30 seconds):
    - Exchanges code → business token
    - Subscribes app webhooks on customer WABA
    - Optionally registers phone (if `META_WABA_REGISTER_PIN` set)

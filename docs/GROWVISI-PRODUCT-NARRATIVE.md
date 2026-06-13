@@ -1,6 +1,6 @@
-# GrowthSync — Product Narrative
+# Growvisi — Product Narrative
 
-**One line:** GrowthSync is the revenue layer for WhatsApp — it tracks what happens *after* AI (or your team) replies to a customer.
+**One line:** Growvisi is the revenue layer for WhatsApp — it tracks what happens *after* AI (or your team) replies to a customer.
 
 ---
 
@@ -21,14 +21,14 @@ There is no **end-to-end trail** from “customer messaged” → “AI/human re
 
 ## Our solution
 
-GrowthSync connects **WhatsApp Cloud API** to a **pipeline + timeline** built for Indian SMBs:
+Growvisi connects **WhatsApp Cloud API** to a **pipeline + timeline** built for Indian SMBs:
 
 1. **Ingest** — Every inbound WhatsApp message lands in a shared team inbox.
 2. **Classify** — AI reads the conversation and infers intent, sentiment, and pipeline stage.
 3. **Track** — Stage changes and AI runs appear on a **lead timeline** (what happened after each message).
 4. **Act** — Team replies, moves deals on Kanban, or takes over when AI flags **human handoff**.
 
-Meta handles the chat surface. GrowthSync handles **growth operations**.
+Meta handles the chat surface. Growvisi handles **growth operations**.
 
 ---
 
@@ -56,7 +56,7 @@ Meta handles the chat surface. GrowthSync handles **growth operations**.
 
 ## Why we win vs “just use Meta AI”
 
-| Meta in-chat AI | GrowthSync |
+| Meta in-chat AI | Growvisi |
 |-----------------|------------|
 | Replies in WhatsApp | Replies + **records every outcome** |
 | No shared team pipeline | **Kanban** across agents |
@@ -80,4 +80,4 @@ Meta handles the chat surface. GrowthSync handles **growth operations**.
 2. Show **before/after**: inbox only → timeline + auto stage moves
 3. Close **1 paying pilot** in a WhatsApp-heavy vertical (e.g. skincare D2C, coaching)
 
-**GrowthSync** — *Sync every WhatsApp conversation to revenue.*
+**Growvisi** — *Sync every WhatsApp conversation to revenue.*

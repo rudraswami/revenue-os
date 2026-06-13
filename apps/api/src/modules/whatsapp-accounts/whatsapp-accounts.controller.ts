@@ -12,7 +12,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
-import type { JwtPayload } from "@growthsync/shared";
+import type { JwtPayload } from "@growvisi/shared";
 import { CompleteEmbeddedSignupDto } from "./dto/embedded-signup.dto";
 import {
   ConnectWhatsappDto,

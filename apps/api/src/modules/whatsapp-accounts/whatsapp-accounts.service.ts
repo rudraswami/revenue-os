@@ -5,8 +5,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { JwtPayload } from "@growthsync/shared";
-import { GROWTHSYNC_API_URL } from "@growthsync/shared";
+import type { JwtPayload } from "@growvisi/shared";
+import { GROWVISI_API_URL } from "@growvisi/shared";
 import { decryptSecret, encryptSecret } from "../../common/crypto/token-cipher";
 import { PrismaService } from "../prisma/prisma.service";
 import { ConnectWhatsappDto, CreateWhatsappAccountDto, UpdateWhatsappAccountDto } from "./dto/whatsapp-account.dto";
@@ -57,7 +57,7 @@ export class WhatsappAccountsService {
     const apiBase =
       this.config.get<string>("WEBHOOK_PUBLIC_URL") ??
       this.config.get<string>("API_URL") ??
-      (process.env.NODE_ENV === "production" ? GROWTHSYNC_API_URL : "http://localhost:4000");
+      (process.env.NODE_ENV === "production" ? GROWVISI_API_URL : "http://localhost:4000");
     const base = apiBase.replace(/\/$/, "");
     return {
       webhookUrl: `${base}/api/v1/webhooks/whatsapp`,

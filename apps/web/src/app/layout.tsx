@@ -10,7 +10,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "GrowthSync — WhatsApp CRM for sales teams",
+  title: "Growvisi — WhatsApp CRM for sales teams",
   description:
     "Sell faster on WhatsApp with one inbox, smart pipeline, and AI-powered replies. Built for teams that grow through messaging.",
 };

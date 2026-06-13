@@ -9,7 +9,7 @@
 ## One-time setup
 
 ```powershell
-cd C:\Users\DELL\growthsync
+cd C:\Users\DELL\growvisi
 cp .env.example .env
 # Fill DATABASE_URL, DIRECT_URL, REDIS_URL in .env (see docs/SUPABASE.md)
 
@@ -26,6 +26,6 @@ pnpm dev
 - **Web:** http://localhost:3000  
 - **API:** http://localhost:4000/api/v1/health  
 
-**Login:** `demo@growthsync.in` / `demo123456` (org slug: `demo-company`) after `pnpm db:seed`
+**Login:** `demo@growvisi.com` / `demo123456` (org slug: `demo-company`) after `pnpm db:seed`
 
 Full details: [docs/SUPABASE.md](./docs/SUPABASE.md)

@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
-import { QUEUES } from "@growthsync/shared";
+import { QUEUES } from "@growvisi/shared";
 import { AiClassifyService, type ClassifyJobData } from "../ai-classify.service";
 
 @Processor(QUEUES.AI_CLASSIFY)

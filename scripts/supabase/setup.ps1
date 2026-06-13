@@ -1,9 +1,9 @@
-# GrowthSync — Supabase + Upstash setup (Windows)
+# Growvisi — Supabase + Upstash setup (Windows)
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 
 Set-Location $Root
-Write-Host "`n=== GrowthSync: Supabase setup ===`n" -ForegroundColor Cyan
+Write-Host "`n=== Growvisi: Supabase setup ===`n" -ForegroundColor Cyan
 
 # 1. Ensure .env exists
 $envFile = Join-Path $Root ".env"
@@ -66,4 +66,4 @@ Write-Host "`n=== Setup complete ===" -ForegroundColor Green
 Write-Host "  1. Add REDIS_URL from Upstash (https://console.upstash.com) to .env"
 Write-Host "  2. pnpm dev"
 Write-Host "  3. Open http://localhost:3000"
-Write-Host "  4. Login with demo@growthsync.in / demo123456 (if seeded)`n"
+Write-Host "  4. Login with demo@growvisi.com / demo123456 (if seeded)`n"

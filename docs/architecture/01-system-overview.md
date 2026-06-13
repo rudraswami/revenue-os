@@ -1,8 +1,8 @@
-# GrowthSync — System Architecture Overview
+# Growvisi — System Architecture Overview
 
 ## Vision
 
-GrowthSync is an **AI-native Revenue Operating System** for WhatsApp-first businesses. It autonomously manages conversations, lead intelligence, pipeline movement, analytics, and sales workflows—not a chatbot wrapper.
+Growvisi is an **AI-native Revenue Operating System** for WhatsApp-first businesses. It autonomously manages conversations, lead intelligence, pipeline movement, analytics, and sales workflows—not a chatbot wrapper.
 
 ## High-Level Architecture
 
@@ -46,7 +46,7 @@ GrowthSync is an **AI-native Revenue Operating System** for WhatsApp-first busin
 ## Monorepo Structure
 
 ```
-growthsync/
+growvisi/
 ├── apps/
 │   ├── api/                 # NestJS — domain modules, webhooks, workers
 │   └── web/                 # Next.js — AI-native dashboard

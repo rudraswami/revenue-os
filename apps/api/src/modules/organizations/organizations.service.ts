@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import type { JwtPayload } from "@growthsync/shared";
+import type { JwtPayload } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()

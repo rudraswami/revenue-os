@@ -11,7 +11,7 @@ export function Logo({ className, href = "/" }: { className?: string; href?: str
           fill="white"
         />
       </svg>
-      <span className="text-[17px] font-bold tracking-[-0.02em] text-foreground">GrowthSync</span>
+      <span className="text-[17px] font-bold tracking-[-0.02em] text-foreground">Growvisi</span>
     </Link>
   );
 }

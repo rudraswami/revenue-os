@@ -10,7 +10,7 @@ export function CtaSection() {
             Start closing more sales with smarter automation
           </h2>
           <p className="mx-auto mt-4 max-w-[480px] text-[15px] leading-relaxed text-white/70">
-            Try GrowthSync for free or get a demo to see how WhatsApp sales can run without the mess.
+            Try Growvisi for free or get a demo to see how WhatsApp sales can run without the mess.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link

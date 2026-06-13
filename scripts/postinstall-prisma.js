@@ -1,6 +1,6 @@
 /**
  * Generate Prisma client after install (local dev).
- * Skipped on Vercel — `turbo build` runs prisma generate in @revenue-os/database.
+ * Skipped on Vercel — `turbo build` runs prisma generate in @growvisi/database.
  */
 const { execSync } = require("child_process");
 const path = require("path");
