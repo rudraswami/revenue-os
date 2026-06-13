@@ -21,7 +21,7 @@ export function CtaSection() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/login"
+              href="/contact"
               className="inline-flex h-12 items-center rounded-full border border-white/30 px-8 text-[15px] font-semibold text-white transition-colors hover:bg-white/10"
             >
               Get a demo

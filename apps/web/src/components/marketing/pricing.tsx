@@ -157,7 +157,7 @@ export function Pricing() {
                   variant={plan.popular ? "default" : "outline"}
                   asChild
                 >
-                  <Link href={plan.custom ? "/login" : "/register"}>
+                  <Link href={plan.custom ? "/contact" : "/register"}>
                     {plan.custom ? "Contact sales" : "Try it free"}
                   </Link>
                 </Button>

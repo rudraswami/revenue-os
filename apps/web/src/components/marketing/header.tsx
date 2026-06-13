@@ -36,7 +36,7 @@ export function MarketingHeader() {
 
         <div className="hidden items-center gap-5 md:flex">
           <Link
-            href="/demo"
+            href="/contact"
             className="text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Get a demo
@@ -75,7 +75,10 @@ export function MarketingHeader() {
             </a>
           ))}
           <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <Link href="/login" className="text-[14px] font-medium">
+            <Link href="/contact" className="text-[14px] font-medium" onClick={() => setOpen(false)}>
+              Get a demo
+            </Link>
+            <Link href="/login" className="text-[14px] font-medium" onClick={() => setOpen(false)}>
               Log in
             </Link>
             <Button asChild>

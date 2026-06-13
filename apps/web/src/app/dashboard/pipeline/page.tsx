@@ -109,7 +109,7 @@ export default function PipelinePage() {
     <div className="flex h-full flex-col p-6 md:p-8">
       <PageHeader
         title="Pipeline"
-        description="Drag leads between stages — changes save automatically"
+        description="Drag leads between stages on desktop, or use the stage picker on mobile"
       />
 
       {!hasWhatsapp && (

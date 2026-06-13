@@ -10,7 +10,7 @@ const links = {
   ],
   Company: [
     { label: "About", href: "#" },
-    { label: "Contact", href: "#" },
+    { label: "Contact", href: "/contact" },
   ],
   Legal: [
     { label: "Privacy", href: "#" },
