@@ -11,6 +11,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import type { Request } from "express";
 import { WhatsappService, type WhatsappWebhookPayload } from "./whatsapp.service";
+import { sanitizeEnvValue } from "../../config/cors-origins";
 
 @Controller("webhooks/whatsapp")
 export class WhatsappWebhookController {
@@ -25,8 +26,8 @@ export class WhatsappWebhookController {
     @Query("hub.verify_token") token: string,
     @Query("hub.challenge") challenge: string,
   ) {
-    const verifyToken = this.config.get<string>("WHATSAPP_VERIFY_TOKEN");
-    if (mode === "subscribe" && token === verifyToken) {
+    const verifyToken = sanitizeEnvValue(this.config.get<string>("WHATSAPP_VERIFY_TOKEN"));
+    if (mode === "subscribe" && verifyToken && token === verifyToken) {
       return challenge;
     }
     throw new ForbiddenException();

@@ -35,7 +35,7 @@
     "setup:supabase": "powershell -ExecutionPolicy Bypass -File scripts/supabase/setup.ps1",
     "setup:all": "pnpm setup:supabase && pnpm db:push && pnpm db:seed",
     "setup:local": "powershell -ExecutionPolicy Bypass -File scripts/setup-local.ps1",
-    "vercel:env:domain": "node scripts/set-vercel-growvisi-env.js",
+    "vercel:env:domain": "node scripts/set-vercel-growvisi-in-env.js",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.yml down",
     "prepare": "husky || true",

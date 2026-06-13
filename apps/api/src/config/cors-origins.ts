@@ -7,6 +7,7 @@ export function sanitizeEnvValue(value: string | undefined): string | undefined 
 /** Custom domain + Vercel preview aliases (legacy revenue-os-web project names included). */
 const ALLOWED_ORIGIN_PATTERNS = [
   /^https:\/\/([\w-]+\.)?growvisi\.com$/,
+  /^https:\/\/([\w-]+\.)?growvisi\.in$/,
   /^https:\/\/revenue-os-web[\w.-]*\.vercel\.app$/,
   /^https:\/\/growvisi-web[\w.-]*\.vercel\.app$/,
 ];

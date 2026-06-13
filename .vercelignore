@@ -1,6 +1,7 @@
-# Shared ignores for Vercel Git deploys (API + web monorepo projects)
+# Shared ignores for Vercel CLI deploys from monorepo root (API project)
 node_modules
 **/node_modules/**
+apps/web
 **/.git/**
 .turbo
 **/.turbo/**
