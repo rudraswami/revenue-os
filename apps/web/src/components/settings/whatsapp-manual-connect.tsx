@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch, ApiError } from "@/lib/api-client";
@@ -20,12 +20,22 @@ interface WhatsappAccount {
   displayPhoneNumber: string;
 }
 
-export function WhatsappManualConnect({ onConnected }: { onConnected?: () => void }) {
+export function WhatsappManualConnect({
+  onConnected,
+  defaultOpen = false,
+}: {
+  onConnected?: () => void;
+  defaultOpen?: boolean;
+}) {
   const token = useAuthStore((s) => s.accessToken);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const queryClient = useQueryClient();
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
   const [accessToken, setAccessToken] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [discovered, setDiscovered] = useState<DiscoveredPhone[]>([]);
@@ -80,7 +90,7 @@ export function WhatsappManualConnect({ onConnected }: { onConnected?: () => voi
   const canConnect = accessToken.trim().length > 10 && phoneNumberId.trim().length > 5;
 
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50/80">
+    <div id="whatsapp-api-setup" className="rounded-2xl border border-amber-200 bg-amber-50/80">
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"

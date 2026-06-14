@@ -89,8 +89,11 @@ export default function WhatsappConnect() {
       resetPending();
       setPhase("error");
       setError(
-        "Facebook connected, but WhatsApp setup did not finish. In the Meta popup click Reconnect, then Edit settings, choose your WhatsApp Business account and phone number, and complete all steps. Do not close the window right after Reconnect.",
+        "Facebook login succeeded, but Meta did not return your WhatsApp number (phone_number_id / waba_id). " +
+          "This usually means the popup closed after Reconnect without finishing the WhatsApp steps, or Meta blocked Embedded Signup (BSP/TP). " +
+          "Skip this button for now — scroll down and use Connect with Meta API Setup to connect your test number.",
       );
+      document.getElementById("whatsapp-api-setup")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 45_000);
   }
 
@@ -411,7 +414,7 @@ export default function WhatsappConnect() {
         </div>
       </div>
 
-      <WhatsappManualConnect />
+      <WhatsappManualConnect defaultOpen={phase === "error"} />
     </div>
   );
 }
