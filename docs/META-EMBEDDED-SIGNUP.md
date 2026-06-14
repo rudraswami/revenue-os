@@ -77,5 +77,6 @@ After first connect, customer may need a payment method in [WhatsApp Manager](ht
 | Code exchange fails | Code expires in 30s — retry connect |
 | No messages in Inbox | Check `WEBHOOK_PUBLIC_URL` + WABA subscribed (auto on connect) |
 | Domain not allowed | Add domain in Meta OAuth settings |
+| BSP/TP / Embedded signup not available | Complete [Tech Provider](./META-TECH-PROVIDER.md); use API Setup manual connect until approved |
 
 Docs: [Embedded Signup implementation](https://developers.facebook.com/docs/whatsapp/embedded-signup/implementation/)

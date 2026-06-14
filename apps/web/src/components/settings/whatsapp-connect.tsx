@@ -21,6 +21,7 @@ import {
 } from "@/lib/facebook-sdk";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
+import { WhatsappManualConnect } from "@/components/settings/whatsapp-manual-connect";
 
 interface WhatsappAccount {
   id: string;
@@ -328,6 +329,24 @@ export default function WhatsappConnect() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-xl border border-blue-200 bg-blue-50/80 px-5 py-4 text-sm text-blue-950">
+        <p className="font-medium">Meta Tech Provider required for &quot;Continue with Facebook&quot;</p>
+        <p className="mt-1 text-xs text-blue-900/90">
+          If Facebook shows &quot;Embedded signup is only available for BSPs or TPs&quot;, complete
+          business verification and App Review in Meta, then Tech Provider onboarding. If that page
+          is blank, use the steps in{" "}
+          <a
+            href="https://developers.facebook.com/apps/1694805491426991/app-review/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium underline"
+          >
+            App Review
+          </a>{" "}
+          and business verification directly. You can connect a test number below while waiting.
+        </p>
+      </div>
+
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-8 md:px-8">
           <div className="flex items-start gap-4">
@@ -398,6 +417,8 @@ export default function WhatsappConnect() {
           </p>
         </div>
       </div>
+
+      <WhatsappManualConnect />
     </div>
   );
 }
