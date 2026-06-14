@@ -330,20 +330,13 @@ export default function WhatsappConnect() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-blue-200 bg-blue-50/80 px-5 py-4 text-sm text-blue-950">
-        <p className="font-medium">Meta Tech Provider required for &quot;Continue with Facebook&quot;</p>
+        <p className="font-medium">About &quot;Continue with Facebook&quot;</p>
         <p className="mt-1 text-xs text-blue-900/90">
-          If Facebook shows &quot;Embedded signup is only available for BSPs or TPs&quot;, complete
-          business verification and App Review in Meta, then Tech Provider onboarding. If that page
-          is blank, use the steps in{" "}
-          <a
-            href="https://developers.facebook.com/apps/1694805491426991/app-review/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium underline"
-          >
-            App Review
-          </a>{" "}
-          and business verification directly. You can connect a test number below while waiting.
+          This opens Meta&apos;s WhatsApp Embedded Signup (same flow Kommo, Respond.io, and Wati
+          use). If Facebook shows &quot;only available for BSPs or TPs&quot;, Meta is blocking
+          Embedded Signup until Tech Provider onboarding is started on app{" "}
+          <strong>1694805491426991</strong> — that message comes from Facebook, not Growvisi. Until
+          then, use <strong>Connect with Meta API Setup</strong> below to test Inbox.
         </p>
       </div>
 

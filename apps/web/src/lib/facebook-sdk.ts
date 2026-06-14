@@ -249,7 +249,6 @@ export function launchEmbeddedSignup(configId: string): Promise<string> {
         override_default_response_type: true,
         extras: {
           setup: {},
-          feature: "whatsapp_embedded_signup",
           sessionInfoVersion: "3",
         },
       },
