@@ -103,12 +103,26 @@ const FINISH_EVENTS = new Set([
   "FINISH_GRANT_ONLY_API_ACCESS",
 ]);
 
+function isFacebookOrigin(origin: string): boolean {
+  try {
+    const { hostname } = new URL(origin);
+    return (
+      hostname === "facebook.com" ||
+      hostname.endsWith(".facebook.com") ||
+      hostname === "meta.com" ||
+      hostname.endsWith(".meta.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function listenEmbeddedSignup(
   onSession: (session: EmbeddedSignupSession) => void,
   onCancel: (message: string) => void,
 ): () => void {
   const handler = (event: MessageEvent) => {
-    if (!event.origin.endsWith("facebook.com")) return;
+    if (!isFacebookOrigin(event.origin)) return;
 
     let payload: {
       type?: string;
@@ -147,12 +161,14 @@ export function listenEmbeddedSignup(
       return;
     }
 
-    if (payload.event === "CANCEL") {
+    if (payload.event === "CANCEL" || payload.event === "ERROR") {
       const msg =
         payload.data?.error_message ??
-        (payload.data?.current_step
-          ? "Setup was closed before finishing. You can try again anytime."
-          : "Setup was cancelled.");
+        (payload.event === "ERROR"
+          ? "Facebook could not complete WhatsApp setup."
+          : payload.data?.current_step
+            ? "Setup was closed before finishing. You can try again anytime."
+            : "Setup was cancelled.");
       onCancel(msg);
     }
   };
@@ -173,11 +189,16 @@ function formatFbLoginError(response: {
   if (response.status === "unknown") {
     return (
       "Facebook could not complete login (JSSDK unknown error). " +
-      "Use https://www.growvisi.com, allow popups, and ensure Meta app settings list growvisi.com and www.growvisi.com under Allowed Domains with Login with JavaScript SDK enabled."
+      "Use https://www.growvisi.in, allow popups, and add growvisi.in and www.growvisi.in under Meta → Facebook Login → Allowed Domains with Login with JavaScript SDK enabled."
     );
+  }
+  if (response.status === "not_authorized") {
+    return "Facebook login was not completed. Please try again and finish all steps in the popup.";
   }
   return "Could not authorize with Facebook. Please try again.";
 }
+
+const LOGIN_TIMEOUT_MS = 180_000;
 
 export function launchEmbeddedSignup(configId: string): Promise<string> {
   const cfg = configId?.trim();
@@ -195,18 +216,32 @@ export function launchEmbeddedSignup(configId: string): Promise<string> {
       return;
     }
 
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(
+        new Error(
+          "Facebook login timed out. Allow popups for growvisi.in, then try again and complete every step—including picking your WhatsApp number.",
+        ),
+      );
+    }, LOGIN_TIMEOUT_MS);
+
+    const finish = (action: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      action();
+    };
+
     window.FB.login(
       (response) => {
         const code = response.authResponse?.code;
         if (code) {
-          resolve(code);
+          finish(() => resolve(code));
           return;
         }
-        if (response.status === "unknown" || !response.authResponse) {
-          reject(new Error(formatFbLoginError(response)));
-          return;
-        }
-        reject(new Error(formatFbLoginError(response)));
+        finish(() => reject(new Error(formatFbLoginError(response))));
       },
       {
         config_id: cfg,
@@ -214,6 +249,7 @@ export function launchEmbeddedSignup(configId: string): Promise<string> {
         override_default_response_type: true,
         extras: {
           setup: {},
+          feature: "whatsapp_embedded_signup",
           sessionInfoVersion: "3",
         },
       },

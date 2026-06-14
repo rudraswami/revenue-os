@@ -59,6 +59,39 @@ export default function WhatsappConnect() {
   const pendingCode = useRef<string | null>(null);
   const pendingSession = useRef<EmbeddedSignupSession | null>(null);
   const completing = useRef(false);
+  const phaseRef = useRef<ConnectPhase>("idle");
+  const waitingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  function clearWaitingTimer() {
+    if (waitingTimerRef.current) {
+      clearTimeout(waitingTimerRef.current);
+      waitingTimerRef.current = null;
+    }
+  }
+
+  function resetPending() {
+    pendingCode.current = null;
+    pendingSession.current = null;
+    completing.current = false;
+  }
+
+  function scheduleSessionWait() {
+    clearWaitingTimer();
+    waitingTimerRef.current = setTimeout(() => {
+      if (phaseRef.current !== "waiting_meta") return;
+      if (!pendingCode.current || pendingSession.current) return;
+      clearWaitingTimer();
+      resetPending();
+      setPhase("error");
+      setError(
+        "Facebook connected, but WhatsApp setup did not finish. In the Meta popup click Reconnect, then Edit settings, choose your WhatsApp Business account and phone number, and complete all steps. Do not close the window right after Reconnect.",
+      );
+    }, 45_000);
+  }
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -88,6 +121,7 @@ export default function WhatsappConnect() {
         }),
       }),
     onSuccess: (account) => {
+      clearWaitingTimer();
       setConnectedAccount(account);
       setPhase("done");
       setError(null);
@@ -102,6 +136,7 @@ export default function WhatsappConnect() {
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
     },
     onError: (e) => {
+      clearWaitingTimer();
       setPhase("error");
       setError(e instanceof ApiError ? e.message : "Connection failed. Please try again.");
       completing.current = false;
@@ -139,34 +174,60 @@ export default function WhatsappConnect() {
         tryComplete();
       },
       (message) => {
-        if (phase === "waiting_meta") {
+        if (phaseRef.current === "waiting_meta" || phaseRef.current === "saving") {
+          clearWaitingTimer();
+          resetPending();
           setPhase("error");
           setError(message);
         }
       },
     );
-  }, [tryComplete, phase]);
+  }, [tryComplete]);
+
+  function cancelWaiting() {
+    clearWaitingTimer();
+    resetPending();
+    setPhase("idle");
+    setError(null);
+  }
 
   const activeAccounts = accounts?.filter((a) => a.isActive) ?? [];
   const displayAccount = connectedAccount ?? activeAccounts[0] ?? null;
 
   async function handleConnect() {
     if (!config?.enabled) return;
+    clearWaitingTimer();
+    resetPending();
     setError(null);
     setPhase("waiting_meta");
+
+    waitingTimerRef.current = setTimeout(() => {
+      if (phaseRef.current !== "waiting_meta") return;
+      clearWaitingTimer();
+      resetPending();
+      setPhase("error");
+      setError(
+        "Setup timed out. Allow popups for growvisi.in, click Try again, and finish every step in the Facebook window.",
+      );
+    }, 180_000);
 
     try {
       await loadFacebookSdk(config.appId, config.graphApiVersion);
       const code = await launchEmbeddedSignup(config.configId);
       pendingCode.current = code;
       tryComplete();
+      if (!pendingSession.current) {
+        scheduleSessionWait();
+      }
     } catch (e) {
+      clearWaitingTimer();
+      resetPending();
       setPhase("error");
       const msg = e instanceof Error ? e.message : "Could not open Facebook setup.";
       setError(
-        msg.includes("JSSDK") || msg.includes("Facebook")
+        msg.includes("JSSDK") || msg.includes("Facebook") || msg.includes("timed out")
           ? msg
-          : `${msg} If this persists, see docs/META-FACEBOOK-GROWVISI.md (Meta Allowed Domains + www.growvisi.com).`,
+          : `${msg} If this persists, see docs/META-FACEBOOK-GROWVISI.md (Meta Allowed Domains + www.growvisi.in).`,
       );
     }
   }
@@ -303,24 +364,34 @@ export default function WhatsappConnect() {
             </div>
           )}
 
-          <Button
-            size="lg"
-            className={cn(
-              "h-12 w-full max-w-md gap-2 text-base font-semibold",
-              "bg-[#1877F2] hover:bg-[#166FE0]",
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button
+              size="lg"
+              className={cn(
+                "h-12 w-full max-w-md gap-2 text-base font-semibold",
+                "bg-[#1877F2] hover:bg-[#166FE0]",
+              )}
+              disabled={phase === "waiting_meta" || phase === "saving"}
+              onClick={() => void handleConnect()}
+            >
+              {(phase === "waiting_meta" || phase === "saving") && (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              )}
+              {phase === "waiting_meta"
+                ? "Complete setup in the Facebook window…"
+                : phase === "saving"
+                  ? "Connecting your number…"
+                  : phase === "error"
+                    ? "Try again"
+                    : "Continue with Facebook"}
+            </Button>
+
+            {phase === "waiting_meta" && (
+              <Button type="button" variant="outline" size="lg" onClick={cancelWaiting}>
+                Cancel
+              </Button>
             )}
-            disabled={phase === "waiting_meta" || phase === "saving"}
-            onClick={() => void handleConnect()}
-          >
-            {(phase === "waiting_meta" || phase === "saving") && (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            )}
-            {phase === "waiting_meta"
-              ? "Complete setup in the Facebook window…"
-              : phase === "saving"
-                ? "Connecting your number…"
-                : "Continue with Facebook"}
-          </Button>
+          </div>
 
           <p className="mt-3 max-w-md text-xs text-muted-foreground">
             Secure connection powered by Meta. Growvisi never sees your Facebook password.

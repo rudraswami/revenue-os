@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
 import { encryptSecret } from "../../common/crypto/token-cipher";
+import { sanitizeEnvValue } from "../../config/cors-origins";
 import { PrismaService } from "../prisma/prisma.service";
 import { WhatsappAccountSafe } from "./whatsapp-accounts.service";
 
@@ -95,7 +96,7 @@ export class EmbeddedSignupService {
   private async exchangeCode(code: string): Promise<string> {
     const version = this.apiVersion();
     const params = new URLSearchParams({
-      client_id: this.config.get<string>("META_APP_ID")!,
+      client_id: sanitizeEnvValue(this.config.get<string>("META_APP_ID"))!,
       client_secret: this.appSecret()!,
       code,
     });
@@ -180,9 +181,9 @@ export class EmbeddedSignupService {
   }
 
   private appSecret() {
-    return (
+    return sanitizeEnvValue(
       this.config.get<string>("META_APP_SECRET") ??
-      this.config.get<string>("WHATSAPP_APP_SECRET")
+        this.config.get<string>("WHATSAPP_APP_SECRET"),
     );
   }
 }
