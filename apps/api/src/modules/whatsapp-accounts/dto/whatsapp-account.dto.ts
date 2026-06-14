@@ -14,6 +14,10 @@ export class ConnectWhatsappDto {
   @IsString()
   @IsNotEmpty()
   phoneNumberId!: string;
+
+  @IsString()
+  @IsOptional()
+  wabaId?: string;
 }
 
 export class VerifyWhatsappCredentialsDto {

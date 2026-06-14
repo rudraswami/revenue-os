@@ -79,6 +79,15 @@ export class WhatsappAccountsService {
     const version = this.apiVersion();
     const found: DiscoveredPhone[] = [];
 
+    const wabaIds = await this.resolveWabaIdsFromToken(token);
+    for (const wabaId of wabaIds) {
+      found.push(...(await this.listPhonesForWaba(wabaId, token, version)));
+    }
+
+    if (found.length > 0) {
+      return found;
+    }
+
     const meUrl = `https://graph.facebook.com/${version}/me?fields=whatsapp_business_accounts{id,name,phone_numbers{id,display_phone_number,verified_name}}`;
     const meRes = await fetch(meUrl, { headers: { Authorization: `Bearer ${token}` } });
     const meBody = (await meRes.json()) as {
@@ -169,12 +178,16 @@ export class WhatsappAccountsService {
     }
 
     const details = await this.fetchPhoneDetails(phoneNumberId, accessToken);
-    const wabaId = details.whatsapp_business_account?.id;
+    const wabaId =
+      dto.wabaId?.trim() ||
+      (await this.resolveWabaForPhone(phoneNumberId, accessToken));
     if (!wabaId) {
       throw new BadRequestException(
-        "Could not link this number to your business account. Check your Meta token permissions.",
+        "Could not determine WhatsApp Business Account ID. Copy WhatsApp Business Account ID from Meta API Setup and paste it in the WABA ID field.",
       );
     }
+
+    await this.subscribeWabaWebhooks(wabaId, accessToken);
 
     return this.create(user, {
       phoneNumberId,
@@ -190,7 +203,7 @@ export class WhatsappAccountsService {
     const phoneNumberId = dto.phoneNumberId.trim();
 
     const details = await this.fetchPhoneDetails(phoneNumberId, accessToken);
-    const wabaId = dto.wabaId?.trim() || details.whatsapp_business_account?.id;
+    const wabaId = dto.wabaId?.trim() || (await this.resolveWabaForPhone(phoneNumberId, accessToken));
     if (!wabaId) {
       throw new BadRequestException("Missing WhatsApp business account ID.");
     }
@@ -304,7 +317,7 @@ export class WhatsappAccountsService {
 
   private async fetchPhoneDetails(phoneNumberId: string, accessToken: string) {
     const version = this.apiVersion();
-    const url = `https://graph.facebook.com/${version}/${phoneNumberId}?fields=display_phone_number,verified_name,whatsapp_business_account`;
+    const url = `https://graph.facebook.com/${version}/${phoneNumberId}?fields=display_phone_number,verified_name`;
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -313,5 +326,97 @@ export class WhatsappAccountsService {
       throw new BadRequestException(body.error?.message ?? `Meta API error ${res.status}`);
     }
     return body;
+  }
+
+  private appSecret() {
+    return (
+      this.config.get<string>("META_APP_SECRET")?.trim() ||
+      this.config.get<string>("WHATSAPP_APP_SECRET")?.trim() ||
+      ""
+    );
+  }
+
+  private async resolveWabaIdsFromToken(accessToken: string): Promise<string[]> {
+    const appId = this.config.get<string>("META_APP_ID")?.trim();
+    const appSecret = this.appSecret();
+    if (!appId || !appSecret) return [];
+
+    const version = this.apiVersion();
+    const appToken = `${appId}|${appSecret}`;
+    const url = new URL(`https://graph.facebook.com/${version}/debug_token`);
+    url.searchParams.set("input_token", accessToken);
+    url.searchParams.set("access_token", appToken);
+
+    const res = await fetch(url);
+    const body = (await res.json()) as {
+      data?: {
+        granular_scopes?: Array<{ scope?: string; target_ids?: string[] }>;
+      };
+    };
+
+    if (!res.ok) return [];
+
+    const ids = new Set<string>();
+    for (const scope of body.data?.granular_scopes ?? []) {
+      if (!scope.scope?.includes("whatsapp")) continue;
+      for (const id of scope.target_ids ?? []) {
+        if (id) ids.add(id);
+      }
+    }
+    return [...ids];
+  }
+
+  private async resolveWabaForPhone(
+    phoneNumberId: string,
+    accessToken: string,
+  ): Promise<string | undefined> {
+    const version = this.apiVersion();
+    for (const wabaId of await this.resolveWabaIdsFromToken(accessToken)) {
+      const phones = await this.listPhonesForWaba(wabaId, accessToken, version);
+      if (phones.some((p) => p.phoneNumberId === phoneNumberId)) {
+        return wabaId;
+      }
+    }
+    return undefined;
+  }
+
+  private async listPhonesForWaba(
+    wabaId: string,
+    accessToken: string,
+    version: string,
+  ): Promise<DiscoveredPhone[]> {
+    const url = `https://graph.facebook.com/${version}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const body = (await res.json()) as MetaGraphList<{
+      id: string;
+      display_phone_number?: string;
+      verified_name?: string;
+    }>;
+
+    if (!res.ok) return [];
+
+    return (body.data ?? [])
+      .filter((phone) => phone.id && phone.display_phone_number)
+      .map((phone) => ({
+        phoneNumberId: phone.id,
+        wabaId,
+        displayPhoneNumber: phone.display_phone_number!,
+        verifiedName: phone.verified_name ?? null,
+        businessName: null,
+      }));
+  }
+
+  private async subscribeWabaWebhooks(wabaId: string, accessToken: string) {
+    const version = this.apiVersion();
+    const res = await fetch(`https://graph.facebook.com/${version}/${wabaId}/subscribed_apps`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const body = (await res.json()) as { success?: boolean; error?: { message?: string } };
+    if (!res.ok && !body.success) {
+      throw new BadRequestException(
+        body.error?.message ?? "Could not enable WhatsApp webhooks for this account.",
+      );
+    }
   }
 }

@@ -38,6 +38,7 @@ export function WhatsappManualConnect({
   }, [defaultOpen]);
   const [accessToken, setAccessToken] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
+  const [wabaId, setWabaId] = useState("");
   const [discovered, setDiscovered] = useState<DiscoveredPhone[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +54,7 @@ export function WhatsappManualConnect({
       setError(null);
       if (phones.length === 1) {
         setPhoneNumberId(phones[0].phoneNumberId);
+        setWabaId(phones[0].wabaId);
       }
     },
     onError: (e) => {
@@ -69,6 +71,7 @@ export function WhatsappManualConnect({
         body: JSON.stringify({
           accessToken: accessToken.trim(),
           phoneNumberId: phoneNumberId.trim(),
+          wabaId: wabaId.trim() || undefined,
         }),
       }),
     onSuccess: () => {
@@ -117,8 +120,8 @@ export function WhatsappManualConnect({
               Meta → Revenue OS → Use cases → WhatsApp → <strong>API Setup</strong>
             </li>
             <li>
-              Copy <strong>Phone number ID</strong> and generate a <strong>temporary access
-              token</strong>
+              Copy <strong>Phone number ID</strong>, <strong>WhatsApp Business Account ID</strong>,
+              and generate a <strong>temporary access token</strong>
             </li>
             <li>Paste below and connect — then send a test WhatsApp to your number</li>
           </ol>
@@ -159,7 +162,12 @@ export function WhatsappManualConnect({
               <select
                 className="flex h-11 w-full rounded-lg border border-border bg-white px-3 text-sm"
                 value={phoneNumberId}
-                onChange={(e) => setPhoneNumberId(e.target.value)}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setPhoneNumberId(id);
+                  const match = discovered.find((p) => p.phoneNumberId === id);
+                  if (match) setWabaId(match.wabaId);
+                }}
               >
                 <option value="">Select a number…</option>
                 {discovered.map((p) => (
@@ -173,14 +181,26 @@ export function WhatsappManualConnect({
           )}
 
           {discovered.length === 0 && (
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-amber-950">Phone number ID</label>
-              <Input
-                placeholder="From Meta API Setup"
-                value={phoneNumberId}
-                onChange={(e) => setPhoneNumberId(e.target.value)}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-amber-950">Phone number ID</label>
+                <Input
+                  placeholder="e.g. 1206645389192733"
+                  value={phoneNumberId}
+                  onChange={(e) => setPhoneNumberId(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-amber-950">
+                  WhatsApp Business Account ID (WABA ID)
+                </label>
+                <Input
+                  placeholder="From API Setup — above Phone number ID"
+                  value={wabaId}
+                  onChange={(e) => setWabaId(e.target.value)}
+                />
+              </div>
+            </>
           )}
 
           <Button
