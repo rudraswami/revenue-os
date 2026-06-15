@@ -19,12 +19,14 @@ export class EmbeddedSignupService {
     const appId = this.config.get<string>("META_APP_ID");
     const configId = this.config.get<string>("META_EMBEDDED_SIGNUP_CONFIG_ID");
     const graphApiVersion = this.apiVersion();
+    const solutionId = this.config.get<string>("META_PARTNER_SOLUTION_ID") ?? "";
 
     return {
       enabled: !!(appId && configId && this.appSecret()),
       appId: appId ?? "",
       configId: configId ?? "",
       graphApiVersion,
+      solutionId,
     };
   }
 

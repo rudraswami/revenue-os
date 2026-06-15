@@ -19,13 +19,17 @@ Always open the app at **https://www.growvisi.com** (or configure both in Meta �
 | Embedded browser OAuth login | **Yes** |
 | **Login with JavaScript SDK** | **Yes** (required) |
 
-### Valid OAuth Redirect URIs (add all four)
+### Valid OAuth Redirect URIs (add all — include OAuth callback)
 
 ```
 https://growvisi.com/
 https://www.growvisi.com/
+https://growvisi.com/meta/oauth/callback
+https://www.growvisi.com/meta/oauth/callback
 http://localhost:3000/
+http://localhost:3000/meta/oauth/callback
 http://127.0.0.1:3000/
+http://127.0.0.1:3000/meta/oauth/callback
 ```
 
 ### Allowed Domains for the JavaScript SDK (no `https://`)
@@ -98,8 +102,10 @@ Redeploy **web** after `NEXT_PUBLIC_*` changes.
 
 ## 6. Code fixes (already in repo)
 
-- Next.js sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` so `FB.login` popups work
-- Embedded Signup uses `sessionInfoVersion: "3"` per Meta docs
+- Next.js sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` so OAuth popups work
+- Embedded Signup uses direct `facebook.com/dialog/oauth` with `config_id` + `featureType: whatsapp_business_app_onboarding` (Chatwoot/Twilio pattern)
+- OAuth callback page: `/meta/oauth/callback` — must be listed in Valid OAuth Redirect URIs above
+- Optional Tech Provider: set `META_PARTNER_SOLUTION_ID` on API if Meta issued a Partner Solution ID
 
 ---
 

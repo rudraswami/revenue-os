@@ -16,7 +16,6 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 import {
   launchEmbeddedSignup,
   listenEmbeddedSignup,
-  loadFacebookSdk,
   type EmbeddedSignupSession,
 } from "@/lib/facebook-sdk";
 import { useAuthStore } from "@/stores/auth-store";
@@ -35,6 +34,7 @@ interface EmbeddedConfig {
   appId: string;
   configId: string;
   graphApiVersion: string;
+  solutionId?: string;
 }
 
 type ConnectPhase = "idle" | "waiting_meta" | "saving" | "done" | "error";
@@ -216,8 +216,12 @@ export default function WhatsappConnect() {
     }, 180_000);
 
     try {
-      await loadFacebookSdk(config.appId, config.graphApiVersion);
-      const code = await launchEmbeddedSignup(config.configId);
+      const code = await launchEmbeddedSignup(
+        config.appId,
+        config.configId,
+        config.graphApiVersion,
+        config.solutionId,
+      );
       pendingCode.current = code;
       tryComplete();
       if (!pendingSession.current) {

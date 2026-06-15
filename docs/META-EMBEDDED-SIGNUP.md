@@ -41,6 +41,9 @@ WHATSAPP_API_VERSION=v21.0
 
 # Optional — only needed for brand-new Cloud API numbers
 META_WABA_REGISTER_PIN=123456
+
+# Optional — Tech Provider Partner Solution ID (from Meta → WhatsApp → Partner Solutions)
+# META_PARTNER_SOLUTION_ID=
 ```
 
 Restart API after changes.
