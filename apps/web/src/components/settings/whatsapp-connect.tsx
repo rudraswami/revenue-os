@@ -10,14 +10,10 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import {
-  launchEmbeddedSignup,
-  listenEmbeddedSignup,
-  type EmbeddedSignupSession,
-} from "@/lib/facebook-sdk";
+import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappManualConnect } from "@/components/settings/whatsapp-manual-connect";
@@ -57,46 +53,6 @@ export default function WhatsappConnect() {
   const [error, setError] = useState<string | null>(null);
   const [connectedAccount, setConnectedAccount] = useState<WhatsappAccount | null>(null);
 
-  const pendingCode = useRef<string | null>(null);
-  const pendingSession = useRef<EmbeddedSignupSession | null>(null);
-  const completing = useRef(false);
-  const phaseRef = useRef<ConnectPhase>("idle");
-  const waitingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
-
-  function clearWaitingTimer() {
-    if (waitingTimerRef.current) {
-      clearTimeout(waitingTimerRef.current);
-      waitingTimerRef.current = null;
-    }
-  }
-
-  function resetPending() {
-    pendingCode.current = null;
-    pendingSession.current = null;
-    completing.current = false;
-  }
-
-  function scheduleSessionWait() {
-    clearWaitingTimer();
-    waitingTimerRef.current = setTimeout(() => {
-      if (phaseRef.current !== "waiting_meta") return;
-      if (!pendingCode.current || pendingSession.current) return;
-      clearWaitingTimer();
-      resetPending();
-      setPhase("error");
-      setError(
-        "Facebook login succeeded, but Meta did not return your WhatsApp number (phone_number_id / waba_id). " +
-          "This usually means the popup closed after Reconnect without finishing the WhatsApp steps, or Meta blocked Embedded Signup (BSP/TP). " +
-          "Skip this button for now — scroll down and use Connect with Meta API Setup to connect your test number.",
-      );
-      document.getElementById("whatsapp-api-setup")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 45_000);
-  }
-
   const { data: accounts, isLoading: accountsLoading } = useQuery({
     queryKey: ["whatsapp-accounts"],
     queryFn: () => apiFetch<WhatsappAccount[]>("/whatsapp-accounts", { token: token ?? undefined }),
@@ -113,19 +69,23 @@ export default function WhatsappConnect() {
   });
 
   const completeMutation = useMutation({
-    mutationFn: (payload: { code: string; session: EmbeddedSignupSession }) =>
+    mutationFn: (payload: {
+      code: string;
+      phoneNumberId: string;
+      wabaId: string;
+      finishEvent: string;
+    }) =>
       apiFetch<WhatsappAccount>("/whatsapp-accounts/embedded-signup/complete", {
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({
           code: payload.code,
-          phoneNumberId: payload.session.phoneNumberId,
-          wabaId: payload.session.wabaId,
-          finishEvent: payload.session.finishEvent,
+          phoneNumberId: payload.phoneNumberId,
+          wabaId: payload.wabaId,
+          finishEvent: payload.finishEvent,
         }),
       }),
     onSuccess: (account) => {
-      clearWaitingTimer();
       setConnectedAccount(account);
       setPhase("done");
       setError(null);
@@ -134,16 +94,11 @@ export default function WhatsappConnect() {
         firstMessageReceived: onboarding?.firstMessageReceived ?? false,
         complete: true,
       });
-      pendingCode.current = null;
-      pendingSession.current = null;
-      completing.current = false;
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
     },
     onError: (e) => {
-      clearWaitingTimer();
       setPhase("error");
       setError(e instanceof ApiError ? e.message : "Connection failed. Please try again.");
-      completing.current = false;
     },
   });
 
@@ -160,82 +115,36 @@ export default function WhatsappConnect() {
     },
   });
 
-  const tryComplete = useCallback(() => {
-    if (completing.current) return;
-    const code = pendingCode.current;
-    const session = pendingSession.current;
-    if (!code || !session) return;
-
-    completing.current = true;
-    setPhase("saving");
-    completeMutation.mutate({ code, session });
-  }, [completeMutation]);
-
-  useEffect(() => {
-    return listenEmbeddedSignup(
-      (session) => {
-        pendingSession.current = session;
-        tryComplete();
-      },
-      (message) => {
-        if (phaseRef.current === "waiting_meta" || phaseRef.current === "saving") {
-          clearWaitingTimer();
-          resetPending();
-          setPhase("error");
-          setError(message);
-        }
-      },
-    );
-  }, [tryComplete]);
-
-  function cancelWaiting() {
-    clearWaitingTimer();
-    resetPending();
-    setPhase("idle");
-    setError(null);
-  }
-
   const activeAccounts = accounts?.filter((a) => a.isActive) ?? [];
   const displayAccount = connectedAccount ?? activeAccounts[0] ?? null;
 
   async function handleConnect() {
     if (!config?.enabled) return;
-    clearWaitingTimer();
-    resetPending();
     setError(null);
     setPhase("waiting_meta");
 
-    waitingTimerRef.current = setTimeout(() => {
-      if (phaseRef.current !== "waiting_meta") return;
-      clearWaitingTimer();
-      resetPending();
-      setPhase("error");
-      setError(
-        "Setup timed out. Allow popups for growvisi.in, click Try again, and finish every step in the Facebook window.",
-      );
-    }, 180_000);
-
     try {
-      const code = await launchEmbeddedSignup(
+      const credentials = await runEmbeddedSignup(
         config.appId,
         config.configId,
         config.graphApiVersion,
         config.solutionId,
       );
-      pendingCode.current = code;
-      tryComplete();
-      if (!pendingSession.current) {
-        scheduleSessionWait();
+
+      if (!credentials) {
+        setPhase("idle");
+        return;
       }
+
+      setPhase("saving");
+      completeMutation.mutate(credentials);
     } catch (e) {
-      clearWaitingTimer();
-      resetPending();
       setPhase("error");
       const msg = e instanceof Error ? e.message : "Could not open Facebook setup.";
       setError(
-        msg.includes("JSSDK") || msg.includes("Facebook") || msg.includes("timed out")
+        msg.includes("Feature Unavailable") || msg.includes("Development mode")
           ? msg
-          : `${msg} If this persists, see docs/META-FACEBOOK-GROWVISI.md (Meta Allowed Domains + www.growvisi.in).`,
+          : `${msg} See docs/META-FACEBOOK-GROWVISI.md — confirm Facebook Login for Business is set up and your Facebook user is added under App roles.`,
       );
     }
   }
@@ -339,11 +248,10 @@ export default function WhatsappConnect() {
       <div className="rounded-xl border border-blue-200 bg-blue-50/80 px-5 py-4 text-sm text-blue-950">
         <p className="font-medium">About &quot;Continue with Facebook&quot;</p>
         <p className="mt-1 text-xs text-blue-900/90">
-          This opens Meta&apos;s WhatsApp Embedded Signup (same flow Kommo, Respond.io, and Wati
-          use). If Facebook shows &quot;only available for BSPs or TPs&quot;, Meta is blocking
-          Embedded Signup until Tech Provider onboarding is started on app{" "}
-          <strong>1694805491426991</strong> — that message comes from Facebook, not Growvisi. Until
-          then, use <strong>Connect with Meta API Setup</strong> below to test Inbox.
+          Opens Meta&apos;s WhatsApp Embedded Signup via the Facebook JS SDK (same as Chatwoot and
+          Twilio). If the popup says <strong>Feature Unavailable</strong>, add your Facebook account
+          under Meta App roles → Roles (Development mode), or set the app to Live. App ID{" "}
+          <strong>{config.appId}</strong>.
         </p>
       </div>
 
@@ -404,12 +312,6 @@ export default function WhatsappConnect() {
                     ? "Try again"
                     : "Continue with Facebook"}
             </Button>
-
-            {phase === "waiting_meta" && (
-              <Button type="button" variant="outline" size="lg" onClick={cancelWaiting}>
-                Cancel
-              </Button>
-            )}
           </div>
 
           <p className="mt-3 max-w-md text-xs text-muted-foreground">

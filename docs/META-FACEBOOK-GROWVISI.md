@@ -19,18 +19,16 @@ Always open the app at **https://www.growvisi.com** (or configure both in Meta �
 | Embedded browser OAuth login | **Yes** |
 | **Login with JavaScript SDK** | **Yes** (required) |
 
-### Valid OAuth Redirect URIs (add all — include OAuth callback)
+### Valid OAuth Redirect URIs
 
 ```
 https://growvisi.com/
 https://www.growvisi.com/
-https://growvisi.com/meta/oauth/callback
-https://www.growvisi.com/meta/oauth/callback
 http://localhost:3000/
-http://localhost:3000/meta/oauth/callback
 http://127.0.0.1:3000/
-http://127.0.0.1:3000/meta/oauth/callback
 ```
+
+Embedded Signup uses **FB.login()** from the JS SDK (no custom `/meta/oauth/callback` page).
 
 ### Allowed Domains for the JavaScript SDK (no `https://`)
 
@@ -100,12 +98,21 @@ Redeploy **web** after `NEXT_PUBLIC_*` changes.
 
 ---
 
-## 6. Code fixes (already in repo)
+## 6. Code flow (repo)
 
-- Next.js sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` so OAuth popups work
-- Embedded Signup uses direct `facebook.com/dialog/oauth` with `config_id` + `featureType: whatsapp_business_app_onboarding` (Chatwoot/Twilio pattern)
-- OAuth callback page: `/meta/oauth/callback` — must be listed in Valid OAuth Redirect URIs above
-- Optional Tech Provider: set `META_PARTNER_SOLUTION_ID` on API if Meta issued a Partner Solution ID
+- Loads Facebook JS SDK on the Settings page
+- Calls `FB.login({ config_id, response_type: 'code', extras: { featureType: 'whatsapp_business_app_onboarding' } })` — same as Chatwoot/Twilio
+- Waits for auth `code` **and** `WA_EMBEDDED_SIGNUP` postMessage (`waba_id`, `phone_number_id`) before saving
+- Next.js sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` for the popup
+
+## 7. "Feature Unavailable" in popup
+
+Meta shows this when **Facebook Login is not available** for app `1694805491426991` (or your app ID):
+
+1. **Development mode** — the Facebook account logging in must be **Administrator** or **Developer** on the app (App roles → Roles).
+2. **Facebook Login for Business** product must be added — not only generic "Facebook Login".
+3. Complete **Data Use Checkup** if Meta shows it on the app dashboard.
+4. Configuration must be login variation **WhatsApp Embedded Signup** (Configurations → copy `META_EMBEDDED_SIGNUP_CONFIG_ID`).
 
 ---
 
