@@ -13,7 +13,7 @@ import {
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import { runEmbeddedSignup } from "@/lib/facebook-sdk";
+import { getEmbeddedSignupDiagnostics, runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappManualConnect } from "@/components/settings/whatsapp-manual-connect";
@@ -31,6 +31,7 @@ interface EmbeddedConfig {
   configId: string;
   graphApiVersion: string;
   solutionId?: string;
+  featureType?: string;
 }
 
 type ConnectPhase = "idle" | "waiting_meta" | "saving" | "done" | "error";
@@ -128,7 +129,7 @@ export default function WhatsappConnect() {
         config.appId,
         config.configId,
         config.graphApiVersion,
-        config.solutionId,
+        { featureType: config.featureType, solutionId: config.solutionId },
       );
 
       if (!credentials) {
@@ -243,15 +244,39 @@ export default function WhatsappConnect() {
     },
   ];
 
+  const diagnostics =
+    config?.enabled && typeof window !== "undefined"
+      ? getEmbeddedSignupDiagnostics(config.appId, config.configId, config.graphApiVersion)
+      : null;
+
   return (
     <div className="space-y-6">
+      {diagnostics && (
+        <details className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium text-foreground">Connection diagnostics</summary>
+          <ul className="mt-2 space-y-1 font-mono">
+            <li>Page origin: {diagnostics.origin}</li>
+            <li>Domain allowed (expected): {diagnostics.domainOk ? "yes" : "check Meta Allowed Domains"}</li>
+            <li>Meta App ID: {diagnostics.appId}</li>
+            <li>Config ID: {diagnostics.configId}</li>
+            <li>Graph API: {diagnostics.graphApiVersion}</li>
+          </ul>
+          <p className="mt-2">
+            App ID must be <strong>1694805491426991</strong> and Config ID{" "}
+            <strong>1331710591627115</strong>. Origin must match Meta → Facebook Login for Business →
+            Allowed Domains exactly.
+          </p>
+        </details>
+      )}
+
       <div className="rounded-xl border border-blue-200 bg-blue-50/80 px-5 py-4 text-sm text-blue-950">
         <p className="font-medium">About &quot;Continue with Facebook&quot;</p>
         <p className="mt-1 text-xs text-blue-900/90">
-          Opens Meta&apos;s WhatsApp Embedded Signup via the Facebook JS SDK (same as Chatwoot and
-          Twilio). If the popup says <strong>Feature Unavailable</strong>, add your Facebook account
-          under Meta App roles → Roles (Development mode), or set the app to Live. App ID{" "}
-          <strong>{config.appId}</strong>.
+          Uses Meta JS SDK <code className="text-[11px]">FB.login</code> with your Configuration ID.
+          If the popup says <strong>Feature Unavailable</strong>, the Meta app is blocking login — verify
+          Facebook Login for Business is set up, Allowed Domains include{" "}
+          <strong>{typeof window !== "undefined" ? window.location.hostname : "www.growvisi.in"}</strong>,
+          and Config ID <strong>{config.configId}</strong> is a WhatsApp Embedded Signup configuration.
         </p>
       </div>
 

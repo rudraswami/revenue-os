@@ -1,15 +1,55 @@
-# Meta Facebook Login — growvisi.com setup
+# Meta Facebook Login — growvisi.in setup
 
-Use this when **Continue with Facebook** shows **JSSDK unknown error** or fails after moving to custom domains.
+Use this when **Continue with Facebook** shows **Feature Unavailable**, **JSSDK unknown error**, or login fails.
 
-## Important: www redirect
+**App ID:** `1694805491426991`  
+**Config ID (env):** `1331710591627115` → `META_EMBEDDED_SIGNUP_CONFIG_ID`
 
-Vercel sends **`growvisi.com` → `www.growvisi.com`**.  
-Always open the app at **https://www.growvisi.com** (or configure both in Meta — see below).
+## Important: use www
+
+Open Growvisi at **https://www.growvisi.in** (Vercel redirects apex → www).
 
 ---
 
-## 1. Meta app → Facebook Login for Business → Settings
+## Fix "Feature Unavailable" (do in this order)
+
+Meta shows **Feature Unavailable — Facebook Login is currently unavailable for this app** when the app is **not allowed to run Facebook Login yet**. This is **100% Meta dashboard configuration**, not a Growvisi code bug.
+
+### Step 1 — Add yourself as app tester (most common fix)
+
+While the app is in **Development** mode, only people listed on the app can log in.
+
+1. Open [developers.facebook.com/apps/1694805491426991/roles/roles](https://developers.facebook.com/apps/1694805491426991/roles/roles)
+2. Click **Add people** → choose **Administrator** or **Developer**
+3. Enter the **exact Facebook account** you use in the popup (the one that shows the error)
+4. They must **accept the invite** (email / notifications)
+5. Log out of Facebook in the browser, log back in, try **Continue with Facebook** again
+
+### Step 2 — Complete Required actions
+
+1. Open [developers.facebook.com/apps/1694805491426991](https://developers.facebook.com/apps/1694805491426991)
+2. Click **Required actions** (red badge in top bar if present)
+3. Finish **Data Use Checkup** and anything else listed — until the list is empty
+
+### Step 3 — App Basic settings
+
+[App settings → Basic](https://developers.facebook.com/apps/1694805491426991/settings/basic/)
+
+| Field | Required |
+|-------|----------|
+| App icon | Yes |
+| Privacy Policy URL | Yes — e.g. `https://www.growvisi.in/privacy` |
+| User data deletion | URL or instructions |
+| App domains | `growvisi.in` |
+| Category | Business |
+
+Save changes.
+
+### Step 4 — Facebook Login **for Business** (not old "Facebook Login")
+
+1. App dashboard → **Use cases** (or Add products)
+2. Find **Facebook Login for Business** → **Set up** (if not already added)
+3. Go to **Facebook Login for Business → Settings**
 
 | Setting | Value |
 |---------|--------|
@@ -17,107 +57,116 @@ Always open the app at **https://www.growvisi.com** (or configure both in Meta �
 | Web OAuth login | **Yes** |
 | Enforce HTTPS | **Yes** |
 | Embedded browser OAuth login | **Yes** |
-| **Login with JavaScript SDK** | **Yes** (required) |
+| Use Strict Mode for redirect URIs | **Yes** |
+| **Login with JavaScript SDK** | **Yes** |
 
-### Valid OAuth Redirect URIs
+**Valid OAuth Redirect URIs** (exact match, trailing slash matters):
 
 ```
-https://growvisi.com/
-https://www.growvisi.com/
+https://growvisi.in/
+https://www.growvisi.in/
 http://localhost:3000/
 http://127.0.0.1:3000/
 ```
 
-Embedded Signup uses **FB.login()** from the JS SDK (no custom `/meta/oauth/callback` page).
-
-### Allowed Domains for the JavaScript SDK (no `https://`)
+**Allowed Domains for the JavaScript SDK** (no `https://`):
 
 ```
-growvisi.com
-www.growvisi.com
+growvisi.in
+www.growvisi.in
 localhost
 ```
 
 Click **Save changes**.
 
+### Step 5 — Embedded Signup configuration
+
+1. **Facebook Login for Business → Configurations**
+2. Open your config (ID should match `1331710591627115`) or create new:
+   - Login variation: **WhatsApp Embedded Signup**
+   - Assets: **WhatsApp accounts**
+   - Permissions: `whatsapp_business_management` (and messaging if offered)
+3. Copy **Configuration ID** → Vercel API env `META_EMBEDDED_SIGNUP_CONFIG_ID`
+4. Redeploy API
+
+### Step 6 — WhatsApp product
+
+1. **Use cases → WhatsApp** → must be **Set up**
+2. **Configuration** → webhook `https://api.growvisi.in/api/v1/webhooks/whatsapp`
+3. Subscribe to **messages** field
+
+### Step 7 — When ready for real customers (not just your account)
+
+1. [App Review](https://developers.facebook.com/apps/1694805491426991/app-review/) → **Advanced** access for:
+   - `whatsapp_business_messaging`
+   - `whatsapp_business_management`
+2. Complete **Tech Provider** onboarding — see [META-TECH-PROVIDER.md](./META-TECH-PROVIDER.md)
+3. Switch app to **Live** mode (top of dashboard)
+
+Until Live + App Review, only **app roles** (Step 1) can use Facebook Login.
+
 ---
 
-## 2. Embedded Signup configuration
+## Vercel env (production)
 
-Facebook Login for Business → **Configurations** → WhatsApp Embedded Signup template.
-
-Copy **Configuration ID** → Vercel **API** env:
-
-- `META_EMBEDDED_SIGNUP_CONFIG_ID`
-- `META_APP_ID` (e.g. `1544563287381072`)
-- `META_APP_SECRET`
-
-Redeploy **API** after changing.
-
----
-
-## 3. WhatsApp webhook (API domain)
-
-Meta → WhatsApp → Configuration:
-
-- Callback: `https://api.growvisi.com/api/v1/webhooks/whatsapp`
-- Verify token: same as `WHATSAPP_VERIFY_TOKEN` on API
-
----
-
-## 4. Vercel env checklist
-
-### API (`revenue-os-api`)
+### API
 
 ```env
-META_APP_ID=your_app_id
-META_APP_SECRET=your_app_secret
-META_EMBEDDED_SIGNUP_CONFIG_ID=your_config_id
-WEBHOOK_PUBLIC_URL=https://api.growvisi.com
-NEXT_PUBLIC_APP_URL=https://www.growvisi.com
-CORS_ORIGINS=https://growvisi.com,https://www.growvisi.com
+META_APP_ID=1694805491426991
+META_APP_SECRET=<from Meta Basic → Show>
+META_EMBEDDED_SIGNUP_CONFIG_ID=1331710591627115
+WEBHOOK_PUBLIC_URL=https://api.growvisi.in
+NEXT_PUBLIC_APP_URL=https://www.growvisi.in
+CORS_ORIGINS=https://growvisi.in,https://www.growvisi.in
+WHATSAPP_VERIFY_TOKEN=<your token>
+WHATSAPP_API_VERSION=v21.0
 ```
 
-### Web (`revenue-os-web`)
+### Web
 
 ```env
-NEXT_PUBLIC_APP_URL=https://www.growvisi.com
-NEXT_PUBLIC_API_URL=https://api.growvisi.com/api/v1
-NEXT_PUBLIC_WS_URL=wss://api.growvisi.com
+NEXT_PUBLIC_APP_URL=https://www.growvisi.in
+NEXT_PUBLIC_API_URL=https://api.growvisi.in/api/v1
+NEXT_PUBLIC_WS_URL=wss://api.growvisi.in
 ```
 
-Redeploy **web** after `NEXT_PUBLIC_*` changes.
+Redeploy **web + API** after changes.
 
 ---
 
-## 5. Browser checklist
+## Browser checklist
 
-- Allow popups for `growvisi.com` / `www.growvisi.com`
-- Use **Chrome** with third-party cookies allowed for Facebook (or complete login in the popup)
-- Hard refresh (Ctrl+Shift+R) after deploy
-
----
-
-## 6. Code flow (repo)
-
-- Loads Facebook JS SDK on the Settings page
-- Calls `FB.login({ config_id, response_type: 'code', extras: { featureType: 'whatsapp_business_app_onboarding' } })` — same as Chatwoot/Twilio
-- Waits for auth `code` **and** `WA_EMBEDDED_SIGNUP` postMessage (`waba_id`, `phone_number_id`) before saving
-- Next.js sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` for the popup
-
-## 7. "Feature Unavailable" in popup
-
-Meta shows this when **Facebook Login is not available** for app `1694805491426991` (or your app ID):
-
-1. **Development mode** — the Facebook account logging in must be **Administrator** or **Developer** on the app (App roles → Roles).
-2. **Facebook Login for Business** product must be added — not only generic "Facebook Login".
-3. Complete **Data Use Checkup** if Meta shows it on the app dashboard.
-4. Configuration must be login variation **WhatsApp Embedded Signup** (Configurations → copy `META_EMBEDDED_SIGNUP_CONFIG_ID`).
+- Open **https://www.growvisi.in** (not an old `.com` URL)
+- Allow popups for `growvisi.in`
+- Hard refresh (Ctrl+Shift+R)
+- Try Chrome; allow third-party cookies for Facebook during login
 
 ---
 
-## Still failing?
+## Error vs cause
 
-1. Confirm API: `GET https://api.growvisi.com/api/v1/whatsapp-accounts/embedded-signup/config` (with auth) returns `"enabled": true` and non-empty `appId`.
-2. Meta → App roles → your Facebook user is **Administrator** or **Developer**.
-3. Complete **Business verification** if partner sharing failed earlier.
+| What you see | Cause | Fix |
+|--------------|-------|-----|
+| **Feature Unavailable** | App login disabled for this user / pending checkup | Steps 1–4 above |
+| **JSSDK unknown error** | Domain not in Allowed Domains | Step 4 Allowed Domains |
+| **Only available for BSPs or TPs** | Tech Provider not approved | [META-TECH-PROVIDER.md](./META-TECH-PROVIDER.md) + use API Setup to test |
+| Facebook feed after login | Wrong login flow (fixed in code) | Deploy latest web; uses `FB.login` + `featureType` |
+
+---
+
+## Verify Growvisi config
+
+While logged into Growvisi, API should return (with auth cookie):
+
+`GET https://api.growvisi.in/api/v1/whatsapp-accounts/embedded-signup/config`
+
+```json
+{
+  "enabled": true,
+  "appId": "1694805491426991",
+  "configId": "1331710591627115",
+  "graphApiVersion": "v21.0"
+}
+```
+
+If `enabled` is false, set `META_APP_ID`, `META_EMBEDDED_SIGNUP_CONFIG_ID`, and `META_APP_SECRET` on API and redeploy.

@@ -16,10 +16,12 @@ export class EmbeddedSignupService {
   ) {}
 
   getPublicConfig() {
-    const appId = this.config.get<string>("META_APP_ID");
-    const configId = this.config.get<string>("META_EMBEDDED_SIGNUP_CONFIG_ID");
+    const appId = sanitizeEnvValue(this.config.get<string>("META_APP_ID"));
+    const configId = sanitizeEnvValue(this.config.get<string>("META_EMBEDDED_SIGNUP_CONFIG_ID"));
     const graphApiVersion = this.apiVersion();
-    const solutionId = this.config.get<string>("META_PARTNER_SOLUTION_ID") ?? "";
+    const solutionId = sanitizeEnvValue(this.config.get<string>("META_PARTNER_SOLUTION_ID")) ?? "";
+    const featureType =
+      sanitizeEnvValue(this.config.get<string>("META_EMBEDDED_SIGNUP_FEATURE_TYPE")) ?? "";
 
     return {
       enabled: !!(appId && configId && this.appSecret()),
@@ -27,6 +29,8 @@ export class EmbeddedSignupService {
       configId: configId ?? "",
       graphApiVersion,
       solutionId,
+      /** Omit for standard v4 WhatsApp Embedded Signup config; set only for coex / waba-only flows. */
+      featureType,
     };
   }
 
@@ -179,7 +183,7 @@ export class EmbeddedSignupService {
   }
 
   private apiVersion() {
-    return this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+    return sanitizeEnvValue(this.config.get<string>("WHATSAPP_API_VERSION")) ?? "v22.0";
   }
 
   private appSecret() {

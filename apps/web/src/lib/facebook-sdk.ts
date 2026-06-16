@@ -4,7 +4,6 @@ declare global {
       init: (params: {
         appId: string;
         autoLogAppEvents?: boolean;
-        cookie?: boolean;
         xfbml?: boolean;
         version: string;
       }) => void;
@@ -17,7 +16,6 @@ declare global {
         }) => void,
         options: {
           config_id: string;
-          auth_type?: string;
           response_type: string;
           override_default_response_type: boolean;
           extras?: Record<string, unknown>;
@@ -28,10 +26,8 @@ declare global {
   }
 }
 
-let sdkPromise: Promise<void> | null = null;
-let initializedAppId: string | null = null;
-
 const LOGIN_TIMEOUT_MS = 180_000;
+const DEFAULT_GRAPH_VERSION = "v22.0";
 
 export interface EmbeddedSignupCredentials {
   code: string;
@@ -41,102 +37,119 @@ export interface EmbeddedSignupCredentials {
   finishEvent: string;
 }
 
+export interface EmbeddedSignupDiagnostics {
+  origin: string;
+  appId: string;
+  configId: string;
+  graphApiVersion: string;
+  sdkReady: boolean;
+  domainOk: boolean;
+}
+
 function normalizeGraphVersion(version: string): string {
   const trimmed = version.trim();
   return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
 }
 
-function initFacebookSdk(appId: string, graphApiVersion: string): void {
-  window.FB?.init({
-    appId,
-    autoLogAppEvents: true,
-    cookie: true,
-    xfbml: true,
-    version: normalizeGraphVersion(graphApiVersion || "v21.0"),
-  });
-  initializedAppId = appId;
-}
-
-export function loadFacebookSdk(appId: string, graphApiVersion: string): Promise<void> {
+function loadFacebookSdkScript(): Promise<void> {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Facebook SDK requires a browser"));
   }
 
-  const id = appId?.trim();
-  if (!id) {
-    return Promise.reject(
-      new Error(
-        "WhatsApp connection is not configured (missing Meta App ID). Set META_APP_ID on the API.",
-      ),
-    );
-  }
-
-  if (window.FB && initializedAppId === id) {
+  if (window.FB) {
     return Promise.resolve();
   }
 
-  const version = normalizeGraphVersion(graphApiVersion || "v21.0");
-
-  if (!sdkPromise || initializedAppId !== id) {
-    sdkPromise = new Promise((resolve, reject) => {
-      window.fbAsyncInit = () => {
-        try {
-          initFacebookSdk(id, version);
-          resolve();
-        } catch (e) {
-          reject(e instanceof Error ? e : new Error("Facebook SDK init failed"));
-        }
-      };
-
-      const existing = document.getElementById("facebook-jssdk");
-      if (existing) {
-        if (window.FB) {
-          initFacebookSdk(id, version);
-          resolve();
-          return;
-        }
-        existing.addEventListener("load", () => {
-          initFacebookSdk(id, version);
-          resolve();
-        });
-        existing.addEventListener("error", () => reject(new Error("Facebook SDK failed to load")));
+  const existing = document.getElementById("facebook-jssdk");
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      if (window.FB) {
+        resolve();
         return;
       }
-
-      const script = document.createElement("script");
-      script.id = "facebook-jssdk";
-      script.async = true;
-      script.defer = true;
-      script.crossOrigin = "anonymous";
-      script.src = "https://connect.facebook.net/en_US/sdk.js";
-      script.onerror = () => reject(new Error("Facebook SDK failed to load"));
-      document.body.appendChild(script);
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error("Facebook SDK failed to load")));
     });
   }
 
-  return sdkPromise;
+  return new Promise((resolve, reject) => {
+    window.fbAsyncInit = () => resolve();
+
+    const script = document.createElement("script");
+    script.id = "facebook-jssdk";
+    script.async = true;
+    script.defer = true;
+    script.crossOrigin = "anonymous";
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.onerror = () => reject(new Error("Facebook SDK failed to load"));
+    document.body.appendChild(script);
+  });
+}
+
+/** Chatwoot pattern: init after script load; re-init if appId changes. */
+export async function initializeFacebook(appId: string, graphApiVersion: string): Promise<void> {
+  const id = appId?.trim();
+  if (!id) {
+    throw new Error("Missing Meta App ID — set META_APP_ID on the API.");
+  }
+
+  await loadFacebookSdkScript();
+
+  const version = normalizeGraphVersion(graphApiVersion || DEFAULT_GRAPH_VERSION);
+
+  return new Promise((resolve) => {
+    const init = () => {
+      window.FB?.init({
+        appId: id,
+        autoLogAppEvents: true,
+        xfbml: true,
+        version,
+      });
+      resolve();
+    };
+
+    if (window.FB) {
+      init();
+    } else {
+      window.fbAsyncInit = init;
+    }
+  });
 }
 
 function isFacebookOrigin(origin: string): boolean {
   try {
-    const { hostname } = new URL(origin);
-    return hostname === "facebook.com" || hostname.endsWith(".facebook.com");
+    return new URL(origin).hostname.endsWith("facebook.com");
   } catch {
     return false;
   }
 }
 
-function buildEmbeddedSignupExtras(solutionId?: string): Record<string, unknown> {
+/** Chatwoot: business_id + waba_id required; phone_number_id may arrive empty on some flows. */
+function isValidBusinessData(data?: {
+  business_id?: string;
+  waba_id?: string;
+  phone_number_id?: string;
+}): boolean {
+  return !!(data?.business_id && data?.waba_id);
+}
+
+function buildExtras(featureType?: string, solutionId?: string): Record<string, unknown> {
   const setup: Record<string, unknown> = {};
   if (solutionId?.trim()) {
     setup.solutionID = solutionId.trim();
   }
 
-  return {
+  const extras: Record<string, unknown> = {
     setup,
-    featureType: "whatsapp_business_app_onboarding",
     sessionInfoVersion: "3",
   };
+
+  const feature = featureType?.trim();
+  if (feature) {
+    extras.featureType = feature;
+  }
+
+  return extras;
 }
 
 function formatFbLoginError(response: {
@@ -149,47 +162,54 @@ function formatFbLoginError(response: {
 
   if (response.status === "unknown") {
     return (
-      "Facebook could not open WhatsApp setup (JSSDK error). " +
-      "Use your live app URL (e.g. https://www.growvisi.com), allow popups, and add that domain under Meta → Facebook Login for Business → Allowed Domains with Login with JavaScript SDK enabled."
+      "Facebook JSSDK error. Confirm Meta → Facebook Login for Business → Allowed Domains includes " +
+      `“${typeof window !== "undefined" ? window.location.hostname : "your domain"}”.`
     );
   }
 
-  if (response.status === "not_authorized") {
-    return "Facebook login was not completed. Finish every step in the Meta popup.";
-  }
-
-  return (
-    "Could not authorize with Facebook. If the popup says Feature Unavailable, your Meta app may be in Development mode — add this Facebook user under App roles → Roles, or switch the app to Live."
-  );
+  return "Facebook login was not completed.";
 }
 
-function isValidBusinessPayload(data?: {
-  business_id?: string;
-  waba_id?: string;
-  phone_number_id?: string;
-}): boolean {
-  return !!(data?.business_id && data?.waba_id && data?.phone_number_id);
+export function getEmbeddedSignupDiagnostics(
+  appId: string,
+  configId: string,
+  graphApiVersion: string,
+): EmbeddedSignupDiagnostics {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  const allowedHosts = new Set([
+    "growvisi.in",
+    "www.growvisi.in",
+    "growvisi.com",
+    "www.growvisi.com",
+    "localhost",
+    "127.0.0.1",
+  ]);
+
+  return {
+    origin,
+    appId: appId.trim(),
+    configId: configId.trim(),
+    graphApiVersion: normalizeGraphVersion(graphApiVersion || DEFAULT_GRAPH_VERSION),
+    sdkReady: !!window.FB,
+    domainOk: allowedHosts.has(hostname),
+  };
 }
 
 /**
- * Meta WhatsApp Embedded Signup — official JS SDK flow (Chatwoot / Twilio pattern).
- *
- * Do NOT use facebook.com/dialog/oauth manually. Embedded Signup requires FB.login()
- * from the JS SDK on an allowed domain. The auth code and WABA ids arrive separately;
- * we resolve once both are present.
+ * Meta WhatsApp Embedded Signup — matches Chatwoot `useWhatsappEmbeddedSignup`.
+ * Auth code and WABA payload arrive separately; resolve when both are present.
  */
 export function runEmbeddedSignup(
   appId: string,
   configId: string,
   graphApiVersion: string,
-  solutionId?: string,
+  options?: { featureType?: string; solutionId?: string },
 ): Promise<EmbeddedSignupCredentials | null> {
   const cfg = configId?.trim();
   if (!cfg) {
     return Promise.reject(
-      new Error(
-        "Missing Embedded Signup configuration ID. Set META_EMBEDDED_SIGNUP_CONFIG_ID on the API.",
-      ),
+      new Error("Missing META_EMBEDDED_SIGNUP_CONFIG_ID on the API."),
     );
   }
 
@@ -204,24 +224,33 @@ export function runEmbeddedSignup(
     let settled = false;
     let loginTimer: ReturnType<typeof setTimeout> | null = null;
 
+    const cleanup = () => {
+      if (loginTimer) clearTimeout(loginTimer);
+      window.removeEventListener("message", onMessage);
+    };
+
     const settleResolve = (value: EmbeddedSignupCredentials | null) => {
       if (settled) return;
       settled = true;
-      if (loginTimer) clearTimeout(loginTimer);
-      window.removeEventListener("message", onMessage);
+      cleanup();
       resolve(value);
     };
 
     const settleReject = (error: Error) => {
       if (settled) return;
       settled = true;
-      if (loginTimer) clearTimeout(loginTimer);
-      window.removeEventListener("message", onMessage);
+      cleanup();
       reject(error);
     };
 
     const resolveIfReady = () => {
       if (!authCode || !businessPayload) return;
+      if (!businessPayload.phone_number_id) {
+        settleReject(
+          new Error("Meta did not return a phone number. Add your WhatsApp number in the popup."),
+        );
+        return;
+      }
       settleResolve({
         code: authCode,
         phoneNumberId: businessPayload.phone_number_id,
@@ -241,13 +270,18 @@ export function runEmbeddedSignup(
           phone_number_id?: string;
           waba_id?: string;
           business_id?: string;
-          current_step?: string;
           error_message?: string;
         };
       };
 
       try {
-        payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (typeof event.data === "string") {
+          payload = JSON.parse(event.data);
+        } else if (typeof event.data === "object" && event.data !== null) {
+          payload = event.data;
+        } else {
+          return;
+        }
       } catch {
         return;
       }
@@ -256,28 +290,21 @@ export function runEmbeddedSignup(
 
       if (
         payload.event === "FINISH" ||
-        payload.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" ||
-        payload.event === "FINISH_OBO_MIGRATION" ||
-        payload.event === "FINISH_GRANT_ONLY_API_ACCESS"
+        payload.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
       ) {
-        if (!isValidBusinessPayload(payload.data)) {
+        if (!isValidBusinessData(payload.data)) {
           settleReject(
-            new Error("Meta did not return your WhatsApp business details. Finish all steps in the popup."),
+            new Error("Meta did not return business account details. Finish all steps in the popup."),
           );
           return;
         }
         businessPayload = {
-          phone_number_id: payload.data!.phone_number_id!,
+          phone_number_id: payload.data?.phone_number_id ?? "",
           waba_id: payload.data!.waba_id!,
-          business_id: payload.data!.business_id,
-          finishEvent: payload.event!,
+          business_id: payload.data?.business_id,
+          finishEvent: payload.event,
         };
         resolveIfReady();
-        return;
-      }
-
-      if (payload.event === "FINISH_ONLY_WABA") {
-        settleReject(new Error("Please add your business phone number before finishing setup."));
         return;
       }
 
@@ -297,20 +324,19 @@ export function runEmbeddedSignup(
 
     void (async () => {
       try {
-        await loadFacebookSdk(appId, graphApiVersion);
+        await initializeFacebook(appId, graphApiVersion);
 
         if (!window.FB) {
-          throw new Error("Facebook SDK not ready");
+          throw new Error("Facebook SDK not ready after init");
         }
 
         loginTimer = setTimeout(() => {
           settleReject(
-            new Error(
-              "Facebook login timed out. Allow popups and complete every step—including picking your WhatsApp number.",
-            ),
+            new Error("Facebook login timed out. Complete every step in the Meta popup."),
           );
         }, LOGIN_TIMEOUT_MS);
 
+        // Chatwoot: no auth_type — keep options minimal; v4 config drives the flow.
         window.FB.login(
           (response) => {
             const code = response.authResponse?.code;
@@ -320,7 +346,12 @@ export function runEmbeddedSignup(
               return;
             }
 
-            if (response.status === "not_authorized" || !response.authResponse) {
+            if (response.error) {
+              settleReject(new Error(response.error));
+              return;
+            }
+
+            if (!response.authResponse) {
               settleResolve(null);
               return;
             }
@@ -329,10 +360,9 @@ export function runEmbeddedSignup(
           },
           {
             config_id: cfg,
-            auth_type: "rerequest",
             response_type: "code",
             override_default_response_type: true,
-            extras: buildEmbeddedSignupExtras(solutionId),
+            extras: buildExtras(options?.featureType, options?.solutionId),
           },
         );
       } catch (error) {
@@ -341,33 +371,3 @@ export function runEmbeddedSignup(
     })();
   });
 }
-
-/** @deprecated Use runEmbeddedSignup — kept for any stale imports */
-export function listenEmbeddedSignup(
-  onSession: (session: { phoneNumberId: string; wabaId: string; finishEvent: string }) => void,
-  onCancel: (message: string) => void,
-): () => void {
-  const handler = (event: MessageEvent) => {
-    if (!isFacebookOrigin(event.origin)) return;
-    try {
-      const payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-      if (payload?.type !== "WA_EMBEDDED_SIGNUP") return;
-      if (payload.event === "FINISH" && payload.data?.phone_number_id && payload.data?.waba_id) {
-        onSession({
-          phoneNumberId: payload.data.phone_number_id,
-          wabaId: payload.data.waba_id,
-          finishEvent: payload.event,
-        });
-      } else if (payload.event === "CANCEL" || payload.event === "ERROR") {
-        onCancel(payload.data?.error_message ?? "Setup cancelled");
-      }
-    } catch {
-      /* ignore */
-    }
-  };
-  window.addEventListener("message", handler);
-  return () => window.removeEventListener("message", handler);
-}
-
-/** @deprecated Use runEmbeddedSignup */
-export const launchEmbeddedSignup = runEmbeddedSignup;
