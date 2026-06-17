@@ -37,6 +37,11 @@ export class WhatsappAccountsController {
     return this.embeddedSignup.getPublicConfig();
   }
 
+  @Get("embedded-signup/diagnose")
+  diagnoseEmbeddedSignup() {
+    return this.embeddedSignup.diagnoseMetaApp();
+  }
+
   @Post("embedded-signup/complete")
   @UseGuards(MembershipRoleGuard)
   @Roles("OWNER", "ADMIN", "MANAGER")

@@ -5,7 +5,9 @@ import Link from "next/link";
 import {
   ArrowRight,
   CheckCircle2,
+  Clock,
   Loader2,
+  Lock,
   MessageCircle,
   ShieldCheck,
   Smartphone,
@@ -27,6 +29,7 @@ interface WhatsappAccount {
 
 interface EmbeddedConfig {
   enabled: boolean;
+  embeddedSignupLive: boolean;
   appId: string;
   configId: string;
   graphApiVersion: string;
@@ -66,6 +69,18 @@ export default function WhatsappConnect() {
       token: token ?? undefined,
     }),
     enabled: !!token,
+    staleTime: 60_000,
+  });
+
+  const { data: metaDiagnose } = useQuery({
+    queryKey: ["embedded-signup-diagnose"],
+    queryFn: () =>
+      apiFetch<{
+        env: { appId: string; configId: string; graphApiVersion: string; webUrl: string };
+        graphError: string | null;
+        checks: Array<{ id: string; ok: boolean; detail: string }>;
+      }>("/whatsapp-accounts/embedded-signup/diagnose", { token: token ?? undefined }),
+    enabled: !!token && !!config?.enabled,
     staleTime: 60_000,
   });
 
@@ -118,9 +133,10 @@ export default function WhatsappConnect() {
 
   const activeAccounts = accounts?.filter((a) => a.isActive) ?? [];
   const displayAccount = connectedAccount ?? activeAccounts[0] ?? null;
+  const embeddedLive = config?.embeddedSignupLive ?? false;
 
   async function handleConnect() {
-    if (!config?.enabled) return;
+    if (!config?.enabled || !embeddedLive) return;
     setError(null);
     setPhase("waiting_meta");
 
@@ -142,11 +158,7 @@ export default function WhatsappConnect() {
     } catch (e) {
       setPhase("error");
       const msg = e instanceof Error ? e.message : "Could not open Facebook setup.";
-      setError(
-        msg.includes("Feature Unavailable") || msg.includes("Development mode")
-          ? msg
-          : `${msg} See docs/META-FACEBOOK-GROWVISI.md — confirm Facebook Login for Business is set up and your Facebook user is added under App roles.`,
-      );
+      setError(msg);
     }
   }
 
@@ -219,30 +231,11 @@ export default function WhatsappConnect() {
       <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
         <h2 className="text-lg font-semibold">WhatsApp setup coming soon</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Your workspace is not ready for self-serve WhatsApp connection yet. Our team will enable
-          this for you shortly.
+          Your workspace is not ready for WhatsApp connection yet. Contact support to enable it.
         </p>
       </div>
     );
   }
-
-  const steps = [
-    {
-      icon: Smartphone,
-      title: "Use your business account",
-      text: "Sign in with the Facebook account that manages your business on WhatsApp.",
-    },
-    {
-      icon: ShieldCheck,
-      title: "Pick your number",
-      text: "Choose the WhatsApp Business line your customers already message.",
-    },
-    {
-      icon: MessageCircle,
-      title: "Start receiving chats",
-      text: "Messages flow into your team Inbox automatically — no extra setup.",
-    },
-  ];
 
   const diagnostics =
     config?.enabled && typeof window !== "undefined"
@@ -251,72 +244,57 @@ export default function WhatsappConnect() {
 
   return (
     <div className="space-y-6">
-      {diagnostics && (
-        <details className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-          <summary className="cursor-pointer font-medium text-foreground">Connection diagnostics</summary>
-          <ul className="mt-2 space-y-1 font-mono">
-            <li>Page origin: {diagnostics.origin}</li>
-            <li>Domain allowed (expected): {diagnostics.domainOk ? "yes" : "check Meta Allowed Domains"}</li>
-            <li>Meta App ID: {diagnostics.appId}</li>
-            <li>Config ID: {diagnostics.configId}</li>
-            <li>Graph API: {diagnostics.graphApiVersion}</li>
-          </ul>
-          <p className="mt-2">
-            App ID must be <strong>1694805491426991</strong> and Config ID{" "}
-            <strong>1331710591627115</strong>. Origin must match Meta → Facebook Login for Business →
-            Allowed Domains exactly.
-          </p>
-        </details>
-      )}
-
-      <div className="rounded-xl border border-blue-200 bg-blue-50/80 px-5 py-4 text-sm text-blue-950">
-        <p className="font-medium">About &quot;Continue with Facebook&quot;</p>
-        <p className="mt-1 text-xs text-blue-900/90">
-          Uses Meta JS SDK <code className="text-[11px]">FB.login</code> with your Configuration ID.
-          If the popup says <strong>Feature Unavailable</strong>, the Meta app is blocking login — verify
-          Facebook Login for Business is set up, Allowed Domains include{" "}
-          <strong>{typeof window !== "undefined" ? window.location.hostname : "www.growvisi.in"}</strong>,
-          and Config ID <strong>{config.configId}</strong> is a WhatsApp Embedded Signup configuration.
+      <div className="rounded-xl border border-border bg-muted/30 px-5 py-4">
+        <p className="text-sm text-muted-foreground">
+          Connect the WhatsApp Business number your customers already use. Messages appear in your
+          Inbox automatically — like Intercom or Wati, channel setup lives here in Settings.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-8 md:px-8">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#25D366]/20 text-[#25D366]">
-              <WhatsAppIcon className="h-8 w-8" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold md:text-2xl">Connect WhatsApp Business</h2>
-              <p className="mt-1 max-w-lg text-sm text-muted-foreground">
-                Link the number your customers use today. Takes about 2 minutes — we handle the
-                technical setup for you.
-              </p>
+      {embeddedLive ? (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-6">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1877F2]/15 text-[#1877F2]">
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#1877F2]">
+                  Recommended
+                </p>
+                <h3 className="text-lg font-semibold">One-click with Facebook</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Sign in with the Facebook account that manages your WhatsApp Business. Takes about
+                  2 minutes.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="grid gap-4 p-6 md:grid-cols-3 md:p-8">
-          {steps.map((step, i) => (
-            <div key={step.title} className="rounded-xl bg-muted/30 p-4">
-              <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                {i + 1}
+          <div className="space-y-4 px-6 py-6">
+            {error && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {error}
               </div>
-              <step.icon className="mb-2 h-5 w-5 text-muted-foreground" />
-              <p className="font-medium">{step.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{step.text}</p>
-            </div>
-          ))}
-        </div>
+            )}
 
-        <div className="border-t border-border px-6 py-6 md:px-8">
-          {error && (
-            <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {error}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { icon: Smartphone, title: "Business account", text: "Use your Meta Business login" },
+                { icon: ShieldCheck, title: "Pick your number", text: "Select your WhatsApp line" },
+                { icon: MessageCircle, title: "Go live", text: "Messages flow to Inbox" },
+              ].map((step, i) => (
+                <div key={step.title} className="rounded-lg bg-muted/40 p-3">
+                  <p className="text-xs font-bold text-primary">Step {i + 1}</p>
+                  <step.icon className="mb-1 mt-2 h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">{step.title}</p>
+                  <p className="text-xs text-muted-foreground">{step.text}</p>
+                </div>
+              ))}
             </div>
-          )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button
               size="lg"
               className={cn(
@@ -337,15 +315,74 @@ export default function WhatsappConnect() {
                     ? "Try again"
                     : "Continue with Facebook"}
             </Button>
+
+            <p className="text-xs text-muted-foreground">
+              Secure connection powered by Meta. Growvisi never sees your Facebook password.
+            </p>
           </div>
-
-          <p className="mt-3 max-w-md text-xs text-muted-foreground">
-            Secure connection powered by Meta. Growvisi never sees your Facebook password.
-          </p>
         </div>
-      </div>
+      ) : (
+        <>
+          <WhatsappManualConnect variant="primary" defaultOpen />
 
-      <WhatsappManualConnect defaultOpen={phase === "error"} />
+          <div className="overflow-hidden rounded-2xl border border-dashed border-border bg-muted/20 opacity-90">
+            <div className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-foreground">One-click with Facebook</h3>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+                      <Clock className="h-3 w-3" />
+                      After Meta approval
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Embedded Signup unlocks once Meta App Review and Tech Provider onboarding are
+                    approved. Use Meta API Setup above in the meantime.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                className="shrink-0 bg-[#1877F2]/50"
+                disabled
+                title="Available after WHATSAPP_EMBEDDED_SIGNUP_LIVE=true"
+              >
+                Continue with Facebook
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {embeddedLive && <WhatsappManualConnect variant="secondary" />}
+
+      {diagnostics && (
+        <details className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium text-foreground">
+            Connection diagnostics (support)
+          </summary>
+          <ul className="mt-2 space-y-1 font-mono">
+            <li>Page origin: {diagnostics.origin}</li>
+            <li>Domain allowed: {diagnostics.domainOk ? "yes" : "no"}</li>
+            <li>Embedded Signup live: {embeddedLive ? "yes" : "no"}</li>
+            <li>Meta App ID: {diagnostics.appId}</li>
+            <li>Config ID: {diagnostics.configId}</li>
+          </ul>
+          {metaDiagnose && (
+            <ul className="mt-2 space-y-1">
+              {metaDiagnose.checks.map((c) => (
+                <li key={c.id} className={c.ok ? "text-success" : "text-amber-700"}>
+                  {c.ok ? "✓" : "○"} {c.detail}
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+      )}
     </div>
   );
 }

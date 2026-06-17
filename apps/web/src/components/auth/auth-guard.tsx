@@ -28,12 +28,11 @@ export function GuestGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
-  const onboarding = useAuthStore((s) => s.onboarding);
 
   useEffect(() => {
     if (!hydrated || !accessToken) return;
-    router.replace(onboarding?.complete ? "/dashboard" : "/onboarding");
-  }, [hydrated, accessToken, onboarding, router]);
+    router.replace("/dashboard");
+  }, [hydrated, accessToken, router]);
 
   if (!hydrated) {
     return <LoadingScreen />;

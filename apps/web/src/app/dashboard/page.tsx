@@ -3,11 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Inbox, Kanban, MessageSquare, TrendingUp, Users } from "lucide-react";
+import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import {
@@ -75,41 +75,25 @@ export default function DashboardPage() {
         description="Your WhatsApp sales at a glance"
       />
 
-      {!hasWhatsapp && (
-        <Card className="mb-8 border-primary/20 bg-secondary/50">
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
-            <div>
-              <p className="font-semibold text-secondary-foreground">Connect WhatsApp to get started</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Link your business number and customer messages will appear in your Inbox.
-              </p>
-            </div>
-            <Button asChild>
-              <Link href="/dashboard/settings">Connect WhatsApp</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <GettingStartedCard />
 
-      {hasWhatsapp && (
-        <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {quickActions.map((action) => (
-            <Link
-              key={action.href}
-              href={action.href}
-              className="group flex items-center gap-4 rounded-xl border border-border bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft text-primary transition-colors group-hover:bg-primary group-hover:text-white">
-                <action.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">{action.label}</p>
-                <p className="text-xs text-muted-foreground">{action.desc}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {quickActions.map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="group flex items-center gap-4 rounded-xl border border-border bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+              <action.icon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{action.label}</p>
+              <p className="text-xs text-muted-foreground">{action.desc}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
 
       {isLoading ? (
         <MetricCardsSkeleton />

@@ -360,7 +360,8 @@ export class AuthService {
     return {
       whatsappConnected,
       firstMessageReceived,
-      complete: whatsappConnected,
+      /** Workspace setup is complete after signup; WhatsApp is optional feature activation. */
+      complete: true,
     };
   }
 

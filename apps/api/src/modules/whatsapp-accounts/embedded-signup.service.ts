@@ -23,8 +23,12 @@ export class EmbeddedSignupService {
     const featureType =
       sanitizeEnvValue(this.config.get<string>("META_EMBEDDED_SIGNUP_FEATURE_TYPE")) ?? "";
 
+    const embeddedSignupLive =
+      sanitizeEnvValue(this.config.get<string>("WHATSAPP_EMBEDDED_SIGNUP_LIVE")) === "true";
+
     return {
       enabled: !!(appId && configId && this.appSecret()),
+      embeddedSignupLive,
       appId: appId ?? "",
       configId: configId ?? "",
       graphApiVersion,
@@ -32,6 +36,107 @@ export class EmbeddedSignupService {
       /** Omit for standard v4 WhatsApp Embedded Signup config; set only for coex / waba-only flows. */
       featureType,
     };
+  }
+
+  /** Server-side Meta checks — helps distinguish code/env issues from Meta app restrictions. */
+  async diagnoseMetaApp() {
+    const appId = sanitizeEnvValue(this.config.get<string>("META_APP_ID"));
+    const configId = sanitizeEnvValue(this.config.get<string>("META_EMBEDDED_SIGNUP_CONFIG_ID"));
+    const secret = this.appSecret();
+    const version = this.apiVersion();
+    const webUrl = sanitizeEnvValue(this.config.get<string>("NEXT_PUBLIC_APP_URL"));
+
+    const result: {
+      env: {
+        appId: string;
+        configId: string;
+        graphApiVersion: string;
+        secretConfigured: boolean;
+        webhookUrl: string;
+        webUrl: string;
+      };
+      graphApp: Record<string, unknown> | null;
+      graphError: string | null;
+      checks: Array<{ id: string; ok: boolean; detail: string }>;
+    } = {
+      env: {
+        appId: appId ?? "",
+        configId: configId ?? "",
+        graphApiVersion: version,
+        secretConfigured: !!secret,
+        webhookUrl: sanitizeEnvValue(this.config.get<string>("WEBHOOK_PUBLIC_URL")) ?? "",
+        webUrl: webUrl ?? "",
+      },
+      graphApp: null,
+      graphError: null,
+      checks: [],
+    };
+
+    const push = (id: string, ok: boolean, detail: string) => {
+      result.checks.push({ id, ok, detail });
+    };
+
+    push(
+      "meta_app_id",
+      appId === "1694805491426991",
+      appId ? `META_APP_ID=${appId}` : "META_APP_ID missing",
+    );
+    push(
+      "meta_config_id",
+      configId === "1331710591627115",
+      configId ? `META_EMBEDDED_SIGNUP_CONFIG_ID=${configId}` : "CONFIG_ID missing",
+    );
+    push("meta_app_secret", !!secret, secret ? "META_APP_SECRET set" : "META_APP_SECRET missing on API");
+    push(
+      "web_url",
+      !!webUrl?.includes("growvisi.in"),
+      webUrl ? `NEXT_PUBLIC_APP_URL=${webUrl}` : "NEXT_PUBLIC_APP_URL missing",
+    );
+
+    if (!appId || !secret) {
+      push("graph_api", false, "Skipped Graph API — need app ID + secret");
+      return result;
+    }
+
+    try {
+      const appToken = `${appId}|${secret}`;
+      const url = `https://graph.facebook.com/${version}/${appId}?fields=name,category,app_domains,restrictions`;
+      const res = await fetch(url);
+      const body = (await res.json()) as Record<string, unknown> & {
+        error?: { message?: string };
+      };
+
+      if (!res.ok || body.error) {
+        result.graphError = body.error?.message ?? `Graph API HTTP ${res.status}`;
+        push("graph_api", false, result.graphError);
+      } else {
+        result.graphApp = body;
+        push("graph_api", true, `App "${body.name}" reachable via Graph API`);
+        const domains = Array.isArray(body.app_domains) ? body.app_domains : [];
+        push(
+          "app_domains",
+          domains.some((d) => String(d).includes("growvisi.in")),
+          `App domains: ${domains.join(", ") || "(none)"}`,
+        );
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Graph request failed";
+      result.graphError = msg;
+      push("graph_api", false, msg);
+    }
+
+    push(
+      "facebook_login_settings",
+      false,
+      "Manual: Facebook Login for Business → Settings → Login with JavaScript SDK = Yes; Allowed Domains = growvisi.in, www.growvisi.in; OAuth URIs = https://www.growvisi.in/",
+    );
+    push(
+      "feature_unavailable_note",
+      false,
+      "If popup says Feature Unavailable: Meta blocks FB Login at app level (not Growvisi code). Check Data Use Checkup, App Review advanced permissions, and FB Login for Business Settings.",
+    );
+
+    return result;
   }
 
   async completeSignup(

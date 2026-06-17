@@ -111,18 +111,24 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="space-y-2 border-t border-border p-4">
-        <div
-          className={cn(
-            "rounded-lg px-3 py-2 text-[12px] font-medium",
-            whatsappConnected ? "bg-success/10 text-success" : "bg-warning/10 text-warning",
-          )}
-        >
-          {whatsappConnected
-            ? live
-              ? "WhatsApp connected · Live"
-              : "WhatsApp connected"
-            : "Connect WhatsApp to start"}
-        </div>
+        {whatsappConnected ? (
+          <div
+            className={cn(
+              "rounded-lg px-3 py-2 text-[12px] font-medium",
+              "bg-success/10 text-success",
+            )}
+          >
+            {live ? "WhatsApp connected · Live" : "WhatsApp connected"}
+          </div>
+        ) : (
+          <Link
+            href="/dashboard/settings"
+            onClick={onNavigate}
+            className="block rounded-lg bg-warning/10 px-3 py-2.5 text-[12px] font-medium text-warning transition-colors hover:bg-warning/15"
+          >
+            Connect WhatsApp →
+          </Link>
+        )}
 
         {user && (
           <div className="rounded-lg bg-muted px-3 py-2.5">

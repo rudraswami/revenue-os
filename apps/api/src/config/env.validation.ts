@@ -55,6 +55,11 @@ class EnvironmentVariables {
   @IsOptional()
   META_EMBEDDED_SIGNUP_CONFIG_ID?: string;
 
+  /** Set to "true" after Meta App Review + Tech Provider approval enables Embedded Signup. */
+  @IsString()
+  @IsOptional()
+  WHATSAPP_EMBEDDED_SIGNUP_LIVE?: string;
+
   @IsString()
   @IsOptional()
   META_WABA_REGISTER_PIN?: string;

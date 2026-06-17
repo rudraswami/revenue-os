@@ -13,7 +13,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-2xl p-6 md:p-8">
       <PageHeader
         title="WhatsApp"
-        description="Connect the number your customers message — messages appear in Inbox automatically."
+        description="Connect your business number — optional anytime. Messages appear in Inbox automatically."
       />
       <WhatsappConnect />
     </div>

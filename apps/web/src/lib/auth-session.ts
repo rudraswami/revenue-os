@@ -25,10 +25,7 @@ export function applySession(session: AuthSession) {
   syncAuthCookie(true);
 }
 
-export function postAuthPath(onboarding: { complete: boolean } | null | undefined): string {
-  if (!onboarding?.complete) {
-    return "/onboarding";
-  }
+export function postAuthPath(_onboarding?: { complete: boolean } | null): string {
   return "/dashboard";
 }
 
