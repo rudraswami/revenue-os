@@ -389,7 +389,7 @@ export class WhatsappAccountsService {
           ? `${technical.verifyToken.slice(0, 4)}…`
           : "",
         testTip:
-          "Send FROM your personal phone TO the business number shown in Settings — not from the test number. Add your phone under Meta → API Setup → test recipients.",
+          "Meta API Setup \"Send test message\" is outbound (business → your phone) — it does not appear in Conversations. Growvisi only ingests inbound customer messages. Reply from your phone to the business number (+1 555…), or send a new WhatsApp to that number.",
       },
     };
   }

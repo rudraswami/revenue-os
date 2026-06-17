@@ -27,9 +27,9 @@ export const metadata: Metadata = {
     locale: "en_IN",
     images: [
       {
-        url: "/growvisi-app-icon-1024.png",
-        width: 1024,
-        height: 1024,
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
         alt: "Growvisi — WhatsApp conversation intelligence",
       },
     ],
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: siteTitle,
     description: siteDescription,
-    images: ["/growvisi-app-icon-1024.png"],
+    images: ["/opengraph-image"],
   },
 };
 

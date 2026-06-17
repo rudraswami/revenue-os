@@ -24,6 +24,10 @@ export function LegalPage({ title, lastUpdated, children }: LegalPageProps) {
               Contact us
             </Link>{" "}
             or email{" "}
+            <a href="mailto:support@growvisi.in" className="font-medium text-primary hover:underline">
+              support@growvisi.in
+            </a>{" "}
+            /{" "}
             <a href="mailto:privacy@growvisi.in" className="font-medium text-primary hover:underline">
               privacy@growvisi.in
             </a>

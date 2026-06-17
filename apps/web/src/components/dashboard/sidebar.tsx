@@ -146,6 +146,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <LogOut className="h-4 w-4" />
           Sign out
         </Button>
+        <p className="px-1 text-[10px] leading-relaxed text-muted-foreground">
+          <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+          {" · "}
+          <Link href="/terms" className="hover:text-foreground">Terms</Link>
+          {" · "}
+          <Link href="/data-deletion" className="hover:text-foreground">Data deletion</Link>
+        </p>
       </div>
     </aside>
   );

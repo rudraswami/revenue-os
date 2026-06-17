@@ -30,8 +30,12 @@ export function CookieConsent() {
         <p className="text-[13px] leading-relaxed text-muted-foreground md:max-w-2xl">
           We use cookies to provide you with the best website experience and to improve our
           services. By continuing, you agree to our{" "}
-          <Link href="#" className="font-medium text-primary hover:underline">
+          <Link href="/privacy" className="font-medium text-primary hover:underline">
             Privacy Policy
+          </Link>{" "}
+          and{" "}
+          <Link href="/cookies" className="font-medium text-primary hover:underline">
+            Cookie Policy
           </Link>
           .
         </p>

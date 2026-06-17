@@ -12,6 +12,8 @@ import { RealtimeModule } from "./modules/realtime/realtime.module";
 import { WhatsappAccountsModule } from "./modules/whatsapp-accounts/whatsapp-accounts.module";
 import { WhatsappModule } from "./modules/whatsapp/whatsapp.module";
 import { AiModule } from "./modules/ai/ai.module";
+import { ContactModule } from "./modules/contact/contact.module";
+import { MetaModule } from "./modules/meta/meta.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
 
@@ -43,6 +45,8 @@ import { QUEUES } from "@growvisi/shared";
     ConversationsModule,
     LeadsModule,
     RealtimeModule,
+    ContactModule,
+    MetaModule,
   ],
 })
 export class AppModule {}

@@ -56,3 +56,13 @@ export class ResetPasswordDto {
   @MinLength(8)
   password!: string;
 }
+
+export class DeleteAccountDto {
+  @IsString()
+  password!: string;
+
+  /** User must type DELETE to confirm */
+  @IsString()
+  @IsNotEmpty()
+  confirmation!: string;
+}

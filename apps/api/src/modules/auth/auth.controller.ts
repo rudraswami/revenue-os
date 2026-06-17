@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import type { JwtPayload } from "@growvisi/shared";
@@ -10,6 +17,7 @@ import {
   RefreshTokenDto,
   RegisterDto,
   ResetPasswordDto,
+  DeleteAccountDto,
 } from "./dto/auth.dto";
 
 @Controller("auth")
@@ -50,5 +58,11 @@ export class AuthController {
   @Post("reset-password")
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto);
+  }
+
+  @Delete("account")
+  @UseGuards(JwtAuthGuard)
+  deleteAccount(@CurrentUser() user: JwtPayload, @Body() dto: DeleteAccountDto) {
+    return this.auth.deleteAccount(user, dto);
   }
 }

@@ -55,18 +55,21 @@ Submit from [App Review](https://developers.facebook.com/apps/1694805491426991/a
 1. Message sent from your app (or API Setup curl) → received on WhatsApp
 2. Template created (app or WhatsApp Manager screen recording)
 
-**Reviewer notes (example):**
+**Reviewer notes (paste into App Review):**
 
 ```text
 Growvisi (https://www.growvisi.in) is WhatsApp conversation intelligence — not a chatbot.
 We ingest customer messages via Cloud API, classify intent, and track pipeline outcomes.
 Meta Business Agent handles automated replies inside WhatsApp.
 
-Login: [test email] / [test password]
-Settings → Connect via Meta Developer (or pre-connected test WABA)
-Send inbound WhatsApp → Conversations → Pipeline → lead timeline → Analytics
+Login: meta.reviewer@growvisi.in / [set password before submit — see docs/META-APP-REVIEW-SCREENCAST.md]
+Settings → Connect via Meta Developer (pre-connect test WABA before review)
+Inbound WhatsApp → Conversations → Intelligence → Pipeline
 Webhook: https://api.growvisi.in/api/v1/webhooks/whatsapp
-See docs/META-POLICY-ALIGNMENT.md
+Data deletion: https://www.growvisi.in/data-deletion
+Deletion callback: https://api.growvisi.in/api/v1/webhooks/meta/data-deletion
+Support: support@growvisi.in
+See docs/META-POLICY-ALIGNMENT.md and docs/META-APP-REVIEW-SCREENCAST.md
 ```
 
 ---

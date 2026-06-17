@@ -121,12 +121,20 @@ export default function PrivacyPage() {
             through the WhatsApp Business Platform when you connect your account
           </li>
           <li>
-            <strong className="text-foreground">Infrastructure providers</strong> — hosting, databases,
-            caching, email delivery, and monitoring (e.g. cloud hosting, database, and email providers)
+            <strong className="text-foreground">Vercel</strong> — application hosting and serverless API
           </li>
           <li>
-            <strong className="text-foreground">AI providers</strong> — only when you enable AI features,
-            limited to data needed to generate suggestions or classifications
+            <strong className="text-foreground">Supabase</strong> — PostgreSQL database
+          </li>
+          <li>
+            <strong className="text-foreground">Upstash</strong> — Redis job queues (when enabled)
+          </li>
+          <li>
+            <strong className="text-foreground">Resend</strong> — transactional email (password reset, support)
+          </li>
+          <li>
+            <strong className="text-foreground">OpenAI</strong> — optional AI classification when you enable
+            AI features
           </li>
           <li>
             <strong className="text-foreground">Professional advisers</strong> — lawyers, auditors, or
@@ -198,8 +206,11 @@ export default function PrivacyPage() {
       <LegalSection title="11. Cookies">
         <p>
           We use essential cookies for authentication and session management. We may use analytics cookies
-          with your consent where required. You can control cookies through your browser and our cookie
-          notice on the website.
+          with your consent where required. See our{" "}
+          <Link href="/cookies" className="text-primary hover:underline">
+            Cookie Policy
+          </Link>{" "}
+          for details.
         </p>
       </LegalSection>
 

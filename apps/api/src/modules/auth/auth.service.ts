@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  BadRequestException,
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -11,7 +12,7 @@ import type { JwtPayload } from "@growvisi/shared";
 import { DEFAULT_PIPELINE_STAGES, GROWVISI_WEB_URL } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "./email.service";
-import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto } from "./dto/auth.dto";
+import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, DeleteAccountDto } from "./dto/auth.dto";
 
 export interface AuthOrganizationOption {
   id: string;
@@ -321,6 +322,60 @@ export class AuthService {
     ]);
 
     return { ok: true, message: "Password updated. You can sign in now." };
+  }
+
+  /** Permanently delete the signed-in user and sole-owner workspaces. */
+  async deleteAccount(user: JwtPayload, dto: DeleteAccountDto) {
+    if (dto.confirmation !== "DELETE") {
+      throw new BadRequestException('Type DELETE in the confirmation field.');
+    }
+
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+    });
+    if (!dbUser?.passwordHash) {
+      throw new UnauthorizedException();
+    }
+
+    const valid = await bcrypt.compare(dto.password, dbUser.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException("Incorrect password.");
+    }
+
+    const memberships = await this.prisma.organizationMember.findMany({
+      where: { userId: user.sub },
+      include: { organization: { select: { id: true, name: true } } },
+    });
+
+    const owned = memberships.filter((m) => m.role === "OWNER");
+    for (const m of owned) {
+      const memberCount = await this.prisma.organizationMember.count({
+        where: { organizationId: m.organizationId },
+      });
+      if (memberCount > 1) {
+        throw new BadRequestException(
+          `Workspace "${m.organization.name}" has other members. Transfer ownership or ask them to remove you before deleting your account.`,
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const m of owned) {
+        await tx.organization.delete({ where: { id: m.organizationId } });
+      }
+
+      await tx.organizationMember.deleteMany({ where: { userId: user.sub } });
+      await tx.refreshToken.updateMany({
+        where: { userId: user.sub, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await tx.user.delete({ where: { id: user.sub } });
+    });
+
+    return {
+      ok: true,
+      message: "Your Growvisi account and workspace data have been deleted.",
+    };
   }
 
   private async buildSessionResponse(

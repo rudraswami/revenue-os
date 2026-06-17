@@ -46,8 +46,10 @@ export function AuthShell({
             {children}
             <p className="mt-8 text-center text-xs text-muted-foreground">
               By continuing you agree to our{" "}
-              <Link href="/terms" className="underline hover:text-foreground">Terms</Link> and{" "}
-              <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>
+              <Link href="/terms" className="underline hover:text-foreground">Terms</Link>,{" "}
+              <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>, and{" "}
+              <Link href="/data-deletion" className="underline hover:text-foreground">Data deletion</Link>{" "}
+              instructions.
             </p>
           </div>
         </div>

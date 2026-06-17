@@ -11,3 +11,7 @@ export const GROWVISI_WEBHOOK_URL = `${GROWVISI_API_V1_URL}/webhooks/whatsapp`;
 export const GROWVISI_CORS_ORIGINS = `${GROWVISI_WEB_URL_APEX},${GROWVISI_WEB_URL}`;
 
 export const GROWVISI_EMAIL_FROM = "Growvisi <noreply@growvisi.in>";
+export const GROWVISI_EMAIL_SUPPORT = "support@growvisi.in";
+export const GROWVISI_EMAIL_PRIVACY = "privacy@growvisi.in";
+export const GROWVISI_EMAIL_LEGAL = "legal@growvisi.in";
+export const GROWVISI_META_DATA_DELETION_URL = `${GROWVISI_API_V1_URL}/webhooks/meta/data-deletion`;

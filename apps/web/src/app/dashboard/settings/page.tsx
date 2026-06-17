@@ -6,6 +6,7 @@ import { Building2, LogOut, Mail, MessageCircle } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { logout } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
@@ -81,19 +82,34 @@ export default function SettingsPage() {
               <CardTitle className="text-base">{user?.name ?? "Your account"}</CardTitle>
               <CardDescription>{user?.email}</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/onboarding">Guided WhatsApp setup</Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                onClick={() => void handleLogout()}
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </Button>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/onboarding">Guided WhatsApp setup</Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => void handleLogout()}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </Button>
+              </div>
+              <div className="border-t border-border pt-4">
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Legal:{" "}
+                  <Link href="/privacy" className="underline hover:text-foreground">
+                    Privacy
+                  </Link>
+                  {" · "}
+                  <Link href="/data-deletion" className="underline hover:text-foreground">
+                    Data deletion
+                  </Link>
+                </p>
+                <DeleteAccountCard />
+              </div>
             </CardContent>
           </Card>
         </section>

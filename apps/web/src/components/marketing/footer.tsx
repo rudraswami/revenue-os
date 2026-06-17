@@ -9,13 +9,15 @@ const links = {
     { label: "Pricing", href: "#pricing" },
   ],
   Company: [
-    { label: "About", href: "#" },
+    { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
   ],
   Legal: [
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
+    { label: "Cookies", href: "/cookies" },
     { label: "Data deletion", href: "/data-deletion" },
+    { label: "DPA", href: "/dpa" },
     { label: "FAQ", href: "#faq" },
   ],
 };
@@ -50,7 +52,14 @@ export function MarketingFooter() {
           ))}
         </div>
         <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-8 text-[13px] text-muted-foreground">
-          <p>© {new Date().getFullYear()} Growvisi</p>
+          <div>
+            <p>© {new Date().getFullYear()} Growvisi</p>
+            <p className="mt-1">
+              <a href="mailto:support@growvisi.in" className="hover:text-foreground">
+                support@growvisi.in
+              </a>
+            </p>
+          </div>
           <div className="flex gap-6">
             <Link href="/login" className="hover:text-foreground">
               Log in

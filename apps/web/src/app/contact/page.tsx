@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
+import { apiFetch, ApiError } from "@/lib/api-client";
 
 const benefits = [
   {
@@ -31,14 +32,31 @@ const benefits = [
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    // Simulated submit — wire to CRM/email API when available
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    setSubmitted(true);
+    setError(null);
+    const form = new FormData(e.currentTarget);
+    try {
+      await apiFetch("/contact", {
+        method: "POST",
+        skipAuthRetry: true,
+        body: JSON.stringify({
+          name: form.get("name"),
+          email: form.get("email"),
+          company: form.get("company"),
+          team: form.get("team") || undefined,
+          message: form.get("message") || undefined,
+        }),
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not send request. Email support@growvisi.in");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -55,6 +73,12 @@ export default function ContactPage() {
               <p className="body-lg mt-4">
                 Book a demo or contact our sales team for Enterprise pricing. We&apos;ll show you
                 how to turn WhatsApp conversations into a clear pipeline.
+              </p>
+              <p className="mt-4 text-sm text-muted-foreground">
+                Email us directly:{" "}
+                <a href="mailto:support@growvisi.in" className="font-medium text-primary hover:underline">
+                  support@growvisi.in
+                </a>
               </p>
 
               <ul className="mt-10 space-y-6">
@@ -168,6 +192,7 @@ export default function ContactPage() {
                           </>
                         )}
                       </Button>
+                      {error && <p className="text-sm text-destructive">{error}</p>}
                     </form>
                   </>
                 )}

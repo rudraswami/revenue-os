@@ -26,16 +26,13 @@ export default function DataDeletionPage() {
         </p>
         <ol className="list-decimal space-y-2 pl-5">
           <li>Log in at https://www.growvisi.in</li>
-          <li>Go to <strong className="text-foreground">Dashboard → Settings</strong></li>
-          <li>Disconnect any connected WhatsApp numbers</li>
+          <li>Go to <strong className="text-foreground">Dashboard → Settings → Account</strong></li>
+          <li>Disconnect any connected WhatsApp numbers in the WhatsApp section</li>
           <li>
-            Email{" "}
-            <a href="mailto:privacy@growvisi.in" className="text-primary hover:underline">
-              privacy@growvisi.in
-            </a>{" "}
-            from your registered account email with subject: <strong className="text-foreground">Delete my Growvisi account</strong>
+            Scroll to <strong className="text-foreground">Delete account</strong>, enter your password,
+            type <strong className="text-foreground">DELETE</strong>, and confirm
           </li>
-          <li>We will confirm deletion within 30 days and remove account data from our systems</li>
+          <li>We remove your account and workspace data promptly (typically within 30 days for backups)</li>
         </ol>
       </LegalSection>
 
@@ -80,7 +77,19 @@ export default function DataDeletionPage() {
         </ul>
       </LegalSection>
 
-      <LegalSection title="5. WhatsApp and Meta data">
+      <LegalSection title="5. Facebook / Meta app users">
+        <p>
+          If you signed in with Facebook Login, Meta may send a data deletion request to our callback.
+          You will receive a confirmation code and can check status at{" "}
+          <Link href="/data-deletion/status" className="text-primary hover:underline">
+            /data-deletion/status
+          </Link>
+          . For full removal of your Growvisi workspace, also use{" "}
+          <strong className="text-foreground">Settings → Delete account</strong> while signed in.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="6. WhatsApp and Meta data">
         <p>
           Deleting your Growvisi account removes data stored in Growvisi. It does not automatically
           delete your WhatsApp Business Account with Meta. To remove WhatsApp-side data or disconnect
@@ -101,7 +110,7 @@ export default function DataDeletionPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="6. End customers of our business users">
+      <LegalSection title="7. End customers of our business users">
         <p>
           If you are a consumer who messaged a business using WhatsApp, your messages are controlled by
           that business (our customer). Please contact the business directly to exercise your privacy
@@ -109,14 +118,14 @@ export default function DataDeletionPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Timeline">
+      <LegalSection title="8. Timeline">
         <p>
           We aim to complete verified deletion requests within <strong className="text-foreground">30 days</strong>.
           Complex requests or legal holds may take longer; we will notify you if so.
         </p>
       </LegalSection>
 
-      <LegalSection title="8. More information">
+      <LegalSection title="9. More information">
         <p>
           See our{" "}
           <Link href="/privacy" className="text-primary hover:underline">
