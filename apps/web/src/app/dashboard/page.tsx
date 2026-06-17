@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Inbox, Kanban, MessageSquare, TrendingUp, Users } from "lucide-react";
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +30,7 @@ const quickActions = [
 export default function DashboardPage() {
   const token = useAuthStore((s) => s.accessToken);
 
-  const { data: funnel, isLoading: funnelLoading } = useQuery({
+  const { data: funnel, isLoading: funnelLoading, isError: funnelError, refetch: refetchFunnel } = useQuery({
     queryKey: ["funnel-metrics"],
     queryFn: () =>
       apiFetch<{ total: number; won: number; conversionRate: number; byStage: { stage: string; count: number }[] }>(
@@ -76,6 +77,12 @@ export default function DashboardPage() {
       />
 
       <GettingStartedCard />
+
+      {funnelError && !funnelLoading && (
+        <div className="mb-8">
+          <QueryErrorState onRetry={() => void refetchFunnel()} />
+        </div>
+      )}
 
       <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {quickActions.map((action) => (

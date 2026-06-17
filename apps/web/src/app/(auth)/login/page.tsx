@@ -38,7 +38,10 @@ function LoginForm() {
 
       applySession(res as AuthSession);
       setLoading(false);
-      router.push(postAuthPath(res.onboarding));
+      const next = searchParams.get("next");
+      const safeNext =
+        next?.startsWith("/dashboard") || next?.startsWith("/onboarding") ? next : null;
+      router.push(safeNext ?? postAuthPath(res.onboarding));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Sign in failed. Please try again.");
       setLoading(false);
@@ -135,7 +138,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen" />}>
+    <Suspense fallback={<div className="grid min-h-screen place-items-center bg-white text-sm text-muted-foreground">Loading…</div>}>
       <LoginForm />
     </Suspense>
   );

@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, ExternalLink, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -213,8 +214,7 @@ export function WhatsappManualConnect({
           {discovered.length > 0 && (
             <div className="space-y-2">
               <label className="text-xs font-medium text-foreground">Phone number</label>
-              <select
-                className="flex h-11 w-full rounded-lg border border-border bg-white px-3 text-sm"
+              <Select
                 value={phoneNumberId}
                 onChange={(e) => {
                   const id = e.target.value;
@@ -230,7 +230,7 @@ export function WhatsappManualConnect({
                     {p.verifiedName ? ` (${p.verifiedName})` : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
 

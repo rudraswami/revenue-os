@@ -1,15 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
+import { BarChart3, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -27,7 +27,7 @@ const STAGE_COLORS = ["#6043d0", "#7c5ce0", "#9b7bff", "#f59e0b", "#f97316", "#0
 export default function AnalyticsPage() {
   const token = useAuthStore((s) => s.accessToken);
 
-  const { data: funnel, isLoading: funnelLoading } = useQuery({
+  const { data: funnel, isLoading: funnelLoading, isError: funnelError, refetch: refetchFunnel } = useQuery({
     queryKey: ["funnel-metrics"],
     queryFn: () =>
       apiFetch<{
@@ -39,7 +39,7 @@ export default function AnalyticsPage() {
     enabled: !!token,
   });
 
-  const { data: convStats, isLoading: convLoading } = useQuery({
+  const { data: convStats, isLoading: convLoading, isError: convError, refetch: refetchConv } = useQuery({
     queryKey: ["conversation-stats"],
     queryFn: () =>
       apiFetch<{ totalConversations: number; unreadMessages: number; inboundMessages: number }>(
@@ -49,7 +49,18 @@ export default function AnalyticsPage() {
     enabled: !!token,
   });
 
+  const { data: whatsappAccounts } = useQuery({
+    queryKey: ["whatsapp-accounts"],
+    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
+      token: token ?? undefined,
+    }),
+    enabled: !!token,
+  });
+
+  const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
   const isLoading = funnelLoading || convLoading;
+  const hasError = funnelError || convError;
+
   const chartData =
     funnel?.byStage.map((s) => ({
       name: s.stage.replace("_", " "),
@@ -69,6 +80,17 @@ export default function AnalyticsPage() {
         description="Understand your WhatsApp sales performance"
       />
 
+      {hasError && !isLoading && (
+        <div className="mb-8">
+          <QueryErrorState
+            onRetry={() => {
+              void refetchFunnel();
+              void refetchConv();
+            }}
+          />
+        </div>
+      )}
+
       {isLoading ? (
         <>
           <MetricCardsSkeleton />
@@ -78,7 +100,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
         </>
-      ) : (
+      ) : !hasError ? (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
@@ -114,7 +136,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Leads by stage</CardTitle>
               </CardHeader>
               <CardContent className="h-72">
-                {barData.length > 0 ? (
+                {barData.some((d) => d.count > 0) ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={barData}>
                       <XAxis dataKey="stage" fontSize={11} tickLine={false} axisLine={false} />
@@ -124,12 +146,19 @@ export default function AnalyticsPage() {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center text-sm text-muted-foreground">
-                    <p>No lead data yet</p>
-                    <Button asChild size="sm" variant="link" className="mt-2">
-                      <Link href="/dashboard/inbox">Open Inbox</Link>
-                    </Button>
-                  </div>
+                  <EmptyState
+                    compact
+                    className="h-full py-8"
+                    icon={<BarChart3 className="h-6 w-6" />}
+                    title={hasWhatsapp ? "No leads yet" : "Connect WhatsApp first"}
+                    description={
+                      hasWhatsapp
+                        ? "Leads appear when customers message your business number."
+                        : "Link WhatsApp to start tracking leads and pipeline metrics."
+                    }
+                    actionHref={hasWhatsapp ? "/dashboard/inbox" : "/dashboard/settings"}
+                    actionLabel={hasWhatsapp ? "Open Inbox" : "Connect WhatsApp"}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -160,15 +189,21 @@ export default function AnalyticsPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    Pipeline chart appears when you have leads
-                  </div>
+                  <EmptyState
+                    compact
+                    className="h-full py-8"
+                    icon={<TrendingUp className="h-6 w-6" />}
+                    title="No pipeline data"
+                    description="Your stage breakdown will appear once leads are created from conversations."
+                    actionHref="/dashboard/pipeline"
+                    actionLabel="View Pipeline"
+                  />
                 )}
               </CardContent>
             </Card>
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -42,7 +42,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create your workspace"
-      description="Start free — connect WhatsApp and receive customer messages in minutes."
+      description="Start free — explore the app, then connect WhatsApp when you're ready."
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
@@ -97,7 +97,7 @@ export default function RegisterPage() {
       </form>
 
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        By signing up you agree to use Growvisi for your business communications.
+        You can connect WhatsApp anytime from Settings after signup.
       </p>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">

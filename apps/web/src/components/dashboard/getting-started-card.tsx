@@ -56,7 +56,7 @@ export function GettingStartedCard() {
     {
       id: "whatsapp",
       title: "Connect WhatsApp Business",
-      description: "Link the number your customers message today.",
+      description: "Optional — link the number your customers message today.",
       done: whatsappConnected,
       href: "/dashboard/settings",
       action: "Connect now",
@@ -126,7 +126,7 @@ export function GettingStartedCard() {
                   <p className="text-xs text-muted-foreground">{step.description}</p>
                 </div>
               </div>
-              {!step.done && (
+              {!step.done && step.href && (
                 <Button asChild variant="outline" size="sm" className="shrink-0 gap-1">
                   <Link href={step.href}>
                     {step.action}
@@ -137,6 +137,13 @@ export function GettingStartedCard() {
             </li>
           ))}
         </ul>
+        {!whatsappConnected && (
+          <div className="border-t border-border px-6 py-3 text-center">
+            <Link href="/onboarding" className="text-xs font-medium text-primary hover:underline">
+              Prefer a guided walkthrough? Open setup wizard →
+            </Link>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

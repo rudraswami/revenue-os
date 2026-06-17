@@ -5,7 +5,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 import {
   type AutomationId,
   DEFAULT_AUTOMATIONS,
@@ -13,7 +13,7 @@ import {
   saveAutomationPreferences,
 } from "@/lib/automation-preferences";
 import { useAuthStore } from "@/stores/auth-store";
-import { Bell, Clock, MessageCircle, Zap } from "lucide-react";
+import { Bell, Clock, FlaskConical, MessageCircle, Zap } from "lucide-react";
 
 const automations: Array<{
   id: AutomationId;
@@ -57,9 +57,9 @@ export default function AutomationsPage() {
     setHydrated(true);
   }, [organizationId]);
 
-  function toggle(id: AutomationId) {
+  function toggle(id: AutomationId, enabled: boolean) {
     setToggles((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
+      const next = { ...prev, [id]: enabled };
       if (organizationId) {
         saveAutomationPreferences(organizationId, next);
       }
@@ -67,19 +67,30 @@ export default function AutomationsPage() {
     });
   }
 
-  const activeCount = Object.values(toggles).filter(Boolean).length;
+  const queuedCount = Object.values(toggles).filter(Boolean).length;
 
   return (
     <div className="p-6 md:p-8">
       <PageHeader
         title="Automations"
-        description={`${activeCount} of ${automations.length} workflows active — preferences saved to your workspace`}
+        description="Configure workflows — your preferences are saved and will activate when server execution ships"
         action={
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard/ai">AI settings</Link>
           </Button>
         }
       />
+
+      <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+        <FlaskConical className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+        <div>
+          <p className="font-medium">Preview mode</p>
+          <p className="mt-0.5 text-xs text-amber-900/90">
+            Toggles save your intent ({queuedCount} queued) but workflows do not run on the server
+            yet. Connect WhatsApp in Settings so you&apos;re ready when automation goes live.
+          </p>
+        </div>
+      </div>
 
       {!hydrated ? (
         <div className="space-y-4">
@@ -99,43 +110,21 @@ export default function AutomationsPage() {
                   <CardTitle className="text-base">{auto.title}</CardTitle>
                   <CardDescription className="mt-1">{auto.description}</CardDescription>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={toggles[auto.id]}
-                  onClick={() => toggle(auto.id)}
-                  className={cn(
-                    "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                    toggles[auto.id] ? "bg-primary" : "bg-muted",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-                      toggles[auto.id] ? "left-[22px]" : "left-0.5",
-                    )}
-                  />
-                </button>
+                <Switch
+                  checked={toggles[auto.id]}
+                  onCheckedChange={(v) => toggle(auto.id, v)}
+                  aria-label={`${auto.title} automation`}
+                />
               </CardHeader>
               <CardContent className="pl-[4.5rem]">
                 <p className="text-xs text-muted-foreground">
-                  {toggles[auto.id]
-                    ? "Active — will run when server workflows are enabled"
-                    : "Paused"}
+                  {toggles[auto.id] ? "Queued — runs when server workflows launch" : "Off"}
                 </p>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
-
-      <p className="mt-8 text-center text-sm text-muted-foreground">
-        Preferences are saved per workspace. Server-side execution coming soon.{" "}
-        <Link href="/dashboard/settings" className="text-primary hover:underline">
-          Connect WhatsApp
-        </Link>{" "}
-        to prepare your account.
-      </p>
     </div>
   );
 }

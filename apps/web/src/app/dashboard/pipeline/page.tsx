@@ -1,11 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PipelineBoard, type PipelineLead } from "@/components/dashboard/pipeline-board";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { PipelineSkeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
@@ -45,7 +45,7 @@ export default function PipelinePage() {
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["pipeline"],
     queryFn: () =>
       apiFetch<Record<string, PipelineLead[]>>("/leads/pipeline", {
@@ -114,34 +114,41 @@ export default function PipelinePage() {
 
       {!hasWhatsapp && (
         <Card className="mb-6 border-dashed">
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
-            <p className="text-sm text-muted-foreground">
-              Connect WhatsApp to build your pipeline from real conversations.
-            </p>
-            <Button asChild size="sm">
-              <Link href="/dashboard/settings">Connect WhatsApp</Link>
-            </Button>
+          <CardContent className="p-2">
+            <EmptyState
+              compact
+              title="Connect WhatsApp to build your pipeline"
+              description="Leads are created automatically from customer conversations."
+              actionHref="/dashboard/settings"
+              actionLabel="Connect WhatsApp"
+            />
           </CardContent>
         </Card>
       )}
 
-      {hasWhatsapp && !isLoading && totalLeads === 0 && (
+      {isError && !isLoading && (
+        <div className="mb-6">
+          <QueryErrorState onRetry={() => void refetch()} />
+        </div>
+      )}
+
+      {hasWhatsapp && !isLoading && !isError && totalLeads === 0 && (
         <Card className="mb-6 border-dashed">
-          <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">No leads yet</p>
-            <p className="mt-1">
-              When someone messages your business on WhatsApp, they appear here automatically.
-            </p>
-            <Button asChild size="sm" className="mt-4">
-              <Link href="/dashboard/inbox">Go to Inbox</Link>
-            </Button>
+          <CardContent className="p-2">
+            <EmptyState
+              compact
+              title="No leads yet"
+              description="When someone messages your business on WhatsApp, they appear here automatically."
+              actionHref="/dashboard/inbox"
+              actionLabel="Go to Inbox"
+            />
           </CardContent>
         </Card>
       )}
 
       {isLoading && <PipelineSkeleton />}
 
-      {!isLoading && totalLeads > 0 && (
+      {!isLoading && !isError && totalLeads > 0 && (
         <PipelineBoard
           stages={STAGES}
           stageLabels={STAGE_LABELS}

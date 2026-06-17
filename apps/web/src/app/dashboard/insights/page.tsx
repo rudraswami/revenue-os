@@ -3,17 +3,28 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MetricCardsSkeleton } from "@/components/ui/skeleton";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { AlertCircle, Lightbulb, TrendingUp } from "lucide-react";
 
+function InsightCardSkeleton() {
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="h-28 animate-pulse rounded-xl bg-muted" />
+      ))}
+    </div>
+  );
+}
+
 export default function InsightsPage() {
   const token = useAuthStore((s) => s.accessToken);
 
-  const { data: funnel, isLoading } = useQuery({
+  const { data: funnel, isLoading, isError, refetch } = useQuery({
     queryKey: ["funnel-metrics"],
     queryFn: () =>
       apiFetch<{
@@ -25,7 +36,7 @@ export default function InsightsPage() {
     enabled: !!token,
   });
 
-  const { data: convStats } = useQuery({
+  const { data: convStats, isLoading: convLoading } = useQuery({
     queryKey: ["conversation-stats"],
     queryFn: () =>
       apiFetch<{ unreadMessages: number; totalConversations: number }>(
@@ -39,6 +50,7 @@ export default function InsightsPage() {
     funnel?.byStage.find((s) => s.stage === "NEGOTIATION")?.count ?? 0;
   const unread = convStats?.unreadMessages ?? 0;
   const winRate = funnel && funnel.total > 0 ? funnel.conversionRate * 100 : 0;
+  const loading = isLoading || convLoading;
 
   const insights = [
     unread > 0 && {
@@ -89,17 +101,25 @@ export default function InsightsPage() {
         description="Actionable recommendations based on your WhatsApp sales data"
       />
 
-      {isLoading ? (
-        <MetricCardsSkeleton />
-      ) : insights.length === 0 ? (
+      {isError && !loading && (
+        <QueryErrorState onRetry={() => void refetch()} />
+      )}
+
+      {loading && <InsightCardSkeleton />}
+
+      {!loading && !isError && insights.length === 0 && (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <Lightbulb className="mx-auto h-10 w-10 text-primary/40" />
-            <p className="mt-4 font-medium text-foreground">You&apos;re on track</p>
-            <p className="mt-1 text-sm">No urgent insights right now. Keep selling!</p>
-          </CardContent>
+          <EmptyState
+            icon={<Lightbulb className="h-6 w-6" />}
+            title="You're on track"
+            description="No urgent insights right now. Keep selling and check back after more conversations."
+            actionHref="/dashboard/inbox"
+            actionLabel="Open Inbox"
+          />
         </Card>
-      ) : (
+      )}
+
+      {!loading && !isError && insights.length > 0 && (
         <div className="space-y-4">
           {insights.map((item) => (
             <Card key={item.title}>
