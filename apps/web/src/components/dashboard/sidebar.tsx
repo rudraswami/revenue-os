@@ -24,10 +24,10 @@ import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/inbox", label: "Inbox", icon: Inbox, exact: false },
+  { href: "/dashboard/inbox", label: "Conversations", icon: Inbox, exact: false },
   { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban, exact: false },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, exact: false },
-  { href: "/dashboard/ai", label: "AI", icon: Bot, exact: false },
+  { href: "/dashboard/ai", label: "Intelligence", icon: Bot, exact: false },
   { href: "/dashboard/automations", label: "Automations", icon: Zap, exact: false },
   { href: "/dashboard/insights", label: "Insights", icon: Lightbulb, exact: false },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },

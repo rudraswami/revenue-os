@@ -44,12 +44,14 @@ Meta handles the chat surface. Growvisi handles **growth operations**.
 
 | Capability | Status |
 |------------|--------|
-| WhatsApp inbox + outbound send | ✅ |
+| WhatsApp ingest + conversation view | ✅ |
 | Auto lead on first message | ✅ |
 | Pipeline Kanban (manual + AI-assisted moves) | ✅ |
 | AI classify on inbound → stage/score update | ✅ (requires `OPENAI_API_KEY`) |
 | Lead timeline (classifications + stage history) | ✅ |
-| Smart reply suggestions (human sends) | ✅ |
+| Human handoff flags (`requiresHuman`) | ✅ |
+| Optional human takeover reply from dashboard | ✅ (secondary) |
+| Meta Business Agent integration (in-chat) | Complementary — customer uses Meta |
 | Auto AI send + RAG + automations | 🔜 Milestone 2 |
 
 ---

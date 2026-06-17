@@ -3,36 +3,45 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { Bot, MessageSquare, Sparkles, Target, Zap } from "lucide-react";
+import { Bot, LineChart, Sparkles, Target, UserRound, Zap } from "lucide-react";
 
 const features = [
   {
-    icon: MessageSquare,
-    title: "Suggest reply",
-    description: "AI drafts replies from conversation context. Available in Inbox when enabled.",
+    icon: LineChart,
+    title: "Conversation classification",
+    description:
+      "Every inbound message is analyzed for intent, sentiment, and pipeline stage — including threads where Meta Business Agent already replied.",
     href: "/dashboard/inbox",
   },
   {
     icon: Target,
     title: "Lead scoring",
-    description: "Every lead gets an intent score based on message content and engagement.",
+    description: "Leads get a score from message content and engagement so your team focuses on closers.",
     href: "/dashboard/pipeline",
   },
   {
     icon: Zap,
     title: "Auto stage updates",
-    description: "Pipeline stages update automatically when AI detects buying intent.",
+    description: "Pipeline moves when our classifier detects buying intent, negotiation, or loss signals.",
     href: "/dashboard/pipeline",
+  },
+  {
+    icon: UserRound,
+    title: "Human handoff flags",
+    description:
+      "When a customer needs a person, Growvisi flags the thread — Meta handles chat; you track who to call.",
+    href: "/dashboard/insights",
   },
   {
     icon: Bot,
     title: "Lead timeline",
-    description: "See AI classifications and stage changes in each conversation's timeline.",
+    description: "Audit trail of AI classifications and stage changes after each customer message.",
     href: "/dashboard/inbox",
   },
 ];
@@ -43,18 +52,35 @@ export default function AiStudioPage() {
   const { data: capabilities, isLoading } = useQuery({
     queryKey: ["conversation-capabilities"],
     queryFn: () =>
-      apiFetch<{ aiSuggestReply: boolean }>("/conversations/capabilities", {
-        token: token ?? undefined,
-      }),
+      apiFetch<{
+        aiClassification: boolean;
+        aiSuggestReply: boolean;
+        primaryUseCase: string;
+      }>("/conversations/capabilities", { token: token ?? undefined }),
+    enabled: !!token,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ["conversation-stats"],
+    queryFn: () =>
+      apiFetch<{
+        aiClassifications: number;
+        classifiedLeads: number;
+        humanHandoffRecommended: number;
+      }>("/conversations/stats", { token: token ?? undefined }),
     enabled: !!token,
   });
 
   return (
     <div className="p-6 md:p-8">
       <PageHeader
-        title="AI"
-        description="Smart tools that help your team sell faster on WhatsApp"
+        title="Intelligence"
+        description="Analyze WhatsApp conversations and track revenue outcomes — Meta replies in-chat, Growvisi tracks the funnel"
       />
+
+      <div className="mb-6">
+        <MetaAiNotice />
+      </div>
 
       <Card className="mb-8 border-primary/20 bg-secondary/40">
         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
@@ -65,25 +91,25 @@ export default function AiStudioPage() {
             <div>
               {isLoading ? (
                 <>
-                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-5 w-48" />
                   <Skeleton className="mt-2 h-4 w-64" />
                 </>
               ) : (
                 <>
                   <p className="font-semibold">
-                    AI reply suggestions: {capabilities?.aiSuggestReply ? "Enabled" : "Disabled"}
+                    Classification: {capabilities?.aiClassification ? "Active" : "Configure OPENAI_API_KEY"}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {capabilities?.aiSuggestReply
-                      ? "Use “Suggest reply” in Inbox to draft responses instantly."
-                      : "AI features require API configuration on the server."}
+                    {stats
+                      ? `${stats.aiClassifications} analyses · ${stats.classifiedLeads} leads scored · ${stats.humanHandoffRecommended} handoffs flagged`
+                      : "Runs automatically on each inbound customer message."}
                   </p>
                 </>
               )}
             </div>
           </div>
           <Button asChild>
-            <Link href="/dashboard/inbox">Open Inbox</Link>
+            <Link href="/dashboard/inbox">View conversations</Link>
           </Button>
         </CardContent>
       </Card>
@@ -100,12 +126,24 @@ export default function AiStudioPage() {
             </CardHeader>
             <CardContent>
               <Link href={f.href} className="text-sm font-medium text-primary hover:underline">
-                Go to {f.href.split("/").pop()} →
+                Open →
               </Link>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {capabilities?.aiSuggestReply && (
+        <Card className="mt-6 border-dashed">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Optional: human takeover replies</CardTitle>
+            <CardDescription>
+              When your team must reply from Growvisi (not Meta Business Agent), use Human takeover
+              in Conversations. This is supplementary — not our primary product surface.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
     </div>
   );
 }

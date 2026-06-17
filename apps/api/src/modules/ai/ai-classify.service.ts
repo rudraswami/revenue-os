@@ -193,10 +193,11 @@ export class AiClassifyService {
         messages: [
           {
             role: "system",
-            content: `You classify WhatsApp sales conversations for an Indian SMB.
+            content: `You classify WhatsApp sales conversations for an Indian SMB using Growvisi (analytics layer).
+The business may use Meta Business Agent to reply inside WhatsApp — analyze the full thread (customer + business messages) to infer sales intent and pipeline stage. You do not draft customer-facing replies.
 Return JSON only with keys: stage, confidence, intent, sentiment, suggestedActions, requiresHuman.
 stage must be one of: ${stages}.
-confidence is 0-1. requiresHuman is true if the customer asks for a person, is angry, or the request is too complex for AI.
+confidence is 0-1. requiresHuman is true if the customer asks for a person, is angry, payment dispute, or the request is too complex for automated handling.
 Current pipeline stage: ${currentStage}.`,
           },
           {

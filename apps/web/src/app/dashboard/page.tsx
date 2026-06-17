@@ -2,8 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Inbox, Kanban, MessageSquare, TrendingUp, Users } from "lucide-react";
+import { Inbox, Kanban, LineChart, TrendingUp, Users } from "lucide-react";
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
+import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
@@ -21,10 +22,10 @@ import {
 } from "recharts";
 
 const quickActions = [
-  { href: "/dashboard/inbox", label: "Open Inbox", icon: Inbox, desc: "Reply to customers" },
-  { href: "/dashboard/pipeline", label: "View Pipeline", icon: Kanban, desc: "Track deal stages" },
-  { href: "/dashboard/analytics", label: "Analytics", icon: TrendingUp, desc: "Sales performance" },
-  { href: "/dashboard/insights", label: "Insights", icon: MessageSquare, desc: "AI recommendations" },
+  { href: "/dashboard/inbox", label: "Conversations", icon: Inbox, desc: "Analyze customer threads" },
+  { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban, desc: "Track deal stages" },
+  { href: "/dashboard/analytics", label: "Analytics", icon: TrendingUp, desc: "Funnel performance" },
+  { href: "/dashboard/ai", label: "Intelligence", icon: LineChart, desc: "Classification & scoring" },
 ];
 
 export default function DashboardPage() {
@@ -43,9 +44,14 @@ export default function DashboardPage() {
   const { data: convStats, isLoading: convLoading } = useQuery({
     queryKey: ["conversation-stats"],
     queryFn: () =>
-      apiFetch<{ totalConversations: number; unreadMessages: number }>("/conversations/stats", {
-        token: token ?? undefined,
-      }),
+      apiFetch<{
+        totalConversations: number;
+        unreadMessages: number;
+        inboundMessages: number;
+        aiClassifications: number;
+        classifiedLeads: number;
+        humanHandoffRecommended: number;
+      }>("/conversations/stats", { token: token ?? undefined }),
     enabled: !!token,
   });
 
@@ -73,8 +79,12 @@ export default function DashboardPage() {
     <div className="p-6 md:p-8">
       <PageHeader
         title="Home"
-        description="Your WhatsApp sales at a glance"
+        description="WhatsApp conversation intelligence — track leads from first message to revenue"
       />
+
+      <div className="mb-6">
+        <MetaAiNotice />
+      </div>
 
       <GettingStartedCard />
 
@@ -107,15 +117,18 @@ export default function DashboardPage() {
       ) : (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          title="Conversations"
+          title="Conversations tracked"
           value={hasConversations ? convStats!.totalConversations : 0}
-          delta={
-            hasWhatsapp
-              ? `${convStats?.unreadMessages ?? 0} unread`
-              : "Connect WhatsApp"
-          }
+          delta={`${convStats?.inboundMessages ?? 0} customer messages ingested`}
           trend="neutral"
-          icon={<MessageSquare className="h-4 w-4 text-primary" />}
+          icon={<Inbox className="h-4 w-4 text-primary" />}
+        />
+        <MetricCard
+          title="AI classifications"
+          value={convStats?.aiClassifications ?? 0}
+          delta={`${convStats?.classifiedLeads ?? 0} leads scored`}
+          trend="neutral"
+          icon={<LineChart className="h-4 w-4 text-primary" />}
         />
         <MetricCard
           title="Total leads"
@@ -124,16 +137,11 @@ export default function DashboardPage() {
           icon={<Users className="h-4 w-4 text-primary" />}
         />
         <MetricCard
-          title="Won"
-          value={funnel?.won ?? 0}
+          title="Human handoffs"
+          value={convStats?.humanHandoffRecommended ?? 0}
+          delta={hasWhatsapp ? "Needs your team" : "Connect WhatsApp"}
           trend="neutral"
-          icon={<TrendingUp className="h-4 w-4 text-success" />}
-        />
-        <MetricCard
-          title="Win rate"
-          value={funnel && funnel.total > 0 ? `${(funnel.conversionRate * 100).toFixed(0)}%` : "—"}
-          trend="neutral"
-          icon={<TrendingUp className="h-4 w-4 text-primary" />}
+          icon={<TrendingUp className="h-4 w-4 text-warning" />}
         />
       </div>
       )}
@@ -166,14 +174,14 @@ export default function DashboardPage() {
               <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 {hasWhatsapp ? (
                   <>
-                    <p>Leads appear when customers message you</p>
+                    <p>Leads appear when customer messages are classified</p>
                     <Link href="/dashboard/inbox" className="font-medium text-primary hover:underline">
-                      Open Inbox
+                      View conversations
                     </Link>
                   </>
                 ) : (
                   <>
-                    <p>Connect WhatsApp to start tracking leads</p>
+                    <p>Connect WhatsApp to start tracking conversations</p>
                     <Link href="/dashboard/settings" className="font-medium text-primary hover:underline">
                       Connect WhatsApp
                     </Link>

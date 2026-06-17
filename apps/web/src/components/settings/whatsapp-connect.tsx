@@ -193,15 +193,15 @@ export default function WhatsappConnect() {
             </div>
 
             <div className="mt-6 rounded-xl bg-background/60 p-4">
-              <p className="text-sm font-medium">Send a test message</p>
+              <p className="text-sm font-medium">Verify ingestion</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                From your personal phone, send a WhatsApp to{" "}
+                Send a WhatsApp from your phone to{" "}
                 <strong className="text-foreground">{displayAccount.displayPhoneNumber}</strong>.
-                It will appear in your Inbox within a few seconds.
+                It will be classified and appear under Conversations and Pipeline.
               </p>
               <Button asChild className="mt-4" size="sm">
                 <Link href="/dashboard/inbox">
-                  Open Inbox
+                  View conversations
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -246,8 +246,8 @@ export default function WhatsappConnect() {
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-muted/30 px-5 py-4">
         <p className="text-sm text-muted-foreground">
-          Connect the WhatsApp Business number your customers already use. Messages appear in your
-          Inbox automatically — like Intercom or Wati, channel setup lives here in Settings.
+          Connect the WhatsApp Business number your customers message. Growvisi ingests conversations
+          for classification and pipeline tracking — Meta Business Agent handles in-chat replies.
         </p>
       </div>
 

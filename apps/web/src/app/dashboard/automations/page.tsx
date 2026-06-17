@@ -76,7 +76,7 @@ export default function AutomationsPage() {
         description="Configure workflows — your preferences are saved and will activate when server execution ships"
         action={
           <Button variant="outline" size="sm" asChild>
-            <Link href="/dashboard/ai">AI settings</Link>
+            <Link href="/dashboard/ai">Intelligence settings</Link>
           </Button>
         }
       />

@@ -10,6 +10,7 @@ import { InboxListSkeleton, InboxThreadSkeleton } from "@/components/ui/skeleton
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { formatStage } from "@/lib/stage-labels";
+import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,7 @@ export default function InboxPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
+  const [showComposer, setShowComposer] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -166,12 +168,14 @@ export default function InboxPage() {
   function selectConversation(id: string) {
     setSelectedId(id);
     setSendError(null);
+    setShowComposer(false);
     window.history.replaceState(null, "", `/dashboard/inbox?c=${id}`);
   }
 
   function clearSelection() {
     setSelectedId(null);
     setSendError(null);
+    setShowComposer(false);
     window.history.replaceState(null, "", "/dashboard/inbox");
   }
 
@@ -192,14 +196,14 @@ export default function InboxPage() {
       >
         <div className="border-b border-border bg-muted/30 p-4">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold">Inbox</h1>
+            <h1 className="text-lg font-bold">Conversations</h1>
             {live && (
               <span className="rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-medium text-success">
                 Live
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">Customer WhatsApp messages</p>
+          <p className="text-xs text-muted-foreground">Ingest & analyze customer WhatsApp threads</p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
@@ -227,7 +231,7 @@ export default function InboxPage() {
               compact
               icon={<Inbox className="h-6 w-6" />}
               title="No messages yet"
-              description="Ask someone to send a WhatsApp to your business number. It will show up here."
+              description="Send a test WhatsApp to your business number. Growvisi ingests it for classification and pipeline tracking."
               actionHref="/dashboard/settings"
               actionLabel="WhatsApp settings"
             />
@@ -292,7 +296,7 @@ export default function InboxPage() {
               compact
               icon={<Inbox className="h-6 w-6" />}
               title="Select a conversation"
-              description="Choose a customer on the left to read and reply."
+              description="View the thread, AI classification, and lead timeline. Replies happen in WhatsApp via Meta Business Agent."
             />
           </div>
         ) : threadLoading && !thread ? (
@@ -359,49 +363,82 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <form onSubmit={handleSend} className="border-t border-border bg-background p-4">
-              {sendError && (
-                <p className="mb-2 text-center text-xs text-destructive">{sendError}</p>
-              )}
-              {capabilities?.aiSuggestReply && (
-                <div className="mx-auto mb-2 flex max-w-2xl justify-end">
+            <div className="border-t border-border bg-background p-4">
+              <div className="mx-auto max-w-2xl space-y-3">
+                <MetaAiNotice compact />
+                {!showComposer ? (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="text-xs text-muted-foreground"
-                    disabled={suggestMutation.isPending}
-                    onClick={() => suggestMutation.mutate()}
+                    className="w-full"
+                    onClick={() => setShowComposer(true)}
                   >
-                    {suggestMutation.isPending ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3 w-3" />
-                    )}
-                    Suggest reply
+                    Human takeover — send from Growvisi (optional)
                   </Button>
-                </div>
-              )}
-              <div className="mx-auto flex max-w-2xl gap-2">
-                <Input
-                  placeholder="Type your reply…"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  disabled={sendMutation.isPending || !thread.whatsappAccount.isActive}
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  disabled={!draft.trim() || sendMutation.isPending || !thread.whatsappAccount.isActive}
-                >
-                  {sendMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
+                ) : (
+                  <form onSubmit={handleSend} className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Use only when your team must reply from Growvisi within WhatsApp&apos;s
+                      24-hour customer service window. Prefer Meta Business Agent for automated
+                      replies.
+                    </p>
+                    {sendError && (
+                      <p className="text-center text-xs text-destructive">{sendError}</p>
+                    )}
+                    {capabilities?.aiSuggestReply && (
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-muted-foreground"
+                          disabled={suggestMutation.isPending}
+                          onClick={() => suggestMutation.mutate()}
+                        >
+                          {suggestMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3 w-3" />
+                          )}
+                          Draft suggestion
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Human agent message…"
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        disabled={sendMutation.isPending || !thread.whatsappAccount.isActive}
+                      />
+                      <Button
+                        type="submit"
+                        size="icon"
+                        disabled={
+                          !draft.trim() || sendMutation.isPending || !thread.whatsappAccount.isActive
+                        }
+                      >
+                        {sendMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setShowComposer(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </form>
+                )}
               </div>
-            </form>
+            </div>
             </div>
 
             {thread.lead && (

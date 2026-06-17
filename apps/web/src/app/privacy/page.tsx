@@ -14,8 +14,8 @@ export default function PrivacyPage() {
     <LegalPage title="Privacy Policy" lastUpdated={LAST_UPDATED}>
       <LegalSection title="1. Who we are">
         <p>
-          Growvisi (&quot;Growvisi&quot;, &quot;we&quot;, &quot;us&quot;) provides a WhatsApp customer
-          relationship management (CRM) platform at{" "}
+          Growvisi (&quot;Growvisi&quot;, &quot;we&quot;, &quot;us&quot;) provides a WhatsApp
+          conversation intelligence platform at{" "}
           <a href="https://www.growvisi.in" className="text-primary hover:underline">
             www.growvisi.in
           </a>
@@ -48,8 +48,11 @@ export default function PrivacyPage() {
         <p>
           <strong className="text-foreground">WhatsApp and messaging data:</strong> when you connect a
           WhatsApp Business account through Meta&apos;s authorized flow, we receive and store message
-          content, message metadata (timestamps, delivery status), contact phone numbers, contact display
-          names, conversation identifiers, and related pipeline or lead data you create in Growvisi.
+          content and metadata needed for analytics — including customer messages and business-side
+          messages visible via the Cloud API. We analyze conversations to classify intent, score
+          leads, and update your pipeline. Automated replies to customers are typically handled by
+          Meta Business Agent inside WhatsApp; optional human-agent replies from Growvisi are
+          supplementary and subject to WhatsApp&apos;s messaging policies.
         </p>
         <p>
           <strong className="text-foreground">Meta / Facebook login data:</strong> when you use
@@ -75,9 +78,10 @@ export default function PrivacyPage() {
       <LegalSection title="4. How we use information">
         <p>We use information to:</p>
         <ul className="list-disc space-y-2 pl-5">
-          <li>Provide, operate, and maintain the Service (inbox, pipeline, automations, analytics, AI features)</li>
+          <li>Provide conversation intelligence: ingest messages, classify intent, score leads, pipeline analytics, and team insights</li>
           <li>Authenticate users and secure accounts</li>
-          <li>Connect and maintain WhatsApp Business API integrations via Meta</li>
+          <li>Connect and maintain WhatsApp Business API integrations via Meta (webhooks)</li>
+          <li>Optionally send human-agent replies when your team initiates takeover (within WhatsApp policy windows)</li>
           <li>Send service-related emails (e.g. password reset, security notices)</li>
           <li>Improve, debug, and develop the Service</li>
           <li>Comply with legal obligations and enforce our Terms of Service</li>

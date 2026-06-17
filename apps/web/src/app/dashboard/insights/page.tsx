@@ -9,7 +9,7 @@ import { QueryErrorState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { AlertCircle, Lightbulb, TrendingUp } from "lucide-react";
+import { AlertCircle, Lightbulb, TrendingUp, UserRound } from "lucide-react";
 
 function InsightCardSkeleton() {
   return (
@@ -39,20 +39,31 @@ export default function InsightsPage() {
   const { data: convStats, isLoading: convLoading } = useQuery({
     queryKey: ["conversation-stats"],
     queryFn: () =>
-      apiFetch<{ unreadMessages: number; totalConversations: number }>(
-        "/conversations/stats",
-        { token: token ?? undefined },
-      ),
+      apiFetch<{
+        unreadMessages: number;
+        totalConversations: number;
+        humanHandoffRecommended: number;
+        aiClassifications: number;
+      }>("/conversations/stats", { token: token ?? undefined }),
     enabled: !!token,
   });
 
   const stalled =
     funnel?.byStage.find((s) => s.stage === "NEGOTIATION")?.count ?? 0;
+  const handoffs = convStats?.humanHandoffRecommended ?? 0;
   const unread = convStats?.unreadMessages ?? 0;
   const winRate = funnel && funnel.total > 0 ? funnel.conversionRate * 100 : 0;
   const loading = isLoading || convLoading;
 
   const insights = [
+    handoffs > 0 && {
+      icon: UserRound,
+      type: "Human handoff",
+      title: `${handoffs} conversation${handoffs > 1 ? "s" : ""} need your team`,
+      body: "Growvisi flagged these after classification. Meta Business Agent may still reply in WhatsApp — your team should follow up for complex deals.",
+      action: { label: "View conversations", href: "/dashboard/inbox" },
+      color: "text-warning bg-warning/10",
+    },
     unread > 0 && {
       icon: AlertCircle,
       type: "Action needed",
@@ -63,9 +74,9 @@ export default function InsightsPage() {
     },
     stalled > 0 && {
       icon: TrendingUp,
-      type: "Pipeline",
+      type: "Pipeline insight",
       title: `${stalled} deal${stalled > 1 ? "s" : ""} in negotiation`,
-      body: "Follow up on stalled negotiations to move deals to Won.",
+      body: "Review classified threads and move deals forward on the pipeline.",
       action: { label: "View Pipeline", href: "/dashboard/pipeline" },
       color: "text-primary bg-primary-soft",
     },
@@ -81,7 +92,7 @@ export default function InsightsPage() {
       icon: Lightbulb,
       type: "Getting started",
       title: "No leads tracked yet",
-      body: "Leads appear automatically when customers message your WhatsApp number.",
+      body: "Leads are created when customer messages are ingested and classified — enable Meta Business Agent in WhatsApp for replies.",
       action: { label: "Connect WhatsApp", href: "/dashboard/settings" },
       color: "text-muted-foreground bg-muted",
     },
@@ -98,7 +109,7 @@ export default function InsightsPage() {
     <div className="p-6 md:p-8">
       <PageHeader
         title="Insights"
-        description="Actionable recommendations based on your WhatsApp sales data"
+        description="Actionable recommendations from classified WhatsApp conversations"
       />
 
       {isError && !loading && (

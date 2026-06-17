@@ -58,10 +58,15 @@ Submit from [App Review](https://developers.facebook.com/apps/1694805491426991/a
 **Reviewer notes (example):**
 
 ```text
-Growvisi (https://www.growvisi.in) is a WhatsApp CRM.
+Growvisi (https://www.growvisi.in) is WhatsApp conversation intelligence — not a chatbot.
+We ingest customer messages via Cloud API, classify intent, and track pipeline outcomes.
+Meta Business Agent handles automated replies inside WhatsApp.
+
 Login: [test email] / [test password]
-Settings → Connect WhatsApp → Continue with Facebook
+Settings → Connect via Meta Developer (or pre-connected test WABA)
+Send inbound WhatsApp → Conversations → Pipeline → lead timeline → Analytics
 Webhook: https://api.growvisi.in/api/v1/webhooks/whatsapp
+See docs/META-POLICY-ALIGNMENT.md
 ```
 
 ---

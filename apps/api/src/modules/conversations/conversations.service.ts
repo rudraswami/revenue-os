@@ -15,24 +15,49 @@ export class ConversationsService {
   ) {}
 
   getCapabilities() {
+    const aiOn = !!this.config.get<string>("OPENAI_API_KEY");
     return {
-      aiSuggestReply: !!this.config.get<string>("OPENAI_API_KEY"),
+      /** Primary: classify inbound threads for pipeline & insights */
+      aiClassification: aiOn,
+      /** Optional: human takeover reply draft in dashboard */
+      aiSuggestReply: aiOn,
+      /** We ingest via webhooks; outbound send is optional human takeover only */
+      primaryUseCase: "conversation_intelligence" as const,
     };
   }
 
   async getStats(user: JwtPayload) {
-    const [totalConversations, unreadAgg, inboundMessages] = await Promise.all([
-      this.prisma.conversation.count({
-        where: { organizationId: user.organizationId },
-      }),
+    const orgId = user.organizationId;
+    const [
+      totalConversations,
+      unreadAgg,
+      inboundMessages,
+      outboundMessages,
+      classifiedLeads,
+      aiClassifications,
+      handoffConversations,
+    ] = await Promise.all([
+      this.prisma.conversation.count({ where: { organizationId: orgId } }),
       this.prisma.conversation.aggregate({
-        where: { organizationId: user.organizationId },
+        where: { organizationId: orgId },
         _sum: { unreadCount: true },
       }),
       this.prisma.message.count({
+        where: { direction: "INBOUND", conversation: { organizationId: orgId } },
+      }),
+      this.prisma.message.count({
+        where: { direction: "OUTBOUND", conversation: { organizationId: orgId } },
+      }),
+      this.prisma.lead.count({
+        where: { organizationId: orgId, lastClassifiedAt: { not: null } },
+      }),
+      this.prisma.aiRun.count({
+        where: { organizationId: orgId, type: "classify", status: "COMPLETED" },
+      }),
+      this.prisma.conversation.count({
         where: {
-          direction: "INBOUND",
-          conversation: { organizationId: user.organizationId },
+          organizationId: orgId,
+          metadata: { path: ["requiresHuman"], equals: true },
         },
       }),
     ]);
@@ -41,6 +66,10 @@ export class ConversationsService {
       totalConversations,
       unreadMessages: unreadAgg._sum.unreadCount ?? 0,
       inboundMessages,
+      outboundMessages,
+      classifiedLeads,
+      aiClassifications,
+      humanHandoffRecommended: handoffConversations,
     };
   }
 
