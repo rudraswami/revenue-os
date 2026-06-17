@@ -9,6 +9,7 @@ import type { JwtPayload } from "@growvisi/shared";
 import { GROWVISI_API_URL } from "@growvisi/shared";
 import { decryptSecret, encryptSecret } from "../../common/crypto/token-cipher";
 import { PrismaService } from "../prisma/prisma.service";
+import type { WhatsappWebhookPayload } from "../whatsapp/whatsapp.service";
 import { ConnectWhatsappDto, CreateWhatsappAccountDto, UpdateWhatsappAccountDto } from "./dto/whatsapp-account.dto";
 
 export interface WhatsappAccountSafe {
@@ -261,6 +262,135 @@ export class WhatsappAccountsService {
     return {
       ok: true,
       message: "Your WhatsApp number is connected.",
+    };
+  }
+
+  /** Debug why inbound messages may not appear in Conversations. */
+  async getConnectionHealth(user: JwtPayload) {
+    const technical = this.getTechnicalSetup();
+    const accounts = await this.prisma.whatsappAccount.findMany({
+      where: { organizationId: user.organizationId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const [conversationCount, inboundCount, recentWebhooks] = await Promise.all([
+      this.prisma.conversation.count({ where: { organizationId: user.organizationId } }),
+      this.prisma.message.count({
+        where: { organizationId: user.organizationId, direction: "INBOUND" },
+      }),
+      this.prisma.webhookEvent.findMany({
+        where: {
+          source: "whatsapp",
+          createdAt: { gte: new Date(Date.now() - 48 * 60 * 60 * 1000) },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 15,
+        select: {
+          id: true,
+          processedAt: true,
+          error: true,
+          createdAt: true,
+          payload: true,
+        },
+      }),
+    ]);
+
+    const phoneIds = new Set(accounts.map((a) => a.phoneNumberId));
+    const wabaIds = new Set(accounts.map((a) => a.wabaId));
+
+    const webhookSummary = recentWebhooks.map((w) => {
+      const payload = w.payload as unknown as WhatsappWebhookPayload;
+      const phoneNumberId =
+        payload.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id ?? null;
+      const wabaId = payload.entry?.[0]?.id ?? null;
+      const messageCount =
+        payload.entry?.[0]?.changes?.[0]?.value?.messages?.length ?? 0;
+      const matchesOrg =
+        (phoneNumberId && phoneIds.has(phoneNumberId)) ||
+        (wabaId && wabaIds.has(wabaId));
+
+      return {
+        id: w.id,
+        at: w.createdAt,
+        processed: !!w.processedAt,
+        error: w.error,
+        phoneNumberId,
+        wabaId,
+        inboundInPayload: messageCount,
+        matchesYourAccount: matchesOrg,
+      };
+    });
+
+    const webhooksForYou = webhookSummary.filter((w) => w.matchesYourAccount);
+    const secretConfigured = !!(
+      this.config.get<string>("WHATSAPP_APP_SECRET")?.trim() ||
+      this.config.get<string>("META_APP_SECRET")?.trim()
+    );
+
+    const checks = [
+      {
+        id: "account",
+        ok: accounts.some((a) => a.isActive),
+        detail: accounts.some((a) => a.isActive)
+          ? `Active number: ${accounts.find((a) => a.isActive)?.displayPhoneNumber}`
+          : "No active WhatsApp account in Growvisi",
+      },
+      {
+        id: "webhook_url",
+        ok: technical.webhookUrl.includes("growvisi.in"),
+        detail: `Webhook URL: ${technical.webhookUrl}`,
+      },
+      {
+        id: "verify_token",
+        ok: !!technical.verifyToken,
+        detail: technical.verifyToken
+          ? "WHATSAPP_VERIFY_TOKEN is set on API"
+          : "WHATSAPP_VERIFY_TOKEN missing on API",
+      },
+      {
+        id: "app_secret",
+        ok: secretConfigured,
+        detail: secretConfigured
+          ? "WHATSAPP_APP_SECRET / META_APP_SECRET set (required for Meta POST webhooks)"
+          : "App secret missing — Meta webhook POSTs will fail signature check",
+      },
+      {
+        id: "messages_ingested",
+        ok: inboundCount > 0,
+        detail:
+          inboundCount > 0
+            ? `${inboundCount} inbound message(s) in database`
+            : "No inbound messages stored yet",
+      },
+      {
+        id: "meta_webhooks",
+        ok: webhooksForYou.some((w) => w.processed && w.inboundInPayload > 0),
+        detail:
+          webhooksForYou.length === 0
+            ? "No Meta webhooks received for your phone/WABA in last 48h — check Meta Configuration + test recipient"
+            : `${webhooksForYou.length} webhook(s) matched your account (48h)`,
+      },
+    ];
+
+    return {
+      checks,
+      accounts: accounts.map((a) => ({
+        id: a.id,
+        phoneNumberId: a.phoneNumberId,
+        wabaId: a.wabaId,
+        displayPhoneNumber: a.displayPhoneNumber,
+        isActive: a.isActive,
+      })),
+      stats: { conversationCount, inboundCount },
+      recentWebhooks: webhookSummary.slice(0, 8),
+      metaSetup: {
+        webhookUrl: technical.webhookUrl,
+        verifyTokenHint: technical.verifyToken
+          ? `${technical.verifyToken.slice(0, 4)}…`
+          : "",
+        testTip:
+          "Send FROM your personal phone TO the business number shown in Settings — not from the test number. Add your phone under Meta → API Setup → test recipients.",
+      },
     };
   }
 

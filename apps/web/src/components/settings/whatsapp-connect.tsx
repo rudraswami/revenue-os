@@ -19,6 +19,7 @@ import { getEmbeddedSignupDiagnostics, runEmbeddedSignup } from "@/lib/facebook-
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappManualConnect } from "@/components/settings/whatsapp-manual-connect";
+import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 
 interface WhatsappAccount {
   id: string;
@@ -359,6 +360,8 @@ export default function WhatsappConnect() {
       )}
 
       {embeddedLive && <WhatsappManualConnect variant="secondary" />}
+
+      <WhatsappConnectionHealth />
 
       {diagnostics && (
         <details className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">

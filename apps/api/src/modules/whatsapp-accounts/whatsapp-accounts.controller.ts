@@ -57,6 +57,11 @@ export class WhatsappAccountsController {
     return this.accounts.list(user);
   }
 
+  @Get("connection-health")
+  connectionHealth(@CurrentUser() user: JwtPayload) {
+    return this.accounts.getConnectionHealth(user);
+  }
+
   @Get("technical")
   getTechnical() {
     return this.accounts.getTechnicalSetup();

@@ -41,7 +41,9 @@ export class WhatsappWebhookController {
   ) {
     const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(body));
     if (!this.whatsapp.verifySignature(rawBody, signature)) {
-      throw new ForbiddenException("Invalid signature");
+      throw new ForbiddenException(
+        "Invalid signature — check WHATSAPP_APP_SECRET matches Meta App Secret",
+      );
     }
     return this.whatsapp.ingestWebhook(body);
   }

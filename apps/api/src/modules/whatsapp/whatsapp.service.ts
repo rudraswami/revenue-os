@@ -32,6 +32,7 @@ export interface InboundMessageEvent {
 }
 
 import { AiClassifyService } from "../ai/ai-classify.service";
+import { RealtimeGateway } from "../realtime/realtime.gateway";
 
 @Injectable()
 export class WhatsappService {
@@ -42,10 +43,13 @@ export class WhatsappService {
     private readonly config: ConfigService,
     @InjectQueue(QUEUES.WHATSAPP_INBOUND) private readonly inboundQueue: Queue,
     private readonly aiClassify: AiClassifyService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   verifySignature(rawBody: Buffer, signature: string | undefined): boolean {
-    const secret = this.config.get<string>("WHATSAPP_APP_SECRET");
+    const secret =
+      this.config.get<string>("WHATSAPP_APP_SECRET")?.trim() ||
+      this.config.get<string>("META_APP_SECRET")?.trim();
     if (!secret) {
       this.logger.warn("WHATSAPP_APP_SECRET not set — skipping signature verification in dev");
       return true;
@@ -77,13 +81,29 @@ export class WhatsappService {
         const events = await this.processInboundPayload(payload);
         await this.prisma.webhookEvent.update({
           where: { id: event.id },
-          data: { processedAt: new Date() },
+          data: {
+            processedAt: new Date(),
+            organizationId: events[0]?.organizationId ?? undefined,
+          },
         });
+        const orgIds = new Set<string>();
         for (const inbound of events) {
+          orgIds.add(inbound.organizationId);
+          this.realtime.emitMessageNew(inbound.organizationId, {
+            conversationId: inbound.conversationId,
+          });
           await this.aiClassify.enqueue(inbound);
         }
+        for (const orgId of orgIds) {
+          this.realtime.emitInboxUpdated(orgId);
+        }
       } catch (err) {
-        this.logger.error(`Inline webhook processing failed: ${String(err)}`);
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Inline webhook processing failed: ${message}`);
+        await this.prisma.webhookEvent.update({
+          where: { id: event.id },
+          data: { error: message },
+        });
       }
       return { received: true, eventId: event.id };
     }
@@ -111,11 +131,26 @@ export class WhatsappService {
         const phoneNumberId = change.value.metadata?.phone_number_id;
         if (!phoneNumberId) continue;
 
-        const account = await this.prisma.whatsappAccount.findFirst({
+        let account = await this.prisma.whatsappAccount.findFirst({
           where: { phoneNumberId, isActive: true },
         });
+        if (!account && entry.id) {
+          account = await this.prisma.whatsappAccount.findFirst({
+            where: { wabaId: entry.id, isActive: true },
+          });
+          if (account && account.phoneNumberId !== phoneNumberId) {
+            this.logger.warn(
+              `Matched WABA ${entry.id} but webhook phone_number_id=${phoneNumberId} differs from stored ${account.phoneNumberId} — updating`,
+            );
+            await this.prisma.whatsappAccount.update({
+              where: { id: account.id },
+              data: { phoneNumberId },
+            });
+            account = { ...account, phoneNumberId };
+          }
+        }
         if (!account) {
-          this.logger.warn(`No WhatsApp account for phone_number_id=${phoneNumberId}`);
+          this.logger.warn(`No WhatsApp account for phone_number_id=${phoneNumberId} waba=${entry.id}`);
           continue;
         }
 

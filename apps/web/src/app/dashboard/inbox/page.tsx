@@ -84,7 +84,7 @@ export default function InboxPage() {
         token: token ?? undefined,
       }),
     enabled: !!token,
-    refetchInterval: live ? false : 15_000,
+    refetchInterval: live ? 5_000 : 8_000,
   });
 
   const { data: whatsappAccounts } = useQuery({
@@ -197,9 +197,14 @@ export default function InboxPage() {
         <div className="border-b border-border bg-muted/30 p-4">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold">Conversations</h1>
+            {hasWhatsapp && (
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                WhatsApp linked
+              </span>
+            )}
             {live && (
               <span className="rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-medium text-success">
-                Live
+                Realtime
               </span>
             )}
           </div>
@@ -231,7 +236,7 @@ export default function InboxPage() {
               compact
               icon={<Inbox className="h-6 w-6" />}
               title="No messages yet"
-              description="Send a test WhatsApp to your business number. Growvisi ingests it for classification and pipeline tracking."
+              description="Send a WhatsApp from your personal phone to your business number (not from the Meta test number). Add your phone under Meta → API Setup → test recipients, then open Settings → Message ingestion diagnostics."
               actionHref="/dashboard/settings"
               actionLabel="WhatsApp settings"
             />
