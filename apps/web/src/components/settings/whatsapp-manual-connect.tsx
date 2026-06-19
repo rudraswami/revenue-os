@@ -141,10 +141,10 @@ export function WhatsappManualConnect({
               <p className="text-xs font-semibold uppercase tracking-wide text-[#128C7E]">
                 Recommended
               </p>
-              <h3 className="text-lg font-semibold">Connect via Meta Developer</h3>
+              <h3 className="text-lg font-semibold">Connect your existing number</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Paste credentials from Meta → WhatsApp → API Setup. Works while one-click Facebook
-                signup is pending approval.
+                Paste credentials from Meta → WhatsApp → API Setup for the business line you
+                already use on WhatsApp.
               </p>
             </div>
           </div>

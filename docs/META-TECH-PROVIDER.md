@@ -62,7 +62,7 @@ Growvisi (https://www.growvisi.in) is WhatsApp conversation intelligence — not
 We ingest customer messages via Cloud API, classify intent, and track pipeline outcomes.
 Meta Business Agent handles automated replies inside WhatsApp.
 
-Login: meta.reviewer@growvisi.in / [set password before submit — see docs/META-APP-REVIEW-SCREENCAST.md]
+Login: meta.reviewer@growvisi.in / MetaReview2026!Growvisi
 Settings → Connect via Meta Developer (pre-connect test WABA before review)
 Inbound WhatsApp → Conversations → Intelligence → Pipeline
 Webhook: https://api.growvisi.in/api/v1/webhooks/whatsapp

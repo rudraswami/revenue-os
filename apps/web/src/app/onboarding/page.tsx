@@ -75,15 +75,15 @@ export default function OnboardingPage() {
     },
     {
       id: "whatsapp",
-      title: "Connect WhatsApp Business",
+      title: "Connect your existing WhatsApp number",
       done: whatsappConnected,
-      description: "Optional — link the number your customers message today.",
+      description: "Link the business line your customers already message — not a new number.",
     },
     {
       id: "inbox",
-      title: "Receive your first message",
+      title: "Receive your first customer message",
       done: firstMessageReceived,
-      description: "Send a test WhatsApp after connecting your number.",
+      description: "From your phone, send WhatsApp to your business number to verify ingestion.",
     },
   ];
 
@@ -183,7 +183,8 @@ export default function OnboardingPage() {
             <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
             <h2 className="mt-4 text-xl font-semibold">WhatsApp is connected!</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Send a WhatsApp to your business number — it will appear in Inbox instantly.
+              From your personal phone, send a WhatsApp <strong>to</strong> your business number —
+              it will appear in Conversations within seconds.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button asChild>

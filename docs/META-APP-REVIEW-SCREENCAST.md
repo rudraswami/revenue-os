@@ -37,10 +37,10 @@ Create a **dedicated** account — do not use your personal login.
 
 | Field | Value |
 |-------|--------|
-| URL | `https://www.growvisi.in/register` |
+| URL | `https://www.growvisi.in/login` |
 | Email | `meta.reviewer@growvisi.in` |
-| Password | *(strong, store in password manager)* |
-| Workspace | `Meta Review Demo` |
+| Password | `MetaReview2026!Growvisi` |
+| Workspace | `Meta Review Demo` (slug: `meta-review-demo`) |
 
 **Before recording:**
 
@@ -54,7 +54,7 @@ Paste into App Review **notes**:
 Growvisi — WhatsApp conversation intelligence (https://www.growvisi.in)
 We ingest messages via webhooks, classify leads, track pipeline. Meta Business Agent handles in-chat replies.
 
-Login: meta.reviewer@growvisi.in / [PASSWORD]
+Login: meta.reviewer@growvisi.in / MetaReview2026!Growvisi
 Webhook: https://api.growvisi.in/api/v1/webhooks/whatsapp
 Data deletion: https://www.growvisi.in/data-deletion
 Privacy: https://www.growvisi.in/privacy

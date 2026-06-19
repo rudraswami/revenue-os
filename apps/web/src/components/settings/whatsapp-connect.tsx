@@ -19,6 +19,7 @@ import { getEmbeddedSignupDiagnostics, runEmbeddedSignup } from "@/lib/facebook-
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappManualConnect } from "@/components/settings/whatsapp-manual-connect";
+import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 
 interface WhatsappAccount {
@@ -223,6 +224,8 @@ export default function WhatsappConnect() {
         >
           Disconnect number
         </Button>
+
+        <WhatsappConnectionHealth />
       </div>
     );
   }
@@ -247,8 +250,9 @@ export default function WhatsappConnect() {
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-muted/30 px-5 py-4">
         <p className="text-sm text-muted-foreground">
-          Connect the WhatsApp Business number your customers message. Growvisi ingests conversations
-          for classification and pipeline tracking — Meta Business Agent handles in-chat replies.
+          Connect the <strong className="text-foreground">WhatsApp Business number you already use</strong>{" "}
+          — the line your customers message. Growvisi ingests conversations for classification and
+          pipeline tracking. Meta Business Agent handles in-chat replies.
         </p>
       </div>
 
@@ -324,7 +328,16 @@ export default function WhatsappConnect() {
         </div>
       ) : (
         <>
-          <WhatsappManualConnect variant="primary" defaultOpen />
+          <WhatsappConnectWizard />
+
+          <details className="rounded-xl border border-border bg-muted/20">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-medium text-muted-foreground">
+              Quick connect (compact form)
+            </summary>
+            <div className="border-t border-border p-4">
+              <WhatsappManualConnect variant="primary" defaultOpen />
+            </div>
+          </details>
 
           <div className="overflow-hidden rounded-2xl border border-dashed border-border bg-muted/20 opacity-90">
             <div className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
