@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ScrollReveal } from "./scroll-reveal";
 import {
   Building2,
   Car,
@@ -12,38 +11,41 @@ import {
 } from "lucide-react";
 
 const industries = [
-  { icon: Building2, title: "Real Estate", desc: "Track property enquiries from first message to site visit." },
-  { icon: GraduationCap, title: "Education", desc: "Manage admissions and follow up every applicant." },
-  { icon: HeartPulse, title: "Healthcare", desc: "Handle appointment requests without losing patients." },
-  { icon: Car, title: "Automotive", desc: "Manage test drives, quotes, and financing questions." },
-  { icon: Paintbrush, title: "Interior Design", desc: "Track quotations through to signed projects." },
-  { icon: ShoppingBag, title: "D2C", desc: "Manage pre-sales and support before and after purchase." },
+  { icon: Building2, title: "Real Estate" },
+  { icon: GraduationCap, title: "Education" },
+  { icon: HeartPulse, title: "Healthcare" },
+  { icon: Car, title: "Automotive" },
+  { icon: Paintbrush, title: "Interior Design" },
+  { icon: ShoppingBag, title: "D2C" },
 ];
 
 export function IndustryUseCases() {
   return (
-    <section id="industries" className="scroll-mt-20 border-b border-border bg-[#f8f9ff] py-20 md:py-28">
+    <section
+      id="industries"
+      className="scroll-mt-20 border-y border-border bg-gradient-to-r from-[#0b1c30] via-[#132a45] to-[#0b1c30] py-16 md:py-20"
+    >
       <div className="mx-auto max-w-[1280px] px-6 lg:px-8">
-        <ScrollReveal className="text-center">
-          <h2 className="display-lg text-foreground">Built For Revenue Teams</h2>
-        </ScrollReveal>
-
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <p className="text-center text-sm font-semibold uppercase tracking-widest text-[#6cf8bb]">
+          Built for revenue teams
+        </p>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-12 gap-y-8">
           {industries.map((item, i) => {
             const Icon = item.icon;
             return (
               <motion.div
                 key={item.title}
-                className="elev-1 rounded-2xl bg-white p-6"
+                className="flex flex-col items-center gap-3 text-white/90"
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                whileHover={{ y: -3 }}
+                transition={{ delay: i * 0.06 }}
+                whileHover={{ scale: 1.05, color: "#fff" }}
               >
-                <Icon className="h-6 w-6 text-accent" strokeWidth={1.75} />
-                <h3 className="mt-4 text-lg font-bold">{item.title}</h3>
-                <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">{item.desc}</p>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+                  <Icon className="h-6 w-6 text-[#6cf8bb]" strokeWidth={1.75} />
+                </div>
+                <span className="text-sm font-semibold">{item.title}</span>
               </motion.div>
             );
           })}

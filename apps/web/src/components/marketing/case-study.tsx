@@ -1,82 +1,84 @@
-import { ScrollReveal } from "./scroll-reveal";
+"use client";
 
-const before = [
-  "Leads scattered on personal phones",
-  "No shared pipeline",
-  "Follow-ups missed daily",
-];
+import { motion } from "framer-motion";
 
-const after = [
-  "Shared team inbox on one number",
-  "AI qualification on every thread",
-  "Pipeline visibility for the whole team",
-];
+const before = ["Leads on personal phones", "No pipeline", "Follow-ups missed"];
+const after = ["Shared inbox", "AI qualification", "Pipeline visibility"];
 
 const stats = [
-  { value: "35%", label: "Faster Response" },
-  { value: "22%", label: "Higher Conversion" },
-  { value: "90%", label: "Fewer Missed Follow-Ups" },
-  { value: "40%", label: "More Productivity" },
+  { value: "35%", label: "Faster response" },
+  { value: "22%", label: "Higher conversion" },
+  { value: "90%", label: "Fewer missed follow-ups" },
+  { value: "40%", label: "Team productivity" },
 ];
 
 export function CaseStudy() {
   return (
-    <section id="case-study" className="scroll-mt-20 border-b border-border bg-white py-20 md:py-28">
-      <div className="mx-auto max-w-[1280px] px-6 lg:px-8">
-        <ScrollReveal className="text-center">
-          <h2 className="display-lg text-foreground">GreenSpace Properties</h2>
-          <p className="body-lg mx-auto mt-3 max-w-[520px]">
-            How a real estate team turned WhatsApp enquiries into a predictable revenue pipeline.
-          </p>
-        </ScrollReveal>
+    <section id="case-study" className="scroll-mt-20 relative overflow-hidden py-24 md:py-32">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_left,rgb(0_108_73/0.08),transparent_55%)]" />
 
-        <div className="mt-14 grid gap-8 lg:grid-cols-2">
-          <ScrollReveal>
-            <div className="elev-1 h-full rounded-2xl bg-white p-8">
-              <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Before Growvisi
-              </p>
-              <ul className="mt-6 space-y-3">
-                {before.map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-[14px] text-muted-foreground">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </ScrollReveal>
+      <div className="relative mx-auto max-w-[1280px] px-6 lg:px-8">
+        <motion.div
+          className="text-center"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <p className="section-label">Case study</p>
+          <h2 className="display-lg mt-2">GreenSpace Properties</h2>
+        </motion.div>
 
-          <ScrollReveal delay={0.08}>
-            <div className="elev-1 h-full rounded-2xl border border-accent/20 bg-[#ecfdf5]/30 p-8">
-              <p className="text-[12px] font-semibold uppercase tracking-wider text-accent">
-                After Growvisi
-              </p>
-              <ul className="mt-6 space-y-3">
-                {after.map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-[14px] font-medium">
-                    <span className="mt-0.5 text-accent">✓</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </ScrollReveal>
+        <div className="mt-16 grid gap-12 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+          >
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Before</p>
+            <ul className="mt-6 space-y-4">
+              {before.map((item) => (
+                <li key={item} className="flex items-center gap-3 text-[16px] text-muted-foreground">
+                  <span className="h-2 w-2 rounded-full bg-red-400" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          <div className="hidden h-32 w-px bg-border lg:block" aria-hidden />
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+          >
+            <p className="text-xs font-bold uppercase tracking-widest text-accent">After Growvisi</p>
+            <ul className="mt-6 space-y-4">
+              {after.map((item) => (
+                <li key={item} className="flex items-center gap-3 text-[16px] font-medium">
+                  <span className="h-2 w-2 rounded-full bg-accent" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
         </div>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-20 grid grid-cols-2 gap-8 border-t border-border pt-16 lg:grid-cols-4">
           {stats.map((s, i) => (
-            <ScrollReveal key={s.label} delay={i * 0.05}>
-              <div className="elev-1 rounded-2xl bg-white p-6 text-center">
-                <p className="text-3xl font-bold text-accent">{s.value}</p>
-                <p className="mt-2 text-[14px] font-medium text-muted-foreground">{s.label}</p>
-              </div>
-            </ScrollReveal>
+            <motion.div
+              key={s.label}
+              className="text-center"
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08 }}
+            >
+              <p className="text-4xl font-bold tracking-tight text-accent md:text-5xl">{s.value}</p>
+              <p className="mt-2 text-sm font-medium text-muted-foreground">{s.label}</p>
+            </motion.div>
           ))}
         </div>
-        <p className="mt-6 text-center text-[12px] text-muted-foreground">
-          Representative outcomes from early pilot teams.
-        </p>
       </div>
     </section>
   );

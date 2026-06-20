@@ -2,7 +2,7 @@ import { MarketingHeader } from "@/components/marketing/header";
 import { Hero } from "@/components/marketing/hero";
 import { ProblemSection } from "@/components/marketing/problem-section";
 import { RevenueEngine } from "@/components/marketing/revenue-engine";
-import { FeatureShowcase } from "@/components/marketing/feature-showcase";
+import { ProductStory } from "@/components/marketing/product-story";
 import { CompetitorComparison } from "@/components/marketing/competitor-comparison";
 import { IndustryUseCases } from "@/components/marketing/industry-use-cases";
 import { CaseStudy } from "@/components/marketing/case-study";
@@ -19,7 +19,7 @@ export default function HomePage() {
         <Hero />
         <ProblemSection />
         <RevenueEngine />
-        <FeatureShowcase />
+        <ProductStory />
         <CompetitorComparison />
         <IndustryUseCases />
         <CaseStudy />
