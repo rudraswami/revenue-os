@@ -1,14 +1,10 @@
 # Shared ignores for Vercel Git/CLI deploys (monorepo root)
-# Do NOT list apps/api here — API project needs workspace packages.
 node_modules
 **/node_modules/**
 **/.git/**
 .turbo
 **/.turbo/**
-**/.next/**
 **/.next/cache/**
-apps/web
-docs
 *.log
 .env*
 **/.env.check
