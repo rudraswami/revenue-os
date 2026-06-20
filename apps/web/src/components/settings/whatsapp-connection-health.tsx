@@ -22,6 +22,15 @@ export function WhatsappConnectionHealth() {
           isActive: boolean;
         }>;
         stats: { conversationCount: number; inboundCount: number };
+        tokenHealth?: {
+          valid: boolean;
+          level?: "ok" | "soon" | "urgent";
+          needsRefresh: boolean;
+          needsAttention?: boolean;
+          hoursRemaining: number | null;
+          expiresAt: string | null;
+          hint?: string;
+        };
         metaSetup: { webhookUrl: string; testTip: string };
         recentWebhooks: Array<{
           at: string;
@@ -85,7 +94,45 @@ export function WhatsappConnectionHealth() {
             <span className="text-muted-foreground">Inbound messages</span>
             <p className="font-semibold">{data.stats.inboundCount}</p>
           </div>
+          {data.tokenHealth && (
+            <div
+              className={cn(
+                "rounded-lg px-3 py-2 text-xs",
+                data.tokenHealth.level === "urgent" || data.tokenHealth.needsRefresh
+                  ? "bg-amber-50 text-amber-950"
+                  : data.tokenHealth.level === "soon"
+                    ? "bg-blue-50 text-primary"
+                    : "bg-success/10 text-success",
+              )}
+            >
+              <span className="text-muted-foreground">Meta token</span>
+              <p className="font-semibold">
+                {!data.tokenHealth.valid || data.tokenHealth.needsRefresh
+                  ? "Needs refresh"
+                  : data.tokenHealth.level === "soon"
+                    ? data.tokenHealth.hoursRemaining != null
+                      ? `~${Math.ceil(data.tokenHealth.hoursRemaining)}h left`
+                      : "Expiring soon"
+                    : data.tokenHealth.hoursRemaining != null
+                      ? `~${Math.ceil(data.tokenHealth.hoursRemaining)}h left`
+                      : "Valid"}
+              </p>
+            </div>
+          )}
         </div>
+
+        {data.tokenHealth?.needsAttention && data.tokenHealth.hint && (
+          <p
+            className={cn(
+              "rounded-lg border px-3 py-2 text-xs",
+              data.tokenHealth.level === "urgent" || data.tokenHealth.needsRefresh
+                ? "border-amber-200/80 bg-amber-50/80 text-amber-950"
+                : "border-blue-200/60 bg-blue-50/80 text-foreground",
+            )}
+          >
+            {data.tokenHealth.hint}
+          </p>
+        )}
 
         <ul className="space-y-2">
           {data.checks.map((c) => (

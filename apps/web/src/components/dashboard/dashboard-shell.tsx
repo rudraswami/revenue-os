@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { WhatsappSetupBanner } from "@/components/dashboard/whatsapp-setup-banner";
+import { WhatsappTokenExpiryBanner } from "@/components/dashboard/whatsapp-token-expiry-banner";
 import { Sidebar } from "./sidebar";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         <main className={cn("flex-1 overflow-auto")}>
           <WhatsappSetupBanner />
+          <WhatsappTokenExpiryBanner />
           {children}
         </main>
       </div>

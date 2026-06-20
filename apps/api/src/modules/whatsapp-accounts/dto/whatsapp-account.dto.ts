@@ -20,11 +20,31 @@ export class ConnectWhatsappDto {
   wabaId?: string;
 }
 
+export class QuickConnectWhatsappDto {
+  @IsString()
+  @IsNotEmpty()
+  accessToken!: string;
+
+  @IsString()
+  @IsOptional()
+  phoneNumberId?: string;
+
+  @IsString()
+  @IsOptional()
+  wabaId?: string;
+}
+
 export class VerifyWhatsappCredentialsDto {
   @IsString()
   @IsNotEmpty()
   phoneNumberId!: string;
 
+  @IsString()
+  @IsNotEmpty()
+  accessToken!: string;
+}
+
+export class RefreshWhatsappTokenDto {
   @IsString()
   @IsNotEmpty()
   accessToken!: string;

@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { WhatsappManualConnect } from "@/components/settings/whatsapp-manual-connect";
 import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
+import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
+import { WhatsappTokenRefresh } from "@/components/settings/whatsapp-token-refresh";
 
 interface WhatsappAccount {
   id: string;
@@ -84,6 +86,33 @@ export default function WhatsappConnect() {
       }>("/whatsapp-accounts/embedded-signup/diagnose", { token: token ?? undefined }),
     enabled: !!token && !!config?.enabled,
     staleTime: 60_000,
+  });
+
+  const { data: readiness } = useQuery({
+    queryKey: ["whatsapp-onboarding-readiness"],
+    queryFn: () =>
+      apiFetch<{ metaApiSetupUrl: string }>("/whatsapp-accounts/onboarding-readiness", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+    staleTime: 60_000,
+  });
+
+  const { data: connectionHealth } = useQuery({
+    queryKey: ["whatsapp-connection-health"],
+    queryFn: () =>
+      apiFetch<{
+        tokenHealth?: {
+          valid: boolean;
+          level?: "ok" | "soon" | "urgent";
+          needsRefresh: boolean;
+          needsAttention?: boolean;
+          hoursRemaining: number | null;
+          expiresAt: string | null;
+        };
+      }>("/whatsapp-accounts/connection-health", { token: token ?? undefined }),
+    enabled: !!token && (accounts?.some((a) => a.isActive) ?? false),
+    staleTime: 30_000,
   });
 
   const completeMutation = useMutation({
@@ -201,19 +230,25 @@ export default function WhatsappConnect() {
             <div className="mt-6 rounded-xl border border-border/60 bg-muted/30 p-4">
               <p className="text-sm font-semibold">Verify ingestion</p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Send a WhatsApp from your phone to{" "}
-                <strong className="text-foreground">{displayAccount.displayPhoneNumber}</strong>.
-                It will be classified and appear under Conversations and Pipeline.
+                Send a WhatsApp from your personal phone to your business number — we detect it
+                automatically.
               </p>
-              <Button asChild className="mt-4 gap-1.5" size="sm">
-                <Link href="/dashboard/inbox">
-                  View conversations
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+              <div className="mt-4">
+                <WhatsappIngestionVerifier displayPhoneNumber={displayAccount.displayPhoneNumber} />
+              </div>
             </div>
           </div>
         </div>
+
+        <WhatsappTokenRefresh
+          accountId={displayAccount.id}
+          metaApiSetupUrl={readiness?.metaApiSetupUrl ?? "https://developers.facebook.com/apps/"}
+          level={connectionHealth?.tokenHealth?.level}
+          needsRefresh={connectionHealth?.tokenHealth?.needsRefresh}
+          needsAttention={connectionHealth?.tokenHealth?.needsAttention}
+          hoursRemaining={connectionHealth?.tokenHealth?.hoursRemaining}
+          expiresAt={connectionHealth?.tokenHealth?.expiresAt}
+        />
 
         <Button
           variant="outline"
@@ -335,8 +370,8 @@ export default function WhatsappConnect() {
           <WhatsappConnectWizard />
 
           <details className="overflow-hidden rounded-xl border border-border/80 bg-white shadow-sm">
-            <summary className="cursor-pointer px-5 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/30">
-              Quick connect (compact form)
+            <summary className="cursor-pointer px-5 py-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/30">
+              Compact form (same auto-connect)
             </summary>
             <div className="border-t border-border p-4">
               <WhatsappManualConnect variant="primary" defaultOpen />

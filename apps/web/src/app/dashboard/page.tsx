@@ -199,7 +199,7 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     <p>Connect WhatsApp to start tracking conversations</p>
-                    <Link href="/dashboard/settings" className="font-medium text-primary hover:underline">
+                    <Link href="/onboarding" className="font-medium text-primary hover:underline">
                       Connect WhatsApp
                     </Link>
                   </>

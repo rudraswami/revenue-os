@@ -18,6 +18,8 @@ import {
   ConnectWhatsappDto,
   CreateWhatsappAccountDto,
   DiscoverPhonesDto,
+  QuickConnectWhatsappDto,
+  RefreshWhatsappTokenDto,
   UpdateWhatsappAccountDto,
   VerifyWhatsappCredentialsDto,
 } from "./dto/whatsapp-account.dto";
@@ -62,6 +64,11 @@ export class WhatsappAccountsController {
     return this.accounts.getConnectionHealth(user);
   }
 
+  @Get("onboarding-readiness")
+  onboardingReadiness() {
+    return this.accounts.getOnboardingReadiness();
+  }
+
   @Get("technical")
   getTechnical() {
     return this.accounts.getTechnicalSetup();
@@ -79,6 +86,13 @@ export class WhatsappAccountsController {
   @Roles("OWNER", "ADMIN", "MANAGER")
   connect(@CurrentUser() user: JwtPayload, @Body() dto: ConnectWhatsappDto) {
     return this.accounts.connect(user, dto);
+  }
+
+  @Post("quick-connect")
+  @UseGuards(MembershipRoleGuard)
+  @Roles("OWNER", "ADMIN", "MANAGER")
+  quickConnect(@CurrentUser() user: JwtPayload, @Body() dto: QuickConnectWhatsappDto) {
+    return this.accounts.quickConnect(user, dto);
   }
 
   @Post("verify-credentials")
@@ -104,6 +118,17 @@ export class WhatsappAccountsController {
     @Body() dto: UpdateWhatsappAccountDto,
   ) {
     return this.accounts.update(user, id, dto);
+  }
+
+  @Post(":id/refresh-token")
+  @UseGuards(MembershipRoleGuard)
+  @Roles("OWNER", "ADMIN", "MANAGER")
+  refreshToken(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: RefreshWhatsappTokenDto,
+  ) {
+    return this.accounts.refreshAccessToken(user, id, dto.accessToken);
   }
 
   @Post(":id/verify")

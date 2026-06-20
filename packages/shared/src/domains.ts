@@ -15,3 +15,7 @@ export const GROWVISI_EMAIL_SUPPORT = "support@growvisi.in";
 export const GROWVISI_EMAIL_PRIVACY = "privacy@growvisi.in";
 export const GROWVISI_EMAIL_LEGAL = "legal@growvisi.in";
 export const GROWVISI_META_DATA_DELETION_URL = `${GROWVISI_API_V1_URL}/webhooks/meta/data-deletion`;
+
+/** Mailto for concierge WhatsApp onboarding help. */
+export const GROWVISI_WHATSAPP_ONBOARDING_HELP_MAILTO =
+  `mailto:${GROWVISI_EMAIL_SUPPORT}?subject=${encodeURIComponent("Help connecting my WhatsApp number")}`;

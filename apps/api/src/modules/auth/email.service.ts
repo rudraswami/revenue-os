@@ -20,6 +20,49 @@ export class EmailService {
     });
   }
 
+  async sendWhatsappTokenReminder(opts: {
+    to: string[];
+    organizationName: string;
+    displayPhoneNumber: string;
+    expiryText: string;
+    settingsUrl: string;
+  }): Promise<void> {
+    await this.sendRaw({
+      to: opts.to,
+      subject: `Action needed: refresh WhatsApp token for ${opts.displayPhoneNumber}`,
+      html: `
+        <p>Hi,</p>
+        <p>${opts.expiryText} for <strong>${opts.organizationName}</strong> (${opts.displayPhoneNumber}).</p>
+        <p>Meta API Setup tokens expire about every 24 hours. Paste a new token in Growvisi — you do not need to disconnect your number.</p>
+        <p><a href="${opts.settingsUrl}">Refresh token in Settings</a></p>
+        <p>Steps: Meta Developer → WhatsApp → API Setup → Generate access token → paste under <strong>Refresh access token</strong>.</p>
+        <p>Need help? Reply to this email or contact support@growvisi.in</p>
+      `,
+      replyTo: "support@growvisi.in",
+    });
+  }
+
+  async sendWhatsappTokenHeadsUp(opts: {
+    to: string[];
+    organizationName: string;
+    displayPhoneNumber: string;
+    hoursRemaining: number;
+    settingsUrl: string;
+  }): Promise<void> {
+    await this.sendRaw({
+      to: opts.to,
+      subject: `Reminder: WhatsApp token for ${opts.displayPhoneNumber} expires in ~${Math.ceil(opts.hoursRemaining)}h`,
+      html: `
+        <p>Hi,</p>
+        <p>Your Meta API Setup token for <strong>${opts.organizationName}</strong> (${opts.displayPhoneNumber}) will expire in about ${Math.ceil(opts.hoursRemaining)} hours.</p>
+        <p>Refresh it now to avoid gaps in message ingestion — paste a new token in Growvisi (no need to disconnect).</p>
+        <p><a href="${opts.settingsUrl}">Refresh token in Settings</a></p>
+        <p>Need help? Reply to support@growvisi.in</p>
+      `,
+      replyTo: "support@growvisi.in",
+    });
+  }
+
   async sendRaw(opts: {
     to: string[];
     subject: string;

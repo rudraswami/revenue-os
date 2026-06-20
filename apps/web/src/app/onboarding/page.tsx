@@ -1,26 +1,20 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Circle } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { Button } from "@/components/ui/button";
+import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
+import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
+import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
+import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
 import { apiFetch } from "@/lib/api-client";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
-
-const WhatsappConnect = dynamic(() => import("@/components/settings/whatsapp-connect"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-    </div>
-  ),
-});
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -31,9 +25,11 @@ export default function OnboardingPage() {
 
   const { data: accounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
+    queryFn: () =>
+      apiFetch<Array<{ isActive: boolean; displayPhoneNumber: string; verifiedName: string | null }>>(
+        "/whatsapp-accounts",
+        { token: token ?? undefined },
+      ),
     enabled: !!token,
     refetchInterval: 3000,
   });
@@ -50,6 +46,7 @@ export default function OnboardingPage() {
 
   const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;
   const firstMessageReceived = (convStats?.inboundMessages ?? 0) > 0;
+  const activeAccount = accounts?.find((a) => a.isActive);
 
   useEffect(() => {
     if (whatsappConnected) {
@@ -78,7 +75,7 @@ export default function OnboardingPage() {
       id: "whatsapp",
       title: "Connect your existing WhatsApp number",
       done: whatsappConnected,
-      description: "Link the business line your customers already message — not a new number.",
+      description: "Paste your Meta token — we find your number and connect in one click.",
     },
     {
       id: "inbox",
@@ -170,10 +167,10 @@ export default function OnboardingPage() {
         </ol>
 
         {!whatsappConnected ? (
-          <div className="space-y-4">
-            <div className="product-frame p-6 md:p-8">
-              <WhatsappConnect />
-            </div>
+          <div className="space-y-6">
+            <WhatsappConnectWizard />
+            <WhatsappOnboardingHelp />
+            <WhatsappOnboardingFaq />
             <p className="text-center text-sm text-muted-foreground">
               Not ready yet?{" "}
               <Link href="/dashboard" className="font-medium text-primary hover:underline">
@@ -183,21 +180,22 @@ export default function OnboardingPage() {
             </p>
           </div>
         ) : (
-          <div className="rounded-2xl border border-success/30 bg-success/5 p-8 text-center">
-            <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-            <h2 className="mt-4 text-xl font-semibold">WhatsApp is connected!</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              From your personal phone, send a WhatsApp <strong>to</strong> your business number —
-              it will appear in Conversations within seconds.
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Button asChild>
-                <Link href="/dashboard/inbox">Open Inbox</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/dashboard">Go to Home</Link>
-              </Button>
+          <div className="space-y-6">
+            <div className="overflow-hidden rounded-2xl border border-success/30 bg-success/5 p-6">
+              <div className="flex items-center gap-2 text-sm font-semibold text-success">
+                <CheckCircle2 className="h-4 w-4" />
+                WhatsApp connected
+                {activeAccount?.displayPhoneNumber && (
+                  <span className="font-mono text-muted-foreground">
+                    · {activeAccount.displayPhoneNumber}
+                  </span>
+                )}
+              </div>
             </div>
+            {activeAccount?.displayPhoneNumber && (
+              <WhatsappIngestionVerifier displayPhoneNumber={activeAccount.displayPhoneNumber} />
+            )}
+            <WhatsappOnboardingFaq />
           </div>
         )}
       </main>

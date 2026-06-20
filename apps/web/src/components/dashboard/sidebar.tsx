@@ -123,7 +123,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ) : (
           <Link
-            href="/dashboard/settings"
+            href="/onboarding"
             onClick={onNavigate}
             className="block rounded-lg border border-warning/20 bg-warning/10 px-3 py-2.5 text-[12px] font-medium text-warning transition-colors hover:bg-warning/15"
           >

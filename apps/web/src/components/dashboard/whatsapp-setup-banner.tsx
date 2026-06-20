@@ -48,14 +48,14 @@ export function WhatsappSetupBanner() {
               Connect WhatsApp to start receiving customer messages
             </p>
             <p className="text-xs text-muted-foreground">
-              Link your business number in Settings — your team Inbox activates instantly.
+              ~2 min guided setup — paste token, we find your number automatically.
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button asChild size="sm" className="h-8 gap-1.5">
-            <Link href="/dashboard/settings">
-              Connect WhatsApp
+            <Link href="/onboarding">
+              Start setup wizard
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>

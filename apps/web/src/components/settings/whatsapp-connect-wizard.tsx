@@ -1,75 +1,77 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  ExternalLink,
+  ClipboardPaste,
   Loader2,
-  MessageCircle,
-  Phone,
   ShieldCheck,
+  Sparkles,
+  Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
+import { WhatsappMetaSetupGuide } from "@/components/settings/whatsapp-meta-setup-guide";
+import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
+import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+import {
+  looksLikeMetaToken,
+  WIZARD_STEP_KEY,
+  WIZARD_STEPS,
+  type DiscoveredPhone,
+  type WhatsappAccountSummary,
+  type WizardStepId,
+} from "@/lib/whatsapp-onboarding";
 import { cn } from "@/lib/utils";
-
-interface DiscoveredPhone {
-  phoneNumberId: string;
-  wabaId: string;
-  displayPhoneNumber: string;
-  verifiedName: string | null;
-}
-
-interface WhatsappAccount {
-  id: string;
-  displayPhoneNumber: string;
-  verifiedName: string | null;
-}
-
-const STEPS = [
-  { id: "intro", title: "Your number" },
-  { id: "meta", title: "Meta setup" },
-  { id: "connect", title: "Connect" },
-  { id: "verify", title: "Test" },
-] as const;
-
-type StepId = (typeof STEPS)[number]["id"];
 
 export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => void }) {
   const token = useAuthStore((s) => s.accessToken);
+  const organization = useAuthStore((s) => s.organization);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const queryClient = useQueryClient();
 
-  const [step, setStep] = useState<StepId>("intro");
+  const [step, setStep] = useState<WizardStepId>("prepare");
   const [accessToken, setAccessToken] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [wabaId, setWabaId] = useState("");
   const [discovered, setDiscovered] = useState<DiscoveredPhone[]>([]);
-  const [connected, setConnected] = useState<WhatsappAccount | null>(null);
+  const [connected, setConnected] = useState<WhatsappAccountSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [hasMetaAccount, setHasMetaAccount] = useState(false);
-  const [hasBusinessNumber, setHasBusinessNumber] = useState(false);
+  const lastAutoDiscover = useRef("");
 
-  const { data: config } = useQuery({
-    queryKey: ["embedded-signup-config"],
+  useEffect(() => {
+    const saved = sessionStorage.getItem(WIZARD_STEP_KEY) as WizardStepId | null;
+    if (saved && WIZARD_STEPS.some((s) => s.id === saved)) {
+      setStep(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem(WIZARD_STEP_KEY, step);
+    if (step === "verify" && connected) {
+      sessionStorage.removeItem(WIZARD_STEP_KEY);
+    }
+  }, [step, connected]);
+
+  const { data: readiness } = useQuery({
+    queryKey: ["whatsapp-onboarding-readiness"],
     queryFn: () =>
-      apiFetch<{ appId: string }>("/whatsapp-accounts/embedded-signup/config", {
-        token: token ?? undefined,
-      }),
+      apiFetch<{
+        ready: boolean;
+        metaApiSetupUrl: string;
+        checks: Array<{ id: string; ok: boolean; detail: string }>;
+      }>("/whatsapp-accounts/onboarding-readiness", { token: token ?? undefined }),
     enabled: !!token,
     staleTime: 60_000,
   });
 
-  const metaApiSetupUrl = config?.appId
-    ? `https://developers.facebook.com/apps/${config.appId}/whatsapp-business/wa-dev-console/`
-    : "https://developers.facebook.com/apps/";
+  const metaApiSetupUrl = readiness?.metaApiSetupUrl ?? "https://developers.facebook.com/apps/";
 
   const discoverMutation = useMutation({
     mutationFn: () =>
@@ -84,6 +86,9 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
       if (phones.length === 1) {
         setPhoneNumberId(phones[0].phoneNumberId);
         setWabaId(phones[0].wabaId);
+      } else if (phones.length > 1 && !phones.some((p) => p.phoneNumberId === phoneNumberId)) {
+        setPhoneNumberId(phones[0].phoneNumberId);
+        setWabaId(phones[0].wabaId);
       }
     },
     onError: (e) => {
@@ -92,35 +97,24 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
     },
   });
 
-  const verifyMutation = useMutation({
+  const quickConnectMutation = useMutation({
     mutationFn: () =>
-      apiFetch<{ ok: boolean; displayPhoneNumber: string }>("/whatsapp-accounts/verify-credentials", {
+      apiFetch<{
+        account: WhatsappAccountSummary;
+        discovered: DiscoveredPhone[];
+        autoSelected: boolean;
+      }>("/whatsapp-accounts/quick-connect", {
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({
           accessToken: accessToken.trim(),
-          phoneNumberId: phoneNumberId.trim(),
-        }),
-      }),
-    onSuccess: () => setError(null),
-    onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Credentials could not be verified.");
-    },
-  });
-
-  const connectMutation = useMutation({
-    mutationFn: () =>
-      apiFetch<WhatsappAccount>("/whatsapp-accounts/connect", {
-        method: "POST",
-        token: token ?? undefined,
-        body: JSON.stringify({
-          accessToken: accessToken.trim(),
-          phoneNumberId: phoneNumberId.trim(),
+          phoneNumberId: phoneNumberId.trim() || undefined,
           wabaId: wabaId.trim() || undefined,
         }),
       }),
-    onSuccess: (account) => {
-      setConnected(account);
+    onSuccess: (res) => {
+      setConnected(res.account);
+      setDiscovered(res.discovered);
       setError(null);
       patchOnboarding({
         whatsappConnected: true,
@@ -128,6 +122,7 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
         complete: true,
       });
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
+      void queryClient.invalidateQueries({ queryKey: ["whatsapp-connection-health"] });
       setStep("verify");
       onConnected?.();
     },
@@ -136,24 +131,61 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
     },
   });
 
-  const busy =
-    discoverMutation.isPending || verifyMutation.isPending || connectMutation.isPending;
-  const canConnect = accessToken.trim().length > 10 && phoneNumberId.trim().length > 5;
-  const stepIndex = STEPS.findIndex((s) => s.id === step);
+  const busy = discoverMutation.isPending || quickConnectMutation.isPending;
+  const canConnect =
+    looksLikeMetaToken(accessToken) &&
+    (phoneNumberId.trim().length > 5 || discovered.length === 1);
+  const stepIndex = WIZARD_STEPS.findIndex((s) => s.id === step);
+
+  const runDiscover = useCallback(() => {
+    if (!looksLikeMetaToken(accessToken)) return;
+    discoverMutation.mutate();
+  }, [accessToken, discoverMutation]);
+
+  // Auto-discover when user pastes a Meta token
+  useEffect(() => {
+    const trimmed = accessToken.trim();
+    if (!looksLikeMetaToken(trimmed) || trimmed === lastAutoDiscover.current) return;
+    if (discoverMutation.isPending) return;
+
+    const timer = setTimeout(() => {
+      lastAutoDiscover.current = trimmed;
+      runDiscover();
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [accessToken, discoverMutation.isPending, runDiscover]);
 
   function goNext() {
-    const next = STEPS[stepIndex + 1];
+    const next = WIZARD_STEPS[stepIndex + 1];
     if (next) setStep(next.id);
   }
 
   function goBack() {
-    const prev = STEPS[stepIndex - 1];
+    const prev = WIZARD_STEPS[stepIndex - 1];
     if (prev) setStep(prev.id);
+  }
+
+  async function pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        setAccessToken(text.trim());
+        setError(null);
+      }
+    } catch {
+      setError("Could not read clipboard. Paste manually with Ctrl+V.");
+    }
+  }
+
+  function selectPhone(phone: DiscoveredPhone) {
+    setPhoneNumberId(phone.phoneNumberId);
+    setWabaId(phone.wabaId);
+    setError(null);
   }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
-      {/* Progress */}
       <div className="border-b border-border/80 bg-gradient-to-r from-[#25D366]/5 via-primary-soft/30 to-transparent px-6 py-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-[#128C7E]">
           Connect your existing WhatsApp Business number
@@ -163,7 +195,7 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
           tracking.
         </p>
         <div className="mt-5 flex gap-3">
-          {STEPS.map((s, i) => (
+          {WIZARD_STEPS.map((s, i) => (
             <div key={s.id} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
               <div
                 className={cn(
@@ -188,9 +220,6 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Step {stepIndex + 1} of {STEPS.length}: <strong className="text-foreground">{STEPS[stepIndex].title}</strong>
-        </p>
       </div>
 
       <div className="space-y-4 px-6 py-6">
@@ -200,124 +229,70 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
           </div>
         )}
 
-        {step === "intro" && (
+        {step === "prepare" && (
           <>
-            <div className="flex items-start gap-3 rounded-xl bg-[#25D366]/10 p-4">
-              <Phone className="mt-0.5 h-5 w-5 shrink-0 text-[#128C7E]" />
-              <div className="text-sm">
-                <p className="font-medium text-foreground">Bring the number you already use</p>
-                <p className="mt-1 text-muted-foreground">
-                  Growvisi does <strong className="text-foreground">not</strong> give you a new
-                  WhatsApp number. Connect the business line your customers already message on
-                  WhatsApp.
-                </p>
-              </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                {
+                  icon: ShieldCheck,
+                  title: "Same number",
+                  text: "Customers keep messaging the line they already use",
+                },
+                {
+                  icon: Sparkles,
+                  title: "Intelligence only",
+                  text: "Classification, pipeline, insights — Meta still replies in-chat",
+                },
+                {
+                  icon: Zap,
+                  title: "~2 min setup",
+                  text: "Paste one token from Meta — we find your number automatically",
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-xl border border-border/80 bg-muted/20 p-3 text-sm"
+                >
+                  <item.icon className="mb-2 h-4 w-4 text-primary" />
+                  <p className="font-medium">{item.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.text}</p>
+                </div>
+              ))}
             </div>
 
-            <ul className="space-y-3 text-sm">
-              <li className="flex gap-3">
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/80 p-3 transition-colors hover:bg-muted/40 has-[:checked]:border-primary/30 has-[:checked]:bg-primary-soft/30">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                    checked={hasMetaAccount}
-                    onChange={(e) => setHasMetaAccount(e.target.checked)}
-                  />
-                  <span>
-                    <strong className="text-foreground">Meta Business account</strong>
-                    <span className="block text-muted-foreground">
-                      You can log in at business.facebook.com
-                    </span>
-                  </span>
-                </label>
-              </li>
-              <li className="flex gap-3">
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/80 p-3 transition-colors hover:bg-muted/40 has-[:checked]:border-primary/30 has-[:checked]:bg-primary-soft/30">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                    checked={hasBusinessNumber}
-                    onChange={(e) => setHasBusinessNumber(e.target.checked)}
-                  />
-                  <span>
-                    <strong className="text-foreground">WhatsApp Business number</strong>
-                    <span className="block text-muted-foreground">
-                      Already on WhatsApp Business Platform or API Setup in Meta
-                    </span>
-                  </span>
-                </label>
-              </li>
-            </ul>
+            {readiness && (
+              <div
+                className={cn(
+                  "rounded-xl border px-4 py-3 text-xs",
+                  readiness.ready
+                    ? "border-success/30 bg-success/5 text-foreground"
+                    : "border-amber-200 bg-amber-50 text-amber-950",
+                )}
+              >
+                <p className="font-semibold">
+                  {readiness.ready
+                    ? "Growvisi is ready to receive your messages"
+                    : "Growvisi server checks — contact support if any fail"}
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {readiness.checks.map((c) => (
+                    <li key={c.id} className={c.ok ? "text-success" : ""}>
+                      {c.ok ? "✓" : "○"} {c.detail}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-            <p className="text-xs text-muted-foreground">
-              Need help? Email{" "}
-              <a href="mailto:support@growvisi.in" className="text-primary hover:underline">
-                support@growvisi.in
-              </a>{" "}
-              — we can walk you through onboarding on a short call.
-            </p>
-
-            <Button
-              className="w-full sm:w-auto"
-              disabled={!hasMetaAccount || !hasBusinessNumber}
-              onClick={goNext}
-            >
-              Continue
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </>
-        )}
-
-        {step === "meta" && (
-          <>
-            <ol className="list-decimal space-y-3 pl-5 text-sm text-muted-foreground">
-              <li>
-                Open{" "}
-                <a
-                  href={metaApiSetupUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                >
-                  Meta → WhatsApp → API Setup
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              </li>
-              <li>
-                Under <strong className="text-foreground">From</strong>, note your{" "}
-                <strong className="text-foreground">Phone number ID</strong> and{" "}
-                <strong className="text-foreground">WhatsApp Business Account ID</strong>
-              </li>
-              <li>
-                Click <strong className="text-foreground">Generate access token</strong> and copy
-                the temporary token (starts with <code className="text-xs">EAA…</code>)
-              </li>
-              <li>
-                Add your personal phone under <strong className="text-foreground">To</strong> as a
-                test recipient if you use a Meta test number
-              </li>
+            <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+              <li>Meta Business account with your WhatsApp Business number on the Cloud API</li>
+              <li>Temporary access token from Meta → WhatsApp → API Setup</li>
+              <li>A personal phone to send one test message after connecting</li>
             </ol>
 
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-              <strong>Important:</strong> Meta&apos;s &quot;Send test message&quot; button sends{" "}
-              <em>from</em> your business number <em>to</em> your phone — that will not appear in
-              Growvisi. After connecting, message <strong>your business number from your phone</strong>{" "}
-              to see conversations here.
-            </div>
-
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={goBack}>
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <Button asChild variant="outline">
-                <a href={metaApiSetupUrl} target="_blank" rel="noopener noreferrer">
-                  Open Meta API Setup
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </Button>
-              <Button onClick={goNext}>
-                I have my credentials
+              <Button onClick={goNext} className="gap-1.5">
+                Start connection
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -325,96 +300,78 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
         )}
 
         {step === "connect" && (
-          <>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-foreground">
-                Temporary access token
-              </label>
-              <Input
-                type="password"
-                autoComplete="off"
-                placeholder="Paste from Meta API Setup (EAA…)"
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-              />
-            </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <WhatsappMetaSetupGuide metaApiSetupUrl={metaApiSetupUrl} />
 
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={busy || accessToken.trim().length < 10}
-                onClick={() => discoverMutation.mutate()}
-              >
-                {discoverMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Find my numbers
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={busy || !canConnect}
-                onClick={() => verifyMutation.mutate()}
-              >
-                {verifyMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Validate
-              </Button>
-            </div>
-
-            {discovered.length > 0 ? (
+            <div className="space-y-4 rounded-xl border border-border/80 bg-muted/20 p-4">
               <div className="space-y-2">
-                <label className="text-xs font-medium text-foreground">Your phone number</label>
-                <Select
-                  value={phoneNumberId}
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-medium text-foreground">Access token</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1 text-xs"
+                    onClick={() => void pasteFromClipboard()}
+                  >
+                    <ClipboardPaste className="h-3.5 w-3.5" />
+                    Paste
+                  </Button>
+                </div>
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  placeholder="Paste EAA… token — we detect your number automatically"
+                  value={accessToken}
                   onChange={(e) => {
-                    const id = e.target.value;
-                    setPhoneNumberId(id);
-                    const match = discovered.find((p) => p.phoneNumberId === id);
-                    if (match) setWabaId(match.wabaId);
+                    setAccessToken(e.target.value);
+                    setError(null);
                   }}
-                >
-                  <option value="">Select a number…</option>
-                  {discovered.map((p) => (
-                    <option key={p.phoneNumberId} value={p.phoneNumberId}>
-                      {p.displayPhoneNumber}
-                      {p.verifiedName ? ` (${p.verifiedName})` : ""}
-                    </option>
-                  ))}
-                </Select>
+                />
+                {discoverMutation.isPending && (
+                  <p className="flex items-center gap-2 text-xs text-primary">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Finding your WhatsApp numbers…
+                  </p>
+                )}
+                {discovered.length > 0 && !discoverMutation.isPending && (
+                  <p className="text-xs text-success">
+                    Found {discovered.length} number{discovered.length > 1 ? "s" : ""} on this token
+                  </p>
+                )}
               </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-foreground">Phone number ID</label>
-                  <Input
-                    placeholder="e.g. 1206645389192733"
-                    value={phoneNumberId}
-                    onChange={(e) => setPhoneNumberId(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-foreground">WABA ID</label>
-                  <Input
-                    placeholder="WhatsApp Business Account ID"
-                    value={wabaId}
-                    onChange={(e) => setWabaId(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
 
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Button variant="outline" onClick={goBack}>
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <Button disabled={busy || !canConnect} onClick={() => connectMutation.mutate()}>
-                {connectMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Connect my number
-              </Button>
+              <WhatsappPhonePicker
+                phones={discovered}
+                selectedId={phoneNumberId}
+                onSelect={selectPhone}
+              />
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button variant="outline" size="sm" onClick={goBack}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                <Button
+                  disabled={busy || !canConnect}
+                  className="gap-1.5"
+                  onClick={() => quickConnectMutation.mutate()}
+                >
+                  {quickConnectMutation.isPending && (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  )}
+                  Connect automatically
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                One click verifies your token, enables webhooks, and saves your number securely.
+              </p>
             </div>
-          </>
+          </div>
+        )}
+
+        {step === "connect" && (
+          <WhatsappOnboardingFaq />
         )}
 
         {step === "verify" && connected && (
@@ -426,46 +383,18 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
                 <p className="text-lg font-semibold">
                   {connected.verifiedName ?? connected.displayPhoneNumber}
                 </p>
-                <p className="text-sm text-muted-foreground">{connected.displayPhoneNumber}</p>
+                <p className="font-mono text-sm text-muted-foreground">
+                  {connected.displayPhoneNumber}
+                </p>
               </div>
             </div>
 
-            <div className="rounded-xl bg-muted/40 p-4 text-sm">
-              <p className="flex items-center gap-2 font-medium">
-                <MessageCircle className="h-4 w-4 text-primary" />
-                Verify message ingestion
-              </p>
-              <ol className="mt-3 list-decimal space-y-2 pl-5 text-muted-foreground">
-                <li>
-                  On your <strong className="text-foreground">personal phone</strong>, open WhatsApp
-                </li>
-                <li>
-                  Send any message <strong className="text-foreground">to</strong>{" "}
-                  {connected.displayPhoneNumber}
-                </li>
-                <li>
-                  Open <strong className="text-foreground">Conversations</strong> in Growvisi — it
-                  should appear within ~10 seconds
-                </li>
-              </ol>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <Link href="/dashboard/inbox">
-                  Open Conversations
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/dashboard/settings">Settings & diagnostics</Link>
-              </Button>
-            </div>
+            <WhatsappIngestionVerifier displayPhoneNumber={connected.displayPhoneNumber} />
           </>
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border bg-muted/20 px-6 py-3 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 border-t border-border/80 bg-muted/20 px-6 py-3 text-xs text-muted-foreground">
         <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
         Tokens are encrypted. Growvisi never posts replies unless you use optional human takeover.
       </div>

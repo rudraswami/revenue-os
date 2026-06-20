@@ -2,12 +2,15 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
-import { GROWVISI_API_URL } from "@growvisi/shared";
+import { GROWVISI_API_URL, GROWVISI_WEB_URL } from "@growvisi/shared";
 import { decryptSecret, encryptSecret } from "../../common/crypto/token-cipher";
+import { sanitizeEnvValue } from "../../config/cors-origins";
+import { EmailService } from "../auth/email.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { WhatsappWebhookPayload } from "../whatsapp/whatsapp.service";
 import { ConnectWhatsappDto, CreateWhatsappAccountDto, UpdateWhatsappAccountDto } from "./dto/whatsapp-account.dto";
@@ -48,21 +51,24 @@ interface MetaGraphList<T> {
 
 @Injectable()
 export class WhatsappAccountsService {
+  private readonly logger = new Logger(WhatsappAccountsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly email: EmailService,
   ) {}
 
   /** Developer / IT only — not shown in main product UI */
   getTechnicalSetup() {
     const apiBase =
-      this.config.get<string>("WEBHOOK_PUBLIC_URL") ??
-      this.config.get<string>("API_URL") ??
+      sanitizeEnvValue(this.config.get<string>("WEBHOOK_PUBLIC_URL")) ??
+      sanitizeEnvValue(this.config.get<string>("API_URL")) ??
       (process.env.NODE_ENV === "production" ? GROWVISI_API_URL : "http://localhost:4000");
     const base = apiBase.replace(/\/$/, "");
     return {
       webhookUrl: `${base}/api/v1/webhooks/whatsapp`,
-      verifyToken: this.config.get<string>("WHATSAPP_VERIFY_TOKEN") ?? "",
+      verifyToken: sanitizeEnvValue(this.config.get<string>("WHATSAPP_VERIFY_TOKEN")) ?? "",
     };
   }
 
@@ -382,6 +388,7 @@ export class WhatsappAccountsService {
         isActive: a.isActive,
       })),
       stats: { conversationCount, inboundCount },
+      tokenHealth: await this.tokenHealthForOrg(accounts),
       recentWebhooks: webhookSummary.slice(0, 8),
       metaSetup: {
         webhookUrl: technical.webhookUrl,
@@ -401,6 +408,339 @@ export class WhatsappAccountsService {
       displayPhoneNumber: meta.display_phone_number,
       verifiedName: meta.verified_name,
     };
+  }
+
+  /** Growvisi server readiness before customer opens Meta API Setup. */
+  getOnboardingReadiness() {
+    const technical = this.getTechnicalSetup();
+    const appId = this.config.get<string>("META_APP_ID")?.trim() ?? "";
+    const secretConfigured = !!this.appSecret();
+    const isProd = process.env.NODE_ENV === "production";
+
+    const checks = [
+      {
+        id: "webhook_url",
+        ok: isProd ? technical.webhookUrl.includes("growvisi.in") : !!technical.webhookUrl,
+        detail: `Webhook: ${technical.webhookUrl}`,
+      },
+      {
+        id: "verify_token",
+        ok: !!technical.verifyToken,
+        detail: technical.verifyToken
+          ? "Webhook verify token configured"
+          : "WHATSAPP_VERIFY_TOKEN missing on API",
+      },
+      {
+        id: "app_secret",
+        ok: secretConfigured,
+        detail: secretConfigured
+          ? "Meta app secret configured for signed webhooks"
+          : "META_APP_SECRET missing — inbound webhooks will fail",
+      },
+    ];
+
+    return {
+      ready: checks.every((c) => c.ok),
+      checks,
+      metaApiSetupUrl: appId
+        ? `https://developers.facebook.com/apps/${appId}/whatsapp-business/wa-dev-console/`
+        : "https://developers.facebook.com/apps/",
+      appId: appId || null,
+    };
+  }
+
+  /**
+   * Discover → verify → subscribe → save in one call.
+   * If phoneNumberId is omitted and exactly one number exists on the token, it is selected automatically.
+   */
+  async quickConnect(user: JwtPayload, dto: { accessToken: string; phoneNumberId?: string; wabaId?: string }) {
+    const accessToken = dto.accessToken.trim();
+    const phones = await this.discoverPhones(accessToken);
+
+    let phoneNumberId = dto.phoneNumberId?.trim();
+    let wabaId = dto.wabaId?.trim();
+
+    if (!phoneNumberId) {
+      if (phones.length === 1) {
+        phoneNumberId = phones[0].phoneNumberId;
+        wabaId = wabaId || phones[0].wabaId;
+      } else {
+        throw new BadRequestException(
+          phones.length === 0
+            ? "No WhatsApp numbers on this token."
+            : "Multiple numbers found — select which business line to connect.",
+        );
+      }
+    } else {
+      const match = phones.find((p) => p.phoneNumberId === phoneNumberId);
+      if (match) {
+        wabaId = wabaId || match.wabaId;
+      }
+    }
+
+    const account = await this.connect(user, {
+      accessToken,
+      phoneNumberId,
+      wabaId,
+    });
+
+    return {
+      account,
+      discovered: phones,
+      autoSelected: !dto.phoneNumberId?.trim() && phones.length === 1,
+    };
+  }
+
+  /** Replace expired Meta temporary token without disconnecting the number. */
+  async refreshAccessToken(user: JwtPayload, id: string, accessToken: string) {
+    const account = await this.findOwned(user, id);
+    const token = accessToken.trim();
+    await this.fetchPhoneDetails(account.phoneNumberId, token);
+    await this.subscribeWabaWebhooks(account.wabaId, token);
+
+    const updated = await this.prisma.whatsappAccount.update({
+      where: { id },
+      data: {
+        accessTokenEnc: encryptSecret(token),
+        metadata: {
+          ...((account.metadata ?? {}) as Record<string, unknown>),
+          tokenReminderSentAt: null,
+        },
+      },
+    });
+
+    return {
+      account: this.toSafe(updated),
+      tokenHealth: await this.debugInputToken(token),
+    };
+  }
+
+  private async tokenHealthForOrg(
+    accounts: Array<{ isActive: boolean; accessTokenEnc: string }>,
+  ) {
+    const active = accounts.find((a) => a.isActive);
+    if (!active) {
+      return {
+        valid: false,
+        expiresAt: null as string | null,
+        hoursRemaining: null as number | null,
+        level: "ok" as const,
+        needsRefresh: false,
+        needsAttention: false,
+        hint: "Connect a WhatsApp number first.",
+      };
+    }
+
+    try {
+      const token = decryptSecret(active.accessTokenEnc);
+      const health = await this.debugInputToken(token);
+      return {
+        ...health,
+        needsAttention: health.level !== "ok",
+        hint:
+          health.level === "urgent"
+            ? "Generate a new token in Meta API Setup and paste it under Refresh access token."
+            : health.level === "soon"
+              ? "Your Meta temporary token expires in about a day — refresh soon to avoid ingestion gaps."
+              : "Access token is valid.",
+      };
+    } catch {
+      return {
+        valid: false,
+        expiresAt: null,
+        hoursRemaining: null,
+        needsRefresh: true,
+        hint: "Could not verify token — paste a fresh token from Meta API Setup.",
+      };
+    }
+  }
+
+  private async debugInputToken(accessToken: string) {
+    const appId = this.config.get<string>("META_APP_ID")?.trim();
+    const appSecret = this.appSecret();
+    if (!appId || !appSecret) {
+      return {
+        valid: true,
+        expiresAt: null as string | null,
+        hoursRemaining: null as number | null,
+        level: "ok" as const,
+        needsRefresh: false,
+      };
+    }
+
+    const version = this.apiVersion();
+    const url = new URL(`https://graph.facebook.com/${version}/debug_token`);
+    url.searchParams.set("input_token", accessToken);
+    url.searchParams.set("access_token", `${appId}|${appSecret}`);
+
+    const res = await fetch(url);
+    const body = (await res.json()) as {
+      data?: { is_valid?: boolean; expires_at?: number; type?: string };
+    };
+
+    if (!res.ok || !body.data) {
+      return {
+        valid: false,
+        expiresAt: null as string | null,
+        hoursRemaining: null as number | null,
+        level: "urgent" as const,
+        needsRefresh: true,
+      };
+    }
+
+    const expiresAtUnix = body.data.expires_at ?? 0;
+    const expiresAt =
+      expiresAtUnix > 0 ? new Date(expiresAtUnix * 1000) : null;
+    const hoursRemaining = expiresAt
+      ? Math.max(0, (expiresAt.getTime() - Date.now()) / 3_600_000)
+      : null;
+
+    return {
+      valid: !!body.data.is_valid,
+      expiresAt: expiresAt?.toISOString() ?? null,
+      hoursRemaining:
+        hoursRemaining !== null ? Math.round(hoursRemaining * 10) / 10 : null,
+      level: this.tokenHealthLevel(!!body.data.is_valid, hoursRemaining),
+      needsRefresh:
+        !body.data.is_valid ||
+        (hoursRemaining !== null && hoursRemaining < 4),
+    };
+  }
+
+  private tokenHealthLevel(
+    valid: boolean,
+    hoursRemaining: number | null,
+  ): "ok" | "soon" | "urgent" {
+    if (!valid) return "urgent";
+    if (hoursRemaining !== null && hoursRemaining < 4) return "urgent";
+    if (hoursRemaining !== null && hoursRemaining < 20) return "soon";
+    return "ok";
+  }
+
+  /** Cron job: email workspace owners when Meta temporary tokens need refresh. */
+  async runTokenReminderJob() {
+    const accounts = await this.prisma.whatsappAccount.findMany({
+      where: { isActive: true },
+      include: {
+        organization: {
+          include: {
+            members: {
+              where: { role: { in: ["OWNER", "ADMIN"] } },
+              include: { user: { select: { email: true, name: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    const settingsUrl = `${GROWVISI_WEB_URL}/dashboard/settings#whatsapp`;
+    let checked = 0;
+    let sent = 0;
+    let skipped = 0;
+
+    for (const account of accounts) {
+      checked++;
+      try {
+        const token = decryptSecret(account.accessTokenEnc);
+        const health = await this.debugInputToken(token);
+        const metadata = (account.metadata ?? {}) as Record<string, unknown>;
+
+        const isUrgent =
+          health.level === "urgent";
+        const isHeadsUp =
+          health.level === "soon";
+
+        if (!isUrgent && !isHeadsUp) {
+          skipped++;
+          continue;
+        }
+
+        const now = Date.now();
+        const twelveHours = 12 * 60 * 60 * 1000;
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+
+        if (isUrgent) {
+          const lastSent = metadata.tokenReminderSentAt
+            ? new Date(String(metadata.tokenReminderSentAt)).getTime()
+            : 0;
+          if (lastSent && now - lastSent < twelveHours) {
+            skipped++;
+            continue;
+          }
+        } else {
+          const lastHeadsUp = metadata.tokenHeadsUpSentAt
+            ? new Date(String(metadata.tokenHeadsUpSentAt)).getTime()
+            : 0;
+          if (lastHeadsUp && now - lastHeadsUp < twentyFourHours) {
+            skipped++;
+            continue;
+          }
+        }
+
+        const recipients = [
+          ...new Set(
+            account.organization.members.map((m) => m.user.email).filter(Boolean),
+          ),
+        ];
+        if (recipients.length === 0) {
+          skipped++;
+          continue;
+        }
+
+        if (isUrgent) {
+          const expiryText = !health.valid
+            ? "Your Meta access token is no longer valid"
+            : health.hoursRemaining != null
+              ? `Your Meta access token expires in about ${Math.ceil(health.hoursRemaining)} hours`
+              : "Your Meta access token may expire soon";
+
+          await this.email.sendWhatsappTokenReminder({
+            to: recipients,
+            organizationName: account.organization.name,
+            displayPhoneNumber: account.displayPhoneNumber,
+            expiryText,
+            settingsUrl,
+          });
+
+          await this.prisma.whatsappAccount.update({
+            where: { id: account.id },
+            data: {
+              metadata: {
+                ...metadata,
+                tokenReminderSentAt: new Date().toISOString(),
+              },
+            },
+          });
+        } else {
+          await this.email.sendWhatsappTokenHeadsUp({
+            to: recipients,
+            organizationName: account.organization.name,
+            displayPhoneNumber: account.displayPhoneNumber,
+            hoursRemaining: health.hoursRemaining ?? 20,
+            settingsUrl,
+          });
+
+          await this.prisma.whatsappAccount.update({
+            where: { id: account.id },
+            data: {
+              metadata: {
+                ...metadata,
+                tokenHeadsUpSentAt: new Date().toISOString(),
+              },
+            },
+          });
+        }
+
+        sent++;
+      } catch (err) {
+        this.logger.warn(
+          `Token reminder skipped for account ${account.id}: ${err instanceof Error ? err.message : err}`,
+        );
+        skipped++;
+      }
+    }
+
+    return { checked, sent, skipped };
   }
 
   private async findOwned(user: JwtPayload, id: string) {
