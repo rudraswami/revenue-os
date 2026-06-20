@@ -10,9 +10,9 @@ const jakarta = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
-const siteTitle = "Growvisi — WhatsApp conversation intelligence";
+const siteTitle = "Growvisi — AI Revenue Engine for WhatsApp Sales Teams";
 const siteDescription =
-  "Track WhatsApp leads end-to-end — ingest customer messages, classify intent, and manage your pipeline while Meta Business Agent handles in-chat replies.";
+  "Turn WhatsApp conversations into revenue. Growvisi analyzes intent, scores leads, updates your pipeline, and helps your team close more deals.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(GROWVISI_WEB_URL),
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Growvisi — WhatsApp conversation intelligence",
+        alt: "Growvisi — AI Revenue Engine for WhatsApp Sales Teams",
       },
     ],
   },

@@ -15,7 +15,7 @@ const benefits = [
   {
     icon: Calendar,
     title: "Personalized walkthrough",
-    description: "See Inbox, Pipeline, and AI features tailored to your WhatsApp sales workflow.",
+    description: "See Inbox, Pipeline, Intelligence, and lead scoring tailored to your WhatsApp sales workflow.",
   },
   {
     icon: Users,
@@ -67,7 +67,7 @@ export default function ContactPage() {
           <div className="mx-auto max-w-[1120px] px-6">
             <p className="section-label">Get a demo</p>
             <h1 className="display-lg mt-3 max-w-2xl text-foreground">
-              See how Growvisi fits your business
+              Book a demo of the AI Revenue Engine
             </h1>
           </div>
         </div>
@@ -75,8 +75,8 @@ export default function ContactPage() {
           <div className="grid gap-16 lg:grid-cols-2 lg:items-start">
             <ScrollReveal>
               <p className="body-lg">
-                Book a demo or contact our sales team for Enterprise pricing. We&apos;ll show you
-                how to turn WhatsApp conversations into a clear pipeline.
+                Book a walkthrough or contact sales for Enterprise pricing. We&apos;ll show you how
+                Growvisi turns WhatsApp conversations into scored pipeline and closed revenue.
               </p>
               <p className="mt-4 text-sm text-muted-foreground">
                 Email us directly:{" "}

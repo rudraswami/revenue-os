@@ -8,8 +8,9 @@ import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: "#features", label: "Product" },
-  { href: "#ai", label: "AI" },
+  { href: "#engine", label: "How it works" },
+  { href: "#product", label: "Product" },
+  { href: "#compare", label: "Why us" },
   { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
 ];
@@ -22,7 +23,7 @@ export function MarketingHeader() {
       <div className="mx-auto flex max-w-[1120px] items-center justify-between px-6 py-4">
         <Logo />
 
-        <nav className="hidden items-center gap-9 md:flex">
+        <nav className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => (
             <a
               key={link.href}
@@ -39,7 +40,7 @@ export function MarketingHeader() {
             href="/contact"
             className="text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            Get a demo
+            Book Demo
           </Link>
           <Link
             href="/login"
@@ -48,7 +49,7 @@ export function MarketingHeader() {
             Log in
           </Link>
           <Button size="sm" asChild>
-            <Link href="/register">Try it free</Link>
+            <Link href="/register">Start free trial</Link>
           </Button>
         </div>
 
@@ -76,13 +77,13 @@ export function MarketingHeader() {
           ))}
           <div className="flex flex-col gap-3 border-t border-border pt-4">
             <Link href="/contact" className="text-[14px] font-medium" onClick={() => setOpen(false)}>
-              Get a demo
+              Book Demo
             </Link>
             <Link href="/login" className="text-[14px] font-medium" onClick={() => setOpen(false)}>
               Log in
             </Link>
             <Button asChild>
-              <Link href="/register">Try it free</Link>
+              <Link href="/register">Start free trial</Link>
             </Button>
           </div>
         </nav>

@@ -4,7 +4,7 @@ import { LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
   title: "Data Processing Agreement — Growvisi",
-  description: "Growvisi DPA for business customers using WhatsApp conversation intelligence.",
+  description: "Growvisi DPA for business customers using the AI Revenue Engine for WhatsApp sales.",
 };
 
 const LAST_UPDATED = "17 June 2026";

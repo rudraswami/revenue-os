@@ -1,10 +1,12 @@
 import { MarketingHeader } from "@/components/marketing/header";
 import { Hero } from "@/components/marketing/hero";
-import { PartnerLogos } from "@/components/marketing/partner-logos";
-import { BentoFeatures } from "@/components/marketing/bento-features";
-import { HowItWorks } from "@/components/marketing/how-it-works";
-import { AiSection } from "@/components/marketing/ai-section";
-import { Testimonials } from "@/components/marketing/testimonials";
+import { ProblemSection } from "@/components/marketing/problem-section";
+import { RevenueEngine } from "@/components/marketing/revenue-engine";
+import { ProductScreenshots } from "@/components/marketing/product-screenshots";
+import { CompetitorComparison } from "@/components/marketing/competitor-comparison";
+import { IndustryUseCases } from "@/components/marketing/industry-use-cases";
+import { CaseStudy } from "@/components/marketing/case-study";
+import { RoiSection } from "@/components/marketing/roi-section";
 import { Pricing } from "@/components/marketing/pricing";
 import { Faq } from "@/components/marketing/faq";
 import { CtaSection } from "@/components/marketing/cta-section";
@@ -16,11 +18,13 @@ export default function HomePage() {
       <MarketingHeader />
       <main>
         <Hero />
-        <PartnerLogos />
-        <BentoFeatures />
-        <HowItWorks />
-        <AiSection />
-        <Testimonials />
+        <ProblemSection />
+        <RevenueEngine />
+        <ProductScreenshots />
+        <CompetitorComparison />
+        <IndustryUseCases />
+        <CaseStudy />
+        <RoiSection />
         <Pricing />
         <Faq />
         <CtaSection />

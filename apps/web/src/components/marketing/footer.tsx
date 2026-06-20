@@ -3,9 +3,10 @@ import { Logo } from "./logo";
 
 const links = {
   Product: [
-    { label: "Features", href: "#features" },
+    { label: "How it works", href: "#engine" },
+    { label: "Product", href: "#product" },
+    { label: "Why Growvisi", href: "#compare" },
     { label: "Demo", href: "/demo" },
-    { label: "AI", href: "#ai" },
     { label: "Pricing", href: "#pricing" },
   ],
   Company: [
@@ -29,8 +30,9 @@ export function MarketingFooter() {
         <div className="grid gap-10 md:grid-cols-4">
           <div>
             <Logo />
-            <p className="mt-4 max-w-[240px] text-[13px] leading-relaxed text-muted-foreground">
-              WhatsApp CRM built for teams that sell through messaging.
+            <p className="mt-4 max-w-[260px] text-[13px] leading-relaxed text-muted-foreground">
+              The AI Revenue Engine for WhatsApp sales teams — turn every conversation into pipeline
+              and revenue.
             </p>
           </div>
           {Object.entries(links).map(([title, items]) => (
@@ -65,7 +67,7 @@ export function MarketingFooter() {
               Log in
             </Link>
             <Link href="/register" className="hover:text-foreground">
-              Sign up
+              Start free trial
             </Link>
           </div>
         </div>

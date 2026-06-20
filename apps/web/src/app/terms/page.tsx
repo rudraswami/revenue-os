@@ -4,7 +4,7 @@ import { LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Growvisi",
-  description: "Terms and conditions for using the Growvisi WhatsApp CRM platform.",
+  description: "Terms and conditions for using the Growvisi AI Revenue Engine platform.",
 };
 
 const LAST_UPDATED = "13 June 2026";

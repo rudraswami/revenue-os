@@ -87,7 +87,8 @@ export default function DashboardPage() {
               {timeGreeting(user?.name)}
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              WhatsApp conversation intelligence — track leads from first message to revenue.
+              The AI Revenue Engine for your WhatsApp sales team — turn conversations into scored
+              pipeline and revenue.
             </p>
           </div>
           <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5 bg-white/80">

@@ -145,45 +145,6 @@ export function InboxMock({ compact }: { compact?: boolean }) {
   );
 }
 
-export function PipelineMock({ compact }: { compact?: boolean }) {
-  const columns = [
-    { name: "New", count: 5, leads: ["Sarah M.", "David O."] },
-    { name: "Qualified", count: 3, leads: ["Raj Patel"] },
-    { name: "Proposal", count: 2, leads: ["Emma Chen"] },
-    { name: "Won", count: 4, leads: ["Alex Kim", "Priya S."] },
-  ];
-
-  return (
-    <AppShell compact={compact} activeNav="pipeline">
-      <div className="border-b border-border px-5 py-3.5">
-        <p className="text-[14px] font-semibold">Pipeline</p>
-        <p className="text-[11px] text-muted-foreground">14 active leads across 7 stages</p>
-      </div>
-      <div className="flex flex-1 gap-3 overflow-hidden p-4">
-        {columns.map((col) => (
-          <div key={col.name} className="min-w-[140px] flex-1 rounded-xl bg-muted p-2.5">
-            <div className="mb-2.5 flex items-center justify-between px-1">
-              <span className="text-[12px] font-semibold">{col.name}</span>
-              <span className="rounded-md bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm">
-                {col.count}
-              </span>
-            </div>
-            {col.leads.map((lead) => (
-              <div key={lead} className="mb-2 rounded-lg border border-border bg-white p-3 shadow-sm">
-                <p className="text-[12px] font-semibold">{lead}</p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">WhatsApp lead</p>
-                <div className="mt-2 h-1 w-full rounded-full bg-muted">
-                  <div className="h-full w-3/5 rounded-full bg-primary" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </AppShell>
-  );
-}
-
 export function DashboardMock({ compact }: { compact?: boolean }) {
   const metrics = [
     { label: "Conversations", value: "248", sub: "12 unread" },
@@ -223,6 +184,156 @@ export function DashboardMock({ compact }: { compact?: boolean }) {
             ))}
           </div>
         </div>
+      </div>
+    </AppShell>
+  );
+}
+
+export function PipelineMock({ compact }: { compact?: boolean }) {
+  const columns = [
+    { name: "New", count: 5, leads: ["Sarah M.", "David O."] },
+    { name: "Qualified", count: 3, leads: ["Raj Patel"] },
+    { name: "Proposal", count: 2, leads: ["Emma Chen"] },
+    { name: "Won", count: 4, leads: ["Alex Kim", "Priya S."] },
+  ];
+
+  return (
+    <AppShell compact={compact} activeNav="pipeline">
+      <div className="border-b border-border px-5 py-3.5">
+        <p className="text-[14px] font-semibold">Pipeline</p>
+        <p className="text-[11px] text-muted-foreground">14 active leads across 7 stages</p>
+      </div>
+      <div className="flex flex-1 gap-3 overflow-hidden p-4">
+        {columns.map((col) => (
+          <div key={col.name} className="min-w-[140px] flex-1 rounded-xl bg-muted p-2.5">
+            <div className="mb-2.5 flex items-center justify-between px-1">
+              <span className="text-[12px] font-semibold">{col.name}</span>
+              <span className="rounded-md bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm">
+                {col.count}
+              </span>
+            </div>
+            {col.leads.map((lead) => (
+              <div key={lead} className="mb-2 rounded-lg border border-border bg-white p-3 shadow-sm">
+                <p className="text-[12px] font-semibold">{lead}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">WhatsApp lead</p>
+                <div className="mt-2 h-1 w-full rounded-full bg-muted">
+                  <div className="h-full w-3/5 rounded-full bg-primary" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </AppShell>
+  );
+}
+
+export function IntelligenceMock({ compact }: { compact?: boolean }) {
+  const leads = [
+    { name: "Sarah Mitchell", intent: "Purchase intent", score: 88, stage: "Qualified" },
+    { name: "Raj Patel", intent: "Scheduling", score: 72, stage: "Contacted" },
+    { name: "Emma Chen", intent: "Pricing enquiry", score: 91, stage: "Proposal" },
+  ];
+
+  return (
+    <AppShell compact={compact} activeNav="inbox">
+      <div className="border-b border-border px-5 py-3.5">
+        <p className="text-[14px] font-semibold">Intelligence</p>
+        <p className="text-[11px] text-muted-foreground">AI-classified conversations</p>
+      </div>
+      <div className="flex-1 space-y-3 p-4">
+        {leads.map((lead) => (
+          <div key={lead.name} className="rounded-xl border border-border bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[13px] font-semibold">{lead.name}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{lead.intent}</p>
+              </div>
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-[11px] font-bold",
+                  lead.score >= 85 ? "bg-orange-100 text-orange-800" : "bg-primary-soft text-primary",
+                )}
+              >
+                {lead.score}
+              </span>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium">{lead.stage}</span>
+              <span className="text-[10px] text-success">Auto-updated</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </AppShell>
+  );
+}
+
+export function AnalyticsMock({ compact }: { compact?: boolean }) {
+  return (
+    <AppShell compact={compact} activeNav="dashboard">
+      <div className="border-b border-border px-5 py-3.5">
+        <p className="text-[14px] font-semibold">Analytics</p>
+        <p className="text-[11px] text-muted-foreground">Conversion performance</p>
+      </div>
+      <div className="flex-1 p-4">
+        <div className="mb-3 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
+            <p className="text-[10px] text-muted-foreground">Conversion rate</p>
+            <p className="text-xl font-bold text-primary">34%</p>
+          </div>
+          <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
+            <p className="text-[10px] text-muted-foreground">Pipeline value</p>
+            <p className="text-xl font-bold">₹12.4L</p>
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
+          <p className="mb-3 text-[12px] font-semibold">Funnel</p>
+          <div className="space-y-2">
+            {[
+              { stage: "New", pct: 100 },
+              { stage: "Qualified", pct: 62 },
+              { stage: "Won", pct: 34 },
+            ].map((row) => (
+              <div key={row.stage} className="flex items-center gap-2">
+                <span className="w-16 text-[10px] text-muted-foreground">{row.stage}</span>
+                <div className="h-2 flex-1 rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${row.pct}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+export function AutomationsMock({ compact }: { compact?: boolean }) {
+  const rules = [
+    { name: "24h no-reply follow-up", status: "Active", trigger: "No reply in 24h" },
+    { name: "Hot lead alert", status: "Active", trigger: "Score above 80" },
+    { name: "Stage auto-update", status: "Active", trigger: "AI qualified intent" },
+  ];
+
+  return (
+    <AppShell compact={compact} activeNav="settings">
+      <div className="border-b border-border px-5 py-3.5">
+        <p className="text-[14px] font-semibold">Automations</p>
+        <p className="text-[11px] text-muted-foreground">Never miss a follow-up</p>
+      </div>
+      <div className="flex-1 space-y-2 p-4">
+        {rules.map((rule) => (
+          <div key={rule.name} className="rounded-xl border border-border bg-white p-3.5 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[12px] font-semibold">{rule.name}</p>
+              <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
+                {rule.status}
+              </span>
+            </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">When: {rule.trigger}</p>
+          </div>
+        ))}
       </div>
     </AppShell>
   );

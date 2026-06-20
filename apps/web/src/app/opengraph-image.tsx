@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Growvisi — WhatsApp conversation intelligence";
+export const alt = "Growvisi — AI Revenue Engine for WhatsApp Sales Teams";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -44,12 +44,11 @@ export default function OpenGraphImage() {
           </div>
           <span style={{ fontSize: 36, fontWeight: 700, color: "#1e1b4b" }}>Growvisi</span>
         </div>
-        <div style={{ fontSize: 52, fontWeight: 700, color: "#1e1b4b", lineHeight: 1.15, maxWidth: 900 }}>
-          WhatsApp conversation intelligence
+        <div style={{ fontSize: 48, fontWeight: 700, color: "#1e1b4b", lineHeight: 1.15, maxWidth: 900 }}>
+          Turn WhatsApp Conversations Into Revenue
         </div>
-        <div style={{ fontSize: 26, color: "#4b5563", marginTop: 24, maxWidth: 820, lineHeight: 1.4 }}>
-          Ingest customer messages, classify intent, and track pipeline — while Meta Business Agent
-          handles in-chat replies.
+        <div style={{ fontSize: 24, color: "#4b5563", marginTop: 24, maxWidth: 820, lineHeight: 1.4 }}>
+          AI intent scoring, pipeline automation, and revenue analytics for WhatsApp sales teams.
         </div>
         <div style={{ fontSize: 22, color: "#7c3aed", marginTop: 40, fontWeight: 600 }}>
           growvisi.in

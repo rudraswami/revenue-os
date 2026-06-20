@@ -8,17 +8,24 @@ import {
   AnimatedInboxShowcase,
   AnimatedPipelineShowcase,
 } from "./animated-showcases";
+import { IntelligenceMock } from "./mocks/product-mocks";
 
 const views = [
   { id: "inbox", label: "Inbox" },
+  { id: "intelligence", label: "Intelligence" },
   { id: "pipeline", label: "Pipeline" },
-  { id: "dashboard", label: "Dashboard" },
+  { id: "dashboard", label: "Analytics" },
 ] as const;
 
 type ViewId = (typeof views)[number]["id"];
 
+function IntelligenceShowcase() {
+  return <IntelligenceMock />;
+}
+
 const components: Record<ViewId, React.FC<{ paused?: boolean }>> = {
   inbox: AnimatedInboxShowcase,
+  intelligence: IntelligenceShowcase,
   pipeline: AnimatedPipelineShowcase,
   dashboard: AnimatedDashboardShowcase,
 };

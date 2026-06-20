@@ -4,7 +4,7 @@ import { LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Growvisi",
-  description: "How Growvisi collects, uses, and protects your data when you use our WhatsApp CRM.",
+  description: "How Growvisi collects, uses, and protects your data when you use our AI Revenue Engine.",
 };
 
 const LAST_UPDATED = "13 June 2026";

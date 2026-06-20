@@ -8,7 +8,7 @@ import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 export const metadata: Metadata = {
   title: "About Growvisi",
   description:
-    "Growvisi helps businesses turn WhatsApp conversations into pipeline intelligence while Meta handles in-chat replies.",
+    "Growvisi is the AI Revenue Engine for WhatsApp sales teams — classify intent, score leads, and manage pipeline while Meta handles in-chat replies.",
 };
 
 export default function AboutPage() {
@@ -20,7 +20,7 @@ export default function AboutPage() {
           <div className="mx-auto max-w-[720px] px-6">
             <p className="section-label">About</p>
             <h1 className="display-lg mt-3 text-foreground">
-              WhatsApp intelligence for teams that sell through messaging
+              The AI Revenue Engine for WhatsApp sales teams
             </h1>
           </div>
         </div>

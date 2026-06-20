@@ -1,104 +1,115 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const periods = [
-  { label: "6 months", months: 6 },
-  { label: "9 months", months: 9 },
-  { label: "1 year", months: 12 },
-  { label: "2 years", months: 24 },
-];
-
 const plans = [
   {
     name: "Starter",
-    price: 15,
-    custom: false,
-    description: "For small teams — access essentials for a simple workflow",
-    features: ["1 WhatsApp number", "2,500 leads", "Basic pipeline", "2 team members"],
+    price: 999,
+    description: "For solo founders and small businesses getting started with WhatsApp sales.",
+    idealFor: "Small businesses, freelancers, consultants, local service providers.",
+    features: [
+      "1 WhatsApp Business Number",
+      "2 Team Members",
+      "Shared Team Inbox",
+      "Basic Conversation Management",
+      "Contact Management",
+      "Lead Capture from WhatsApp",
+      "Basic Sales Pipeline",
+      "Manual Lead Assignment",
+      "Conversation History",
+      "Mobile Friendly Dashboard",
+      "Up to 500 Leads / Month",
+      "Email Support",
+    ],
     popular: false,
+    custom: false,
   },
   {
     name: "Growth",
-    price: 25,
-    custom: false,
-    description: "For growing teams — automate chats with smarter AI tools",
+    price: 2999,
+    description: "For growing teams that need visibility, prioritization and better conversion.",
+    idealFor: "Real Estate, Education, Clinics, Interior Designers, Automotive, D2C.",
     features: [
-      "3 WhatsApp numbers",
-      "5,000 leads",
-      "AI reply suggestions",
-      "Full pipeline + analytics",
-      "10 team members",
+      "Everything in Starter",
+      "Up to 5 Team Members",
+      "Up to 3 WhatsApp Numbers",
+      "Up to 3,000 Leads / Month",
+      "AI Conversation Classification",
+      "AI Lead Scoring",
+      "Hot Lead Identification",
+      "Pipeline Analytics",
+      "Lead Source Tracking",
+      "Team Performance Dashboard",
+      "Deal Tracking",
+      "Human Handoff Detection",
+      "Advanced Filters & Search",
+      "Priority Email Support",
     ],
     popular: true,
+    custom: false,
   },
   {
-    name: "Scale",
-    price: 45,
-    custom: false,
-    description: "For mature teams — scale with advanced AI automation",
+    name: "Pro",
+    price: 5999,
+    description: "For businesses that want automation and scale.",
+    idealFor: "Sales teams, multi-location businesses, franchises, high-volume lead ops.",
     features: [
-      "Unlimited WhatsApp numbers",
-      "10,000 leads",
-      "Priority AI features",
-      "Custom automations",
-      "Unlimited team members",
+      "Everything in Growth",
+      "Unlimited Team Members",
+      "Unlimited WhatsApp Numbers",
+      "Up to 10,000 Leads / Month",
+      "Automated Follow-up Reminders",
+      "Auto Stage Updates",
+      "Hot Lead Alerts",
+      "Workflow Automations",
+      "Revenue Analytics",
+      "Conversion Funnel Reporting",
+      "Custom Lead Scoring Rules",
+      "Advanced Intelligence Module",
+      "Role-Based Access Control",
+      "API Access & Webhooks",
+      "Priority Support & Onboarding",
     ],
     popular: false,
+    custom: false,
   },
   {
     name: "Enterprise",
     price: null,
-    custom: true,
-    description: "Custom CRM with top-grade security, control and support",
+    description: "For organizations requiring advanced integrations and governance.",
+    idealFor: "Large teams with custom compliance and integration needs.",
     features: [
-      "Unlimited everything",
-      "Dedicated account manager",
-      "Custom integrations",
-      "SLA & priority support",
-      "SSO & advanced security",
+      "Everything in Pro",
+      "Unlimited Leads",
+      "Dedicated Success Manager",
+      "Custom Integrations",
+      "SLA Support",
+      "SSO",
+      "Advanced Security Controls",
+      "Custom Reporting",
+      "Migration Assistance",
     ],
     popular: false,
+    custom: true,
   },
 ];
 
 export function Pricing() {
-  const [periodIdx, setPeriodIdx] = useState(0);
-  const months = periods[periodIdx].months;
-
   return (
     <section id="pricing" className="scroll-mt-20 surface-muted py-24 md:py-32">
       <div className="mx-auto max-w-[1120px] px-6">
         <div className="mx-auto max-w-[640px] text-center">
-          <h2 className="display-lg text-foreground">
-            Go from overwhelmed to slam-dunk success
-          </h2>
+          <p className="section-label">Pricing</p>
+          <h2 className="display-lg mt-3 text-foreground">Plans that grow with your sales team</h2>
+          <p className="body-lg mx-auto mt-4 max-w-[520px]">
+            Start free for 14 days. Upgrade when you need AI scoring, automation, and scale.
+          </p>
         </div>
 
-        <div className="mt-10 flex justify-center">
-          <div className="inline-flex rounded-full border border-border bg-white p-1 shadow-sm">
-            {periods.map((p, i) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => setPeriodIdx(i)}
-                className={cn(
-                  "rounded-full px-4 py-2 text-[13px] font-medium transition-all",
-                  periodIdx === i
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-12 grid gap-5 xl:grid-cols-4">
           {plans.map((plan) => (
             <div
               key={plan.name}
@@ -125,40 +136,41 @@ export function Pricing() {
                   {plan.custom ? (
                     <>
                       <span className="text-3xl font-bold">Custom</span>
-                      <p className="mt-1 text-[13px] text-muted-foreground">
-                        Depends on your setup
-                      </p>
+                      <p className="mt-1 text-[13px] text-muted-foreground">Contact sales</p>
                     </>
                   ) : (
                     <>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-[13px] font-medium text-muted-foreground">$</span>
-                        <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
+                        <span className="text-[15px] font-semibold text-muted-foreground">₹</span>
+                        <span className="text-4xl font-bold tracking-tight">
+                          {plan.price!.toLocaleString("en-IN")}
+                        </span>
                       </div>
-                      <p className="text-[13px] text-muted-foreground">USD per user/month</p>
-                      <p className="mt-2 text-[12px] text-muted-foreground">
-                        Billed ${(plan.price ?? 0) * months}/user for {periods[periodIdx].label}
-                      </p>
+                      <p className="text-[13px] text-muted-foreground">per month</p>
                     </>
                   )}
                 </div>
 
-                <ul className="mt-6 flex-1 space-y-3 border-t border-border pt-6">
+                <ul className="mt-6 flex-1 space-y-2.5 border-t border-border pt-6">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-[13px]">
-                      <span className="mt-0.5 text-primary">✓</span>
+                    <li key={f} className="flex items-start gap-2 text-[12px] leading-snug">
+                      <span className="mt-0.5 shrink-0 text-primary">✓</span>
                       {f}
                     </li>
                   ))}
                 </ul>
 
+                <p className="mt-4 text-[11px] italic text-muted-foreground">
+                  Ideal for: {plan.idealFor}
+                </p>
+
                 <Button
-                  className={cn("mt-7 w-full", plan.popular && "btn-gradient border-0")}
+                  className={cn("mt-6 w-full", plan.popular && "btn-gradient border-0")}
                   variant={plan.popular ? "default" : "outline"}
                   asChild
                 >
                   <Link href={plan.custom ? "/contact" : "/register"}>
-                    {plan.custom ? "Contact sales" : "Try it free"}
+                    {plan.custom ? "Contact sales" : "Start free trial"}
                   </Link>
                 </Button>
               </div>
