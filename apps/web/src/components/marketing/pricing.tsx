@@ -114,8 +114,8 @@ export function Pricing() {
             <div
               key={plan.name}
               className={cn(
-                "relative flex flex-col overflow-hidden rounded-2xl border bg-white",
-                plan.popular ? "border-primary shadow-xl xl:scale-[1.02]" : "border-border shadow-sm",
+                "card-lift relative flex flex-col overflow-hidden rounded-2xl border bg-white",
+                plan.popular ? "border-primary shadow-xl ring-2 ring-primary/20 xl:scale-[1.03]" : "border-border shadow-sm",
               )}
             >
               {plan.popular && (
@@ -165,7 +165,7 @@ export function Pricing() {
                 </p>
 
                 <Button
-                  className={cn("mt-6 w-full", plan.popular && "btn-gradient border-0")}
+                  className={cn("mt-6 w-full font-bold", plan.popular && "btn-wa border-0")}
                   variant={plan.popular ? "default" : "outline"}
                   asChild
                 >

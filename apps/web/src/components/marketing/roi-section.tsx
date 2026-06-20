@@ -22,7 +22,7 @@ export function RoiSection() {
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map((m, i) => (
             <ScrollReveal key={m.label} delay={i * 0.05}>
-              <div className="rounded-2xl border border-border bg-gradient-to-b from-white to-muted/30 p-6 text-center shadow-sm">
+              <div className="card-lift rounded-2xl border border-border bg-gradient-to-b from-white to-muted/30 p-6 text-center shadow-sm">
                 <p className="text-4xl font-bold tracking-tight text-foreground">{m.value}</p>
                 <p className="mt-2 text-[15px] font-semibold">{m.label}</p>
                 <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{m.detail}</p>

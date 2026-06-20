@@ -19,7 +19,7 @@ export function CtaSection() {
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
                 href="/register"
-                className="inline-flex h-12 items-center gap-2 rounded-full bg-[#f5c842] px-8 text-[15px] font-bold text-[#1a1a2e] transition-transform hover:scale-[1.02]"
+                className="btn-wa inline-flex h-12 items-center gap-2 rounded-full px-8 text-[15px] font-bold"
               >
                 Start Free Trial
                 <ArrowRight className="h-4 w-4" />

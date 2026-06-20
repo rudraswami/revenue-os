@@ -74,7 +74,7 @@ export function CaseStudy() {
             {results.map((r) => (
               <div
                 key={r.label}
-                className="rounded-2xl border border-border bg-white px-6 py-8 text-center shadow-sm"
+                className="card-lift rounded-2xl border border-border bg-gradient-to-b from-white to-primary-soft/20 px-6 py-8 text-center shadow-sm"
               >
                 <p className="text-4xl font-bold tracking-tight text-primary">{r.value}</p>
                 <p className="mt-2 text-[14px] font-medium text-muted-foreground">{r.label}</p>

@@ -52,26 +52,24 @@ export function ProductShowcase() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="mb-6 flex justify-center gap-1">
-        {views.map((view) => (
-          <button
-            key={view.id}
-            type="button"
-            onClick={() => setActive(view.id)}
-            className={cn(
-              "relative px-5 py-2 text-[14px] font-medium transition-colors",
-              active === view.id ? "text-primary" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {view.label}
-            {active === view.id && (
-              <motion.span
-                layoutId="product-tab"
-                className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary"
-              />
-            )}
-          </button>
-        ))}
+      <div className="mb-6 flex justify-center">
+        <div className="inline-flex rounded-full border border-border bg-white p-1 shadow-sm">
+          {views.map((view) => (
+            <button
+              key={view.id}
+              type="button"
+              onClick={() => setActive(view.id)}
+              className={cn(
+                "relative rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all",
+                active === view.id
+                  ? "bg-[#25D366] text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {view.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="product-frame-glow">

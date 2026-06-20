@@ -45,7 +45,7 @@ export function Faq() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="scroll-mt-20 bg-white py-24 md:py-32">
+    <section id="faq" className="scroll-mt-20 surface-muted py-24 md:py-32">
       <div className="mx-auto max-w-[720px] px-6">
         <ScrollReveal className="text-center">
           <p className="section-label">FAQ</p>
@@ -55,7 +55,7 @@ export function Faq() {
         <div className="mt-12 space-y-3">
           {faqs.map((faq, i) => (
             <ScrollReveal key={faq.q} delay={i * 0.03}>
-              <div className="overflow-hidden rounded-xl border border-border bg-white">
+              <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-shadow hover:shadow-md">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"

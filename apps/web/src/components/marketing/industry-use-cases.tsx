@@ -55,7 +55,7 @@ export function IndustryUseCases() {
             const Icon = item.icon;
             return (
               <ScrollReveal key={item.title} delay={i * 0.05}>
-                <div className="h-full rounded-2xl border border-border bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+                <div className="h-full rounded-2xl border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Icon className="h-5 w-5" />
                   </div>
