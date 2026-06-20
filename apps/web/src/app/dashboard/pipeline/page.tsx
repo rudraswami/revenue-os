@@ -106,14 +106,15 @@ export default function PipelinePage() {
   const totalLeads = STAGES.reduce((sum, s) => sum + (data?.[s]?.length ?? 0), 0);
 
   return (
-    <div className="flex h-full flex-col p-6 md:p-8">
+    <div className="dashboard-page flex h-full min-h-0 flex-col">
       <PageHeader
+        eyebrow="Sales"
         title="Pipeline"
-        description="Drag leads between stages on desktop, or use the stage picker on mobile"
+        description="Drag leads between stages on desktop, or use the stage picker on mobile."
       />
 
       {!hasWhatsapp && (
-        <Card className="mb-6 border-dashed">
+        <Card className="mb-6 border-dashed border-border/80 bg-muted/20">
           <CardContent className="p-2">
             <EmptyState
               compact
@@ -133,7 +134,7 @@ export default function PipelinePage() {
       )}
 
       {hasWhatsapp && !isLoading && !isError && totalLeads === 0 && (
-        <Card className="mb-6 border-dashed">
+        <Card className="mb-6 border-dashed border-border/80 bg-muted/20">
           <CardContent className="p-2">
             <EmptyState
               compact

@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Circle, Loader2 } from "lucide-rea
 import { Logo } from "@/components/marketing/logo";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -91,8 +92,8 @@ export default function OnboardingPage() {
   const progress = Math.round((completedCount / steps.length) * 100);
 
   return (
-    <div className="min-h-screen bg-muted/40">
-      <header className="border-b border-border bg-white px-6 py-4">
+    <div className="min-h-screen surface-lavender">
+      <header className="border-b border-border/80 bg-white/90 px-6 py-4 backdrop-blur-sm">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
           <Logo href="/dashboard" />
           <div className="flex items-center gap-2">
@@ -117,12 +118,13 @@ export default function OnboardingPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold">
-            Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
+        <div className="mb-8 overflow-hidden rounded-2xl border border-border/80 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Setup wizard</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
+            {timeGreeting(user?.name)}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Connect WhatsApp when you&apos;re ready — you can explore the app first.
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Connect your existing WhatsApp business number when you&apos;re ready — explore the app first if you prefer.
           </p>
           <div className="mt-5">
             <div className="mb-2 flex justify-between text-[12px] font-medium text-muted-foreground">
@@ -131,7 +133,7 @@ export default function OnboardingPage() {
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-border">
               <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
+                className="h-full rounded-full bg-gradient-to-r from-primary to-[#128C7E] transition-all duration-500"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -143,8 +145,10 @@ export default function OnboardingPage() {
             <li
               key={step.id}
               className={cn(
-                "flex gap-4 rounded-xl border p-4 transition-colors",
-                step.done ? "border-success/30 bg-success/5" : "border-border bg-white",
+                "flex gap-4 rounded-xl border p-4 transition-all duration-200",
+                step.done
+                  ? "border-success/30 bg-success/5 shadow-sm"
+                  : "border-border/80 bg-white shadow-sm hover:border-primary/20",
               )}
             >
               <div className="mt-0.5 shrink-0">
@@ -167,7 +171,7 @@ export default function OnboardingPage() {
 
         {!whatsappConnected ? (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+            <div className="product-frame p-6 md:p-8">
               <WhatsappConnect />
             </div>
             <p className="text-center text-sm text-muted-foreground">

@@ -12,13 +12,17 @@ export function LegalPage({ title, lastUpdated, children }: LegalPageProps) {
   return (
     <div className="min-h-screen bg-background">
       <MarketingHeader />
-      <main className="py-12 md:py-16">
-        <article className="mx-auto max-w-[720px] px-6">
-          <p className="text-[13px] font-medium text-primary">Legal</p>
-          <h1 className="display-lg mt-2 text-foreground">{title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Last updated: {lastUpdated}</p>
-          <div className="prose-legal mt-10">{children}</div>
-          <p className="mt-12 border-t border-border pt-8 text-sm text-muted-foreground">
+      <main>
+        <div className="border-b border-border/60 bg-gradient-to-b from-primary-soft/30 to-transparent py-12 md:py-16">
+          <article className="mx-auto max-w-[720px] px-6">
+            <p className="text-[13px] font-semibold uppercase tracking-wider text-primary">Legal</p>
+            <h1 className="display-lg mt-2 text-foreground">{title}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Last updated: {lastUpdated}</p>
+          </article>
+        </div>
+        <article className="mx-auto max-w-[720px] px-6 py-10 md:py-12">
+          <div className="prose-legal">{children}</div>
+          <p className="mt-12 rounded-xl border border-border/80 bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
             Questions?{" "}
             <Link href="/contact" className="font-medium text-primary hover:underline">
               Contact us

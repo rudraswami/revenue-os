@@ -2,15 +2,16 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Inbox, Kanban, LineChart, TrendingUp, Users } from "lucide-react";
+import { ArrowRight, Inbox, Kanban, LineChart, Sparkles, TrendingUp, Users } from "lucide-react";
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
 import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   Bar,
@@ -30,6 +31,7 @@ const quickActions = [
 
 export default function DashboardPage() {
   const token = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
 
   const { data: funnel, isLoading: funnelLoading, isError: funnelError, refetch: refetchFunnel } = useQuery({
     queryKey: ["funnel-metrics"],
@@ -76,11 +78,26 @@ export default function DashboardPage() {
   const isLoading = funnelLoading || convLoading;
 
   return (
-    <div className="p-6 md:p-8">
-      <PageHeader
-        title="Home"
-        description="WhatsApp conversation intelligence — track leads from first message to revenue"
-      />
+    <div className="dashboard-page">
+      <div className="mb-8 overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-white via-white to-primary-soft/40 p-6 shadow-sm md:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Overview</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
+              {timeGreeting(user?.name)}
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+              WhatsApp conversation intelligence — track leads from first message to revenue.
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5 bg-white/80">
+            <Link href="/dashboard/inbox">
+              Open conversations
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
+      </div>
 
       <div className="mb-6">
         <MetaAiNotice />
@@ -99,14 +116,14 @@ export default function DashboardPage() {
           <Link
             key={action.href}
             href={action.href}
-            className="group flex items-center gap-4 rounded-xl border border-border bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+            className="card-interactive group flex items-center gap-4 p-4"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary transition-all duration-200 group-hover:scale-105 group-hover:bg-primary group-hover:text-white group-hover:shadow-md">
               <action.icon className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold">{action.label}</p>
-              <p className="text-xs text-muted-foreground">{action.desc}</p>
+              <p className="truncate text-xs text-muted-foreground">{action.desc}</p>
             </div>
           </Link>
         ))}
@@ -121,35 +138,35 @@ export default function DashboardPage() {
           value={hasConversations ? convStats!.totalConversations : 0}
           delta={`${convStats?.inboundMessages ?? 0} customer messages ingested`}
           trend="neutral"
-          icon={<Inbox className="h-4 w-4 text-primary" />}
+          icon={<Inbox className="h-4 w-4" />}
         />
         <MetricCard
           title="AI classifications"
           value={convStats?.aiClassifications ?? 0}
           delta={`${convStats?.classifiedLeads ?? 0} leads scored`}
           trend="neutral"
-          icon={<LineChart className="h-4 w-4 text-primary" />}
+          icon={<Sparkles className="h-4 w-4" />}
         />
         <MetricCard
           title="Total leads"
           value={funnel?.total ?? 0}
           trend="neutral"
-          icon={<Users className="h-4 w-4 text-primary" />}
+          icon={<Users className="h-4 w-4" />}
         />
         <MetricCard
           title="Human handoffs"
           value={convStats?.humanHandoffRecommended ?? 0}
           delta={hasWhatsapp ? "Needs your team" : "Connect WhatsApp"}
           trend="neutral"
-          icon={<TrendingUp className="h-4 w-4 text-warning" />}
+          icon={<TrendingUp className="h-4 w-4" />}
         />
       </div>
       )}
 
       <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Leads by stage</CardTitle>
+        <Card className="border-border/80 shadow-sm">
+          <CardHeader className="border-b border-border/60 bg-muted/20">
+            <CardTitle className="text-base">Leads by stage</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
             {isLoading ? (

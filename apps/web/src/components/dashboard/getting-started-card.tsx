@@ -80,8 +80,8 @@ export function GettingStartedCard() {
   }
 
   return (
-    <Card className="mb-8 overflow-hidden border-border shadow-sm">
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 border-b border-border bg-muted/30 pb-4">
+    <Card className="mb-8 overflow-hidden border-border/80 shadow-sm">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 border-b border-border/60 bg-gradient-to-r from-primary-soft/50 to-transparent pb-4">
         <div>
           <CardTitle className="text-base font-semibold">
             Getting started{user?.name ? `, ${user.name.split(" ")[0]}` : ""}

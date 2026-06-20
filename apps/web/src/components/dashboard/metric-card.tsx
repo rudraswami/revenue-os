@@ -20,17 +20,21 @@ export function MetricCard({ title, value, delta, trend = "neutral", icon, class
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className={cn("overflow-hidden", className)}>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className={cn("overflow-hidden border-border/80 shadow-sm", className)}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-          {icon}
+          {icon && (
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
+              {icon}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
-          <p className="text-3xl font-semibold tracking-tight">{value}</p>
+          <p className="text-3xl font-bold tracking-tight tabular-nums">{value}</p>
           {delta && (
             <p
               className={cn(
-                "mt-1 text-xs",
+                "mt-1.5 text-xs leading-relaxed",
                 trend === "up" && "text-success",
                 trend === "down" && "text-destructive",
                 trend === "neutral" && "text-muted-foreground",

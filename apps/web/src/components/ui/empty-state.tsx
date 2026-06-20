@@ -29,14 +29,14 @@ export function EmptyState({
     <div
       className={cn(
         "flex flex-col items-center justify-center text-center",
-        compact ? "px-4 py-8" : "px-6 py-16",
+        compact ? "px-4 py-8" : "rounded-2xl border border-dashed border-border/80 bg-muted/20 px-6 py-16",
         className,
       )}
     >
       {icon && (
         <div
           className={cn(
-            "mb-4 flex items-center justify-center rounded-2xl bg-primary-soft text-primary",
+            "mb-4 flex items-center justify-center rounded-2xl bg-primary-soft text-primary shadow-sm",
             compact ? "h-12 w-12" : "h-14 w-14",
           )}
         >

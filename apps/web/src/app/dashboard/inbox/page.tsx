@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Send, Sparkles, Clock, ArrowLeft, Inbox, MessageSquare } from "lucide-react";
+import { Loader2, Send, Sparkles, Clock, ArrowLeft, Inbox, MessageSquare, Search } from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { formatStage } from "@/lib/stage-labels";
 import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
+import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,7 @@ export default function InboxPage() {
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [showComposer, setShowComposer] = useState(false);
+  const [search, setSearch] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -164,6 +166,13 @@ export default function InboxPage() {
   });
 
   const conversations = listData?.data ?? [];
+  const filteredConversations = conversations.filter((c) => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    const name = (c.contactName ?? c.contactPhone).toLowerCase();
+    const preview = (c.messages[0]?.content ?? "").toLowerCase();
+    return name.includes(q) || preview.includes(q);
+  });
 
   function selectConversation(id: string) {
     setSelectedId(id);
@@ -190,28 +199,42 @@ export default function InboxPage() {
     <div className="flex h-[calc(100dvh-57px)] bg-background lg:h-[calc(100vh)]">
       <div
         className={cn(
-          "flex w-full shrink-0 flex-col border-r border-border bg-background lg:w-80",
+          "flex w-full shrink-0 flex-col border-r border-border/80 bg-white lg:w-[320px]",
           selectedId ? "hidden lg:flex" : "flex",
         )}
       >
-        <div className="border-b border-border bg-muted/30 p-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold">Conversations</h1>
+        <div className="border-b border-border/80 bg-white px-4 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg font-bold tracking-tight">Conversations</h1>
             {hasWhatsapp && (
-              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+              <span className="status-pill bg-[#128C7E]/10 text-[#128C7E]">
                 WhatsApp linked
               </span>
             )}
             {live && (
-              <span className="rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-medium text-success">
+              <span className="status-pill bg-success/15 text-success">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
                 Realtime
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">Ingest & analyze customer WhatsApp threads</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Ingest and analyze customer WhatsApp threads
+          </p>
+          {conversations.length > 0 && (
+            <div className="relative mt-3">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search conversations…"
+                className="h-9 bg-muted/40 pl-9 text-sm"
+              />
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
           {listLoading && <InboxListSkeleton />}
 
           {listError && !listLoading && (
@@ -243,24 +266,28 @@ export default function InboxPage() {
           )}
 
           <div className="space-y-1">
-            {conversations.map((c) => (
+            {filteredConversations.map((c) => {
+              const displayName = c.contactName ?? c.contactPhone;
+              return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => selectConversation(c.id)}
                 className={cn(
-                  "w-full rounded-lg px-3 py-3 text-left transition-all",
+                  "flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-all duration-150",
                   selectedId === c.id
-                    ? "bg-primary-soft text-primary"
-                    : "hover:bg-muted",
+                    ? "bg-primary-soft shadow-sm ring-1 ring-primary/20"
+                    : "hover:bg-muted/70",
                 )}
               >
+                <AvatarInitials name={displayName} size="sm" />
+                <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate font-medium text-sm">
-                    {c.contactName ?? c.contactPhone}
+                    {displayName}
                   </p>
                   {c.unreadCount > 0 && (
-                    <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">
+                    <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
                       {c.unreadCount}
                     </span>
                   )}
@@ -276,15 +303,17 @@ export default function InboxPage() {
                 {c.lead && (
                   <span
                     className={cn(
-                      "mt-1 inline-block text-[10px] uppercase",
-                      selectedId === c.id ? "text-primary/60" : "text-muted-foreground",
+                      "mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+                      selectedId === c.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
                     )}
                   >
                     {formatStage(c.lead.stage)}
                   </span>
                 )}
+                </div>
               </button>
-            ))}
+            );
+            })}
           </div>
         </div>
       </div>
@@ -309,7 +338,7 @@ export default function InboxPage() {
         ) : thread ? (
           <div className="flex flex-1 min-w-0">
             <div className="flex flex-1 flex-col min-w-0">
-            <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-4 py-4 lg:px-6">
+            <div className="flex items-center gap-3 border-b border-border/80 bg-white px-4 py-4 lg:px-6">
               <Button
                 type="button"
                 variant="ghost"
@@ -320,6 +349,7 @@ export default function InboxPage() {
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
+              <AvatarInitials name={thread.contactName ?? thread.contactPhone} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{thread.contactName ?? thread.contactPhone}</p>
                 <p className="truncate text-xs text-muted-foreground">{thread.contactPhone}</p>
@@ -338,23 +368,23 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-muted/20 px-6 py-4 custom-scrollbar">
-              <div className="mx-auto flex max-w-2xl flex-col gap-3">
+            <div className="conversation-thread-bg flex-1 overflow-y-auto px-4 py-4 custom-scrollbar lg:px-6">
+              <div className="mx-auto flex max-w-2xl flex-col gap-2">
                 {thread.messages.map((m) => (
                   <div
                     key={m.id}
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-2 text-sm",
+                      "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
                       m.direction === "OUTBOUND"
-                        ? "ml-auto bg-primary text-primary-foreground"
-                        : "mr-auto bg-muted",
+                        ? "ml-auto rounded-br-md bg-[#dcf8c6] text-foreground"
+                        : "mr-auto rounded-bl-md bg-white text-foreground",
                     )}
                   >
                     <p className="whitespace-pre-wrap">{m.content ?? "—"}</p>
                     <p
                       className={cn(
                         "mt-1 text-[10px]",
-                        m.direction === "OUTBOUND" ? "text-primary-foreground/70" : "text-muted-foreground",
+                        m.direction === "OUTBOUND" ? "text-emerald-800/60" : "text-muted-foreground",
                       )}
                     >
                       {new Date(m.createdAt).toLocaleTimeString([], {

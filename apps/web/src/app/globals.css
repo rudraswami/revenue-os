@@ -85,7 +85,37 @@ body {
 }
 
 .app-shell {
-  background: #f3f4f6;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgb(96 67 208 / 0.08), transparent),
+    linear-gradient(180deg, #f8f9fb 0%, #f1f3f6 100%);
+}
+
+.dashboard-page {
+  @apply mx-auto max-w-7xl p-6 md:p-8;
+}
+
+.card-interactive {
+  @apply rounded-xl border border-border bg-card shadow-sm transition-all duration-200;
+}
+.card-interactive:hover {
+  @apply border-primary/25 shadow-md;
+}
+
+.nav-item-active {
+  @apply relative bg-primary-soft text-primary;
+}
+.nav-item-active::before {
+  content: "";
+  @apply absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary;
+}
+
+.conversation-thread-bg {
+  background-color: #e5ddd5;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4cdc4' fill-opacity='0.35'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+.status-pill {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
 }
 
 .btn-gradient {

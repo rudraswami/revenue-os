@@ -67,17 +67,17 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <aside className="flex h-screen w-[240px] shrink-0 flex-col border-r border-border bg-white">
-      <div className="border-b border-border px-5 py-5">
+    <aside className="flex h-screen w-[260px] shrink-0 flex-col border-r border-border/80 bg-white/95 backdrop-blur-sm">
+      <div className="border-b border-border/80 px-5 py-5">
         <Logo href="/dashboard" />
         {organization && (
-          <p className="mt-3 truncate text-[12px] font-medium text-muted-foreground">
+          <p className="mt-3 truncate rounded-md bg-muted/60 px-2 py-1 text-[11px] font-medium text-muted-foreground">
             {organization.name}
           </p>
         )}
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3 custom-scrollbar">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3 custom-scrollbar">
         {nav.map((item) => {
           const active = item.exact
             ? pathname === item.href
@@ -90,18 +90,18 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
+                "relative flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150",
                 active
-                  ? "bg-primary-soft text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "nav-item-active shadow-sm"
+                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
               )}
             >
-              <span className="flex items-center gap-3">
+              <span className="flex items-center gap-3 pl-1">
                 <item.icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.25 : 2} />
                 {item.label}
               </span>
               {showUnread && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white shadow-sm">
                   {unread > 99 ? "99+" : unread}
                 </span>
               )}
@@ -110,28 +110,29 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      <div className="space-y-2 border-t border-border p-4">
+      <div className="space-y-2.5 border-t border-border/80 p-4">
         {whatsappConnected ? (
-          <div
-            className={cn(
-              "rounded-lg px-3 py-2 text-[12px] font-medium",
-              "bg-success/10 text-success",
-            )}
-          >
-            {live ? "WhatsApp connected · Live" : "WhatsApp connected"}
+          <div className="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2.5 text-[12px] font-medium text-success">
+            <span className="relative flex h-2 w-2">
+              {live && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
+              )}
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+            </span>
+            WhatsApp connected{live ? " · Live" : ""}
           </div>
         ) : (
           <Link
             href="/dashboard/settings"
             onClick={onNavigate}
-            className="block rounded-lg bg-warning/10 px-3 py-2.5 text-[12px] font-medium text-warning transition-colors hover:bg-warning/15"
+            className="block rounded-lg border border-warning/20 bg-warning/10 px-3 py-2.5 text-[12px] font-medium text-warning transition-colors hover:bg-warning/15"
           >
-            Connect WhatsApp →
+            Connect your WhatsApp number →
           </Link>
         )}
 
         {user && (
-          <div className="rounded-lg bg-muted px-3 py-2.5">
+          <div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2.5">
             <p className="truncate text-[13px] font-medium">{user.name ?? user.email}</p>
             <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
           </div>

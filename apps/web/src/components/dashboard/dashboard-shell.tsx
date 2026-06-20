@@ -41,7 +41,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
-        <header className="flex items-center justify-between border-b border-border bg-white px-4 py-3 lg:hidden">
+        <header className="flex items-center justify-between border-b border-border/80 bg-white/90 px-4 py-3 backdrop-blur-sm lg:hidden">
           <button
             type="button"
             className="rounded-lg p-2 text-muted-foreground hover:bg-muted"

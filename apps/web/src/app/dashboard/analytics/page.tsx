@@ -74,10 +74,11 @@ export default function AnalyticsPage() {
     })) ?? [];
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="dashboard-page">
       <PageHeader
+        eyebrow="Performance"
         title="Analytics"
-        description="Understand your WhatsApp sales performance"
+        description="Understand your WhatsApp sales performance at a glance."
       />
 
       {hasError && !isLoading && (
