@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { GripVertical } from "lucide-react";
+import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { LeadStage } from "@growvisi/shared";
@@ -50,15 +51,18 @@ function LeadCard({
       onDragStart={(e) => onDragStart(e, lead.id)}
       onDragEnd={onDragEnd}
       className={cn(
-        "transition-shadow md:cursor-grab md:active:cursor-grabbing",
+        "border-border/80 shadow-sm transition-all md:cursor-grab md:active:cursor-grabbing",
         draggingId === lead.id && "opacity-50 shadow-lg ring-2 ring-primary/40",
       )}
     >
-      <CardHeader className="flex flex-row items-start gap-2 p-4 pb-2">
-        <GripVertical className="mt-0.5 hidden h-4 w-4 shrink-0 text-muted-foreground/50 md:block" />
-        <CardTitle className="text-sm leading-snug">{lead.displayName ?? lead.phone}</CardTitle>
+      <CardHeader className="flex flex-row items-start gap-3 p-4 pb-2">
+        <GripVertical className="mt-2 hidden h-4 w-4 shrink-0 text-muted-foreground/50 md:block" />
+        <AvatarInitials name={lead.displayName ?? lead.phone} size="sm" />
+        <CardTitle className="min-w-0 flex-1 pt-1 text-sm leading-snug">
+          {lead.displayName ?? lead.phone}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 p-4 pt-0 md:pl-10">
+      <CardContent className="space-y-3 p-4 pt-0 md:pl-[3.25rem]">
         {/* Mobile / touch: stage picker */}
         <div className="md:hidden">
           <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -167,16 +171,18 @@ export function PipelineBoard({
             onDrop={(e) => handleDrop(e, stage)}
           >
             <div className="mb-3 flex items-center gap-2">
-              <div className={cn("h-2 w-2 rounded-full", stageColors[stage])} />
+              <div className={cn("h-2.5 w-2.5 rounded-full shadow-sm", stageColors[stage])} />
               <h2 className="text-sm font-semibold">{stageLabels[stage]}</h2>
-              <span className="ml-auto rounded-full bg-background px-2.5 py-0.5 text-xs font-medium text-muted-foreground shadow-sm">
+              <span className="ml-auto rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-muted-foreground shadow-sm ring-1 ring-border/60">
                 {data?.[stage]?.length ?? 0}
               </span>
             </div>
             <div
               className={cn(
-                "min-h-[240px] space-y-2 rounded-xl p-2 transition-colors",
-                dropTarget === stage ? "bg-primary/10 ring-2 ring-primary/30" : "bg-muted/50",
+                "min-h-[240px] space-y-2 rounded-xl border border-transparent p-2 transition-colors",
+                dropTarget === stage
+                  ? "border-primary/30 bg-primary/10 ring-2 ring-primary/20"
+                  : "bg-muted/40",
               )}
             >
               {(data?.[stage] ?? []).map((lead) => (

@@ -398,8 +398,8 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <div className="border-t border-border bg-background p-4">
-              <div className="mx-auto max-w-2xl space-y-3">
+            <div className="border-t border-border/80 bg-muted/20 p-4 lg:bg-white">
+              <div className="mx-auto max-w-2xl space-y-3 rounded-xl border border-border/60 bg-muted/30 p-4">
                 <MetaAiNotice compact />
                 {!showComposer ? (
                   <Button
@@ -477,38 +477,36 @@ export default function InboxPage() {
             </div>
 
             {thread.lead && (
-              <aside className="hidden w-72 shrink-0 flex-col border-l border-border lg:flex">
-                <div className="border-b border-border p-4">
+              <aside className="hidden w-72 shrink-0 flex-col border-l border-border/80 bg-white lg:flex">
+                <div className="border-b border-border/80 bg-muted/20 p-4">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Clock className="h-4 w-4 text-primary" />
                     <h2 className="text-sm font-semibold">Lead timeline</h2>
                   </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                     AI classification and pipeline changes after each message
                   </p>
                   {timeline?.lead.aiConfidence != null && (
-                    <p className="mt-2 text-[11px] text-muted-foreground">
+                    <div className="mt-3 rounded-lg bg-primary-soft/50 px-2.5 py-1.5 text-[11px] font-medium text-primary">
                       AI confidence: {Math.round(timeline.lead.aiConfidence * 100)}%
-                    </p>
+                    </div>
                   )}
                 </div>
-                <div className="flex-1 overflow-y-auto p-4">
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                   {!timeline?.events.length && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-4 text-center text-xs text-muted-foreground">
                       Timeline fills in after the next customer message is classified.
                     </p>
                   )}
-                  <ul className="space-y-3">
+                  <ul className="space-y-4">
                     {timeline?.events.map((ev) => (
-                      <li key={ev.id} className="relative border-l-2 border-border pl-3">
-                        <p className="text-xs font-medium">
-                          {ev.type === "ai_classify" ? "🤖 " : "📊 "}
-                          {ev.title}
-                        </p>
+                      <li key={ev.id} className="relative border-l-2 border-primary/30 pl-4">
+                        <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-primary" />
+                        <p className="text-xs font-semibold">{ev.title}</p>
                         {ev.detail && (
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">{ev.detail}</p>
+                          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{ev.detail}</p>
                         )}
-                        <p className="mt-1 text-[10px] text-muted-foreground">
+                        <p className="mt-1.5 text-[10px] text-muted-foreground">
                           {new Date(ev.at).toLocaleString([], {
                             month: "short",
                             day: "numeric",

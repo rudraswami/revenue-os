@@ -18,7 +18,7 @@ export function MarketingHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1120px] items-center justify-between px-6 py-4">
         <Logo />
 

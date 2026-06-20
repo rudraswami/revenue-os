@@ -37,19 +37,28 @@ export default function DataDeletionStatusClient() {
       <MarketingHeader />
       <main className="py-16">
         <div className="mx-auto max-w-[560px] px-6">
-          <h1 className="text-2xl font-bold">Data deletion status</h1>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Meta callback</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight">Data deletion status</h1>
           {!code && (
-            <p className="mt-4 text-sm text-muted-foreground">
+            <div className="mt-6 rounded-xl border border-dashed border-border/80 bg-muted/20 p-5 text-sm text-muted-foreground">
               Missing confirmation code. Use the link from Meta or our{" "}
               <Link href="/data-deletion" className="text-primary hover:underline">
                 data deletion instructions
               </Link>
               .
-            </p>
+            </div>
           )}
-          {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+          {error && (
+            <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           {status && (
-            <div className="mt-6 rounded-xl border border-border bg-muted/20 p-5 text-sm">
+            <div className="mt-6 overflow-hidden rounded-xl border border-border/80 bg-white shadow-sm">
+              <div className="border-b border-border/60 bg-muted/20 px-5 py-3">
+                <p className="text-sm font-semibold">Request received</p>
+              </div>
+              <div className="space-y-2 p-5 text-sm">
               <p>
                 <span className="text-muted-foreground">Confirmation code:</span>{" "}
                 <span className="font-mono">{status.confirmationCode}</span>
@@ -61,7 +70,8 @@ export default function DataDeletionStatusClient() {
                 <span className="text-muted-foreground">Received:</span>{" "}
                 {new Date(status.receivedAt).toLocaleString()}
               </p>
-              <p className="mt-4 text-muted-foreground">{status.message}</p>
+              <p className="mt-4 border-t border-border/60 pt-4 text-muted-foreground">{status.message}</p>
+              </div>
             </div>
           )}
         </div>

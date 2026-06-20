@@ -152,9 +152,9 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
       {/* Progress */}
-      <div className="border-b border-border bg-muted/30 px-6 py-4">
+      <div className="border-b border-border/80 bg-gradient-to-r from-[#25D366]/5 via-primary-soft/30 to-transparent px-6 py-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-[#128C7E]">
           Connect your existing WhatsApp Business number
         </p>
@@ -162,20 +162,34 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
           You keep your number — Growvisi only ingests messages for intelligence and pipeline
           tracking.
         </p>
-        <div className="mt-4 flex gap-1">
+        <div className="mt-5 flex gap-3">
           {STEPS.map((s, i) => (
-            <div
-              key={s.id}
-              className={cn(
-                "h-1.5 flex-1 rounded-full transition-colors",
-                i <= stepIndex ? "bg-primary" : "bg-border",
-              )}
-              title={s.title}
-            />
+            <div key={s.id} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+              <div
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors",
+                  i < stepIndex
+                    ? "bg-success text-white"
+                    : i === stepIndex
+                      ? "bg-primary text-white shadow-md"
+                      : "bg-border text-muted-foreground",
+                )}
+              >
+                {i < stepIndex ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+              </div>
+              <span
+                className={cn(
+                  "hidden truncate text-[10px] font-medium sm:block",
+                  i === stepIndex ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                {s.title}
+              </span>
+            </div>
           ))}
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Step {stepIndex + 1} of {STEPS.length}: {STEPS[stepIndex].title}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Step {stepIndex + 1} of {STEPS.length}: <strong className="text-foreground">{STEPS[stepIndex].title}</strong>
         </p>
       </div>
 
@@ -202,10 +216,10 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
 
             <ul className="space-y-3 text-sm">
               <li className="flex gap-3">
-                <label className="flex cursor-pointer items-start gap-3">
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/80 p-3 transition-colors hover:bg-muted/40 has-[:checked]:border-primary/30 has-[:checked]:bg-primary-soft/30">
                   <input
                     type="checkbox"
-                    className="mt-1"
+                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
                     checked={hasMetaAccount}
                     onChange={(e) => setHasMetaAccount(e.target.checked)}
                   />
@@ -218,10 +232,10 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
                 </label>
               </li>
               <li className="flex gap-3">
-                <label className="flex cursor-pointer items-start gap-3">
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/80 p-3 transition-colors hover:bg-muted/40 has-[:checked]:border-primary/30 has-[:checked]:bg-primary-soft/30">
                   <input
                     type="checkbox"
-                    className="mt-1"
+                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
                     checked={hasBusinessNumber}
                     onChange={(e) => setHasBusinessNumber(e.target.checked)}
                   />

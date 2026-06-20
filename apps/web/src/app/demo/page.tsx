@@ -54,15 +54,15 @@ export default function DemoPage() {
           </div>
         </section>
         <BentoFeatures />
-        <section className="py-16">
+        <section className="py-16 surface-lavender">
           <div className="mx-auto max-w-[560px] px-6 text-center">
-            <h2 className="text-2xl font-bold">Ready to use it with your customers?</h2>
+            <h2 className="text-2xl font-bold tracking-tight">Ready to use it with your customers?</h2>
             <p className="mt-3 text-muted-foreground">
               Set up takes about 15 minutes. Try free for 14 days.
             </p>
             <Link
               href="/register"
-              className="btn-gradient mt-6 inline-flex h-12 items-center gap-2 rounded-full px-8 text-[15px] font-semibold"
+              className="btn-gradient mt-8 inline-flex h-12 items-center gap-2 rounded-full px-8 text-[15px] font-semibold shadow-lg"
             >
               Get started free <ArrowRight className="h-4 w-4" />
             </Link>

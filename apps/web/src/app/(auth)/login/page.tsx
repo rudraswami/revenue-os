@@ -14,6 +14,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const resetDone = searchParams.get("reset") === "1";
+  const deletedDone = searchParams.get("deleted") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,8 +57,13 @@ function LoginForm() {
   return (
     <AuthShell title="Welcome back" description="Sign in to your workspace to manage WhatsApp sales.">
       {resetDone && (
-        <p className="mb-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+        <p className="mb-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2.5 text-sm text-success">
           Password updated. Sign in with your new password.
+        </p>
+      )}
+      {deletedDone && (
+        <p className="mb-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2.5 text-sm text-success">
+          Your account was deleted. Sign in with a different account or create a new workspace.
         </p>
       )}
       {!organizations ? (
@@ -138,7 +144,13 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="grid min-h-screen place-items-center bg-white text-sm text-muted-foreground">Loading…</div>}>
+    <Suspense fallback={
+      <div className="grid min-h-screen place-items-center surface-lavender">
+        <div className="rounded-2xl border border-border/80 bg-white px-8 py-6 text-sm text-muted-foreground shadow-sm">
+          Loading…
+        </div>
+      </div>
+    }>
       <LoginForm />
     </Suspense>
   );

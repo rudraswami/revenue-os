@@ -100,8 +100,8 @@ export function WhatsappManualConnect({
   const canConnect = accessToken.trim().length > 10 && phoneNumberId.trim().length > 5;
 
   const shellClass = isPrimary
-    ? "rounded-2xl border border-border bg-card shadow-sm"
-    : "rounded-2xl border border-border bg-muted/20";
+    ? "overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm"
+    : "overflow-hidden rounded-2xl border border-border/80 bg-muted/20";
 
   const headerClass = isPrimary
     ? "border-b border-border bg-gradient-to-r from-[#25D366]/10 to-primary/5"

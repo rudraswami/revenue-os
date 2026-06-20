@@ -11,11 +11,14 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
 
 export function InboxListSkeleton() {
   return (
-    <div className="space-y-2 p-3">
+    <div className="space-y-2 p-2">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-lg p-3">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="mt-2 h-3 w-full" />
+        <div key={i} className="flex items-start gap-3 rounded-xl px-3 py-3">
+          <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="mt-2 h-3 w-full" />
+          </div>
         </div>
       ))}
     </div>
@@ -29,10 +32,10 @@ export function InboxThreadSkeleton() {
         <Skeleton className="h-5 w-40" />
         <Skeleton className="mt-2 h-3 w-28" />
       </div>
-      <div className="flex-1 space-y-3 p-6">
-        <Skeleton className="ml-auto h-12 w-2/3 rounded-2xl" />
-        <Skeleton className="h-12 w-2/3 rounded-2xl" />
-        <Skeleton className="ml-auto h-12 w-1/2 rounded-2xl" />
+      <div className="flex-1 space-y-3 bg-muted/20 p-6">
+        <Skeleton className="ml-auto h-12 w-2/3 rounded-2xl rounded-br-md" />
+        <Skeleton className="h-12 w-2/3 rounded-2xl rounded-bl-md" />
+        <Skeleton className="ml-auto h-12 w-1/2 rounded-2xl rounded-br-md" />
       </div>
     </div>
   );

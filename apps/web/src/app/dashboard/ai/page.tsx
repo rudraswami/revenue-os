@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { Bot, LineChart, Sparkles, Target, UserRound, Zap } from "lucide-react";
+import { ArrowRight, Bot, LineChart, Sparkles, Target, UserRound, Zap } from "lucide-react";
 
 const features = [
   {
@@ -72,17 +72,18 @@ export default function AiStudioPage() {
   });
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="dashboard-page">
       <PageHeader
+        eyebrow="AI"
         title="Intelligence"
-        description="Analyze WhatsApp conversations and track revenue outcomes — Meta replies in-chat, Growvisi tracks the funnel"
+        description="Analyze WhatsApp conversations and track revenue outcomes — Meta replies in-chat, Growvisi tracks the funnel."
       />
 
       <div className="mb-6">
         <MetaAiNotice />
       </div>
 
-      <Card className="mb-8 border-primary/20 bg-secondary/40">
+      <Card className="mb-8 overflow-hidden border-primary/20 bg-gradient-to-br from-primary-soft/50 to-card shadow-sm">
         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
@@ -116,17 +117,17 @@ export default function AiStudioPage() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {features.map((f) => (
-          <Card key={f.title} className="transition-shadow hover:shadow-md">
+          <Card key={f.title} className="card-interactive">
             <CardHeader>
-              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft text-primary">
+              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
                 <f.icon className="h-5 w-5" />
               </div>
               <CardTitle className="text-base">{f.title}</CardTitle>
               <CardDescription>{f.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Link href={f.href} className="text-sm font-medium text-primary hover:underline">
-                Open →
+              <Link href={f.href} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                Open <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </CardContent>
           </Card>

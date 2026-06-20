@@ -106,10 +106,11 @@ export default function InsightsPage() {
   }>;
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="dashboard-page">
       <PageHeader
+        eyebrow="Recommendations"
         title="Insights"
-        description="Actionable recommendations from classified WhatsApp conversations"
+        description="Actionable recommendations from classified WhatsApp conversations."
       />
 
       {isError && !loading && (
@@ -133,7 +134,7 @@ export default function InsightsPage() {
       {!loading && !isError && insights.length > 0 && (
         <div className="space-y-4">
           {insights.map((item) => (
-            <Card key={item.title}>
+            <Card key={item.title} className="border-border/80 shadow-sm transition-shadow hover:shadow-md">
               <CardHeader className="flex flex-row items-start gap-4 space-y-0">
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.color}`}>
                   <item.icon className="h-5 w-5" />

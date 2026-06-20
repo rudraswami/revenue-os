@@ -24,7 +24,7 @@ const links = {
 
 export function MarketingFooter() {
   return (
-    <footer className="border-t border-border bg-white">
+    <footer className="border-t border-border/60 bg-gradient-to-b from-muted/30 to-white">
       <div className="mx-auto max-w-[1120px] px-6 py-16">
         <div className="grid gap-10 md:grid-cols-4">
           <div>

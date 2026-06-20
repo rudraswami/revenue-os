@@ -70,10 +70,11 @@ export default function AutomationsPage() {
   const queuedCount = Object.values(toggles).filter(Boolean).length;
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="dashboard-page">
       <PageHeader
+        eyebrow="Workflows"
         title="Automations"
-        description="Configure workflows — your preferences are saved and will activate when server execution ships"
+        description="Configure workflows — your preferences are saved and will activate when server execution ships."
         action={
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard/ai">Intelligence settings</Link>
@@ -81,7 +82,7 @@ export default function AutomationsPage() {
         }
       />
 
-      <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+      <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-amber-50/50 px-4 py-3.5 text-sm text-amber-950 shadow-sm">
         <FlaskConical className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
         <div>
           <p className="font-medium">Preview mode</p>
@@ -101,7 +102,7 @@ export default function AutomationsPage() {
       ) : (
         <div className="space-y-4">
           {automations.map((auto) => (
-            <Card key={auto.id}>
+            <Card key={auto.id} className="border-border/80 shadow-sm transition-shadow hover:shadow-md">
               <CardHeader className="flex flex-row items-start gap-4 space-y-0">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
                   <auto.icon className="h-5 w-5" />

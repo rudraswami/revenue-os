@@ -16,13 +16,17 @@ export default function AboutPage() {
     <div className="min-h-screen bg-background">
       <MarketingHeader />
       <main className="py-16 md:py-24">
-        <div className="mx-auto max-w-[720px] px-6">
-          <ScrollReveal>
+        <div className="border-b border-border/60 bg-gradient-to-b from-primary-soft/30 to-transparent py-12 md:py-16">
+          <div className="mx-auto max-w-[720px] px-6">
             <p className="section-label">About</p>
             <h1 className="display-lg mt-3 text-foreground">
               WhatsApp intelligence for teams that sell through messaging
             </h1>
-            <p className="body-lg mt-6 text-muted-foreground">
+          </div>
+        </div>
+        <div className="mx-auto max-w-[720px] px-6 py-10 md:py-12">
+          <ScrollReveal>
+            <p className="body-lg text-muted-foreground">
               Growvisi ingests customer WhatsApp threads, classifies intent, scores leads, and tracks your
               pipeline end-to-end. We complement Meta Business Agent — Meta replies in WhatsApp; Growvisi
               helps you operate growth.

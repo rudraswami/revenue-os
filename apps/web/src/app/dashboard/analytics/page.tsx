@@ -107,12 +107,12 @@ export default function AnalyticsPage() {
             <MetricCard
               title="Total leads"
               value={funnel?.total ?? 0}
-              icon={<Users className="h-4 w-4 text-primary" />}
+              icon={<Users className="h-4 w-4" />}
             />
             <MetricCard
               title="Won deals"
               value={funnel?.won ?? 0}
-              icon={<TrendingUp className="h-4 w-4 text-success" />}
+              icon={<TrendingUp className="h-4 w-4" />}
             />
             <MetricCard
               title="Win rate"
@@ -121,20 +121,20 @@ export default function AnalyticsPage() {
                   ? `${(funnel.conversionRate * 100).toFixed(0)}%`
                   : "—"
               }
-              icon={<Zap className="h-4 w-4 text-primary" />}
+              icon={<Zap className="h-4 w-4" />}
             />
             <MetricCard
               title="Conversations"
               value={convStats?.totalConversations ?? 0}
               delta={`${convStats?.inboundMessages ?? 0} inbound`}
-              icon={<MessageSquare className="h-4 w-4 text-primary" />}
+              icon={<MessageSquare className="h-4 w-4" />}
             />
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Leads by stage</CardTitle>
+            <Card className="border-border/80 shadow-sm">
+              <CardHeader className="border-b border-border/60 bg-muted/20">
+                <CardTitle className="text-base">Leads by stage</CardTitle>
               </CardHeader>
               <CardContent className="h-72">
                 {barData.some((d) => d.count > 0) ? (
@@ -164,9 +164,9 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Pipeline distribution</CardTitle>
+            <Card className="border-border/80 shadow-sm">
+              <CardHeader className="border-b border-border/60 bg-muted/20">
+                <CardTitle className="text-base">Pipeline distribution</CardTitle>
               </CardHeader>
               <CardContent className="h-72">
                 {chartData.some((d) => d.value > 0) ? (

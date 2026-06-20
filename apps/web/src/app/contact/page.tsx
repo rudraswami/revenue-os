@@ -63,14 +63,18 @@ export default function ContactPage() {
     <div className="min-h-screen bg-background">
       <MarketingHeader />
       <main className="py-16 md:py-24">
-        <div className="mx-auto max-w-[1120px] px-6">
+        <div className="border-b border-border/60 bg-gradient-to-b from-primary-soft/20 to-transparent py-10 md:py-14">
+          <div className="mx-auto max-w-[1120px] px-6">
+            <p className="section-label">Get a demo</p>
+            <h1 className="display-lg mt-3 max-w-2xl text-foreground">
+              See how Growvisi fits your business
+            </h1>
+          </div>
+        </div>
+        <div className="mx-auto max-w-[1120px] px-6 py-12 md:py-16">
           <div className="grid gap-16 lg:grid-cols-2 lg:items-start">
             <ScrollReveal>
-              <p className="section-label">Get a demo</p>
-              <h1 className="display-lg mt-3 text-foreground">
-                See how Growvisi fits your business
-              </h1>
-              <p className="body-lg mt-4">
+              <p className="body-lg">
                 Book a demo or contact our sales team for Enterprise pricing. We&apos;ll show you
                 how to turn WhatsApp conversations into a clear pipeline.
               </p>
@@ -109,7 +113,7 @@ export default function ContactPage() {
             </ScrollReveal>
 
             <ScrollReveal delay={0.1}>
-              <div className="rounded-2xl border border-border bg-white p-8 shadow-lg">
+              <div className="product-frame p-8 md:p-10">
                 {submitted ? (
                   <div className="py-8 text-center">
                     <CheckCircle2 className="mx-auto h-12 w-12 text-success" />

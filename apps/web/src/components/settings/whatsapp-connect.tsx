@@ -166,9 +166,9 @@ export default function WhatsappConnect() {
 
   if (accountsLoading || configLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading…
+      <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        Loading WhatsApp settings…
       </div>
     );
   }
@@ -176,32 +176,36 @@ export default function WhatsappConnect() {
   if (displayAccount && phase !== "waiting_meta" && phase !== "saving") {
     return (
       <div className="space-y-6">
-        <div className="overflow-hidden rounded-2xl border border-success/30 bg-gradient-to-br from-success/10 to-card">
+        <div className="overflow-hidden rounded-2xl border border-success/30 bg-gradient-to-br from-[#25D366]/10 via-success/5 to-white shadow-sm">
+          <div className="border-b border-success/20 bg-success/5 px-6 py-4">
+            <p className="flex items-center gap-2 text-sm font-semibold text-success">
+              <CheckCircle2 className="h-4 w-4" />
+              WhatsApp connected
+            </p>
+          </div>
           <div className="p-6 md:p-8">
             <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#25D366]/20 text-[#25D366]">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#25D366]/15 text-[#128C7E] shadow-sm">
                 <WhatsAppIcon className="h-8 w-8" />
               </div>
               <div className="flex-1">
-                <p className="flex items-center gap-2 text-sm font-medium text-success">
-                  <CheckCircle2 className="h-4 w-4" />
-                  WhatsApp connected
-                </p>
-                <h2 className="mt-1 text-xl font-semibold">
+                <h2 className="text-xl font-semibold tracking-tight">
                   {displayAccount.verifiedName ?? "Your business line"}
                 </h2>
-                <p className="text-muted-foreground">{displayAccount.displayPhoneNumber}</p>
+                <p className="mt-0.5 font-mono text-sm text-muted-foreground">
+                  {displayAccount.displayPhoneNumber}
+                </p>
               </div>
             </div>
 
-            <div className="mt-6 rounded-xl bg-background/60 p-4">
-              <p className="text-sm font-medium">Verify ingestion</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+            <div className="mt-6 rounded-xl border border-border/60 bg-muted/30 p-4">
+              <p className="text-sm font-semibold">Verify ingestion</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 Send a WhatsApp from your phone to{" "}
                 <strong className="text-foreground">{displayAccount.displayPhoneNumber}</strong>.
                 It will be classified and appear under Conversations and Pipeline.
               </p>
-              <Button asChild className="mt-4" size="sm">
+              <Button asChild className="mt-4 gap-1.5" size="sm">
                 <Link href="/dashboard/inbox">
                   View conversations
                   <ArrowRight className="h-4 w-4" />
@@ -248,7 +252,7 @@ export default function WhatsappConnect() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-border bg-muted/30 px-5 py-4">
+      <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
         <p className="text-sm text-muted-foreground">
           Connect the <strong className="text-foreground">WhatsApp Business number you already use</strong>{" "}
           — the line your customers message. Growvisi ingests conversations for classification and
@@ -330,8 +334,8 @@ export default function WhatsappConnect() {
         <>
           <WhatsappConnectWizard />
 
-          <details className="rounded-xl border border-border bg-muted/20">
-            <summary className="cursor-pointer px-5 py-3 text-sm font-medium text-muted-foreground">
+          <details className="overflow-hidden rounded-xl border border-border/80 bg-white shadow-sm">
+            <summary className="cursor-pointer px-5 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/30">
               Quick connect (compact form)
             </summary>
             <div className="border-t border-border p-4">
