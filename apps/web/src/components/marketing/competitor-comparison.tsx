@@ -1,80 +1,55 @@
-import { Check, Minus } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { ScrollReveal } from "./scroll-reveal";
 import { cn } from "@/lib/utils";
 
-type Cell = boolean | "limited";
-
-const rows: { capability: string; wa: Cell; wati: Cell; aisensy: Cell; growvisi: Cell }[] = [
-  { capability: "Shared Inbox", wa: false, wati: true, aisensy: true, growvisi: true },
-  { capability: "Pipeline CRM", wa: false, wati: "limited", aisensy: "limited", growvisi: true },
-  { capability: "AI Intent Detection", wa: false, wati: false, aisensy: false, growvisi: true },
-  { capability: "Lead Scoring", wa: false, wati: false, aisensy: false, growvisi: true },
-  { capability: "Revenue Analytics", wa: false, wati: false, aisensy: false, growvisi: true },
-  { capability: "Auto Stage Updates", wa: false, wati: false, aisensy: false, growvisi: true },
+const rows: { feature: string; wa: boolean | "limited"; wati: boolean | "limited"; aisensy: boolean | "limited"; growvisi: boolean }[] = [
+  { feature: "Shared Inbox", wa: false, wati: true, aisensy: true, growvisi: true },
+  { feature: "Pipeline CRM", wa: false, wati: "limited", aisensy: "limited", growvisi: true },
+  { feature: "AI Intent Detection", wa: false, wati: false, aisensy: false, growvisi: true },
+  { feature: "Lead Scoring", wa: false, wati: false, aisensy: false, growvisi: true },
+  { feature: "Revenue Analytics", wa: false, wati: false, aisensy: false, growvisi: true },
+  { feature: "Auto Stage Updates", wa: false, wati: false, aisensy: false, growvisi: true },
 ];
 
-function CellIcon({ value }: { value: Cell }) {
+function Cell({ value }: { value: boolean | "limited" }) {
   if (value === true) {
-    return (
-      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-success/15 text-success">
-        <Check className="h-4 w-4" strokeWidth={2.5} />
-      </span>
-    );
+    return <Check className="mx-auto h-5 w-5 text-accent" strokeWidth={2.5} />;
   }
   if (value === "limited") {
-    return <span className="text-[12px] font-medium text-muted-foreground">Limited</span>;
+    return <span className="text-[12px] text-muted-foreground">Limited</span>;
   }
-  return (
-    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
-      <Minus className="h-4 w-4" />
-    </span>
-  );
+  return <X className="mx-auto h-5 w-5 text-muted-foreground/40" strokeWidth={2} />;
 }
 
 export function CompetitorComparison() {
   return (
-    <section id="compare" className="scroll-mt-20 surface-muted py-24 md:py-32">
-      <div className="mx-auto max-w-[1120px] px-6">
-        <ScrollReveal className="mx-auto max-w-[640px] text-center">
-          <p className="section-label">Why Growvisi</p>
-          <h2 className="display-lg mt-3 text-foreground">Why Growvisi Is Different</h2>
-          <p className="body-lg mx-auto mt-4 max-w-[520px]">
-            Inbox tools capture messages. Growvisi turns them into qualified pipeline and revenue.
-          </p>
+    <section id="compare" className="scroll-mt-20 border-b border-border bg-white py-20 md:py-28">
+      <div className="mx-auto max-w-[1280px] px-6 lg:px-8">
+        <ScrollReveal className="text-center">
+          <h2 className="display-lg text-foreground">Why Growvisi Wins</h2>
         </ScrollReveal>
 
         <ScrollReveal delay={0.08} className="mt-12 overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+          <table className="w-full min-w-[640px] border-collapse">
             <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="px-5 py-4 text-left text-[13px] font-semibold text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="px-4 py-4 text-left text-[13px] font-semibold text-muted-foreground">
                   Capability
                 </th>
                 <th className="px-4 py-4 text-center text-[13px] font-semibold">WhatsApp Business</th>
                 <th className="px-4 py-4 text-center text-[13px] font-semibold">Wati</th>
                 <th className="px-4 py-4 text-center text-[13px] font-semibold">AiSensy</th>
-                <th className="px-5 py-4 text-center text-[13px] font-bold text-primary">Growvisi</th>
+                <th className="px-4 py-4 text-center text-[13px] font-bold text-accent">Growvisi</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr
-                  key={row.capability}
-                  className={cn("border-b border-border/60", i % 2 === 0 && "bg-white")}
-                >
-                  <td className="px-5 py-4 text-[14px] font-medium">{row.capability}</td>
-                  <td className="px-4 py-4 text-center">
-                    <CellIcon value={row.wa} />
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <CellIcon value={row.wati} />
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <CellIcon value={row.aisensy} />
-                  </td>
-                  <td className="bg-primary-soft/30 px-5 py-4 text-center">
-                    <CellIcon value={row.growvisi} />
-                  </td>
+                <tr key={row.feature} className={cn("border-b border-border/60", i % 2 === 1 && "bg-[#f8f9ff]/50")}>
+                  <td className="px-4 py-4 text-[14px] font-medium">{row.feature}</td>
+                  <td className="px-4 py-4 text-center"><Cell value={row.wa} /></td>
+                  <td className="px-4 py-4 text-center"><Cell value={row.wati} /></td>
+                  <td className="px-4 py-4 text-center"><Cell value={row.aisensy} /></td>
+                  <td className="bg-accent/5 px-4 py-4 text-center"><Cell value={row.growvisi} /></td>
                 </tr>
               ))}
             </tbody>

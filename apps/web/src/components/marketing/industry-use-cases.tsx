@@ -1,3 +1,7 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { ScrollReveal } from "./scroll-reveal";
 import {
   Building2,
   Car,
@@ -6,65 +10,41 @@ import {
   Paintbrush,
   ShoppingBag,
 } from "lucide-react";
-import { ScrollReveal } from "./scroll-reveal";
 
 const industries = [
-  {
-    icon: Building2,
-    title: "Real Estate",
-    description: "Track property enquiries from first message to site visit.",
-  },
-  {
-    icon: GraduationCap,
-    title: "Education",
-    description: "Manage admissions conversations and follow up every applicant.",
-  },
-  {
-    icon: HeartPulse,
-    title: "Clinics",
-    description: "Handle appointment requests without losing patients in chat.",
-  },
-  {
-    icon: Car,
-    title: "Automotive",
-    description: "Manage test drives, quotes, and financing questions in one place.",
-  },
-  {
-    icon: Paintbrush,
-    title: "Interior Design",
-    description: "Track quotations and design discussions through to signed projects.",
-  },
-  {
-    icon: ShoppingBag,
-    title: "D2C",
-    description: "Manage pre-sales questions and support before and after purchase.",
-  },
+  { icon: Building2, title: "Real Estate", desc: "Track property enquiries from first message to site visit." },
+  { icon: GraduationCap, title: "Education", desc: "Manage admissions and follow up every applicant." },
+  { icon: HeartPulse, title: "Healthcare", desc: "Handle appointment requests without losing patients." },
+  { icon: Car, title: "Automotive", desc: "Manage test drives, quotes, and financing questions." },
+  { icon: Paintbrush, title: "Interior Design", desc: "Track quotations through to signed projects." },
+  { icon: ShoppingBag, title: "D2C", desc: "Manage pre-sales and support before and after purchase." },
 ];
 
 export function IndustryUseCases() {
   return (
-    <section id="industries" className="scroll-mt-20 bg-white py-24 md:py-32">
-      <div className="mx-auto max-w-[1120px] px-6">
-        <ScrollReveal className="mx-auto max-w-[640px] text-center">
-          <p className="section-label">Use cases</p>
-          <h2 className="display-lg mt-3 text-foreground">Built for teams that sell on WhatsApp</h2>
+    <section id="industries" className="scroll-mt-20 border-b border-border bg-[#f8f9ff] py-20 md:py-28">
+      <div className="mx-auto max-w-[1280px] px-6 lg:px-8">
+        <ScrollReveal className="text-center">
+          <h2 className="display-lg text-foreground">Built For Revenue Teams</h2>
         </ScrollReveal>
 
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {industries.map((item, i) => {
             const Icon = item.icon;
             return (
-              <ScrollReveal key={item.title} delay={i * 0.05}>
-                <div className="h-full rounded-2xl border border-border bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="mt-4 text-lg font-bold">{item.title}</h3>
-                  <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                    {item.description}
-                  </p>
-                </div>
-              </ScrollReveal>
+              <motion.div
+                key={item.title}
+                className="elev-1 rounded-2xl bg-white p-6"
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                whileHover={{ y: -3 }}
+              >
+                <Icon className="h-6 w-6 text-accent" strokeWidth={1.75} />
+                <h3 className="mt-4 text-lg font-bold">{item.title}</h3>
+                <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">{item.desc}</p>
+              </motion.div>
             );
           })}
         </div>

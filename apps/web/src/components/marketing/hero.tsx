@@ -1,9 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Play } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { motion } from "framer-motion";
-import { HeroVisual } from "./hero-visual";
 
 const trustItems = [
   "Official WhatsApp API",
@@ -14,75 +14,58 @@ const trustItems = [
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden pb-8 pt-8 md:pt-12">
-      <div className="pointer-events-none absolute inset-0 mesh-hero" />
-
-      <div className="relative mx-auto max-w-[1120px] px-6">
+    <section className="border-b border-border bg-white">
+      <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:py-24">
         <motion.div
-          className="mx-auto max-w-[800px] text-center"
-          initial={{ opacity: 0, y: 32 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          <motion.p
-            className="section-label"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-          >
-            The AI Revenue Engine for WhatsApp Sales Teams
-          </motion.p>
-
-          <h1 className="display-xl mt-4 text-foreground">
-            Turn WhatsApp Conversations{" "}
-            <span className="bg-gradient-to-r from-[#128C7E] via-primary to-[#7c3aed] bg-clip-text text-transparent">
-              Into Revenue
-            </span>
+          <h1 className="display-xl text-foreground">
+            Turn WhatsApp Conversations Into Revenue
           </h1>
-
-          <p className="body-lg mx-auto mt-6 max-w-[600px]">
-            Growvisi analyzes every chat, scores buying intent, updates your pipeline, and alerts
-            your team — so hot leads never slip away.
+          <p className="body-lg mt-6 max-w-[520px]">
+            Growvisi automatically analyzes conversations, scores buying intent, updates your
+            pipeline, triggers follow-ups, and helps your team close more deals.
           </p>
 
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-            <Link
-              href="/register"
-              className="btn-wa inline-flex h-[52px] items-center gap-2 rounded-full px-8 text-[15px] font-bold"
-            >
-              Start 14-Day Free Trial
+          <div className="mt-8 flex flex-wrap gap-4">
+            <Link href="/register" className="btn-primary inline-flex items-center gap-2 rounded-lg px-6 py-3 text-[15px]">
+              Start Free Trial
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href="/demo"
-              className="inline-flex h-[52px] items-center gap-2 rounded-full border-2 border-border bg-white px-8 text-[15px] font-semibold text-foreground shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Play className="h-3.5 w-3.5 fill-primary" />
-              </span>
-              Join Live Demo
+            <Link href="/contact" className="btn-outline inline-flex items-center rounded-lg px-6 py-3 text-[15px]">
+              Book Demo
             </Link>
           </div>
 
-          <ul className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
-            {trustItems.map((item, i) => (
-              <motion.li
-                key={item}
-                className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + i * 0.08 }}
-              >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#25D366]/15 text-[#128C7E]">
-                  <Check className="h-3 w-3" strokeWidth={3} />
-                </span>
+          <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3">
+            {trustItems.map((item) => (
+              <li key={item} className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
+                <Check className="h-4 w-4 text-accent" strokeWidth={2.5} />
                 {item}
-              </motion.li>
+              </li>
             ))}
           </ul>
         </motion.div>
 
-        <HeroVisual />
+        <motion.div
+          className="relative"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="overflow-hidden rounded-2xl elev-2">
+            <Image
+              src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=85&auto=format&fit=crop"
+              alt="Sales team collaborating on WhatsApp leads"
+              width={640}
+              height={480}
+              className="h-auto w-full object-cover"
+              priority
+            />
+          </div>
+        </motion.div>
       </div>
     </section>
   );

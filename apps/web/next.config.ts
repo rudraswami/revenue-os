@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@growvisi/shared"],
   reactStrictMode: true,
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
+  },
   /** Required for Facebook Login / WhatsApp Embedded Signup popup (FB.login). */
   async headers() {
     return [

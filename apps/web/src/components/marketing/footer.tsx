@@ -3,36 +3,33 @@ import { Logo } from "./logo";
 
 const links = {
   Product: [
+    { label: "Features", href: "#product" },
     { label: "How it works", href: "#engine" },
-    { label: "Product", href: "#product" },
-    { label: "Why Growvisi", href: "#compare" },
-    { label: "Demo", href: "/demo" },
     { label: "Pricing", href: "#pricing" },
+    { label: "Demo", href: "/demo" },
   ],
   Company: [
     { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
+    { label: "Case Studies", href: "#case-study" },
   ],
   Legal: [
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
     { label: "Cookies", href: "/cookies" },
-    { label: "Data deletion", href: "/data-deletion" },
     { label: "DPA", href: "/dpa" },
-    { label: "FAQ", href: "#faq" },
   ],
 };
 
 export function MarketingFooter() {
   return (
-    <footer className="border-t border-border/60 bg-gradient-to-b from-muted/30 to-white">
-      <div className="mx-auto max-w-[1120px] px-6 py-16">
+    <footer className="border-t border-border bg-white">
+      <div className="mx-auto max-w-[1280px] px-6 py-16 lg:px-8">
         <div className="grid gap-10 md:grid-cols-4">
           <div>
             <Logo />
             <p className="mt-4 max-w-[260px] text-[13px] leading-relaxed text-muted-foreground">
-              The AI Revenue Engine for WhatsApp sales teams — turn every conversation into pipeline
-              and revenue.
+              The AI Revenue Engine for WhatsApp sales teams.
             </p>
           </div>
           {Object.entries(links).map(([title, items]) => (
@@ -41,10 +38,7 @@ export function MarketingFooter() {
               <ul className="mt-4 space-y-2.5">
                 {items.map((item) => (
                   <li key={item.label}>
-                    <a
-                      href={item.href}
-                      className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-                    >
+                    <a href={item.href} className="text-[13px] text-muted-foreground hover:text-foreground">
                       {item.label}
                     </a>
                   </li>
@@ -54,21 +48,10 @@ export function MarketingFooter() {
           ))}
         </div>
         <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-8 text-[13px] text-muted-foreground">
-          <div>
-            <p>© {new Date().getFullYear()} Growvisi</p>
-            <p className="mt-1">
-              <a href="mailto:support@growvisi.in" className="hover:text-foreground">
-                support@growvisi.in
-              </a>
-            </p>
-          </div>
+          <p>© {new Date().getFullYear()} Growvisi</p>
           <div className="flex gap-6">
-            <Link href="/login" className="hover:text-foreground">
-              Log in
-            </Link>
-            <Link href="/register" className="hover:text-foreground">
-              Start free trial
-            </Link>
+            <Link href="/login">Log in</Link>
+            <Link href="/register">Get Started</Link>
           </div>
         </div>
       </div>

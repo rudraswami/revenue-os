@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { GROWVISI_WEB_URL } from "@growvisi/shared";
 import "./globals.css";
 import { Providers } from "./providers";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-display",
+  weight: ["400", "500", "600", "700"],
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-body",
   weight: ["400", "500", "600", "700"],
 });
 
@@ -25,14 +31,7 @@ export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
     locale: "en_IN",
-    images: [
-      {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "Growvisi — AI Revenue Engine for WhatsApp Sales Teams",
-      },
-    ],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: siteTitle }],
   },
   twitter: {
     card: "summary",
@@ -45,7 +44,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${jakarta.variable} min-h-screen antialiased`}>
+      <body className={`${jakarta.variable} ${inter.variable} min-h-screen antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -62,7 +62,7 @@ export function ProductShowcase() {
               className={cn(
                 "relative rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all",
                 active === view.id
-                  ? "bg-[#25D366] text-white shadow-sm"
+                  ? "bg-accent text-white"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
