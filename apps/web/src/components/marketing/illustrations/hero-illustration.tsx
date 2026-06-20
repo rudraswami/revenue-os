@@ -1,129 +1,278 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useState, type ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { CheckCircle2, Sparkles, Zap } from "lucide-react";
+import { HeroWhatsappPhone, useHeroAnimationCycle } from "./hero-whatsapp-phone";
 
-/** Illustration: rep on laptop + WhatsApp on phone → Growvisi pipeline (no stock photo) */
-export function HeroIllustration() {
+function LivePill({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
   return (
-    <div className="relative mx-auto aspect-[4/3] w-full max-w-[560px]">
-      {/* Ambient glow */}
-      <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-accent/20 via-primary/10 to-transparent blur-2xl" />
+    <motion.div
+      initial={{ opacity: 0, x: delay < 0 ? -16 : 16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: Math.abs(delay), duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="rounded-2xl border border-[#dce9ff]/80 bg-white/90 p-3.5 shadow-[0_12px_40px_rgb(11_28_48/0.08)] backdrop-blur-sm sm:p-4"
+    >
+      {children}
+    </motion.div>
+  );
+}
 
-      <svg
-        viewBox="0 0 560 420"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="relative h-full w-full drop-shadow-2xl"
-        aria-hidden
+function AnimatedScore({ target, active }: { target: number; active: boolean }) {
+  const [score, setScore] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setScore(0);
+      return;
+    }
+    let frame = 0;
+    const steps = 18;
+    const id = setInterval(() => {
+      frame++;
+      setScore(Math.min(target, Math.round((frame / steps) * target)));
+      if (frame >= steps) clearInterval(id);
+    }, 40);
+    return () => clearInterval(id);
+  }, [active, target]);
+
+  return <span className="font-bold tabular-nums text-accent">{score}</span>;
+}
+
+const PIPELINE = ["New", "Qualified", "Won"] as const;
+
+/** Live, animated hero — proactive AI working while you watch */
+export function HeroIllustration() {
+  const tick = useHeroAnimationCycle();
+  const [pipelineStage, setPipelineStage] = useState(0);
+  const [showDeal, setShowDeal] = useState(false);
+  const [aiActive, setAiActive] = useState(false);
+
+  useEffect(() => {
+    setPipelineStage(0);
+    setShowDeal(false);
+    setAiActive(false);
+
+    const a = setTimeout(() => setAiActive(true), 3200);
+    const p1 = setTimeout(() => setPipelineStage(1), 4000);
+    const p2 = setTimeout(() => setPipelineStage(2), 4800);
+    const p3 = setTimeout(() => setPipelineStage(3), 5600);
+    const d = setTimeout(() => setShowDeal(true), 6200);
+
+    return () => {
+      clearTimeout(a);
+      clearTimeout(p1);
+      clearTimeout(p2);
+      clearTimeout(p3);
+      clearTimeout(d);
+    };
+  }, [tick]);
+
+  return (
+    <div className="relative mx-auto w-full max-w-[1000px]">
+      {/* Live badge */}
+      <motion.div
+        className="mb-5 flex items-center justify-center gap-2 sm:mb-7"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
       >
-        {/* Desk surface */}
-        <ellipse cx="280" cy="380" rx="220" ry="28" fill="#dce9ff" opacity="0.6" />
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+        </span>
+        <span className="text-[12px] font-semibold text-accent sm:text-[13px]">
+          Live — watch Growvisi work on a real lead
+        </span>
+      </motion.div>
 
-        {/* Laptop */}
-        <motion.g
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-        >
-          <rect x="140" y="200" width="280" height="160" rx="12" fill="#0b1c30" />
-          <rect x="152" y="212" width="256" height="120" rx="6" fill="#131b2e" />
-          {/* Dashboard on screen */}
-          <rect x="162" y="222" width="80" height="100" rx="4" fill="#1a2744" />
-          <rect x="168" y="232" width="68" height="8" rx="2" fill="#006c49" opacity="0.8" />
-          <rect x="168" y="248" width="50" height="6" rx="2" fill="#3d4f6f" />
-          <rect x="168" y="260" width="60" height="6" rx="2" fill="#3d4f6f" />
-          <rect x="168" y="272" width="45" height="6" rx="2" fill="#3d4f6f" />
-          {/* Pipeline columns on screen */}
-          <rect x="252" y="232" width="48" height="80" rx="4" fill="#1e3050" />
-          <rect x="258" y="240" width="36" height="14" rx="3" fill="#006c49" opacity="0.9" />
-          <rect x="258" y="260" width="36" height="14" rx="3" fill="#2a4060" />
-          <rect x="258" y="280" width="36" height="14" rx="3" fill="#2a4060" />
-          <rect x="308" y="232" width="90" height="80" rx="4" fill="#1e3050" />
-          <path d="M318 250 L388 250" stroke="#006c49" strokeWidth="2" />
-          <path d="M318 270 L370 270" stroke="#4a6080" strokeWidth="2" />
-          <path d="M318 290 L380 290" stroke="#4a6080" strokeWidth="2" />
-          <rect x="120" y="358" width="320" height="12" rx="4" fill="#2a3a55" />
-        </motion.g>
-
-        {/* Person */}
-        <motion.g
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.15, duration: 0.6 }}
-        >
-          {/* Chair back */}
-          <rect x="48" y="240" width="56" height="100" rx="8" fill="#c8d4e8" />
-          {/* Body */}
-          <ellipse cx="76" cy="200" rx="36" ry="40" fill="#006c49" />
-          {/* Head */}
-          <circle cx="76" cy="148" r="32" fill="#f4c4a0" />
-          <path d="M44 148 Q76 120 108 148" fill="#2d1f14" />
-          {/* Arm toward laptop */}
-          <path d="M100 210 Q140 220 160 240" stroke="#006c49" strokeWidth="18" strokeLinecap="round" />
-        </motion.g>
-
-        {/* Phone in hand */}
-        <motion.g
-          animate={{ y: [0, -4, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <rect x="380" y="160" width="72" height="128" rx="14" fill="#0b1c30" />
-          <rect x="388" y="172" width="56" height="96" rx="8" fill="#ece5dd" />
-          {/* WA header */}
-          <rect x="388" y="172" width="56" height="22" rx="8" fill="#075e54" />
-          <circle cx="400" cy="183" r="5" fill="#fff" opacity="0.9" />
-          <rect x="410" y="180" width="24" height="4" rx="2" fill="#fff" opacity="0.7" />
-          {/* Chat bubbles */}
-          <rect x="394" y="200" width="44" height="22" rx="8" fill="#fff" />
-          <rect x="394" y="228" width="36" height="18" rx="8" fill="#d9fdd3" />
-          <rect x="402" y="252" width="40" height="16" rx="8" fill="#fff" />
-        </motion.g>
-
-        {/* Flow arrow: phone → dashboard */}
-        <motion.path
-          d="M380 220 Q320 180 280 200"
-          stroke="#006c49"
-          strokeWidth="2"
-          strokeDasharray="6 4"
+      <div
+        className="relative rounded-3xl border border-[#dce9ff] bg-gradient-to-b from-[#f8f9ff] to-white p-4 sm:p-6 md:p-8"
+        style={{ minHeight: "clamp(440px, 72vw, 540px)" }}
+      >
+        {/* Animated flow lines */}
+        <svg
+          className="pointer-events-none absolute inset-0 hidden h-full w-full md:block"
+          viewBox="0 0 1000 540"
           fill="none"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 0.7 }}
-          transition={{ delay: 0.8, duration: 1.2 }}
-        />
-
-        {/* Floating score badge */}
-        <motion.g
-          animate={{ y: [0, -6, 0] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+          aria-hidden
         >
-          <rect x="420" y="88" width="100" height="48" rx="12" fill="#fff" stroke="#dce9ff" strokeWidth="1" />
-          <text x="432" y="108" fill="#45464d" fontSize="10" fontFamily="system-ui">Lead score</text>
-          <text x="432" y="128" fill="#006c49" fontSize="20" fontWeight="700" fontFamily="system-ui">92</text>
-          <circle cx="500" cy="112" r="14" fill="#ecfdf5" />
-          <path d="M494 112 L498 116 L506 106" stroke="#006c49" strokeWidth="2" fill="none" />
-        </motion.g>
+          <motion.path
+            d="M 220 270 H 360"
+            stroke="#006c49"
+            strokeWidth="2"
+            strokeDasharray="8 6"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.35 }}
+            transition={{ duration: 1.2, delay: 0.5, repeat: Infinity, repeatDelay: 7.5 }}
+          />
+          <motion.path
+            d="M 640 270 H 780"
+            stroke="#006c49"
+            strokeWidth="2"
+            strokeDasharray="8 6"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.35 }}
+            transition={{ duration: 1.2, delay: 4, repeat: Infinity, repeatDelay: 7.5 }}
+          />
+          <motion.circle
+            cx="290"
+            cy="270"
+            r="4"
+            fill="#006c49"
+            animate={{ cx: [220, 360], opacity: [0, 1, 0] }}
+            transition={{ duration: 1.5, delay: 1, repeat: Infinity, repeatDelay: 7 }}
+          />
+          <motion.circle
+            cx="710"
+            cy="270"
+            r="4"
+            fill="#006c49"
+            animate={{ cx: [640, 780], opacity: [0, 1, 0] }}
+            transition={{ duration: 1.5, delay: 4.5, repeat: Infinity, repeatDelay: 7 }}
+          />
+        </svg>
 
-        {/* Hot lead pulse */}
-        <motion.g
-          animate={{ scale: [1, 1.05, 1], opacity: [0.9, 1, 0.9] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <rect x="32" y="88" width="120" height="36" rx="18" fill="#006c49" />
-          <text x="48" y="111" fill="#fff" fontSize="11" fontWeight="600" fontFamily="system-ui">
-            Hot lead · Qualified
-          </text>
-        </motion.g>
+        <div className="relative z-10 grid grid-cols-1 items-center gap-5 md:grid-cols-[1fr_auto_1fr] md:gap-4 lg:gap-6">
+          {/* AI panel */}
+          <div className="order-2 flex flex-col gap-3 md:order-1 md:items-end">
+            <LivePill delay={-0.1}>
+              <div className="flex items-start gap-2.5">
+                <motion.div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#ecfdf5] to-[#e5eeff]"
+                  animate={aiActive ? { rotate: [0, 5, -5, 0] } : {}}
+                  transition={{ duration: 0.6, repeat: aiActive ? Infinity : 0, repeatDelay: 2 }}
+                >
+                  <Sparkles className="h-4 w-4 text-accent" />
+                </motion.div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium text-muted-foreground">Growvisi AI</p>
+                  <p className="text-[14px] font-bold leading-snug">Reading intent…</p>
+                  <AnimatePresence>
+                    {aiActive && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="mt-2.5 space-y-1.5 overflow-hidden text-[11px]"
+                      >
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Intent</span>
+                          <motion.span
+                            className="font-semibold text-accent"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            Buying
+                          </motion.span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Budget</span>
+                          <span className="font-semibold">₹85L</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Score</span>
+                          <span>
+                            <AnimatedScore target={92} active={aiActive} />
+                            <span className="font-bold text-accent"> · Hot</span>
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </LivePill>
 
-        {/* Incoming message ping */}
-        <motion.circle
-          cx="448"
-          cy="168"
-          r="8"
-          fill="#25D366"
-          animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        />
-      </svg>
+            <motion.div
+              className="flex items-center gap-2 rounded-full border border-accent/20 bg-[#ecfdf5] px-3.5 py-2 md:ml-auto"
+              animate={{ opacity: aiActive ? 1 : 0.4 }}
+            >
+              <Zap className="h-3.5 w-3.5 text-accent" />
+              <span className="text-[11px] font-bold text-accent">Reply suggested in 2s</span>
+            </motion.div>
+          </div>
+
+          {/* Phone */}
+          <div className="order-1 flex justify-center py-2 md:order-2 md:py-0">
+            <HeroWhatsappPhone tick={tick} />
+          </div>
+
+          {/* Pipeline + deal */}
+          <div className="order-3 flex flex-col gap-3">
+            <LivePill delay={0.1}>
+              <p className="text-[11px] font-medium text-muted-foreground">Pipeline</p>
+              <p className="text-[14px] font-bold">Priya Sharma</p>
+              <div className="mt-3 flex items-center gap-1">
+                {PIPELINE.map((stage, i) => {
+                  const active = pipelineStage > i;
+                  const current = pipelineStage === i + 1;
+                  return (
+                    <div key={stage} className="flex items-center gap-1">
+                      <motion.span
+                        className="rounded-lg px-2 py-1 text-[10px] font-semibold sm:text-[11px]"
+                        animate={{
+                          backgroundColor: active
+                            ? stage === "Won"
+                              ? "rgb(0 108 73)"
+                              : "rgb(229 238 255)"
+                            : "rgb(239 244 255)",
+                          color: active
+                            ? stage === "Won"
+                              ? "#fff"
+                              : "rgb(0 108 73)"
+                            : "rgb(69 70 77)",
+                          scale: current ? 1.06 : 1,
+                        }}
+                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                      >
+                        {stage}
+                      </motion.span>
+                      {i < PIPELINE.length - 1 && (
+                        <motion.span
+                          className="text-accent"
+                          animate={{ opacity: pipelineStage > i ? 1 : 0.25 }}
+                        >
+                          →
+                        </motion.span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <motion.p
+                className="mt-2.5 text-[11px] text-muted-foreground"
+                animate={{ opacity: pipelineStage >= 2 ? 1 : 0 }}
+              >
+                Auto-moved — no manual update needed
+              </motion.p>
+            </LivePill>
+
+            <AnimatePresence>
+              {showDeal && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 22 }}
+                  className="rounded-2xl border border-accent/30 bg-gradient-to-br from-[#ecfdf5] to-[#d3e4fe] p-3.5 sm:p-4"
+                >
+                  <motion.div
+                    animate={{ scale: [1, 1.02, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="flex items-center gap-2.5"
+                  >
+                    <CheckCircle2 className="h-6 w-6 text-accent" strokeWidth={2.5} />
+                    <div>
+                      <p className="text-[11px] font-semibold text-accent">Deal closed</p>
+                      <p className="text-[16px] font-bold text-foreground">₹85L booking 🎉</p>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
