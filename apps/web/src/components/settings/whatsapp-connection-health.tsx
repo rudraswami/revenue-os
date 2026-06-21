@@ -1,11 +1,56 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Activity, CheckCircle2, Circle, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  CheckCircle2,
+  CircleDashed,
+  Loader2,
+  MessageSquare,
+  RefreshCw,
+  Shield,
+  Smartphone,
+  Zap,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import {
+  connectionSummary,
+  healthPillars,
+  type HealthCheck,
+} from "@/lib/whatsapp-health-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
+
+type ConnectionHealthData = {
+  checks: HealthCheck[];
+  accounts: Array<{
+    displayPhoneNumber: string;
+    phoneNumberId: string;
+    wabaId: string;
+    isActive: boolean;
+  }>;
+  stats: { conversationCount: number; inboundCount: number };
+  tokenHealth?: {
+    valid: boolean;
+    level?: "ok" | "soon" | "urgent";
+    needsRefresh: boolean;
+    needsAttention?: boolean;
+    hoursRemaining: number | null;
+    expiresAt: string | null;
+    hint?: string;
+  };
+};
+
+const PILLAR_ICONS: Record<string, typeof Smartphone> = {
+  account: Smartphone,
+  webhook_url: Zap,
+  verify_token: Shield,
+  app_secret: Shield,
+  messages_ingested: MessageSquare,
+  meta_webhooks: Zap,
+};
 
 export function WhatsappConnectionHealth() {
   const token = useAuthStore((s) => s.accessToken);
@@ -13,63 +58,50 @@ export function WhatsappConnectionHealth() {
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["whatsapp-connection-health"],
     queryFn: () =>
-      apiFetch<{
-        checks: Array<{ id: string; ok: boolean; detail: string }>;
-        accounts: Array<{
-          displayPhoneNumber: string;
-          phoneNumberId: string;
-          wabaId: string;
-          isActive: boolean;
-        }>;
-        stats: { conversationCount: number; inboundCount: number };
-        tokenHealth?: {
-          valid: boolean;
-          level?: "ok" | "soon" | "urgent";
-          needsRefresh: boolean;
-          needsAttention?: boolean;
-          hoursRemaining: number | null;
-          expiresAt: string | null;
-          hint?: string;
-        };
-        metaSetup: { webhookUrl: string; testTip: string };
-        recentWebhooks: Array<{
-          at: string;
-          processed: boolean;
-          error: string | null;
-          inboundInPayload: number;
-          matchesYourAccount: boolean;
-        }>;
-      }>("/whatsapp-accounts/connection-health", { token: token ?? undefined }),
+      apiFetch<ConnectionHealthData>("/whatsapp-accounts/connection-health", {
+        token: token ?? undefined,
+      }),
     enabled: !!token,
     staleTime: 30_000,
   });
 
   if (isLoading || !data) {
     return (
-      <div className="rounded-xl border border-border/80 bg-muted/30 px-4 py-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          Loading connection diagnostics…
-        </div>
+      <div className="flex items-center gap-2 rounded-2xl border border-[#dce9ff] bg-white px-5 py-6 text-sm text-muted-foreground shadow-sm">
+        <Loader2 className="h-4 w-4 animate-spin text-accent" />
+        Loading connection status…
       </div>
     );
   }
 
   const active = data.accounts.find((a) => a.isActive);
-  const passedChecks = data.checks.filter((c) => c.ok).length;
+  const pillars = healthPillars(data.checks);
+  const passed = data.checks.filter((c) => c.ok).length;
+  const healthPct = Math.round((passed / data.checks.length) * 100);
+  const summary = connectionSummary(data.checks, {
+    hasActiveAccount: !!active,
+    inboundCount: data.stats.inboundCount,
+    tokenNeedsRefresh: data.tokenHealth?.needsRefresh,
+  });
+
+  const visiblePillars = active
+    ? pillars
+    : pillars.filter((p) => !["messages_ingested", "meta_webhooks"].includes(p.id));
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/80 bg-white shadow-sm">
-      <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/20 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold text-foreground">Message ingestion diagnostics</p>
+    <div className="overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dce9ff] px-5 py-4 sm:px-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Connection status</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            How your WhatsApp line syncs with Growvisi
+          </p>
         </div>
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
-          className="h-8 gap-1"
+          className="h-9 gap-1.5 rounded-xl border-[#dce9ff]"
           disabled={isFetching}
           onClick={() => void refetch()}
         >
@@ -78,106 +110,155 @@ export function WhatsappConnectionHealth() {
         </Button>
       </div>
 
-      <div className="space-y-4 p-4 text-sm">
-        <div className="flex flex-wrap gap-3">
-          <div className="rounded-lg bg-primary-soft/50 px-3 py-2 text-xs">
-            <span className="text-muted-foreground">Checks passed</span>
-            <p className="font-semibold text-primary">
-              {passedChecks}/{data.checks.length}
-            </p>
-          </div>
-          <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs">
-            <span className="text-muted-foreground">Conversations</span>
-            <p className="font-semibold">{data.stats.conversationCount}</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs">
-            <span className="text-muted-foreground">Inbound messages</span>
-            <p className="font-semibold">{data.stats.inboundCount}</p>
-          </div>
-          {data.tokenHealth && (
+      <div className="space-y-6 p-5 sm:p-6">
+        <div
+          className={cn(
+            "flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between",
+            summary.tone === "success" && "border-[#6cf8bb]/40 bg-gradient-to-br from-[#ecfdf5] to-white",
+            summary.tone === "pending" && "border-[#dce9ff] bg-gradient-to-br from-[#f8f9ff] to-white",
+            summary.tone === "warning" && "border-amber-200/80 bg-gradient-to-br from-amber-50/80 to-white",
+          )}
+        >
+          <div className="flex items-start gap-4">
             <div
               className={cn(
-                "rounded-lg px-3 py-2 text-xs",
-                data.tokenHealth.level === "urgent" || data.tokenHealth.needsRefresh
-                  ? "bg-amber-50 text-amber-950"
-                  : data.tokenHealth.level === "soon"
-                    ? "bg-blue-50 text-primary"
-                    : "bg-success/10 text-success",
+                "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
+                summary.tone === "success" && "bg-[#25D366]/15 text-[#128C7E]",
+                summary.tone === "pending" && "bg-[#e8f0ff] text-[#0b1c30]",
+                summary.tone === "warning" && "bg-amber-100 text-amber-800",
               )}
             >
-              <span className="text-muted-foreground">Meta token</span>
-              <p className="font-semibold">
-                {!data.tokenHealth.valid || data.tokenHealth.needsRefresh
-                  ? "Needs refresh"
-                  : data.tokenHealth.level === "soon"
-                    ? data.tokenHealth.hoursRemaining != null
-                      ? `~${Math.ceil(data.tokenHealth.hoursRemaining)}h left`
-                      : "Expiring soon"
-                    : data.tokenHealth.hoursRemaining != null
-                      ? `~${Math.ceil(data.tokenHealth.hoursRemaining)}h left`
-                      : "Valid"}
+              {summary.tone === "success" ? (
+                <CheckCircle2 className="h-6 w-6" />
+              ) : summary.tone === "pending" ? (
+                <CircleDashed className="h-6 w-6" />
+              ) : (
+                <RefreshCw className="h-6 w-6" />
+              )}
+            </div>
+            <div>
+              <p className="text-lg font-bold tracking-tight">{summary.label}</p>
+              <p className="mt-1 max-w-md text-sm leading-relaxed text-muted-foreground">
+                {summary.subtitle}
               </p>
             </div>
-          )}
+          </div>
+
+          <div className="flex shrink-0 gap-3 sm:flex-col sm:items-end">
+            <div className="rounded-xl border border-[#dce9ff] bg-white px-4 py-2.5 text-center min-w-[88px]">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Health
+              </p>
+              <p className="text-xl font-bold text-foreground">{healthPct}%</p>
+            </div>
+          </div>
         </div>
 
-        {data.tokenHealth?.needsAttention && data.tokenHealth.hint && (
-          <p
-            className={cn(
-              "rounded-lg border px-3 py-2 text-xs",
-              data.tokenHealth.level === "urgent" || data.tokenHealth.needsRefresh
-                ? "border-amber-200/80 bg-amber-50/80 text-amber-950"
-                : "border-blue-200/60 bg-blue-50/80 text-foreground",
-            )}
-          >
-            {data.tokenHealth.hint}
-          </p>
+        {data.tokenHealth?.needsAttention && (
+          <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3.5">
+            <p className="text-sm font-semibold text-amber-950">Action required</p>
+            <p className="mt-1 text-sm text-amber-900/90">
+              {data.tokenHealth.needsRefresh
+                ? "Your Meta access token has expired or is about to. Refresh it above to avoid missing customer messages."
+                : (data.tokenHealth.hint ?? "Review your Meta access token in the section above.")}
+            </p>
+          </div>
         )}
 
-        <ul className="space-y-2">
-          {data.checks.map((c) => (
-            <li
-              key={c.id}
-              className={cn(
-                "flex items-start gap-2 rounded-lg px-3 py-2 text-xs",
-                c.ok ? "bg-success/5 text-foreground" : "bg-amber-50 text-amber-950",
-              )}
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { label: "Conversations", value: data.stats.conversationCount },
+            { label: "Messages received", value: data.stats.inboundCount },
+            {
+              label: "Access token",
+              value: data.tokenHealth?.needsRefresh
+                ? "Refresh"
+                : data.tokenHealth?.level === "soon"
+                  ? "Soon"
+                  : "Active",
+              highlight: data.tokenHealth?.needsRefresh || data.tokenHealth?.level === "soon",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-xl border border-[#dce9ff] bg-[#f8f9ff]/50 px-4 py-3"
             >
-              {c.ok ? (
-                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
-              ) : (
-                <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-              )}
-              <span className="font-mono leading-relaxed">{c.detail}</span>
-            </li>
+              <p className="text-xs text-muted-foreground">{stat.label}</p>
+              <p
+                className={cn(
+                  "mt-0.5 text-lg font-bold",
+                  stat.highlight ? "text-amber-700" : "text-foreground",
+                )}
+              >
+                {stat.value}
+              </p>
+            </div>
           ))}
-        </ul>
+        </div>
 
-        {active && (
-          <p className="rounded-lg border border-[#128C7E]/20 bg-[#25D366]/5 px-3 py-2.5 text-xs text-muted-foreground">
-            Send a WhatsApp <strong className="text-foreground">to {active.displayPhoneNumber}</strong>{" "}
-            from your personal phone (not from the business test number).
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Setup checklist
           </p>
-        )}
-
-        <p className="rounded-lg bg-amber-50/80 px-3 py-2 text-xs text-amber-900">{data.metaSetup.testTip}</p>
-
-        {data.recentWebhooks.length > 0 && (
-          <details className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-            <summary className="cursor-pointer text-xs font-medium text-foreground">
-              Recent Meta webhooks (48h)
-            </summary>
-            <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto font-mono text-[10px] text-muted-foreground custom-scrollbar">
-              {data.recentWebhooks.map((w) => (
-                <li key={w.at}>
-                  {new Date(w.at).toLocaleString()} · msgs={w.inboundInPayload} ·
-                  {w.matchesYourAccount ? " yours" : " other"} ·
-                  {w.processed ? " processed" : " pending"}
-                  {w.error ? ` · err: ${w.error}` : ""}
+          <ul className="space-y-2">
+            {visiblePillars.map((pillar) => {
+              const Icon = PILLAR_ICONS[pillar.id] ?? CheckCircle2;
+              return (
+                <li
+                  key={pillar.id}
+                  className={cn(
+                    "flex items-start gap-3 rounded-xl border px-4 py-3.5 transition-colors",
+                    pillar.status === "complete"
+                      ? "border-[#6cf8bb]/30 bg-[#ecfdf5]/40"
+                      : pillar.status === "pending"
+                        ? "border-[#dce9ff] bg-white"
+                        : "border-amber-200/60 bg-amber-50/40",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                      pillar.status === "complete"
+                        ? "bg-[#25D366]/15 text-[#128C7E]"
+                        : pillar.status === "pending"
+                          ? "bg-[#e8f0ff] text-[#0b1c30]"
+                          : "bg-amber-100 text-amber-800",
+                    )}
+                  >
+                    {pillar.status === "complete" ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <Icon className="h-4 w-4" />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground">{pillar.title}</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                      {pillar.description}
+                    </p>
+                  </div>
                 </li>
-              ))}
-            </ul>
-          </details>
+              );
+            })}
+          </ul>
+        </div>
+
+        {active && data.stats.inboundCount === 0 && (
+          <div className="rounded-xl border border-[#128C7E]/20 bg-[#ecfdf5]/50 px-4 py-4">
+            <p className="text-sm font-semibold text-foreground">Confirm your first message</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              From your personal phone, send any WhatsApp to{" "}
+              <strong className="text-foreground">{active.displayPhoneNumber}</strong>. Meta&apos;s
+              outbound &quot;Send test message&quot; won&apos;t appear in Growvisi — only real
+              customer messages count.
+            </p>
+            <Button asChild size="sm" variant="accent" className="mt-4 gap-1.5 rounded-xl">
+              <Link href="/dashboard/inbox">
+                Open Conversations
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
     </div>

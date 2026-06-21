@@ -339,42 +339,44 @@ export class WhatsappAccountsService {
         ok: accounts.some((a) => a.isActive),
         detail: accounts.some((a) => a.isActive)
           ? `Active number: ${accounts.find((a) => a.isActive)?.displayPhoneNumber}`
-          : "No active WhatsApp account in Growvisi",
+          : "No WhatsApp number connected yet",
       },
       {
         id: "webhook_url",
         ok: technical.webhookUrl.includes("growvisi.in"),
-        detail: `Webhook URL: ${technical.webhookUrl}`,
+        detail: technical.webhookUrl.includes("growvisi.in")
+          ? "Growvisi is ready to receive customer messages"
+          : "Message routing needs configuration",
       },
       {
         id: "verify_token",
         ok: !!technical.verifyToken,
         detail: technical.verifyToken
-          ? "WHATSAPP_VERIFY_TOKEN is set on API"
-          : "WHATSAPP_VERIFY_TOKEN missing on API",
+          ? "Webhook verification configured"
+          : "Webhook verification incomplete",
       },
       {
         id: "app_secret",
         ok: secretConfigured,
         detail: secretConfigured
-          ? "WHATSAPP_APP_SECRET / META_APP_SECRET set (required for Meta POST webhooks)"
-          : "App secret missing — Meta webhook POSTs will fail signature check",
+          ? "Inbound message security enabled"
+          : "Message security verification incomplete",
       },
       {
         id: "messages_ingested",
         ok: inboundCount > 0,
         detail:
           inboundCount > 0
-            ? `${inboundCount} inbound message(s) in database`
-            : "No inbound messages stored yet",
+            ? `${inboundCount} customer message${inboundCount === 1 ? "" : "s"} received`
+            : "No customer messages received yet",
       },
       {
         id: "meta_webhooks",
         ok: webhooksForYou.some((w) => w.processed && w.inboundInPayload > 0),
         detail:
           webhooksForYou.length === 0
-            ? "No Meta webhooks received for your phone/WABA in last 48h — check Meta Configuration + test recipient"
-            : `${webhooksForYou.length} webhook(s) matched your account (48h)`,
+            ? "Waiting for first customer message from Meta"
+            : `${webhooksForYou.length} live event${webhooksForYou.length === 1 ? "" : "s"} received (48h)`,
       },
     ];
 
@@ -396,7 +398,7 @@ export class WhatsappAccountsService {
           ? `${technical.verifyToken.slice(0, 4)}…`
           : "",
         testTip:
-          "Meta API Setup \"Send test message\" is outbound (business → your phone) — it does not appear in Conversations. Growvisi only ingests inbound customer messages. Reply from your phone to the business number (+1 555…), or send a new WhatsApp to that number.",
+          "Meta's \"Send test message\" in API Setup sends from your business to your phone — it won't appear in Conversations. Message your business number from your personal phone instead.",
       },
     };
   }
@@ -539,10 +541,10 @@ export class WhatsappAccountsService {
         needsAttention: health.level !== "ok",
         hint:
           health.level === "urgent"
-            ? "Generate a new token in Meta API Setup and paste it under Refresh access token."
+            ? "Generate a new token in Meta API Setup and paste it in Settings under Refresh access token."
             : health.level === "soon"
-              ? "Your Meta temporary token expires in about a day — refresh soon to avoid ingestion gaps."
-              : "Access token is valid.",
+              ? "Your Meta token expires in about a day — refresh soon to avoid missing customer messages."
+              : "Access token is active.",
       };
     } catch {
       return {
@@ -550,7 +552,7 @@ export class WhatsappAccountsService {
         expiresAt: null,
         hoursRemaining: null,
         needsRefresh: true,
-        hint: "Could not verify token — paste a fresh token from Meta API Setup.",
+        hint: "Could not verify your token — paste a fresh one from Meta API Setup.",
       };
     }
   }

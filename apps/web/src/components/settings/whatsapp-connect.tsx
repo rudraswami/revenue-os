@@ -15,7 +15,7 @@ import {
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import { getEmbeddedSignupDiagnostics, runEmbeddedSignup } from "@/lib/facebook-sdk";
+import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappManualConnect } from "@/components/settings/whatsapp-manual-connect";
@@ -73,18 +73,6 @@ export default function WhatsappConnect() {
       token: token ?? undefined,
     }),
     enabled: !!token,
-    staleTime: 60_000,
-  });
-
-  const { data: metaDiagnose } = useQuery({
-    queryKey: ["embedded-signup-diagnose"],
-    queryFn: () =>
-      apiFetch<{
-        env: { appId: string; configId: string; graphApiVersion: string; webUrl: string };
-        graphError: string | null;
-        checks: Array<{ id: string; ok: boolean; detail: string }>;
-      }>("/whatsapp-accounts/embedded-signup/diagnose", { token: token ?? undefined }),
-    enabled: !!token && !!config?.enabled,
     staleTime: 60_000,
   });
 
@@ -205,9 +193,9 @@ export default function WhatsappConnect() {
   if (displayAccount && phase !== "waiting_meta" && phase !== "saving") {
     return (
       <div className="space-y-6">
-        <div className="overflow-hidden rounded-2xl border border-success/30 bg-gradient-to-br from-[#25D366]/10 via-success/5 to-white shadow-sm">
-          <div className="border-b border-success/20 bg-success/5 px-6 py-4">
-            <p className="flex items-center gap-2 text-sm font-semibold text-success">
+        <div className="overflow-hidden rounded-2xl border border-[#6cf8bb]/30 bg-gradient-to-br from-[#ecfdf5]/80 via-white to-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
+          <div className="border-b border-[#6cf8bb]/20 bg-[#ecfdf5]/50 px-6 py-4">
+            <p className="flex items-center gap-2 text-sm font-semibold text-[#128C7E]">
               <CheckCircle2 className="h-4 w-4" />
               WhatsApp connected
             </p>
@@ -218,20 +206,23 @@ export default function WhatsappConnect() {
                 <WhatsAppIcon className="h-8 w-8" />
               </div>
               <div className="flex-1">
-                <h2 className="text-xl font-semibold tracking-tight">
+                <h2 className="text-xl font-bold tracking-tight">
                   {displayAccount.verifiedName ?? "Your business line"}
                 </h2>
-                <p className="mt-0.5 font-mono text-sm text-muted-foreground">
+                <p className="mt-0.5 text-sm font-medium text-muted-foreground">
                   {displayAccount.displayPhoneNumber}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Customers can keep messaging this number. Growvisi syncs every conversation for
+                  scoring, pipeline, and AI-assisted replies.
                 </p>
               </div>
             </div>
 
-            <div className="mt-6 rounded-xl border border-border/60 bg-muted/30 p-4">
-              <p className="text-sm font-semibold">Verify ingestion</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Send a WhatsApp from your personal phone to your business number — we detect it
-                automatically.
+            <div className="mt-6 border-t border-[#dce9ff] pt-6">
+              <p className="text-sm font-semibold text-foreground">Verify message delivery</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                One quick test confirms your inbox is receiving customer messages.
               </p>
               <div className="mt-4">
                 <WhatsappIngestionVerifier displayPhoneNumber={displayAccount.displayPhoneNumber} />
@@ -250,10 +241,12 @@ export default function WhatsappConnect() {
           expiresAt={connectionHealth?.tokenHealth?.expiresAt}
         />
 
+        <WhatsappConnectionHealth />
+
         <Button
           variant="outline"
           size="sm"
-          className="text-muted-foreground"
+          className="rounded-xl text-muted-foreground"
           disabled={disconnectMutation.isPending}
           onClick={() => {
             if (confirm(`Disconnect ${displayAccount.displayPhoneNumber}?`)) {
@@ -263,8 +256,6 @@ export default function WhatsappConnect() {
         >
           Disconnect number
         </Button>
-
-        <WhatsappConnectionHealth />
       </div>
     );
   }
@@ -280,10 +271,6 @@ export default function WhatsappConnect() {
     );
   }
 
-  const diagnostics =
-    config?.enabled && typeof window !== "undefined"
-      ? getEmbeddedSignupDiagnostics(config.appId, config.configId, config.graphApiVersion)
-      : null;
 
   return (
     <div className="space-y-6">
@@ -412,32 +399,6 @@ export default function WhatsappConnect() {
       )}
 
       {embeddedLive && <WhatsappManualConnect variant="secondary" />}
-
-      <WhatsappConnectionHealth />
-
-      {diagnostics && (
-        <details className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-          <summary className="cursor-pointer font-medium text-foreground">
-            Connection diagnostics (support)
-          </summary>
-          <ul className="mt-2 space-y-1 font-mono">
-            <li>Page origin: {diagnostics.origin}</li>
-            <li>Domain allowed: {diagnostics.domainOk ? "yes" : "no"}</li>
-            <li>Embedded Signup live: {embeddedLive ? "yes" : "no"}</li>
-            <li>Meta App ID: {diagnostics.appId}</li>
-            <li>Config ID: {diagnostics.configId}</li>
-          </ul>
-          {metaDiagnose && (
-            <ul className="mt-2 space-y-1">
-              {metaDiagnose.checks.map((c) => (
-                <li key={c.id} className={c.ok ? "text-success" : "text-amber-700"}>
-                  {c.ok ? "✓" : "○"} {c.detail}
-                </li>
-              ))}
-            </ul>
-          )}
-        </details>
-      )}
     </div>
   );
 }

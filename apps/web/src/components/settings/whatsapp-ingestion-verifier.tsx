@@ -55,43 +55,49 @@ export function WhatsappIngestionVerifier({
     <div className="space-y-4">
       <div
         className={cn(
-          "rounded-xl border p-4 transition-colors",
+          "rounded-xl border p-5 transition-colors",
           verified
-            ? "border-success/40 bg-success/5"
-            : "border-border/80 bg-muted/30",
+            ? "border-[#6cf8bb]/40 bg-[#ecfdf5]/60"
+            : "border-[#dce9ff] bg-[#f8f9ff]/80",
         )}
       >
         <div className="flex items-start gap-3">
           {verified ? (
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#128C7E]" />
           ) : (
-            <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary" />
+            <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-accent" />
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">
-              {verified ? "First message received!" : "Waiting for your test message…"}
+            <p className="text-sm font-semibold text-foreground">
+              {verified ? "You're live — first message received" : "Send a quick test message"}
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               {verified
-                ? "Growvisi is ingesting customer WhatsApp messages. Open Conversations to see the thread."
-                : "From your personal phone, send any WhatsApp to your business number below. We poll every few seconds."}
+                ? "Customer WhatsApp messages are flowing into Growvisi. Open Conversations to see your thread."
+                : "Message your business number from your personal phone. We'll detect it automatically."}
             </p>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <code className="rounded-lg bg-white px-3 py-2 text-sm font-semibold shadow-sm">
+          <span className="rounded-xl border border-[#dce9ff] bg-white px-3.5 py-2 text-sm font-semibold text-foreground shadow-sm">
             {displayPhoneNumber}
-          </code>
-          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void copyNumber()}>
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-xl"
+            onClick={() => void copyNumber()}
+          >
             <Copy className="h-3.5 w-3.5" />
-            {copied ? "Copied" : "Copy"}
+            {copied ? "Copied" : "Copy number"}
           </Button>
-          {chatUrl && (
-            <Button asChild size="sm" className="gap-1.5 bg-[#25D366] hover:bg-[#1da851]">
+          {chatUrl && !verified && (
+            <Button asChild size="sm" className="gap-1.5 rounded-xl bg-[#25D366] hover:bg-[#1da851]">
               <a href={chatUrl} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-3.5 w-3.5" />
-                Open in WhatsApp
+                Open WhatsApp
                 <ExternalLink className="h-3 w-3 opacity-70" />
               </a>
             </Button>
@@ -99,23 +105,18 @@ export function WhatsappIngestionVerifier({
         </div>
       </div>
 
-      <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-xs text-amber-950">
-        <strong>Tip:</strong> Meta&apos;s &quot;Send test message&quot; in API Setup is outbound only — it
-        won&apos;t appear here. Message <strong>to</strong> your business number from your phone.
-      </div>
+      {!verified && (
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Tip: Meta&apos;s test send in API Setup is outbound only. Message{" "}
+          <strong className="text-foreground">to</strong> your business line from your phone.
+        </p>
+      )}
 
-      <div className="flex flex-wrap gap-2">
-        <Button asChild>
-          <Link href="/dashboard/inbox">
-            {verified ? "View conversation" : "Open Conversations"}
-          </Link>
-        </Button>
-        {!verified && (
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/settings#whatsapp">Diagnostics</Link>
-          </Button>
-        )}
-      </div>
+      <Button asChild variant={verified ? "accent" : "outline"} className="rounded-xl">
+        <Link href="/dashboard/inbox">
+          {verified ? "View in Conversations" : "Open Conversations"}
+        </Link>
+      </Button>
     </div>
   );
 }

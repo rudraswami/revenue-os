@@ -68,7 +68,7 @@ export default function SettingsPage() {
         <DashboardSection
           id="whatsapp"
           title="WhatsApp"
-          description="Connect your business number — customers keep the same line."
+          description="Your business line, connection health, and Meta access token."
           icon={MessageCircle}
           iconClassName="bg-[#ecfdf5] text-[#128C7E]"
         >

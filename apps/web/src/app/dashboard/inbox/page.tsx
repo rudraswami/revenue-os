@@ -260,7 +260,7 @@ export default function InboxPage() {
               compact
               icon={<Inbox className="h-6 w-6" />}
               title="No messages yet"
-              description="Send a WhatsApp from your personal phone to your business number (not from the Meta test number). Add your phone under Meta → API Setup → test recipients, then open Settings → Message ingestion diagnostics."
+              description="Send a WhatsApp from your personal phone to your business number (not from the Meta test number). Add your phone under Meta → API Setup → test recipients, then check connection status in Settings."
               actionHref="/dashboard/settings"
               actionLabel="WhatsApp settings"
             />
