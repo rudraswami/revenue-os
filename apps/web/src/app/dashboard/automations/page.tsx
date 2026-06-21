@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -10,11 +10,10 @@ import { Switch } from "@/components/ui/switch";
 import {
   type AutomationId,
   DEFAULT_AUTOMATIONS,
-  loadAutomationPreferences,
-  saveAutomationPreferences,
 } from "@/lib/automation-preferences";
+import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { Bell, Clock, FlaskConical, MessageCircle, Zap } from "lucide-react";
+import { Bell, Clock, MessageCircle, Zap } from "lucide-react";
 
 const automations: Array<{
   id: AutomationId;
@@ -22,66 +21,82 @@ const automations: Array<{
   title: string;
   description: string;
   impact: string;
+  serverNote: string;
 }> = [
   {
     id: "welcome",
     icon: MessageCircle,
     title: "Welcome message",
-    description: "Greet first-time customers automatically when they message your number.",
+    description: "First replies are handled by Meta Business Agent in WhatsApp — keep this on to track intent from day one.",
     impact: "Faster first impression",
+    serverNote: "Handled in WhatsApp via Meta",
   },
   {
     id: "followup",
     icon: Clock,
     title: "Follow-up reminder",
-    description: "Alert your team when a lead hasn't been replied to in 24 hours.",
+    description: "Email your team when a conversation has waited 24+ hours without a reply.",
     impact: "Fewer dropped leads",
+    serverNote: "Daily email when enabled",
   },
   {
     id: "stage",
     icon: Zap,
     title: "Auto stage update",
-    description: "Move leads to Qualified when AI detects strong buying intent.",
+    description: "Let AI move leads forward when classification confidence is high.",
     impact: "Cleaner pipeline",
+    serverNote: "Runs on each classification",
   },
   {
     id: "notify",
     icon: Bell,
     title: "Hot lead alert",
-    description: "Notify the team when a lead score exceeds 80.",
+    description: "Email owners when a lead score hits 80 or higher.",
     impact: "Close faster",
+    serverNote: "Email alert when enabled",
   },
 ];
 
 export default function AutomationsPage() {
-  const organizationId = useAuthStore((s) => s.organization?.id);
-  const [toggles, setToggles] = useState<Record<AutomationId, boolean>>(DEFAULT_AUTOMATIONS);
-  const [hydrated, setHydrated] = useState(false);
+  const token = useAuthStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    setToggles(loadAutomationPreferences(organizationId));
-    setHydrated(true);
-  }, [organizationId]);
+  const { data: toggles, isLoading } = useQuery({
+    queryKey: ["automation-preferences"],
+    queryFn: () => apiFetch<Record<AutomationId, boolean>>("/automations/preferences", {
+      token: token ?? undefined,
+    }),
+    enabled: !!token,
+    initialData: DEFAULT_AUTOMATIONS,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (patch: Partial<Record<AutomationId, boolean>>) =>
+      apiFetch<Record<AutomationId, boolean>>("/automations/preferences", {
+        method: "PATCH",
+        token: token ?? undefined,
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["automation-preferences"], data);
+    },
+  });
 
   function toggle(id: AutomationId, enabled: boolean) {
-    setToggles((prev) => {
-      const next = { ...prev, [id]: enabled };
-      if (organizationId) saveAutomationPreferences(organizationId, next);
-      return next;
-    });
+    mutation.mutate({ [id]: enabled });
   }
 
-  const queuedCount = Object.values(toggles).filter(Boolean).length;
+  const activeCount = Object.values(toggles ?? DEFAULT_AUTOMATIONS).filter(Boolean).length;
 
   return (
     <div className="dashboard-page">
       <PageHeader
         eyebrow="Workflows"
         title="Automations"
-        description="Configure what Growvisi should do proactively — preferences save now, server execution ships next."
+        description="Server-side workflows that help your team close faster — saved per workspace."
         badge={
-          <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
-            Preview
+          <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-bold text-accent">
+            {activeCount} active
           </span>
         }
         action={
@@ -93,21 +108,19 @@ export default function AutomationsPage() {
 
       <DashboardPanel
         noPadding
-        className="mb-8 border-amber-200/60 bg-gradient-to-r from-amber-50 to-white"
+        className="mb-8 border-accent/20 bg-gradient-to-r from-bento-mint/40 to-white"
         delay={0.05}
       >
-        <div className="flex items-start gap-3 p-5 text-sm">
-          <FlaskConical className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-          <div>
-            <p className="font-semibold text-amber-950">Preview mode — {queuedCount} workflow{queuedCount !== 1 ? "s" : ""} queued</p>
-            <p className="mt-1 text-[13px] text-amber-900/85">
-              Toggles save your intent locally. Connect WhatsApp in Settings so you&apos;re ready when server workflows launch.
-            </p>
-          </div>
+        <div className="p-5 text-sm">
+          <p className="font-semibold">What runs automatically</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Stage updates and hot-lead alerts fire when AI classifies messages. Follow-up reminders
+            run once daily via scheduled job.
+          </p>
         </div>
       </DashboardPanel>
 
-      {!hydrated ? (
+      {isLoading ? (
         <div className="space-y-4">
           {automations.map((a) => (
             <div key={a.id} className="h-28 animate-pulse rounded-2xl bg-muted" />
@@ -115,18 +128,20 @@ export default function AutomationsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {automations.map((auto, i) => (
+          {automations.map((auto, i) => {
+            const enabled = toggles?.[auto.id] ?? DEFAULT_AUTOMATIONS[auto.id];
+            return (
             <motion.div
               key={auto.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
             >
-              <DashboardPanel noPadding className={toggles[auto.id] ? "border-accent/25 ring-1 ring-accent/10" : ""}>
+              <DashboardPanel noPadding className={enabled ? "border-accent/25 ring-1 ring-accent/10" : ""}>
                 <div className="flex flex-row items-start gap-4 p-5">
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                      toggles[auto.id] ? "bg-accent text-white" : "bg-[#ecfdf5] text-accent"
+                      enabled ? "bg-accent text-white" : "bg-[#ecfdf5] text-accent"
                     }`}
                   >
                     <auto.icon className="h-5 w-5" />
@@ -140,18 +155,20 @@ export default function AutomationsPage() {
                     </div>
                     <p className="mt-1.5 text-sm text-muted-foreground">{auto.description}</p>
                     <p className="mt-2 text-xs font-medium text-accent">
-                      {toggles[auto.id] ? "Queued — activates when server workflows ship" : "Off"}
+                      {enabled ? auto.serverNote : "Off"}
                     </p>
                   </div>
                   <Switch
-                    checked={toggles[auto.id]}
+                    checked={enabled}
+                    disabled={mutation.isPending}
                     onCheckedChange={(v) => toggle(auto.id, v)}
                     aria-label={`${auto.title} automation`}
                   />
                 </div>
               </DashboardPanel>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

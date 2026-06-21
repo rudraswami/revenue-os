@@ -217,7 +217,7 @@ export class WhatsappService {
     if (existing) return null;
 
     const type = this.mapMessageType(String(msg.type ?? "text"));
-    const content = this.extractText(msg);
+    const content = this.extractContent(msg);
 
     const message = await this.prisma.message.create({
       data: {
@@ -304,5 +304,31 @@ export class WhatsappService {
       return String((msg.text as { body?: string }).body ?? "");
     }
     return null;
+  }
+
+  private extractContent(msg: Record<string, unknown>): string | null {
+    const text = this.extractText(msg);
+    if (text) return text;
+
+    const type = String(msg.type ?? "text");
+    const block = msg[type] as Record<string, unknown> | undefined;
+    const caption =
+      block?.caption != null
+        ? String(block.caption)
+        : type === "document" && block?.filename
+          ? String(block.filename)
+          : null;
+
+    const labels: Record<string, string> = {
+      image: "Image",
+      audio: "Voice message",
+      video: "Video",
+      document: "Document",
+      sticker: "Sticker",
+      location: "Location shared",
+      contacts: "Contact shared",
+    };
+    const label = labels[type] ?? "Attachment";
+    return caption ? `${label}: ${caption}` : `[${label}]`;
   }
 }

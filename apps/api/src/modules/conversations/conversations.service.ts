@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
+import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
@@ -26,8 +27,13 @@ export class ConversationsService {
     };
   }
 
-  async getStats(user: JwtPayload) {
+  async getStats(user: JwtPayload, period?: MetricsPeriod) {
     const orgId = user.organizationId;
+    const parsedPeriod = parseMetricsPeriod(period);
+    const range = createdAtFilter(parsedPeriod);
+    const messageDateFilter = range.gte ? { createdAt: range } : undefined;
+    const leadDateFilter = range.gte ? { createdAt: range } : undefined;
+
     const [
       totalConversations,
       unreadAgg,
@@ -37,22 +43,44 @@ export class ConversationsService {
       aiClassifications,
       handoffConversations,
     ] = await Promise.all([
-      this.prisma.conversation.count({ where: { organizationId: orgId } }),
+      this.prisma.conversation.count({
+        where: {
+          organizationId: orgId,
+          ...(range.gte ? { createdAt: range } : {}),
+        },
+      }),
       this.prisma.conversation.aggregate({
         where: { organizationId: orgId },
         _sum: { unreadCount: true },
       }),
       this.prisma.message.count({
-        where: { direction: "INBOUND", conversation: { organizationId: orgId } },
+        where: {
+          direction: "INBOUND",
+          conversation: { organizationId: orgId },
+          ...(messageDateFilter ?? {}),
+        },
       }),
       this.prisma.message.count({
-        where: { direction: "OUTBOUND", conversation: { organizationId: orgId } },
+        where: {
+          direction: "OUTBOUND",
+          conversation: { organizationId: orgId },
+          ...(messageDateFilter ?? {}),
+        },
       }),
       this.prisma.lead.count({
-        where: { organizationId: orgId, lastClassifiedAt: { not: null } },
+        where: {
+          organizationId: orgId,
+          lastClassifiedAt: { not: null },
+          ...(leadDateFilter ?? {}),
+        },
       }),
       this.prisma.aiRun.count({
-        where: { organizationId: orgId, type: "classify", status: "COMPLETED" },
+        where: {
+          organizationId: orgId,
+          type: "classify",
+          status: "COMPLETED",
+          ...(messageDateFilter ?? {}),
+        },
       }),
       this.prisma.conversation.count({
         where: {
@@ -63,6 +91,7 @@ export class ConversationsService {
     ]);
 
     return {
+      period: parsedPeriod,
       totalConversations,
       unreadMessages: unreadAgg._sum.unreadCount ?? 0,
       inboundMessages,
@@ -245,6 +274,35 @@ export class ConversationsService {
     });
     if (conversation.count === 0) throw new NotFoundException();
     return this.getById(user, id);
+  }
+
+  async streamMessageMedia(user: JwtPayload, conversationId: string, messageId: string) {
+    const message = await this.prisma.message.findFirst({
+      where: {
+        id: messageId,
+        conversationId,
+        organizationId: user.organizationId,
+      },
+      include: {
+        conversation: {
+          include: { whatsappAccount: true },
+        },
+      },
+    });
+    if (!message) throw new NotFoundException("Message not found");
+
+    const payload = message.payload as Record<string, unknown>;
+    const typeKey = String(message.type).toLowerCase();
+    const block = payload[typeKey] as { id?: string } | undefined;
+    const mediaId = block?.id;
+    if (!mediaId) {
+      throw new BadRequestException("This message has no downloadable media.");
+    }
+
+    return this.whatsapp.fetchMedia(
+      message.conversation.whatsappAccount,
+      mediaId,
+    );
   }
 
   async toggleAi(user: JwtPayload, id: string, aiEnabled: boolean) {

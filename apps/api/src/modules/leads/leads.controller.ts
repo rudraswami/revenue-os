@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { IsEnum, IsOptional, IsString } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { LeadsService } from "./leads.service";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
+import type { MetricsPeriod } from "../../common/date-range";
 
 class UpdateStageDto {
   @IsEnum(["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON", "LOST"])
@@ -25,8 +26,13 @@ export class LeadsController {
   }
 
   @Get("metrics/funnel")
-  funnel(@CurrentUser() user: JwtPayload) {
-    return this.leads.funnelMetrics(user);
+  funnel(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
+    return this.leads.funnelMetrics(user, period);
+  }
+
+  @Get("metrics/insights")
+  insights(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
+    return this.leads.getInsights(user, period);
   }
 
   @Get(":id/timeline")

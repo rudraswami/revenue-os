@@ -1,0 +1,223 @@
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import type { JwtPayload } from "@growvisi/shared";
+import { GROWVISI_WEB_URL } from "@growvisi/shared";
+import { PrismaService } from "../prisma/prisma.service";
+import { EmailService } from "../auth/email.service";
+import {
+  normalizeAutomationPreferences,
+  type AutomationPreferences,
+} from "./automation-preferences";
+
+@Injectable()
+export class AutomationsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly email: EmailService,
+    private readonly config: ConfigService,
+  ) {}
+
+  async getPreferences(user: JwtPayload): Promise<AutomationPreferences> {
+    return this.getPreferencesForOrg(user.organizationId);
+  }
+
+  async getPreferencesForOrg(organizationId: string): Promise<AutomationPreferences> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true },
+    });
+    return normalizeAutomationPreferences(
+      (org?.settings as Record<string, unknown>)?.automations,
+    );
+  }
+
+  async updatePreferences(
+    user: JwtPayload,
+    patch: Partial<AutomationPreferences>,
+  ): Promise<AutomationPreferences> {
+    const current = await this.getPreferences(user);
+    const next: AutomationPreferences = { ...current, ...patch };
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { settings: true },
+    });
+    const settings = (org?.settings ?? {}) as Record<string, unknown>;
+    await this.prisma.organization.update({
+      where: { id: user.organizationId },
+      data: {
+        settings: {
+          ...settings,
+          automations: next,
+        },
+      },
+    });
+    return next;
+  }
+
+  async handlePostClassification(opts: {
+    organizationId: string;
+    conversationId: string;
+    leadId: string;
+    leadName: string | null;
+    leadPhone: string;
+    score: number;
+    stageChanged: boolean;
+    newStage: string;
+  }) {
+    const prefs = await this.getPreferencesForOrg(opts.organizationId);
+    if (prefs.notify && opts.score >= 80) {
+      await this.maybeSendHotLeadAlert(opts.organizationId, opts);
+    }
+  }
+
+  async runFollowupReminderJob() {
+    const orgs = await this.prisma.organization.findMany({
+      select: { id: true, name: true, settings: true },
+    });
+
+    let emailed = 0;
+    let skipped = 0;
+
+    for (const org of orgs) {
+      const prefs = normalizeAutomationPreferences(
+        (org.settings as Record<string, unknown>)?.automations,
+      );
+      if (!prefs.followup) {
+        skipped++;
+        continue;
+      }
+
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const stale = await this.prisma.conversation.findMany({
+        where: {
+          organizationId: org.id,
+          status: "OPEN",
+          lastInboundAt: { lt: cutoff },
+          OR: [{ unreadCount: { gt: 0 } }, { assignedToId: null }],
+        },
+        take: 5,
+        orderBy: { lastInboundAt: "asc" },
+        select: {
+          id: true,
+          contactName: true,
+          contactPhone: true,
+          lastInboundAt: true,
+          metadata: true,
+        },
+      });
+
+      if (stale.length === 0) {
+        skipped++;
+        continue;
+      }
+
+      const alreadySentToday = stale.every((c) => {
+        const meta = (c.metadata ?? {}) as Record<string, unknown>;
+        const sentAt = meta.followupReminderSentAt
+          ? new Date(String(meta.followupReminderSentAt)).getTime()
+          : 0;
+        return sentAt > Date.now() - 12 * 60 * 60 * 1000;
+      });
+      if (alreadySentToday) {
+        skipped++;
+        continue;
+      }
+
+      const recipients = await this.ownerEmails(org.id);
+      if (recipients.length === 0) {
+        skipped++;
+        continue;
+      }
+
+      const appUrl = (
+        this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+      ).replace(/\/$/, "");
+
+      await this.email.sendFollowupReminder({
+        to: recipients,
+        organizationName: org.name,
+        count: stale.length,
+        inboxUrl: `${appUrl}/dashboard/inbox`,
+      });
+
+      for (const conv of stale) {
+        const meta = (conv.metadata ?? {}) as Record<string, unknown>;
+        await this.prisma.conversation.update({
+          where: { id: conv.id },
+          data: {
+            metadata: {
+              ...meta,
+              followupReminderSentAt: new Date().toISOString(),
+            },
+          },
+        });
+      }
+
+      emailed++;
+    }
+
+    return { emailed, skipped, organizations: orgs.length };
+  }
+
+  private async maybeSendHotLeadAlert(
+    organizationId: string,
+    opts: {
+      conversationId: string;
+      leadId: string;
+      leadName: string | null;
+      leadPhone: string;
+      score: number;
+      newStage: string;
+    },
+  ) {
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: opts.conversationId },
+      select: { metadata: true },
+    });
+    const meta = (conv?.metadata ?? {}) as Record<string, unknown>;
+    const lastScore = typeof meta.lastHotLeadAlertScore === "number" ? meta.lastHotLeadAlertScore : 0;
+    if (opts.score < 80 || (lastScore >= 80 && opts.score - lastScore < 5)) {
+      return;
+    }
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    });
+    const recipients = await this.ownerEmails(organizationId);
+    if (recipients.length === 0) return;
+
+    const appUrl = (
+      this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+    ).replace(/\/$/, "");
+
+    const label = opts.leadName?.trim() || opts.leadPhone;
+    await this.email.sendHotLeadAlert({
+      to: recipients,
+      organizationName: org?.name ?? "your workspace",
+      leadLabel: label,
+      score: opts.score,
+      stage: opts.newStage,
+      inboxUrl: `${appUrl}/dashboard/inbox?c=${opts.conversationId}`,
+    });
+
+    await this.prisma.conversation.update({
+      where: { id: opts.conversationId },
+      data: {
+        metadata: {
+          ...meta,
+          lastHotLeadAlertScore: opts.score,
+          lastHotLeadAlertAt: new Date().toISOString(),
+        },
+      },
+    });
+  }
+
+  private async ownerEmails(organizationId: string): Promise<string[]> {
+    const members = await this.prisma.organizationMember.findMany({
+      where: { organizationId, role: { in: ["OWNER", "ADMIN"] } },
+      include: { user: { select: { email: true } } },
+    });
+    return [...new Set(members.map((m) => m.user.email).filter(Boolean))];
+  }
+}

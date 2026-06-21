@@ -6,6 +6,7 @@ import { createHash } from "crypto";
 import type { AiClassificationResult, LeadStage } from "@growvisi/shared";
 import { LEAD_STAGE_ORDER, QUEUES } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { AutomationsService } from "../automations/automations.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 
 export interface ClassifyJobData {
@@ -33,6 +34,7 @@ export class AiClassifyService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly realtime: RealtimeGateway,
+    private readonly automations: AutomationsService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -72,6 +74,11 @@ export class AiClassifyService {
 
     if (!conversation?.lead) {
       this.logger.warn(`No lead for conversation ${data.conversationId}`);
+      return;
+    }
+
+    if (!conversation.aiEnabled) {
+      this.logger.debug(`AI disabled for conversation ${data.conversationId} — skipping`);
       return;
     }
 
@@ -126,12 +133,14 @@ export class AiClassifyService {
         },
       });
 
+      const prefs = await this.automations.getPreferencesForOrg(data.organizationId);
       const stageChanged = await this.applyClassification(
         data.organizationId,
         lead.id,
         lead.stage as LeadStage,
         result,
         aiRun.id,
+        prefs.stage,
       );
 
       if (result.requiresHuman) {
@@ -163,6 +172,21 @@ export class AiClassifyService {
       if (stageChanged) {
         this.realtime.emitInboxUpdated(data.organizationId);
       }
+
+      const score = Math.max(
+        STAGE_SCORE[result.stage],
+        Math.round(result.confidence * 100),
+      );
+      void this.automations.handlePostClassification({
+        organizationId: data.organizationId,
+        conversationId: data.conversationId,
+        leadId: lead.id,
+        leadName: lead.displayName,
+        leadPhone: lead.phone,
+        score,
+        stageChanged,
+        newStage: result.stage,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       await this.prisma.aiRun.update({
@@ -267,8 +291,10 @@ Current pipeline stage: ${currentStage}.`,
     currentStage: LeadStage,
     result: AiClassificationResult,
     aiRunId: string,
+    autoStageEnabled = true,
   ): Promise<boolean> {
-    const updateStage = this.shouldUpdateStage(currentStage, result.stage, result.confidence);
+    const updateStage =
+      autoStageEnabled && this.shouldUpdateStage(currentStage, result.stage, result.confidence);
     const score = Math.max(
       STAGE_SCORE[result.stage],
       Math.round(result.confidence * 100),

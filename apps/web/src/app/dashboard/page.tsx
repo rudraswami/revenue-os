@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { ArrowRight, Inbox, Kanban, LineChart, Sparkles, TrendingUp, Users } from "lucide-react";
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
+import { AiCapabilitiesBanner, OnboardingBanner } from "@/components/dashboard/status-banners";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -98,6 +99,9 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      <OnboardingBanner />
+      <AiCapabilitiesBanner />
 
       <div className="mb-6">
         <MetaAiNotice />

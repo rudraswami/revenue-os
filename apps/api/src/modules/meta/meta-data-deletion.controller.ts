@@ -14,11 +14,14 @@ import { parseMetaSignedRequest } from "../../common/meta/parse-signed-request";
 import { sanitizeEnvValue } from "../../config/cors-origins";
 import { PrismaService } from "../prisma/prisma.service";
 
+import { MetaDataDeletionService } from "./meta-data-deletion.service";
+
 @Controller("webhooks/meta")
 export class MetaDataDeletionController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly deletion: MetaDataDeletionService,
   ) {}
 
   /**
@@ -53,11 +56,15 @@ export class MetaDataDeletionController {
         payload: {
           facebookUserId: payload.user_id,
           issuedAt: payload.issued_at,
-          status: "received",
-          note: "Meta callback received. Email privacy@growvisi.in if you need manual account removal.",
+          status: "processing",
         },
       },
     });
+
+    const result = await this.deletion.processDeletionRequest(
+      payload.user_id,
+      confirmationCode,
+    );
 
     const appUrl = (
       sanitizeEnvValue(this.config.get<string>("NEXT_PUBLIC_APP_URL")) ?? GROWVISI_WEB_URL
@@ -66,6 +73,7 @@ export class MetaDataDeletionController {
     return {
       url: `${appUrl}/data-deletion/status?code=${confirmationCode}`,
       confirmation_code: confirmationCode,
+      deleted_accounts: result.deletedAccounts,
     };
   }
 

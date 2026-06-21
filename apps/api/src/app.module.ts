@@ -15,6 +15,7 @@ import { AiModule } from "./modules/ai/ai.module";
 import { ContactModule } from "./modules/contact/contact.module";
 import { MetaModule } from "./modules/meta/meta.module";
 import { InternalModule } from "./modules/internal/internal.module";
+import { AutomationsModule } from "./modules/automations/automations.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
 
@@ -49,6 +50,7 @@ import { QUEUES } from "@growvisi/shared";
     ContactModule,
     MetaModule,
     InternalModule,
+    AutomationsModule,
   ],
 })
 export class AppModule {}

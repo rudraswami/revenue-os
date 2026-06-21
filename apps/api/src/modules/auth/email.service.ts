@@ -63,6 +63,45 @@ export class EmailService {
     });
   }
 
+  async sendHotLeadAlert(opts: {
+    to: string[];
+    organizationName: string;
+    leadLabel: string;
+    score: number;
+    stage: string;
+    inboxUrl: string;
+  }): Promise<void> {
+    await this.sendRaw({
+      to: opts.to,
+      subject: `Hot lead: ${opts.leadLabel} (score ${opts.score})`,
+      html: `
+        <p>Hi,</p>
+        <p>Growvisi classified a high-intent lead in <strong>${opts.organizationName}</strong>.</p>
+        <p><strong>${opts.leadLabel}</strong> — score ${opts.score}, stage ${opts.stage.replace("_", " ")}.</p>
+        <p><a href="${opts.inboxUrl}">Open conversation</a></p>
+      `,
+      replyTo: "support@growvisi.in",
+    });
+  }
+
+  async sendFollowupReminder(opts: {
+    to: string[];
+    organizationName: string;
+    count: number;
+    inboxUrl: string;
+  }): Promise<void> {
+    await this.sendRaw({
+      to: opts.to,
+      subject: `${opts.count} conversation${opts.count > 1 ? "s" : ""} need follow-up — ${opts.organizationName}`,
+      html: `
+        <p>Hi,</p>
+        <p>${opts.count} WhatsApp conversation${opts.count > 1 ? "s have" : " has"} been waiting over 24 hours without a team reply.</p>
+        <p><a href="${opts.inboxUrl}">Review conversations</a></p>
+      `,
+      replyTo: "support@growvisi.in",
+    });
+  }
+
   async sendRaw(opts: {
     to: string[];
     subject: string;

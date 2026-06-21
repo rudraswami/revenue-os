@@ -215,6 +215,12 @@ export class WhatsappAccountsService {
       throw new BadRequestException("Missing WhatsApp business account ID.");
     }
 
+    const tokenDebug = await this.debugInputToken(accessToken);
+    const metadata: Record<string, unknown> = {};
+    if (tokenDebug.metaFacebookUserId) {
+      metadata.metaFacebookUserId = tokenDebug.metaFacebookUserId;
+    }
+
     const account = await this.prisma.whatsappAccount.create({
       data: {
         organizationId: user.organizationId,
@@ -224,6 +230,7 @@ export class WhatsappAccountsService {
           dto.displayPhoneNumber?.trim() || details.display_phone_number?.trim() || phoneNumberId,
         verifiedName: dto.verifiedName?.trim() ?? details.verified_name ?? null,
         accessTokenEnc: encryptSecret(accessToken),
+        metadata: metadata as object,
       },
     });
 
@@ -577,7 +584,7 @@ export class WhatsappAccountsService {
 
     const res = await fetch(url);
     const body = (await res.json()) as {
-      data?: { is_valid?: boolean; expires_at?: number; type?: string };
+      data?: { is_valid?: boolean; expires_at?: number; type?: string; user_id?: string };
     };
 
     if (!res.ok || !body.data) {
@@ -602,6 +609,7 @@ export class WhatsappAccountsService {
       expiresAt: expiresAt?.toISOString() ?? null,
       hoursRemaining:
         hoursRemaining !== null ? Math.round(hoursRemaining * 10) / 10 : null,
+      metaFacebookUserId: body.data.user_id ? String(body.data.user_id) : null,
       level: this.tokenHealthLevel(!!body.data.is_valid, hoursRemaining),
       needsRefresh:
         !body.data.is_valid ||
