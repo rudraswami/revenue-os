@@ -7,6 +7,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { bootstrapAuth } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 
 function InviteAcceptForm() {
@@ -34,7 +35,10 @@ function InviteAcceptForm() {
         token: accessToken ?? undefined,
         body: JSON.stringify({ token }),
       }),
-    onSuccess: () => router.push("/dashboard"),
+    onSuccess: async () => {
+      await bootstrapAuth();
+      router.push("/dashboard");
+    },
     onError: (e) => {
       setError(e instanceof ApiError ? e.message : "Could not accept invite.");
     },

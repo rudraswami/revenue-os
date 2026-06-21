@@ -5,6 +5,7 @@ import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { WhatsappSetupBanner } from "@/components/dashboard/whatsapp-setup-banner";
 import { WhatsappTokenExpiryBanner } from "@/components/dashboard/whatsapp-token-expiry-banner";
+import { TrialExpiredBanner } from "@/components/dashboard/status-banners";
 import { Sidebar } from "./sidebar";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain")}>
+          <TrialExpiredBanner />
           <WhatsappSetupBanner />
           <WhatsappTokenExpiryBanner />
           {children}

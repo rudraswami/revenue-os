@@ -1,5 +1,7 @@
 # Growvisi — Product Narrative
 
+> **Full spec:** [GROWVISI-PRD.md](./GROWVISI-PRD.md) · **UI reference:** `.cursor/skills/growvisi-product/product-look.md`
+
 **One line:** Growvisi is the revenue layer for WhatsApp — it tracks what happens *after* AI (or your team) replies to a customer.
 
 ---

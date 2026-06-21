@@ -9,10 +9,13 @@ interface AuthState {
   user: AuthUser | null;
   organization: AuthOrganization | null;
   onboarding: OnboardingStatus | null;
+  /** User chose to explore dashboard before connecting WhatsApp */
+  onboardingDismissed: boolean;
   hydrated: boolean;
   setHydrated: (value: boolean) => void;
   setSession: (session: AuthSession) => void;
   patchOnboarding: (onboarding: OnboardingStatus) => void;
+  dismissOnboarding: () => void;
   clear: () => void;
   isAuthenticated: () => boolean;
 }
@@ -25,6 +28,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       organization: null,
       onboarding: null,
+      onboardingDismissed: false,
       hydrated: false,
       setHydrated: (hydrated) => set({ hydrated }),
       setSession: (session) => {
@@ -38,6 +42,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       patchOnboarding: (onboarding) => set({ onboarding }),
+      dismissOnboarding: () => set({ onboardingDismissed: true }),
       clear: () => {
         syncAuthCookie(false);
         set({
@@ -46,6 +51,7 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           organization: null,
           onboarding: null,
+          onboardingDismissed: false,
         });
       },
       isAuthenticated: () => !!get().accessToken,
@@ -58,6 +64,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         organization: state.organization,
         onboarding: state.onboarding,
+        onboardingDismissed: state.onboardingDismissed,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);

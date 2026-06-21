@@ -3,14 +3,16 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect } from "react";
-import { Building2, BookOpen, CreditCard, Loader2, LogOut, Mail, MessageCircle } from "lucide-react";
+import { Building2, BookOpen, CreditCard, Key, Loader2, LogOut, Mail, MessageCircle, User } from "lucide-react";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
+import { ApiKeysSettingsCard } from "@/components/settings/api-keys-settings-card";
 import { BusinessContextCard } from "@/components/settings/business-context-card";
 import { BillingSettingsCard } from "@/components/settings/billing-settings-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
+import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
 import { logout } from "@/lib/auth-session";
@@ -29,7 +31,6 @@ const WhatsappConnect = dynamic(() => import("@/components/settings/whatsapp-con
 
 export default function SettingsPage() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
   const organization = useAuthStore((s) => s.organization);
 
   useEffect(() => {
@@ -115,10 +116,9 @@ export default function SettingsPage() {
           <WhatsappConnect />
         </DashboardSection>
 
-        <DashboardSection title="Account" description="Profile and data controls." icon={Mail}>
+        <DashboardSection title="Account" description="Profile and data controls." icon={User}>
           <DashboardPanel delay={0.1}>
-            <p className="text-base font-bold">{user?.name ?? "Your account"}</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">{user?.email}</p>
+            <ProfileSettingsCard />
             <div className="mt-5 flex flex-wrap gap-3">
               <Button variant="outline" size="sm" asChild className="rounded-xl">
                 <Link href="/onboarding">Guided WhatsApp setup</Link>
@@ -153,6 +153,16 @@ export default function SettingsPage() {
               </p>
               <DeleteAccountCard />
             </div>
+          </DashboardPanel>
+        </DashboardSection>
+
+        <DashboardSection
+          title="Developer"
+          description="API access for Pro workspaces."
+          icon={Key}
+        >
+          <DashboardPanel delay={0.11}>
+            <ApiKeysSettingsCard />
           </DashboardPanel>
         </DashboardSection>
       </div>

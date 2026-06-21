@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
-import { IsEnum, IsOptional, IsString } from "class-validator";
+import { IsEnum, IsInt, IsOptional, IsString, Min } from "class-validator";
+import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { LeadsService } from "./leads.service";
@@ -14,6 +15,14 @@ class UpdateStageDto {
   @IsOptional()
   @IsString()
   reason?: string;
+}
+
+class UpdateLeadDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  valueCents?: number | null;
 }
 
 @Controller("leads")
@@ -60,5 +69,14 @@ export class LeadsController {
     @Body() dto: UpdateStageDto,
   ) {
     return this.leads.updateStage(user, id, dto.stage, dto.reason);
+  }
+
+  @Patch(":id")
+  updateLead(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: UpdateLeadDto,
+  ) {
+    return this.leads.updateLead(user, id, dto);
   }
 }

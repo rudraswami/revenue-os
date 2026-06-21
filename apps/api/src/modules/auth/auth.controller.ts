@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Patch,
   Post,
   UseGuards,
 } from "@nestjs/common";
@@ -18,6 +19,7 @@ import {
   RegisterDto,
   ResetPasswordDto,
   DeleteAccountDto,
+  UpdateProfileDto,
 } from "./dto/auth.dto";
 
 @Controller("auth")
@@ -48,6 +50,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: JwtPayload) {
     return this.auth.getMe(user);
+  }
+
+  @Patch("me")
+  @UseGuards(JwtAuthGuard)
+  updateMe(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
+    return this.auth.updateProfile(user, dto);
   }
 
   @Post("forgot-password")

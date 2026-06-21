@@ -1,0 +1,37 @@
+---
+description: Growvisi dashboard UI and UX patterns for web app
+globs: apps/web/src/**/*.{tsx,ts}
+alwaysApply: false
+---
+
+# Growvisi dashboard UI
+
+## Layout
+
+- Shell: `h-dvh`, sidebar fixed, **main column scrolls only** (`dashboard-shell.tsx`)
+- Pages: `dashboard-page` wrapper + `PageHeader` (eyebrow, title, description)
+- Panels: `DashboardPanel` with staggered `delay` for motion
+
+## Navigation (do not add top-level items casually)
+
+Groups: Overview → Engage → Intelligence → Automate. Settings/Pricing via user menu.
+
+## Product copy in UI
+
+- Conversations page: Meta handles replies; Growvisi = thread + timeline + human takeover (secondary)
+- Automations: distinguish server-side (email, stage) vs Meta (welcome)
+- Billing: Razorpay, INR, trial banner when `entitlements.requiresUpgrade`
+- Empty states: action toward `/onboarding` or `/dashboard/settings#whatsapp`
+
+## Patterns to reuse
+
+- `status-banners.tsx` for deployment/trial/WhatsApp warnings
+- `apiFetch` + React Query; invalidate on realtime events
+- `brand-copy.ts` for labels — don't hardcode nav strings in pages
+
+## Avoid
+
+- Promising auto-reply from Growvisi
+- Legal links duplicated in sidebar (keep in settings/footer)
+- Scrollable sidebar tied to main content scroll
+- New emoji-heavy or generic "AI magic" marketing inside dashboard

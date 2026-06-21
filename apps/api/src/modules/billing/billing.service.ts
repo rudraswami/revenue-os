@@ -7,6 +7,7 @@ import {
 import type { JwtPayload } from "@growvisi/shared";
 import { GROWVISI_PLANS, type GrowvisiPlanId, PAID_PLAN_IDS } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { EntitlementsService } from "./entitlements.service";
 import { RazorpayService } from "./razorpay.service";
 
 @Injectable()
@@ -14,6 +15,7 @@ export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly razorpay: RazorpayService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async getStatus(user: JwtPayload) {
@@ -21,6 +23,7 @@ export class BillingService {
       where: { organizationId: user.organizationId },
     });
     const plan = GROWVISI_PLANS[(sub?.planId as GrowvisiPlanId) ?? "trial"];
+    const snapshot = await this.entitlements.usageSnapshot(user.organizationId);
 
     return {
       planId: sub?.planId ?? "trial",
@@ -29,6 +32,9 @@ export class BillingService {
       currentPeriodEnd: sub?.currentPeriodEnd ?? null,
       razorpayConfigured: this.razorpay.isConfigured(),
       plans: this.razorpay.planCatalog(),
+      entitlements: snapshot.access,
+      usage: snapshot.usage,
+      limits: snapshot.limits,
     };
   }
 

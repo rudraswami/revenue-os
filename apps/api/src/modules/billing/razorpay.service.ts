@@ -6,6 +6,7 @@ import {
   type GrowvisiPlanId,
   PAID_PLAN_IDS,
 } from "@growvisi/shared";
+import { isProductionDeploy } from "../../config/production";
 
 interface RazorpaySubscription {
   id: string;
@@ -95,6 +96,10 @@ export class RazorpayService {
   verifyWebhookSignature(body: string, signature: string | undefined): boolean {
     const secret = this.config.get<string>("RAZORPAY_WEBHOOK_SECRET")?.trim();
     if (!secret) {
+      if (isProductionDeploy()) {
+        this.logger.error("RAZORPAY_WEBHOOK_SECRET missing in production — rejecting webhook");
+        return false;
+      }
       this.logger.warn("RAZORPAY_WEBHOOK_SECRET not set — skipping webhook verification");
       return true;
     }

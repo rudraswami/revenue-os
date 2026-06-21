@@ -14,6 +14,13 @@ interface BillingStatus {
   status: string;
   currentPeriodEnd: string | null;
   razorpayConfigured: boolean;
+  usage?: { whatsappNumbers: number; teamMembers: number; monthlyLeads: number };
+  limits?: { whatsappNumbers: number; teamMembers: number; monthlyLeads: number };
+  entitlements?: {
+    trialExpired: boolean;
+    trialEndsAt: string | null;
+    hasAccess: boolean;
+  };
   plans: Array<{
     id: string;
     name: string;
@@ -84,6 +91,19 @@ export function BillingSettingsCard() {
             {data?.currentPeriodEnd && (
               <p className="mt-1 text-xs text-muted-foreground">
                 Renews {new Date(data.currentPeriodEnd).toLocaleDateString()}
+              </p>
+            )}
+            {data?.usage && data?.limits && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {data.usage.whatsappNumbers}/{data.limits.whatsappNumbers} numbers ·{" "}
+                {data.usage.teamMembers}/{data.limits.teamMembers} team ·{" "}
+                {data.usage.monthlyLeads.toLocaleString("en-IN")}/
+                {data.limits.monthlyLeads.toLocaleString("en-IN")} leads this month
+              </p>
+            )}
+            {data?.entitlements?.trialEndsAt && !data.entitlements.trialExpired && (
+              <p className="mt-1 text-xs text-amber-800">
+                Trial ends {new Date(data.entitlements.trialEndsAt).toLocaleDateString()}
               </p>
             )}
           </div>

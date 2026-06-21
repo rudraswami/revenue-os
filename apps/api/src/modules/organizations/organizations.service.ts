@@ -8,6 +8,7 @@ import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
 import { GROWVISI_WEB_URL } from "@growvisi/shared";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 
@@ -57,6 +58,7 @@ export class OrganizationsService {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async getCurrent(user: JwtPayload) {
@@ -144,6 +146,8 @@ export class OrganizationsService {
     if (user.role !== "OWNER" && user.role !== "ADMIN") {
       throw new ForbiddenException("Only owners and admins can invite teammates.");
     }
+    await this.entitlements.assertCanInviteMember(user.organizationId);
+
     const normalized = email.trim().toLowerCase();
     if (!normalized.includes("@")) {
       throw new BadRequestException("Enter a valid email address.");

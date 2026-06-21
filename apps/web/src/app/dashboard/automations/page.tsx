@@ -15,22 +15,14 @@ import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { Bell, Clock, MessageCircle, Zap } from "lucide-react";
 
-const automations: Array<{
-  id: AutomationId;
+const SERVER_AUTOMATIONS: Array<{
+  id: Exclude<AutomationId, "welcome">;
   icon: typeof MessageCircle;
   title: string;
   description: string;
   impact: string;
   serverNote: string;
 }> = [
-  {
-    id: "welcome",
-    icon: MessageCircle,
-    title: "Welcome message",
-    description: "First replies are handled by Meta Business Agent in WhatsApp — keep this on to track intent from day one.",
-    impact: "Faster first impression",
-    serverNote: "Handled in WhatsApp via Meta",
-  },
   {
     id: "followup",
     icon: Clock,
@@ -86,7 +78,9 @@ export default function AutomationsPage() {
     mutation.mutate({ [id]: enabled });
   }
 
-  const activeCount = Object.values(toggles ?? DEFAULT_AUTOMATIONS).filter(Boolean).length;
+  const activeCount = Object.entries(toggles ?? DEFAULT_AUTOMATIONS)
+    .filter(([id, on]) => id !== "welcome" && on)
+    .length;
 
   return (
     <div className="dashboard-page">
@@ -122,13 +116,34 @@ export default function AutomationsPage() {
 
       {isLoading ? (
         <div className="space-y-4">
-          {automations.map((a) => (
+          {SERVER_AUTOMATIONS.map((a) => (
             <div key={a.id} className="h-28 animate-pulse rounded-2xl bg-muted" />
           ))}
         </div>
       ) : (
         <div className="space-y-4">
-          {automations.map((auto, i) => {
+          <DashboardPanel noPadding className="border-accent/20 bg-gradient-to-r from-bento-mint/30 to-white">
+            <div className="flex flex-row items-start gap-4 p-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+                <MessageCircle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-bold">Welcome & first reply</h3>
+                  <span className="rounded-full bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                    Meta Business Agent
+                  </span>
+                </div>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  First replies happen inside WhatsApp via Meta — Growvisi classifies intent from the
+                  full thread. No toggle needed here.
+                </p>
+                <p className="mt-2 text-xs font-medium text-accent">Always on via WhatsApp</p>
+              </div>
+            </div>
+          </DashboardPanel>
+
+          {SERVER_AUTOMATIONS.map((auto, i) => {
             const enabled = toggles?.[auto.id] ?? DEFAULT_AUTOMATIONS[auto.id];
             return (
             <motion.div

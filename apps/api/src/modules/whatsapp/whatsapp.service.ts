@@ -5,6 +5,7 @@ import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { createHash } from "crypto";
 import { QUEUES } from "@growvisi/shared";
+import { isProductionDeploy } from "../../config/production";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface WhatsappWebhookPayload {
@@ -51,6 +52,10 @@ export class WhatsappService {
       this.config.get<string>("WHATSAPP_APP_SECRET")?.trim() ||
       this.config.get<string>("META_APP_SECRET")?.trim();
     if (!secret) {
+      if (isProductionDeploy()) {
+        this.logger.error("WHATSAPP_APP_SECRET missing in production — rejecting webhook");
+        return false;
+      }
       this.logger.warn("WHATSAPP_APP_SECRET not set — skipping signature verification in dev");
       return true;
     }

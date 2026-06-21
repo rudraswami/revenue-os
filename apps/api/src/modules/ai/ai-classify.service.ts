@@ -7,6 +7,7 @@ import type { AiClassificationResult, LeadStage } from "@growvisi/shared";
 import { LEAD_STAGE_ORDER, QUEUES } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AutomationsService } from "../automations/automations.service";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 
 export interface ClassifyJobData {
@@ -35,6 +36,7 @@ export class AiClassifyService {
     private readonly config: ConfigService,
     private readonly realtime: RealtimeGateway,
     private readonly automations: AutomationsService,
+    private readonly entitlements: EntitlementsService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -58,6 +60,8 @@ export class AiClassifyService {
   }
 
   async process(data: ClassifyJobData) {
+    await this.entitlements.assertHasAccess(data.organizationId);
+
     const apiKey = this.config.get<string>("OPENAI_API_KEY");
     if (!apiKey) {
       this.logger.debug("OPENAI_API_KEY not set — skipping classification");

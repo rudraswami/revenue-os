@@ -232,6 +232,20 @@ export class ConversationsService {
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
 
+    const knowledgeDocs = await this.prisma.knowledgeDocument.findMany({
+      where: { organizationId: user.organizationId },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      select: { title: true, rawContent: true },
+    });
+
+    const knowledgeBlock =
+      knowledgeDocs.length > 0
+        ? knowledgeDocs
+            .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 1200)}`)
+            .join("\n\n")
+        : "";
+
     const ordered = [...conversation.messages].reverse();
     const transcript = ordered
       .map((m) => {
@@ -254,8 +268,14 @@ export class ConversationsService {
         messages: [
           {
             role: "system",
-            content:
+            content: [
               "You draft WhatsApp replies for a sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
+              knowledgeBlock
+                ? `Use this business context when relevant:\n\n${knowledgeBlock}`
+                : "",
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
           },
           {
             role: "user",

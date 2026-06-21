@@ -13,6 +13,11 @@ interface BillingStatus {
   status: string;
   currentPeriodEnd: string | null;
   razorpayConfigured: boolean;
+  entitlements?: {
+    trialExpired: boolean;
+    trialEndsAt: string | null;
+    hasAccess: boolean;
+  };
 }
 
 export default function PricingPage() {
@@ -67,6 +72,16 @@ export default function PricingPage() {
           {data.currentPeriodEnd && (
             <p className="mt-1 text-xs text-muted-foreground">
               Renews {new Date(data.currentPeriodEnd).toLocaleDateString()}
+            </p>
+          )}
+          {data.entitlements?.trialEndsAt && !data.entitlements.trialExpired && (
+            <p className="mt-1 text-xs text-amber-800">
+              Trial ends {new Date(data.entitlements.trialEndsAt).toLocaleDateString()}
+            </p>
+          )}
+          {data.entitlements?.trialExpired && (
+            <p className="mt-2 text-xs font-medium text-destructive">
+              Your trial has ended — choose a plan below to restore access.
             </p>
           )}
         </div>

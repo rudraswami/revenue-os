@@ -33,3 +33,59 @@ export const GROWVISI_PLANS = {
 export type GrowvisiPlanId = keyof typeof GROWVISI_PLANS;
 
 export const PAID_PLAN_IDS = ["starter", "growth", "pro"] as const satisfies readonly GrowvisiPlanId[];
+
+export const TRIAL_DAYS = 14;
+
+export interface PlanLimits {
+  whatsappNumbers: number;
+  teamMembers: number;
+  monthlyLeads: number;
+}
+
+export const PLAN_LIMITS: Record<GrowvisiPlanId, PlanLimits> = {
+  trial: { whatsappNumbers: 1, teamMembers: 2, monthlyLeads: 500 },
+  starter: { whatsappNumbers: 1, teamMembers: 2, monthlyLeads: 3_000 },
+  growth: { whatsappNumbers: 3, teamMembers: 5, monthlyLeads: 3_000 },
+  pro: { whatsappNumbers: 50, teamMembers: 50, monthlyLeads: 100_000 },
+};
+
+export interface SubscriptionAccessInput {
+  planId: string;
+  status: string;
+  createdAt: Date;
+  currentPeriodEnd?: Date | null;
+}
+
+export interface SubscriptionAccess {
+  planId: GrowvisiPlanId;
+  limits: PlanLimits;
+  trialEndsAt: string | null;
+  trialExpired: boolean;
+  hasAccess: boolean;
+  requiresUpgrade: boolean;
+  status: string;
+}
+
+export function resolveSubscriptionAccess(input: SubscriptionAccessInput): SubscriptionAccess {
+  const planId = (
+    input.planId in GROWVISI_PLANS ? input.planId : "trial"
+  ) as GrowvisiPlanId;
+  const trialEndsAt = new Date(input.createdAt);
+  trialEndsAt.setUTCDate(trialEndsAt.getUTCDate() + TRIAL_DAYS);
+
+  const isPaidActive = input.status === "ACTIVE";
+  const onTrial = input.status === "TRIALING" && planId === "trial";
+  const trialExpired = onTrial && Date.now() > trialEndsAt.getTime();
+  const requiresUpgrade =
+    trialExpired || input.status === "PAST_DUE" || input.status === "CANCELED";
+
+  return {
+    planId,
+    limits: PLAN_LIMITS[planId],
+    trialEndsAt: onTrial ? trialEndsAt.toISOString() : null,
+    trialExpired,
+    hasAccess: isPaidActive || (onTrial && !trialExpired),
+    requiresUpgrade,
+    status: input.status,
+  };
+}

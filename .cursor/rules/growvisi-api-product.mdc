@@ -1,0 +1,46 @@
+---
+description: Growvisi API product patterns — entitlements, webhooks, Meta/AI boundaries
+globs: apps/api/src/**/*.ts
+alwaysApply: false
+---
+
+# Growvisi API product rules
+
+## Tenant scope
+
+Every query/mutation scoped by `organizationId` from JWT. Never leak cross-org data.
+
+## Entitlements
+
+Call `EntitlementsService` before:
+- Adding WhatsApp numbers
+- Inviting members
+- AI classify (`assertHasAccess`)
+- API key creation (Pro + active)
+
+Return `402 Payment Required` with `TRIAL_EXPIRED` / `SUBSCRIPTION_INACTIVE` codes.
+
+## Webhooks
+
+WhatsApp + Razorpay: verify signatures in production (`isProductionDeploy()`). Fail closed if secret missing.
+
+## AI boundaries
+
+- `ai-classify`: updates stage/score; creates `AiRun` + timeline events
+- `suggest-reply`: draft text only; inject `knowledgeDocument.rawContent`; never auto-send
+- Do not add `AI_RESPOND` or auto-outbound to customers without explicit PRD change
+
+## Automations
+
+Email-only for v1 alerts (hot lead, follow-up). Log auditable metadata on conversation for timeline.
+
+## Billing
+
+Razorpay only. Plan IDs: `trial`, `starter`, `growth`, `pro`. Shared limits in `@growvisi/shared/billing`.
+
+## New endpoints checklist
+
+- [ ] JwtAuthGuard + org scope
+- [ ] Plan limit if resource-consuming
+- [ ] DTOs declared **before** controller class (hoisting bug)
+- [ ] Documented in PRD if user-facing

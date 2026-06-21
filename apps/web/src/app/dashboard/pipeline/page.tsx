@@ -108,6 +108,16 @@ export default function PipelinePage() {
     },
   });
 
+  const valueMutation = useMutation({
+    mutationFn: ({ leadId, valueCents }: { leadId: string; valueCents: number | null }) =>
+      apiFetch(`/leads/${leadId}`, {
+        method: "PATCH",
+        token: token ?? undefined,
+        body: JSON.stringify({ valueCents }),
+      }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["pipeline"] }),
+  });
+
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
   const totalLeads = STAGES.reduce((sum, s) => sum + (data?.[s]?.length ?? 0), 0);
   const wonCount = data?.WON?.length ?? 0;
@@ -189,8 +199,9 @@ export default function PipelinePage() {
           stageLabels={STAGE_LABELS}
           stageColors={STAGE_COLORS}
           data={data}
-          isPending={stageMutation.isPending}
+          isPending={stageMutation.isPending || valueMutation.isPending}
           onMoveLead={(leadId, stage) => stageMutation.mutate({ leadId, stage })}
+          onUpdateValue={(leadId, valueCents) => valueMutation.mutate({ leadId, valueCents })}
         />
         </>
       )}

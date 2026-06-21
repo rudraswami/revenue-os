@@ -23,6 +23,12 @@ export default function OnboardingPage() {
   const user = useAuthStore((s) => s.user);
   const organization = useAuthStore((s) => s.organization);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
+  const dismissOnboarding = useAuthStore((s) => s.dismissOnboarding);
+
+  function goToDashboard() {
+    dismissOnboarding();
+    router.push("/dashboard");
+  }
 
   const { data: accounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -107,7 +113,7 @@ export default function OnboardingPage() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => router.push("/dashboard")}>
+              <Button variant="outline" size="sm" onClick={goToDashboard}>
                 Skip for now
               </Button>
             )}
@@ -174,9 +180,13 @@ export default function OnboardingPage() {
             <WhatsappOnboardingHelp />
             <p className="text-center text-sm text-muted-foreground">
               Not ready yet?{" "}
-              <Link href="/dashboard" className="font-medium text-primary hover:underline">
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={goToDashboard}
+              >
                 Go to dashboard
-              </Link>{" "}
+              </button>{" "}
               — you can connect WhatsApp anytime from Settings.
             </p>
           </div>

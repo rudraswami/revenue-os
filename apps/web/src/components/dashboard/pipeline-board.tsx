@@ -13,6 +13,8 @@ export interface PipelineLead {
   phone: string;
   score: number;
   stage: LeadStage;
+  valueCents: number | null;
+  currency?: string;
   conversation: { id: string } | null;
 }
 
@@ -23,12 +25,17 @@ interface PipelineBoardProps {
   data: Record<string, PipelineLead[]> | undefined;
   isPending: boolean;
   onMoveLead: (leadId: string, stage: LeadStage) => void;
+  onUpdateValue?: (leadId: string, valueCents: number | null) => void;
 }
 
 function scoreTone(score: number) {
   if (score >= 80) return "text-accent font-bold";
   if (score >= 50) return "text-foreground font-semibold";
   return "text-muted-foreground";
+}
+
+function formatInr(cents: number) {
+  return `₹${(cents / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
 function LeadCard({
@@ -40,6 +47,7 @@ function LeadCard({
   onDragStart,
   onDragEnd,
   onMoveLead,
+  onUpdateValue,
 }: {
   lead: PipelineLead;
   stages: LeadStage[];
@@ -49,6 +57,7 @@ function LeadCard({
   onDragStart: (e: React.DragEvent, leadId: string) => void;
   onDragEnd: () => void;
   onMoveLead: (leadId: string, stage: LeadStage) => void;
+  onUpdateValue?: (leadId: string, valueCents: number | null) => void;
 }) {
   const hot = lead.score >= 80;
 
@@ -110,6 +119,35 @@ function LeadCard({
           </div>
         )}
 
+        {onUpdateValue && (
+          <button
+            type="button"
+            className="text-left text-xs text-muted-foreground hover:text-accent"
+            disabled={isPending}
+            onClick={(e) => {
+              e.stopPropagation();
+              const current =
+                lead.valueCents != null ? String(Math.round(lead.valueCents / 100)) : "";
+              const raw = window.prompt("Deal value in ₹ (leave empty to clear)", current);
+              if (raw === null) return;
+              const trimmed = raw.trim();
+              if (!trimmed) {
+                onUpdateValue(lead.id, null);
+                return;
+              }
+              const rupees = Number(trimmed.replace(/,/g, ""));
+              if (!Number.isFinite(rupees) || rupees < 0) return;
+              onUpdateValue(lead.id, Math.round(rupees * 100));
+            }}
+          >
+            {lead.valueCents != null ? (
+              <span className="font-semibold text-foreground">{formatInr(lead.valueCents)}</span>
+            ) : (
+              "+ Add deal value"
+            )}
+          </button>
+        )}
+
         {lead.conversation?.id ? (
           <Link
             href={`/dashboard/inbox?c=${lead.conversation.id}`}
@@ -133,6 +171,7 @@ export function PipelineBoard({
   data,
   isPending,
   onMoveLead,
+  onUpdateValue,
 }: PipelineBoardProps) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<LeadStage | null>(null);
@@ -205,6 +244,7 @@ export function PipelineBoard({
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                     onMoveLead={onMoveLead}
+                    onUpdateValue={onUpdateValue}
                   />
                 ))}
                 {count === 0 && (

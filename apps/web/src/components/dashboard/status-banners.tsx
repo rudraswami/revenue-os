@@ -2,9 +2,79 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CreditCard } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+
+interface BillingEntitlements {
+  entitlements?: {
+    trialExpired: boolean;
+    trialEndsAt: string | null;
+    hasAccess: boolean;
+    requiresUpgrade: boolean;
+    planId: string;
+  };
+}
+
+export function TrialExpiredBanner() {
+  const token = useAuthStore((s) => s.accessToken);
+
+  const { data } = useQuery({
+    queryKey: ["billing-status"],
+    queryFn: () => apiFetch<BillingEntitlements>("/billing", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: 60_000,
+  });
+
+  const access = data?.entitlements;
+  if (!access || access.hasAccess) return null;
+
+  const trialEnded = access.trialExpired;
+  const trialEndsSoon =
+    !trialEnded &&
+    access.trialEndsAt &&
+    new Date(access.trialEndsAt).getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000;
+
+  if (!trialEnded && !trialEndsSoon) return null;
+
+  return (
+    <div
+      className={`mx-4 mb-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 lg:mx-8 lg:mt-6 ${
+        trialEnded
+          ? "border-destructive/30 bg-destructive/5 text-destructive"
+          : "border-amber-200/80 bg-amber-50/90 text-amber-950"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        {trialEnded ? (
+          <CreditCard className="mt-0.5 h-4 w-4 shrink-0" />
+        ) : (
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+        )}
+        <div>
+          <p className="text-sm font-semibold">
+            {trialEnded ? "Your 14-day trial has ended" : "Trial ending soon"}
+          </p>
+          <p className="mt-0.5 text-xs opacity-90">
+            {trialEnded
+              ? "Upgrade to keep classifying leads, connecting WhatsApp, and inviting your team."
+              : `Trial ends ${new Date(access.trialEndsAt!).toLocaleDateString()} — pick a plan to avoid interruption.`}
+          </p>
+        </div>
+      </div>
+      <Link
+        href="/dashboard/pricing"
+        className={`inline-flex shrink-0 items-center rounded-xl px-4 py-2 text-xs font-semibold ${
+          trialEnded
+            ? "bg-destructive text-white hover:bg-destructive/90"
+            : "bg-amber-700 text-white hover:bg-amber-800"
+        }`}
+      >
+        View plans
+      </Link>
+    </div>
+  );
+}
 
 export function AiCapabilitiesBanner() {
   const token = useAuthStore((s) => s.accessToken);

@@ -12,7 +12,7 @@ import type { JwtPayload } from "@growvisi/shared";
 import { DEFAULT_PIPELINE_STAGES, GROWVISI_WEB_URL } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "./email.service";
-import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, DeleteAccountDto } from "./dto/auth.dto";
+import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, DeleteAccountDto, UpdateProfileDto } from "./dto/auth.dto";
 
 export interface AuthOrganizationOption {
   id: string;
@@ -209,6 +209,35 @@ export class AuthService {
       select: { id: true, name: true, slug: true },
     });
     if (!dbUser || !org) {
+      throw new UnauthorizedException();
+    }
+
+    const onboarding = await this.getOnboardingStatus(user.organizationId);
+    return {
+      user: dbUser,
+      organization: org,
+      role: user.role,
+      onboarding,
+    };
+  }
+
+  async updateProfile(user: JwtPayload, dto: UpdateProfileDto) {
+    const name = dto.name?.trim();
+    if (!name) {
+      throw new BadRequestException("Name is required.");
+    }
+
+    const dbUser = await this.prisma.user.update({
+      where: { id: user.sub },
+      data: { name },
+      select: { id: true, email: true, name: true },
+    });
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { id: true, name: true, slug: true },
+    });
+    if (!org) {
       throw new UnauthorizedException();
     }
 

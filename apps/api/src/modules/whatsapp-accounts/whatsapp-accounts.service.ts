@@ -11,6 +11,7 @@ import { GROWVISI_API_URL, GROWVISI_WEB_URL } from "@growvisi/shared";
 import { decryptSecret, encryptSecret } from "../../common/crypto/token-cipher";
 import { sanitizeEnvValue } from "../../config/cors-origins";
 import { EmailService } from "../auth/email.service";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { WhatsappWebhookPayload } from "../whatsapp/whatsapp.service";
 import { ConnectWhatsappDto, CreateWhatsappAccountDto, UpdateWhatsappAccountDto } from "./dto/whatsapp-account.dto";
@@ -57,6 +58,7 @@ export class WhatsappAccountsService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly email: EmailService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   /** Developer / IT only — not shown in main product UI */
@@ -206,6 +208,8 @@ export class WhatsappAccountsService {
   }
 
   async create(user: JwtPayload, dto: CreateWhatsappAccountDto) {
+    await this.entitlements.assertCanAddWhatsappNumber(user.organizationId);
+
     const accessToken = dto.accessToken.trim();
     const phoneNumberId = dto.phoneNumberId.trim();
 

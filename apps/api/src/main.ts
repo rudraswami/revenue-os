@@ -6,8 +6,10 @@ import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { GlobalHttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { isAllowedCorsOrigin } from "./config/cors-origins";
+import { initSentry } from "./config/sentry";
 
 async function bootstrap() {
+  initSentry();
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
   });

@@ -34,7 +34,9 @@ Run this **before** pushing WhatsApp onboarding + token reminder changes to prod
 
 | Variable | Why |
 |----------|-----|
-| **`CRON_SECRET`** | Required for `/api/v1/internal/cron/whatsapp-token-reminders` (token reminder emails). Generate: `openssl rand -base64 32` |
+| **`CRON_SECRET`** | Required for `/api/v1/internal/cron/*` (token reminders, follow-up automations). Generate: `openssl rand -base64 32` |
+| **`SENTRY_DSN`** | Optional — error tracking when `@sentry/node` is installed on API |
+| **`RAZORPAY_*`** | Required for paid upgrades — run `pnpm vercel:env:razorpay` after adding keys to root `.env` |
 
 ### Fix in Vercel dashboard
 
@@ -78,6 +80,15 @@ Local `apps/api/vercel.json` includes cron — **not live until code is deployed
 ```
 
 **Note:** Vercel **Hobby** allows one cron per day — `apps/api/vercel.json` uses `0 9 * * *` (09:00 UTC). For every-6-hour reminders, upgrade API project to **Pro** and set schedule to `0 */6 * * *`.
+
+### Async queues on Vercel (AI + inbound)
+
+| Runtime | Behavior |
+|---------|----------|
+| **Local / Docker** | BullMQ + Redis (`REDIS_URL`) — `AI_CLASSIFY` and `WHATSAPP_INBOUND` jobs run in background workers. |
+| **Vercel serverless** | `VERCEL=1` — jobs run **inline** in the webhook/request handler (no Redis worker process). Acceptable for MVP volume; upgrade to a always-on API (Railway/Fly) or Vercel Pro + external worker when message volume grows. |
+
+Ensure `REDIS_URL` stays set on Vercel if you later enable hybrid workers; it is safe to keep for future queue consumers.
 
 ---
 

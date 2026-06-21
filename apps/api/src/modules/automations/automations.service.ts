@@ -35,8 +35,9 @@ export class AutomationsService {
     user: JwtPayload,
     patch: Partial<AutomationPreferences>,
   ): Promise<AutomationPreferences> {
+    const { welcome: _ignored, ...serverPatch } = patch;
     const current = await this.getPreferences(user);
-    const next: AutomationPreferences = { ...current, ...patch };
+    const next: AutomationPreferences = { ...current, ...serverPatch };
     const org = await this.prisma.organization.findUnique({
       where: { id: user.organizationId },
       select: { settings: true },

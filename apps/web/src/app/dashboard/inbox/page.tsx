@@ -12,7 +12,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { formatStage } from "@/lib/stage-labels";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
-import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { EYEBROW, NAV } from "@/lib/brand-copy";
@@ -44,14 +43,19 @@ interface ConversationDetail {
   contactPhone: string;
   unreadCount: number;
   aiEnabled: boolean;
+  assignedTo: { id: string; name: string | null; email: string } | null;
   lead: { id: string; stage: string; score?: number; aiConfidence?: number | null } | null;
   messages: Message[];
   whatsappAccount: { displayPhoneNumber: string; isActive: boolean };
 }
 
+interface TeamMember {
+  user: { id: string; name: string | null; email: string };
+}
+
 interface TimelineEvent {
   id: string;
-  type: "stage_change" | "ai_classify";
+  type: "stage_change" | "ai_classify" | "automation";
   at: string;
   title: string;
   detail?: string;
@@ -152,6 +156,13 @@ export default function InboxPage() {
     staleTime: 120_000,
   });
 
+  const { data: teamMembers } = useQuery({
+    queryKey: ["team-members"],
+    queryFn: () => apiFetch<TeamMember[]>("/organizations/members", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: 120_000,
+  });
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [thread?.messages.length]);
@@ -180,6 +191,19 @@ export default function InboxPage() {
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(["conversation", selectedId], updated);
+    },
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: (assignToUserId: string | null) =>
+      apiFetch<ConversationDetail>(`/conversations/${selectedId}/assign`, {
+        method: "PATCH",
+        token: token ?? undefined,
+        body: JSON.stringify({ assignToUserId }),
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["conversation", selectedId], updated);
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
 
@@ -372,61 +396,91 @@ export default function InboxPage() {
         ) : threadLoading && !thread ? (
           <InboxThreadSkeleton />
         ) : thread ? (
-          <div className="flex flex-1 min-w-0">
-            <div className="flex flex-1 flex-col min-w-0">
-            <div className="flex items-center gap-3 border-b border-border/80 bg-white px-4 py-4 lg:px-6">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="shrink-0 lg:hidden"
-                onClick={clearSelection}
-                aria-label="Back to conversations"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <AvatarInitials name={thread.contactName ?? thread.contactPhone} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{thread.contactName ?? thread.contactPhone}</p>
-                <p className="truncate text-xs text-muted-foreground">{thread.contactPhone}</p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className="text-[10px] text-muted-foreground">
-                  {live ? "Live updates" : "Refreshes every few seconds"}
-                </span>
-                <div className="flex items-center gap-2">
-                {thread.lead?.score != null && thread.lead.score > 0 && (
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-0.5 text-[10px] font-bold",
-                      thread.lead.score >= 80
-                        ? "bg-accent text-white"
-                        : "bg-[#ecfdf5] text-accent",
-                    )}
-                  >
-                    Score {thread.lead.score}
-                  </span>
-                )}
-                {thread.lead && (
-                  <span className="rounded-full bg-[#e5eeff] px-3 py-1 text-xs font-semibold text-accent">
-                    {formatStage(thread.lead.stage)}
-                  </span>
-                )}
+          <div className="flex min-h-0 flex-1 min-w-0">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {/* Thread header */}
+            <div className="shrink-0 border-b border-border/80 bg-white">
+              <div className="flex items-center gap-3 px-4 py-3 lg:px-5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 lg:hidden"
+                  onClick={clearSelection}
+                  aria-label="Back to conversations"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <AvatarInitials name={thread.contactName ?? thread.contactPhone} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">
+                    {thread.contactName ?? thread.contactPhone}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{thread.contactPhone}</p>
+                </div>
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                  {thread.lead?.score != null && thread.lead.score > 0 && (
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                        thread.lead.score >= 80
+                          ? "bg-accent text-white"
+                          : "bg-[#ecfdf5] text-accent",
+                      )}
+                    >
+                      {thread.lead.score}
+                    </span>
+                  )}
+                  {thread.lead && (
+                    <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[10px] font-semibold text-accent">
+                      {formatStage(thread.lead.stage)}
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
-                <span className="text-[11px] font-medium text-muted-foreground">AI classify</span>
-                <Switch
-                  checked={thread.aiEnabled}
-                  disabled={aiToggleMutation.isPending}
-                  onCheckedChange={(v) => aiToggleMutation.mutate(v)}
-                  aria-label="Toggle AI classification for this conversation"
-                />
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-[#f8f9ff]/60 px-4 py-2 lg:px-5">
+                <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    AI
+                  </span>
+                  <Switch
+                    checked={thread.aiEnabled}
+                    disabled={aiToggleMutation.isPending}
+                    onCheckedChange={(v) => aiToggleMutation.mutate(v)}
+                    aria-label="Toggle AI classification"
+                    className="scale-90"
+                  />
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
+                  <label htmlFor="assign-agent" className="text-[10px] font-medium text-muted-foreground">
+                    Owner
+                  </label>
+                  <select
+                    id="assign-agent"
+                    className="max-w-[120px] truncate rounded-md border-0 bg-transparent text-xs font-medium focus:outline-none"
+                    value={thread.assignedTo?.id ?? ""}
+                    disabled={assignMutation.isPending}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      assignMutation.mutate(v ? v : null);
+                    }}
+                  >
+                    <option value="">Unassigned</option>
+                    {(teamMembers ?? []).map((m) => (
+                      <option key={m.user.id} value={m.user.id}>
+                        {m.user.name ?? m.user.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <span className="ml-auto text-[10px] text-muted-foreground">
+                  {live ? "Live" : "Syncing"}
+                </span>
               </div>
             </div>
 
-            <div className="conversation-thread-bg flex-1 overflow-y-auto px-4 py-4 custom-scrollbar lg:px-6">
-              <div className="mx-auto flex max-w-2xl flex-col gap-2">
+            <div className="conversation-thread-bg flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 custom-scrollbar lg:px-5">
+              <div className="mx-auto mt-auto flex w-full max-w-2xl flex-col gap-2">
                 {thread.messages.map((m) => (
                   <div
                     key={m.id}
@@ -460,45 +514,31 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <div className="border-t border-border/80 bg-muted/20 p-4 lg:bg-white">
-              <div className="mx-auto max-w-2xl space-y-3 rounded-xl border border-border/60 bg-muted/30 p-4">
-                <MetaAiNotice compact />
+            <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 lg:px-5">
+              <div className="mx-auto max-w-2xl">
                 {showComposer ? (
                 <form onSubmit={handleSend} className="space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    Reply within WhatsApp&apos;s 24-hour customer service window. Prefer Meta
-                    Business Agent for automated replies — use this when your team must respond from
-                    Growvisi.
-                  </p>
                   {sendError && (
-                    <p className="text-center text-xs text-destructive">{sendError}</p>
-                  )}
-                  {capabilities?.aiSuggestReply && (
-                    <div className="flex justify-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs text-muted-foreground"
-                        disabled={suggestMutation.isPending}
-                        onClick={() => suggestMutation.mutate()}
-                      >
-                        {suggestMutation.isPending ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-3 w-3" />
-                        )}
-                        Draft suggestion
-                      </Button>
+                    <div className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                      <p className="font-medium">{sendError}</p>
+                      {(sendError.toLowerCase().includes("auth") ||
+                        sendError.toLowerCase().includes("token")) && (
+                        <a
+                          href="/dashboard/settings#whatsapp"
+                          className="mt-1 inline-block font-semibold underline"
+                        >
+                          Refresh WhatsApp token →
+                        </a>
+                      )}
                     </div>
                   )}
                   {(replyTemplates?.templates?.length ?? 0) > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 custom-scrollbar">
                       {replyTemplates!.templates.map((t) => (
                         <button
                           key={t.id}
                           type="button"
-                          className="rounded-full border border-border/80 bg-white px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:border-accent/40 hover:text-accent"
+                          className="shrink-0 rounded-full border border-border/80 bg-[#f8f9ff] px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:border-accent/40 hover:text-accent"
                           onClick={() => setDraft(t.body)}
                         >
                           {t.title}
@@ -506,46 +546,70 @@ export default function InboxPage() {
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Type your reply…"
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      disabled={sendMutation.isPending || !thread.whatsappAccount.isActive}
-                    />
-                    <Button
-                      type="submit"
-                      size="icon"
-                      disabled={
-                        !draft.trim() || sendMutation.isPending || !thread.whatsappAccount.isActive
-                      }
-                    >
-                      {sendMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
+                  <div className="flex items-end gap-2 rounded-2xl border border-border/80 bg-[#f8f9ff]/80 p-2 shadow-sm">
+                    <div className="min-w-0 flex-1">
+                      <Input
+                        placeholder="Human takeover reply (optional)…"
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        disabled={sendMutation.isPending || !thread.whatsappAccount.isActive}
+                        className="border-0 bg-transparent shadow-none focus-visible:ring-0"
+                      />
+                      <p className="px-3 pb-1 text-[10px] text-muted-foreground">
+                        Meta Business Agent handles auto-replies in WhatsApp · 24h window
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-1">
+                      {capabilities?.aiSuggestReply && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-muted-foreground"
+                          disabled={suggestMutation.isPending}
+                          onClick={() => suggestMutation.mutate()}
+                          title="Draft suggestion"
+                        >
+                          {suggestMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4" />
+                          )}
+                        </Button>
                       )}
-                    </Button>
+                      <Button
+                        type="submit"
+                        size="icon"
+                        className="h-9 w-9 rounded-xl bg-accent hover:bg-accent-hover"
+                        disabled={
+                          !draft.trim() || sendMutation.isPending || !thread.whatsappAccount.isActive
+                        }
+                      >
+                        {sendMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs"
+                    className="text-[10px] text-muted-foreground hover:text-foreground"
                     onClick={() => setShowComposer(false)}
                   >
                     Hide composer
-                  </Button>
+                  </button>
                 </form>
                 ) : (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="w-full"
+                    className="w-full rounded-xl"
                     onClick={() => setShowComposer(true)}
                   >
-                    Show reply composer
+                    Reply from Growvisi (human takeover)
                   </Button>
                 )}
               </div>
@@ -553,11 +617,11 @@ export default function InboxPage() {
             </div>
 
             {thread.lead && (
-              <aside className="hidden w-72 shrink-0 flex-col border-l border-[#dce9ff] bg-[#f8f9ff]/50 lg:flex">
-                <div className="border-b border-[#dce9ff] bg-white p-4">
+              <aside className="hidden w-64 shrink-0 flex-col border-l border-border/80 bg-white lg:flex xl:w-72">
+                <div className="border-b border-border/80 px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-accent" />
-                    <h2 className="text-sm font-bold">Lead timeline</h2>
+                    <h2 className="text-sm font-bold">Timeline</h2>
                   </div>
                   <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                     AI classification & pipeline changes

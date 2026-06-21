@@ -3,6 +3,8 @@ import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
 import { encryptSecret } from "../../common/crypto/token-cipher";
 import { sanitizeEnvValue } from "../../config/cors-origins";
+import { isProductionDeploy } from "../../config/production";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { WhatsappAccountSafe } from "./whatsapp-accounts.service";
 
@@ -13,6 +15,7 @@ export class EmbeddedSignupService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   getPublicConfig() {
@@ -162,6 +165,8 @@ export class EmbeddedSignupService {
         "Please finish adding your business phone number in the Meta setup window.",
       );
     }
+
+    await this.entitlements.assertCanAddWhatsappNumber(user.organizationId);
 
     const duplicate = await this.prisma.whatsappAccount.findFirst({
       where: { organizationId: user.organizationId, phoneNumberId },

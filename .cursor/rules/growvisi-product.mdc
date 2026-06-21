@@ -1,0 +1,32 @@
+---
+description: Growvisi product invariants — WhatsApp revenue OS, Meta boundary, India-first, non-goals
+alwaysApply: true
+---
+
+# Growvisi product rules
+
+**Product:** WhatsApp-first revenue layer for Indian SMBs (1–20 people). Not a generic CRM.
+
+## Non-negotiables
+
+1. **Meta replies in WhatsApp** via Business Agent. Growvisi **classifies, tracks, assigns, alerts** — does not auto-reply customers in v1.
+2. **India-first:** INR pricing, Razorpay billing. No Stripe/USD in product UI.
+3. **Enforce limits server-side** (`EntitlementsService`, `PLAN_LIMITS`). UI mirrors API; never UI-only gates.
+4. **Honest automations:** no fake toggles for Meta-owned behavior (welcome = info card only).
+5. **Onboarding is soft:** users can skip WhatsApp setup; `/dashboard/pricing` and settings always reachable.
+
+## Out of scope for v1
+
+Email CRM, SSO, in-app notification center, multi-channel inbox, Growvisi as chatbot.
+
+## Terminology
+
+Use `brand-copy.ts`: Conversations, Pipeline, Intelligence, Automations. Say ₹/mo and 14-day trial.
+
+## Before adding features
+
+Read `docs/GROWVISI-PRD.md`. Tie work to pipeline/revenue outcome. Prefer API + thin UI over large new modules.
+
+## Skill
+
+For specs, roadmap, or "what should we build" → use `.cursor/skills/growvisi-product/SKILL.md`.

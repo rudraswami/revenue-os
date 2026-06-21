@@ -18,6 +18,7 @@ import { InternalModule } from "./modules/internal/internal.module";
 import { AutomationsModule } from "./modules/automations/automations.module";
 import { BillingModule } from "./modules/billing/billing.module";
 import { KnowledgeModule } from "./modules/knowledge/knowledge.module";
+import { ApiKeysModule } from "./modules/api-keys/api-keys.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
 
@@ -54,6 +55,7 @@ import { QUEUES } from "@growvisi/shared";
     AutomationsModule,
     BillingModule,
     KnowledgeModule,
+    ApiKeysModule,
   ],
 })
 export class AppModule {}

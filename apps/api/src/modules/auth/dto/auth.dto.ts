@@ -71,3 +71,9 @@ export class DeleteAccountDto {
   @IsNotEmpty()
   confirmation!: string;
 }
+
+export class UpdateProfileDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+}

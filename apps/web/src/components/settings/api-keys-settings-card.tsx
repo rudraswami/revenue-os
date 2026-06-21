@@ -1,0 +1,139 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Key, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { apiFetch, ApiError } from "@/lib/api-client";
+import { useAuthStore } from "@/stores/auth-store";
+
+interface ApiKeyRow {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  createdAt: string;
+}
+
+export function ApiKeysSettingsCard() {
+  const token = useAuthStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("Production");
+  const [newSecret, setNewSecret] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: keys, isLoading, isError } = useQuery({
+    queryKey: ["api-keys"],
+    queryFn: () => apiFetch<ApiKeyRow[]>("/api-keys", { token: token ?? undefined }),
+    enabled: !!token,
+    retry: false,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      apiFetch<ApiKeyRow & { secret: string }>("/api-keys", {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({ name }),
+      }),
+    onSuccess: (res) => {
+      setNewSecret(res.secret);
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+    },
+    onError: (e) => {
+      setError(e instanceof ApiError ? e.message : "Could not create API key.");
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/api-keys/${id}`, { method: "DELETE", token: token ?? undefined }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["api-keys"] }),
+  });
+
+  if (isError) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        API keys are available on the Pro plan after billing is active.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+          <Key className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold">API keys</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Pro plan — programmatic read access (more scopes coming soon).
+          </p>
+        </div>
+      </div>
+
+      {newSecret && (
+        <div className="rounded-xl border border-accent/30 bg-bento-mint/40 p-3 text-xs">
+          <p className="font-semibold text-accent">Copy your key now — it won&apos;t be shown again.</p>
+          <code className="mt-2 block break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11px]">
+            {newSecret}
+          </code>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Key label"
+          className="max-w-[200px] rounded-xl"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="accent"
+          className="rounded-xl"
+          disabled={createMutation.isPending || !name.trim()}
+          onClick={() => createMutation.mutate()}
+        >
+          Create key
+        </Button>
+      </div>
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+
+      {isLoading ? (
+        <div className="h-16 animate-pulse rounded-xl bg-muted" />
+      ) : (
+        <ul className="space-y-2">
+          {(keys ?? []).map((k) => (
+            <li
+              key={k.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-border/80 px-3 py-2 text-sm"
+            >
+              <div>
+                <p className="font-medium">{k.name}</p>
+                <p className="font-mono text-[11px] text-muted-foreground">{k.keyPrefix}…</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-destructive"
+                disabled={revokeMutation.isPending}
+                onClick={() => revokeMutation.mutate(k.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+          {keys?.length === 0 && (
+            <p className="text-xs text-muted-foreground">No API keys yet.</p>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}

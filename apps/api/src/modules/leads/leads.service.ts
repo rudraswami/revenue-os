@@ -63,6 +63,20 @@ export class LeadsService {
     return updated;
   }
 
+  async updateLead(user: JwtPayload, id: string, data: { valueCents?: number | null }) {
+    const lead = await this.prisma.lead.findFirst({
+      where: { id, organizationId: user.organizationId },
+    });
+    if (!lead) throw new NotFoundException();
+
+    return this.prisma.lead.update({
+      where: { id },
+      data: {
+        ...(data.valueCents !== undefined ? { valueCents: data.valueCents } : {}),
+      },
+    });
+  }
+
   async getTimeline(user: JwtPayload, id: string) {
     const lead = await this.prisma.lead.findFirst({
       where: { id, organizationId: user.organizationId },
@@ -71,6 +85,7 @@ export class LeadsService {
         conversation: {
           select: {
             id: true,
+            metadata: true,
             aiRuns: {
               where: { type: "classify", status: "COMPLETED" },
               orderBy: { createdAt: "desc" },
@@ -84,7 +99,7 @@ export class LeadsService {
 
     type TimelineEntry = {
       id: string;
-      type: "stage_change" | "ai_classify";
+      type: "stage_change" | "ai_classify" | "automation";
       at: string;
       title: string;
       detail?: string;
@@ -94,13 +109,16 @@ export class LeadsService {
     const events: TimelineEntry[] = [];
 
     for (const entry of lead.stageHistory) {
+      const isAutomation = !!entry.aiRunId && !entry.changedBy;
       events.push({
         id: entry.id,
-        type: "stage_change",
+        type: isAutomation ? "automation" : "stage_change",
         at: entry.createdAt.toISOString(),
-        title: entry.fromStage
-          ? `${entry.fromStage} → ${entry.toStage}`
-          : `Stage set to ${entry.toStage}`,
+        title: isAutomation
+          ? `Automation moved stage to ${entry.toStage}`
+          : entry.fromStage
+            ? `${entry.fromStage} → ${entry.toStage}`
+            : `Stage set to ${entry.toStage}`,
         detail: entry.reason ?? undefined,
         metadata: {
           fromStage: entry.fromStage,
@@ -130,6 +148,31 @@ export class LeadsService {
       });
     }
 
+    const convMeta = (lead.conversation?.metadata ?? {}) as Record<string, unknown>;
+    if (convMeta.lastHotLeadAlertAt) {
+      events.push({
+        id: `hot-${lead.conversation!.id}`,
+        type: "automation",
+        at: String(convMeta.lastHotLeadAlertAt),
+        title: "Hot lead alert emailed",
+        detail:
+          typeof convMeta.lastHotLeadAlertScore === "number"
+            ? `Score ${convMeta.lastHotLeadAlertScore}`
+            : undefined,
+        metadata: { kind: "hot_lead_alert" },
+      });
+    }
+    if (convMeta.followupReminderSentAt) {
+      events.push({
+        id: `followup-${lead.conversation!.id}`,
+        type: "automation",
+        at: String(convMeta.followupReminderSentAt),
+        title: "Follow-up reminder sent",
+        detail: "Team notified about stale conversation",
+        metadata: { kind: "followup_reminder" },
+      });
+    }
+
     events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 
     return {
@@ -141,6 +184,8 @@ export class LeadsService {
         lastClassifiedAt: lead.lastClassifiedAt,
         displayName: lead.displayName,
         phone: lead.phone,
+        valueCents: lead.valueCents,
+        currency: lead.currency,
       },
       events,
     };
