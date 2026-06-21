@@ -1,20 +1,18 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Send, Sparkles, Clock, ArrowLeft, Inbox, MessageSquare, Search } from "lucide-react";
+import { Loader2, Send, Sparkles, Clock, ArrowLeft, Inbox } from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { InboxListSkeleton, InboxThreadSkeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
-import { QueryErrorState } from "@/components/ui/query-state";
+import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { formatStage } from "@/lib/stage-labels";
+import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import { EYEBROW, NAV } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -249,147 +247,57 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-4rem)] min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/80 bg-white shadow-[0_2px_16px_rgb(11_28_48/0.05)] max-lg:min-h-[calc(100dvh-57px)] max-lg:rounded-none max-lg:border-0">
-      <div
-        className={cn(
-          "flex h-full min-h-0 w-full shrink-0 flex-col border-r border-border/80 bg-[#fafbff] lg:w-[300px] xl:w-[320px]",
-          selectedId ? "hidden lg:flex" : "flex",
-        )}
-      >
-        <div className="shrink-0 border-b border-border/80 bg-white px-4 py-3.5">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
-                {EYEBROW.messaging}
-              </p>
-              <h1 className="text-base font-bold tracking-tight">{NAV.conversations}</h1>
-            </div>
-            <div className="flex flex-wrap justify-end gap-1">
-              {hasWhatsapp && (
-                <span className="rounded-full bg-bento-mint px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent">
-                  Live
-                </span>
-              )}
-              {live && (
-                <span className="flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[9px] font-bold text-accent">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-                  Sync
-                </span>
-              )}
-            </div>
-          </div>
-          {conversations.length > 0 && (
-            <div className="relative mt-3">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search…"
-                className="h-8 rounded-lg border-border/80 bg-[#f8f9ff] pl-9 text-xs"
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar">
-          {listLoading && <InboxListSkeleton />}
-
-          {listError && !listLoading && (
-            <QueryErrorState onRetry={() => void refetchList()} />
-          )}
-
-          {!listLoading && !listError && !hasWhatsapp && (
-            <EmptyState
-              compact
-              icon={<MessageSquare className="h-6 w-6" />}
-              title="WhatsApp not connected"
-              description="Link your business number to receive customer messages here."
-              actionHref="/dashboard/settings"
-              actionLabel="Connect WhatsApp"
-              secondaryHref="/onboarding"
-              secondaryLabel="Guided setup"
-            />
-          )}
-
-          {!listLoading && !listError && hasWhatsapp && conversations.length === 0 && (
-            <EmptyState
-              compact
-              icon={<Inbox className="h-6 w-6" />}
-              title="No messages yet"
-              description="Send a WhatsApp from your personal phone to your business number (not from the Meta test number). Add your phone under Meta → API Setup → test recipients, then check connection status in Settings."
-              actionHref="/dashboard/settings"
-              actionLabel="WhatsApp settings"
-            />
-          )}
-
-          <div className="space-y-1">
-            {conversations.map((c) => {
-              const displayName = c.contactName ?? c.contactPhone;
-              return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => selectConversation(c.id)}
-                className={cn(
-                  "flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
-                  selectedId === c.id
-                    ? "bg-white shadow-sm ring-1 ring-accent/25"
-                    : "hover:bg-white/80",
-                  c.unreadCount > 0 && selectedId !== c.id && "bg-white ring-1 ring-border/80",
-                )}
-              >
-                <AvatarInitials name={displayName} size="sm" />
-                <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="truncate font-medium text-sm">
-                    {displayName}
-                  </p>
-                  {c.unreadCount > 0 && (
-                    <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      {c.unreadCount}
-                    </span>
-                  )}
-                </div>
-                <p
-                  className={cn(
-                    "mt-0.5 truncate text-xs",
-                    selectedId === c.id ? "text-primary/70" : "text-muted-foreground",
-                  )}
-                >
-                  {c.messages[0]?.content ?? "No messages"}
-                </p>
-                {c.lead && (
-                  <span
-                    className={cn(
-                      "mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                      selectedId === c.id ? "bg-accent/10 text-accent" : "bg-[#e5eeff] text-muted-foreground",
-                    )}
-                  >
-                    {formatStage(c.lead.stage)}
-                  </span>
-                )}
-                </div>
-              </button>
-            );
-            })}
-          </div>
-        </div>
+    <div className="flex h-[calc(100dvh-4rem)] min-h-0 w-full flex-row overflow-hidden rounded-xl border border-border/80 bg-white shadow-[0_2px_16px_rgb(11_28_48/0.05)] max-lg:h-[calc(100dvh-57px)] max-lg:rounded-none max-lg:border-0">
+      {/* Conversation list — always visible on md+; mobile shows list OR thread */}
+      <div className={cn("h-full shrink-0", selectedId ? "max-md:hidden" : "flex", "md:flex")}>
+        <InboxConversationList
+          conversations={conversations}
+          selectedId={selectedId}
+          search={search}
+          onSearchChange={setSearch}
+          hasWhatsapp={hasWhatsapp}
+          live={live}
+          listLoading={listLoading}
+          listError={listError}
+          onRetry={() => void refetchList()}
+          onSelect={selectConversation}
+        />
       </div>
 
+      {/* Thread + timeline — always visible on md+ */}
       <div
         className={cn(
-          "flex min-w-0 flex-1 flex-col",
-          !selectedId ? "hidden lg:flex" : "flex",
+          "flex min-h-0 min-w-0 flex-1 flex-col bg-[#f8f9ff]/40",
+          selectedId ? "flex" : "max-md:hidden",
+          "md:flex",
         )}
       >
         {!selectedId ? (
-          <div className="hidden flex-1 flex-col items-center justify-center gap-2 p-8 text-center lg:flex">
-            <EmptyState
-              compact
-              icon={<Inbox className="h-6 w-6" />}
-              title="Select a conversation"
-              description="View the thread, AI classification, and lead timeline. Replies happen in WhatsApp via Meta Business Agent."
-            />
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-border/80">
+              <Inbox className="h-7 w-7 text-accent" />
+            </div>
+            <div className="max-w-sm space-y-1">
+              <h2 className="text-lg font-bold tracking-tight">Select a conversation</h2>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Pick a contact on the left to view messages, AI classification, and pipeline
+                timeline. Customer replies happen in WhatsApp via Meta Business Agent.
+              </p>
+            </div>
+            <div className="mt-2 grid max-w-md gap-2 text-left text-xs text-muted-foreground sm:grid-cols-3">
+              <div className="rounded-xl border border-border/80 bg-white px-3 py-2.5">
+                <p className="font-semibold text-foreground">Thread</p>
+                <p className="mt-0.5">Full message history</p>
+              </div>
+              <div className="rounded-xl border border-border/80 bg-white px-3 py-2.5">
+                <p className="font-semibold text-foreground">AI & owner</p>
+                <p className="mt-0.5">Classify and assign</p>
+              </div>
+              <div className="rounded-xl border border-border/80 bg-white px-3 py-2.5">
+                <p className="font-semibold text-foreground">Timeline</p>
+                <p className="mt-0.5">Stage & automation log</p>
+              </div>
+            </div>
           </div>
         ) : threadLoading && !thread ? (
           <InboxThreadSkeleton />
@@ -403,7 +311,7 @@ export default function InboxPage() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="shrink-0 lg:hidden"
+                  className="shrink-0 md:hidden"
                   onClick={clearSelection}
                   aria-label="Back to conversations"
                 >
