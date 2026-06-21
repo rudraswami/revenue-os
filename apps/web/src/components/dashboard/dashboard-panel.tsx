@@ -26,7 +26,7 @@ export function DashboardPanel({
   return (
     <motion.div
       className={cn(
-        "overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]",
+        "overflow-hidden rounded-2xl border border-border bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]",
         className,
       )}
       initial={{ opacity: 0, y: 12 }}
@@ -34,7 +34,7 @@ export function DashboardPanel({
       transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       {(title || action) && (
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#dce9ff]/80 bg-[#f8f9ff]/60 px-5 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/80 bg-background/60 px-5 py-4">
           <div>
             {title && <h3 className="text-[15px] font-semibold text-foreground">{title}</h3>}
             {description && (

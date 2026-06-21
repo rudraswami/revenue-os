@@ -15,7 +15,7 @@ export function LegalPage({ title, lastUpdated, children }: LegalPageProps) {
       <main>
         <div className="border-b border-border/60 bg-gradient-to-b from-primary-soft/30 to-transparent py-12 md:py-16">
           <article className="mx-auto max-w-[720px] px-6">
-            <p className="text-[13px] font-semibold uppercase tracking-wider text-primary">Legal</p>
+            <p className="section-label">Legal</p>
             <h1 className="display-lg mt-2 text-foreground">{title}</h1>
             <p className="mt-2 text-sm text-muted-foreground">Last updated: {lastUpdated}</p>
           </article>

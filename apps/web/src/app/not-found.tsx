@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CTA } from "@/lib/brand-copy";
 import { Logo } from "@/components/marketing/logo";
 import { Button } from "@/components/ui/button";
 
@@ -16,7 +17,7 @@ export default function NotFound() {
           <Link href="/">Back to home</Link>
         </Button>
         <Button variant="outline" asChild>
-          <Link href="/login">Log in</Link>
+          <Link href="/login">{CTA.signIn}</Link>
         </Button>
       </div>
     </div>

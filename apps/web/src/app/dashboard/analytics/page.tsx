@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
+import { CTA } from "@/lib/brand-copy";
 import { CHART_ACCENT, STAGE_CHART_COLORS, chartTooltipStyle } from "@/lib/chart-theme";
 import { useAuthStore } from "@/stores/auth-store";
 import { BarChart3, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
@@ -129,7 +130,7 @@ export default function AnalyticsPage() {
                       : "Link WhatsApp to start tracking pipeline metrics."
                   }
                   actionHref={hasWhatsapp ? "/dashboard/inbox" : "/onboarding"}
-                  actionLabel={hasWhatsapp ? "Open Inbox" : "Connect WhatsApp"}
+                  actionLabel={hasWhatsapp ? CTA.openConversations : "Connect WhatsApp"}
                 />
               )}
             </DashboardPanel>

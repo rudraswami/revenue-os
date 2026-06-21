@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CTA, TAGLINE } from "@/lib/brand-copy";
 import { Logo } from "./logo";
 
 const links = {
@@ -29,7 +30,7 @@ export function MarketingFooter() {
           <div>
             <Logo />
             <p className="mt-4 max-w-[260px] text-[13px] leading-relaxed text-muted-foreground">
-              The AI Revenue Engine for WhatsApp sales teams.
+              {TAGLINE}.
             </p>
           </div>
           {Object.entries(links).map(([title, items]) => (
@@ -50,8 +51,12 @@ export function MarketingFooter() {
         <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-8 text-[13px] text-muted-foreground">
           <p>© {new Date().getFullYear()} Growvisi</p>
           <div className="flex gap-6">
-            <Link href="/login">Log in</Link>
-            <Link href="/register">Get Started</Link>
+            <Link href="/login" className="hover:text-foreground">
+              {CTA.signIn}
+            </Link>
+            <Link href="/register" className="font-semibold text-accent hover:underline">
+              {CTA.getStarted}
+            </Link>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { CTA } from "@/lib/brand-copy";
 import { HeroIllustration } from "./illustrations/hero-illustration";
 
 const logos = ["Real Estate", "EdTech", "Healthcare", "D2C", "Automotive", "Consulting"];
@@ -31,13 +32,13 @@ export function Hero() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/register"
-              className="btn-primary inline-flex items-center gap-2 rounded-lg px-7 py-3.5 text-[15px]"
+              className="btn-primary inline-flex items-center gap-2 rounded-xl px-7 py-3.5 text-[15px]"
             >
-              Start 14-Day FREE Trial
+              {CTA.startTrial}
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link href="/demo" className="btn-outline rounded-lg px-7 py-3.5 text-[15px]">
-              Join Live Demo
+            <Link href="/demo" className="btn-outline rounded-xl px-7 py-3.5 text-[15px]">
+              {CTA.bookDemo}
               <ArrowRight className="ml-1 inline h-4 w-4" />
             </Link>
           </div>

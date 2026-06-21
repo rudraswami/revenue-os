@@ -9,6 +9,7 @@ import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { CTA, EYEBROW } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import { ArrowRight, Bot, LineChart, Sparkles, Target, UserRound, Zap } from "lucide-react";
 
@@ -80,7 +81,7 @@ export default function AiStudioPage() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow="AI"
+        eyebrow={EYEBROW.intelligence}
         title="Intelligence"
         description="Growvisi analyzes every WhatsApp thread — Meta replies in-chat, we track the revenue funnel."
         badge={
@@ -129,7 +130,7 @@ export default function AiStudioPage() {
             </div>
           </div>
           <Button asChild className="rounded-xl">
-            <Link href="/dashboard/inbox">View conversations</Link>
+            <Link href="/dashboard/inbox">{CTA.openConversations}</Link>
           </Button>
         </div>
       </DashboardPanel>

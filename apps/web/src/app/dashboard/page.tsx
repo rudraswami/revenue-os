@@ -11,16 +11,17 @@ import { QueryErrorState } from "@/components/ui/query-state";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { CTA, EYEBROW, NAV } from "@/lib/brand-copy";
 import { CHART_ACCENT, chartTooltipStyle } from "@/lib/chart-theme";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const quickActions = [
-  { href: "/dashboard/inbox", label: "Conversations", icon: Inbox, desc: "Reply & analyze threads", color: "bg-[#ecfdf5] text-accent" },
-  { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban, desc: "Move deals forward", color: "bg-[#e5eeff] text-primary" },
-  { href: "/dashboard/analytics", label: "Analytics", icon: TrendingUp, desc: "Funnel performance", color: "bg-[#f0fdf4] text-accent" },
-  { href: "/dashboard/insights", label: "Insights", icon: LineChart, desc: "What to do next", color: "bg-amber-50 text-amber-700" },
+  { href: "/dashboard/inbox", label: NAV.conversations, icon: Inbox, desc: "Reply & analyze threads", color: "bg-bento-mint text-accent" },
+  { href: "/dashboard/pipeline", label: NAV.pipeline, icon: Kanban, desc: "Move deals forward", color: "bg-primary-soft text-primary" },
+  { href: "/dashboard/analytics", label: NAV.analytics, icon: TrendingUp, desc: "Funnel performance", color: "bg-bento-mint text-accent" },
+  { href: "/dashboard/insights", label: NAV.insights, icon: LineChart, desc: "What to do next", color: "bg-amber-50 text-amber-700" },
 ];
 
 export default function DashboardPage() {
@@ -77,7 +78,7 @@ export default function DashboardPage() {
       <div className="dashboard-hero">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-accent">Overview</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-accent">{EYEBROW.overview}</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">{timeGreeting(user?.name)}</h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
               Your WhatsApp revenue command center — conversations, scores, and pipeline in one place.
@@ -91,7 +92,7 @@ export default function DashboardPage() {
           </div>
           <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5 rounded-xl border-[#dce9ff] bg-white">
             <Link href="/dashboard/inbox">
-              Open conversations
+              {CTA.openConversations}
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
@@ -185,7 +186,7 @@ export default function DashboardPage() {
                 <>
                   <p>Leads appear when customer messages are classified</p>
                   <Link href="/dashboard/inbox" className="font-medium text-accent hover:underline">
-                    View conversations →
+                    {CTA.openConversations} →
                   </Link>
                 </>
               ) : (

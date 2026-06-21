@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
 import { Button } from "@/components/ui/button";
+import { CTA } from "@/lib/brand-copy";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 
 export const metadata: Metadata = {
@@ -46,8 +47,8 @@ export default function AboutPage() {
               </a>
             </p>
             <div className="flex flex-wrap gap-3 pt-4">
-              <Button asChild>
-                <Link href="/register">Start free trial</Link>
+              <Button asChild variant="accent">
+                <Link href="/register">{CTA.startTrial}</Link>
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/contact">Contact sales</Link>

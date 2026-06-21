@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { CTA, NAV } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -48,10 +49,10 @@ export function GettingStartedCard() {
     {
       id: "explore",
       title: "Explore your workspace",
-      description: "Browse Inbox, Pipeline, and Insights.",
+      description: `Browse ${NAV.conversations}, Pipeline, and Insights.`,
       done: true,
       href: "/dashboard/inbox",
-      action: "Open Inbox",
+      action: CTA.openConversations,
     },
     {
       id: "whatsapp",
@@ -67,7 +68,7 @@ export function GettingStartedCard() {
       description: "Send a test WhatsApp — we detect it automatically.",
       done: firstMessage,
       href: "/dashboard/inbox",
-      action: "Open Inbox",
+      action: CTA.openConversations,
     },
   ];
 
@@ -81,11 +82,11 @@ export function GettingStartedCard() {
 
   return (
     <motion.div
-      className="mb-8 overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]"
+      className="mb-8 overflow-hidden rounded-2xl border border-border bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-[#dce9ff]/80 bg-gradient-to-r from-[#ecfdf5]/60 to-white px-5 py-4">
+      <div className="flex items-start justify-between gap-4 border-b border-border/80 bg-gradient-to-r from-bento-mint/60 to-white px-5 py-4">
         <div>
           <p className="text-[15px] font-bold">
             Getting started{user?.name ? `, ${user.name.split(" ")[0]}` : ""}

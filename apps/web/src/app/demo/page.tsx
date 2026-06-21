@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { CTA } from "@/lib/brand-copy";
 import { MarketingHeader } from "@/components/marketing/header";
 import { ProductShowcase } from "@/components/marketing/product-showcase";
 import { MarketingFooter } from "@/components/marketing/footer";
@@ -19,15 +20,15 @@ export default function DemoPage() {
             <div className="mx-auto max-w-[640px] text-center">
               <h1 className="display-lg text-foreground">Explore the product</h1>
               <p className="body-lg mt-4">
-                Interactive preview of Inbox, Intelligence, Pipeline, and Analytics. Connect your
+                Interactive preview of Conversations, Intelligence, Pipeline, and Analytics. Connect your
                 real WhatsApp number after signing up.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-4">
-                <Link href="/register" className="btn-primary inline-flex items-center gap-2 rounded-lg px-6 py-3 text-[15px]">
-                  Start Free Trial <ArrowRight className="h-4 w-4" />
+                <Link href="/register" className="btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-3 text-[15px]">
+                  {CTA.startTrial} <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/contact" className="btn-outline rounded-lg px-6 py-3 text-[15px]">
-                  Book Demo
+                <Link href="/contact" className="btn-outline rounded-xl px-6 py-3 text-[15px]">
+                  {CTA.bookDemo}
                 </Link>
               </div>
             </div>

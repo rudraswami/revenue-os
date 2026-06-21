@@ -33,7 +33,7 @@ export function MetricCard({
       whileHover={{ y: -2 }}
       className={cn(
         "group relative overflow-hidden rounded-2xl border bg-white p-5 shadow-[0_4px_16px_rgb(11_28_48/0.04)] transition-shadow hover:shadow-[0_8px_28px_rgb(11_28_48/0.08)]",
-        highlight ? "border-accent/25 ring-1 ring-accent/10" : "border-[#dce9ff]",
+        highlight ? "border-accent/25 ring-1 ring-accent/10" : "border-border",
         className,
       )}
     >
@@ -56,7 +56,7 @@ export function MetricCard({
           )}
         </div>
         {icon && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent transition-colors group-hover:bg-accent group-hover:text-white">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bento-mint text-accent transition-colors group-hover:bg-accent group-hover:text-white">
             {icon}
           </div>
         )}

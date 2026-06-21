@@ -9,6 +9,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { applySession, postAuthPath } from "@/lib/auth-session";
+import { CTA } from "@/lib/brand-copy";
 import type { AuthSession } from "@/lib/auth-types";
 
 function passwordStrength(password: string): { label: string; color: string; width: string } {
@@ -120,7 +121,7 @@ export default function RegisterPage() {
         )}
 
         <Button type="submit" variant="accent" className="auth-submit" disabled={loading}>
-          {loading ? "Creating workspace…" : "Get started free"}
+          {loading ? "Creating workspace…" : CTA.startTrial}
         </Button>
       </form>
 

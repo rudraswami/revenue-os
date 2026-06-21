@@ -13,6 +13,7 @@ import { formatStage } from "@/lib/stage-labels";
 import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { EYEBROW, NAV } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -203,17 +204,22 @@ export default function InboxPage() {
           selectedId ? "hidden lg:flex" : "flex",
         )}
       >
-        <div className="border-b border-[#dce9ff] bg-gradient-to-r from-white to-[#f8f9ff] px-4 py-4">
+        <div className="border-b border-border bg-gradient-to-r from-white to-background px-4 py-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-bold tracking-tight">Conversations</h1>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+                {EYEBROW.messaging}
+              </p>
+              <h1 className="text-lg font-bold tracking-tight">{NAV.conversations}</h1>
+            </div>
             {hasWhatsapp && (
-              <span className="status-pill bg-[#ecfdf5] text-accent">
+              <span className="status-pill bg-bento-mint text-accent">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" />
                 WhatsApp linked
               </span>
             )}
             {live && (
-              <span className="status-pill bg-[#ecfdf5] text-accent">
+              <span className="status-pill bg-bento-mint text-accent">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
                 Live
               </span>

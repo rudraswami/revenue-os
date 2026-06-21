@@ -43,7 +43,7 @@ export function CookieConsent() {
           <Button size="sm" variant="outline" onClick={() => setVisible(false)}>
             Decline
           </Button>
-          <Button size="sm" onClick={accept}>
+          <Button size="sm" variant="accent" onClick={accept}>
             Accept
           </Button>
         </div>

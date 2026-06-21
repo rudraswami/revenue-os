@@ -23,7 +23,12 @@
   --color-bento-purple: #eff4ff;
   --color-bento-mint: #ecfdf5;
   --color-bento-blue: #e8f0ff;
+  --color-accent-light: #6cf8bb;
+  --color-accent-hover: #005236;
+  --color-whatsapp: #128C7E;
+  --width-marketing: 72rem;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
   --radius-lg: 1rem;
   --radius-md: 0.75rem;
@@ -82,7 +87,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .surface-lavender {
-  background: #f8f9ff;
+  background: var(--color-background);
 }
 
 .surface-section {
@@ -98,25 +103,25 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dashboard-hero {
-  @apply mb-8 overflow-hidden rounded-2xl border border-[#dce9ff] bg-gradient-to-br from-white via-white to-[#ecfdf5]/40 p-6 shadow-[0_4px_20px_rgb(11_28_48/0.05)] md:p-8;
+  @apply mb-8 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-white via-white to-bento-mint/40 p-6 shadow-[0_4px_20px_rgb(11_28_48/0.05)] md:p-8;
 }
 
 .dashboard-quick-link {
-  @apply flex items-center gap-4 rounded-2xl border border-[#dce9ff] bg-white p-4 shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all duration-200;
+  @apply flex items-center gap-4 rounded-2xl border border-border bg-white p-4 shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all duration-200;
 }
 .dashboard-quick-link:hover {
   @apply -translate-y-0.5 border-accent/25 shadow-[0_8px_24px_rgb(11_28_48/0.08)];
 }
 
 .card-interactive {
-  @apply rounded-2xl border border-[#dce9ff] bg-card shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all duration-200;
+  @apply rounded-2xl border border-border bg-card shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all duration-200;
 }
 .card-interactive:hover {
   @apply border-accent/25 shadow-[0_8px_24px_rgb(11_28_48/0.08)] -translate-y-0.5;
 }
 
 .nav-item-active {
-  @apply relative bg-[#ecfdf5] text-accent font-semibold;
+  @apply relative bg-bento-mint text-accent font-semibold;
 }
 .nav-item-active::before {
   content: "";
@@ -131,38 +136,42 @@ h1, h2, h3, h4, h5, h6 {
   @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
 }
 
-/* Stitch-style buttons */
+/* Marketing + app primary CTA */
 .btn-primary {
-  background: #006c49;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
   font-weight: 600;
   transition: background 0.2s, transform 0.2s;
   box-shadow: 0 1px 2px rgb(11 28 48 / 0.08);
 }
 .btn-primary:hover {
-  background: #005236;
+  background: var(--color-accent-hover);
   transform: translateY(-1px);
 }
 
 .btn-outline {
   border: 1px solid var(--color-border);
-  background: white;
+  background: var(--color-card);
   color: var(--color-foreground);
   font-weight: 600;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .btn-outline:hover {
-  border-color: #006c49;
+  border-color: var(--color-accent);
   box-shadow: 0 1px 3px rgb(11 28 48 / 0.06);
 }
 
+.marketing-container {
+  @apply mx-auto max-w-[var(--width-marketing)] px-6 lg:px-8;
+}
+
 .elev-1 {
-  border: 1px solid #dce9ff;
+  border: 1px solid var(--color-border);
   box-shadow: 0 1px 3px rgb(11 28 48 / 0.08);
 }
 
 .elev-2 {
-  border: 1px solid #dce9ff;
+  border: 1px solid var(--color-border);
   box-shadow: 0 4px 12px rgb(11 28 48 / 0.06);
   transition: box-shadow 0.25s, transform 0.25s;
 }
@@ -172,8 +181,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .product-frame {
-  background: #ffffff;
-  border: 1px solid #dce9ff;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 1rem;
   box-shadow: 0 1px 3px rgb(11 28 48 / 0.08);
   overflow: hidden;
@@ -198,7 +207,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero-live-border {
-  background: linear-gradient(90deg, #dce9ff, #6cf8bb, #dce9ff);
+  background: linear-gradient(90deg, var(--color-border), var(--color-accent-light), var(--color-border));
   background-size: 200% auto;
   animation: hero-shimmer 4s linear infinite;
 }
@@ -218,7 +227,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .auth-form-card {
-  @apply rounded-2xl border border-[#dce9ff] bg-white p-6 shadow-[0_4px_24px_rgb(11_28_48/0.06)] sm:p-7;
+  @apply rounded-2xl border border-border bg-white p-6 shadow-[0_4px_24px_rgb(11_28_48/0.06)] sm:p-7;
 }
 
 .auth-submit {
@@ -232,8 +241,8 @@ h1, h2, h3, h4, h5, h6 {
 /* WhatsApp mockup utilities */
 .phone-frame {
   border-radius: 2rem;
-  border: 3px solid #0b1c30;
-  background: #0b1c30;
+  border: 3px solid var(--color-primary);
+  background: var(--color-primary);
   padding: 0.5rem;
   box-shadow: 0 24px 48px rgb(11 28 48 / 0.18);
 }

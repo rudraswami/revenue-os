@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { CTA } from "@/lib/brand-copy";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
 
@@ -35,13 +36,10 @@ export function MarketingHeader() {
 
         <div className="hidden items-center gap-6 md:flex">
           <Link href="/login" className="text-[15px] font-medium text-foreground hover:text-accent">
-            Log in
+            {CTA.signIn}
           </Link>
-          <Link
-            href="/register"
-            className="btn-primary rounded-lg px-5 py-2.5 text-[14px]"
-          >
-            Get Started
+          <Link href="/register" className="btn-primary rounded-xl px-5 py-2.5 text-[15px]">
+            {CTA.getStarted}
           </Link>
         </div>
 
@@ -63,9 +61,9 @@ export function MarketingHeader() {
             </a>
           ))}
           <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <Link href="/login">Log in</Link>
-            <Link href="/register" className="btn-primary rounded-lg px-4 py-2.5 text-center text-[14px]">
-              Get Started
+            <Link href="/login">{CTA.signIn}</Link>
+            <Link href="/register" className="btn-primary rounded-xl px-4 py-2.5 text-center text-[15px]">
+              {CTA.getStarted}
             </Link>
           </div>
         </nav>

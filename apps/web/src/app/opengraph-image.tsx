@@ -15,7 +15,7 @@ export default function OpenGraphImage() {
           flexDirection: "column",
           justifyContent: "center",
           padding: "64px",
-          background: "linear-gradient(135deg, #f5f3ff 0%, #ffffff 50%, #ecfdf5 100%)",
+          background: "linear-gradient(135deg, #f8f9ff 0%, #ffffff 50%, #ecfdf5 100%)",
         }}
       >
         <div
@@ -31,7 +31,7 @@ export default function OpenGraphImage() {
               width: 56,
               height: 56,
               borderRadius: 16,
-              background: "#7c3aed",
+              background: "#006c49",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -42,15 +42,15 @@ export default function OpenGraphImage() {
           >
             G
           </div>
-          <span style={{ fontSize: 36, fontWeight: 700, color: "#1e1b4b" }}>Growvisi</span>
+          <span style={{ fontSize: 36, fontWeight: 700, color: "#0b1c30" }}>Growvisi</span>
         </div>
-        <div style={{ fontSize: 48, fontWeight: 700, color: "#1e1b4b", lineHeight: 1.15, maxWidth: 900 }}>
-          Turn WhatsApp Conversations Into Revenue
+        <div style={{ fontSize: 48, fontWeight: 700, color: "#0b1c30", lineHeight: 1.15, maxWidth: 900 }}>
+          Turn WhatsApp conversations into revenue
         </div>
-        <div style={{ fontSize: 24, color: "#4b5563", marginTop: 24, maxWidth: 820, lineHeight: 1.4 }}>
+        <div style={{ fontSize: 24, color: "#45464d", marginTop: 24, maxWidth: 820, lineHeight: 1.4 }}>
           AI intent scoring, pipeline automation, and revenue analytics for WhatsApp sales teams.
         </div>
-        <div style={{ fontSize: 22, color: "#7c3aed", marginTop: 40, fontWeight: 600 }}>
+        <div style={{ fontSize: 22, color: "#006c49", marginTop: 40, fontWeight: 600 }}>
           growvisi.in
         </div>
       </div>

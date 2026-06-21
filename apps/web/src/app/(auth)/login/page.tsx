@@ -9,6 +9,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { applySession, postAuthPath } from "@/lib/auth-session";
+import { CTA } from "@/lib/brand-copy";
 import type { AuthSession, LoginResult, OrganizationOption } from "@/lib/auth-types";
 import { isAuthSession } from "@/lib/auth-types";
 
@@ -136,7 +137,7 @@ function LoginForm() {
       <p className="mt-6 text-center text-sm text-muted-foreground">
         New here?{" "}
         <Link href="/register" className="font-semibold text-accent hover:underline">
-          Create a free workspace
+          {CTA.createWorkspace}
         </Link>
       </p>
     </AuthShell>

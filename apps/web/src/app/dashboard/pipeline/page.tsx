@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { PipelineSkeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
+import { CTA } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import type { LeadStage } from "@growvisi/shared";
 
@@ -141,7 +142,7 @@ export default function PipelinePage() {
             title="No leads yet"
             description="When someone messages your business on WhatsApp, they appear here automatically."
             actionHref="/dashboard/inbox"
-            actionLabel="Go to Inbox"
+            actionLabel={CTA.openConversations}
           />
         </DashboardPanel>
       )}

@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { CTA } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import { AlertCircle, ArrowRight, Lightbulb, TrendingUp, UserRound } from "lucide-react";
 
@@ -60,7 +61,7 @@ export default function InsightsPage() {
       type: "Urgent",
       title: `${handoffs} conversation${handoffs > 1 ? "s" : ""} need your team`,
       body: "Growvisi flagged these after classification. Follow up for complex deals.",
-      action: { label: "View conversations", href: "/dashboard/inbox" },
+      action: { label: CTA.openConversations, href: "/dashboard/inbox" },
       tone: "border-amber-200 bg-amber-50/50",
       iconBg: "bg-amber-100 text-amber-700",
     },
@@ -69,7 +70,7 @@ export default function InsightsPage() {
       type: "Action needed",
       title: `${unread} unread message${unread > 1 ? "s" : ""}`,
       body: "Customers are waiting. Faster replies improve conversion.",
-      action: { label: "Open Inbox", href: "/dashboard/inbox" },
+      action: { label: CTA.openConversations, href: "/dashboard/inbox" },
       tone: "border-red-200/80 bg-red-50/40",
       iconBg: "bg-red-100 text-red-600",
     },
@@ -136,7 +137,7 @@ export default function InsightsPage() {
             title="You're on track"
             description="No urgent insights right now. Keep selling and check back after more conversations."
             actionHref="/dashboard/inbox"
-            actionLabel="Open Inbox"
+            actionLabel={CTA.openConversations}
           />
         </DashboardPanel>
       )}

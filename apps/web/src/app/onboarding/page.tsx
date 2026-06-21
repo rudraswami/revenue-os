@@ -12,6 +12,7 @@ import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingest
 import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
 import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
 import { apiFetch } from "@/lib/api-client";
+import { CTA, NAV } from "@/lib/brand-copy";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,7 @@ export default function OnboardingPage() {
       id: "explore",
       title: "Explore Growvisi",
       done: true,
-      description: "Inbox, Pipeline, and Insights are ready — no WhatsApp required.",
+      description: `${NAV.conversations}, Pipeline, and Insights are ready — no WhatsApp required.`,
     },
     {
       id: "whatsapp",
@@ -102,7 +103,7 @@ export default function OnboardingPage() {
             </Button>
             {whatsappConnected ? (
               <Button size="sm" onClick={() => router.push("/dashboard/inbox")}>
-                Open Inbox
+                {CTA.openConversations}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (

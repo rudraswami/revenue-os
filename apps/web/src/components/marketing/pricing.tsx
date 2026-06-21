@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { CTA } from "@/lib/brand-copy";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { SectionHeader } from "./section-header";
@@ -39,8 +40,8 @@ const plans = [
 
 export function Pricing() {
   return (
-    <section id="pricing" className="scroll-mt-20 border-t border-border bg-[#f8f9ff] py-20 md:py-28">
-      <div className="mx-auto max-w-[1100px] px-6 lg:px-8">
+    <section id="pricing" className="scroll-mt-20 border-t border-border bg-background py-20 md:py-28">
+      <div className="marketing-container max-w-[1100px]">
         <SectionHeader
           label="Pricing"
           title="Transparent INR pricing"
@@ -55,7 +56,7 @@ export function Pricing() {
                 "relative flex flex-col rounded-3xl border bg-white p-6 shadow-[0_8px_32px_rgb(11_28_48/0.05)] transition-shadow",
                 plan.popular
                   ? "border-accent ring-2 ring-accent/20"
-                  : "border-[#dce9ff]",
+                  : "border-border",
               )}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -93,11 +94,11 @@ export function Pricing() {
               </ul>
               <Button
                 asChild
-                className={cn("mt-6 w-full rounded-xl", plan.popular && "btn-primary border-0")}
-                variant={plan.popular ? "default" : "outline"}
+                className="mt-6 w-full rounded-xl"
+                variant={plan.popular ? "accent" : "outline"}
               >
                 <Link href={plan.custom ? "/contact" : "/register"}>
-                  {plan.custom ? "Contact sales" : "Start free trial"}
+                  {plan.custom ? "Contact sales" : CTA.startTrial}
                 </Link>
               </Button>
             </motion.div>
