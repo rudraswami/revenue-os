@@ -95,6 +95,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .app-shell {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   background: linear-gradient(180deg, #f8f9ff 0%, #eff4ff 100%);
 }
 

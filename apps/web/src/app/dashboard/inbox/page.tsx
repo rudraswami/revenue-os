@@ -225,7 +225,7 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-57px)] bg-background lg:h-[calc(100vh)]">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background max-lg:min-h-[calc(100dvh-57px)]">
       <div
         className={cn(
           "flex w-full shrink-0 flex-col border-r border-border/80 bg-white lg:w-[320px]",
