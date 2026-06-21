@@ -8,6 +8,7 @@ export type ChatMessage = {
   id: string;
   from: "customer" | "business" | "ai";
   text: string;
+  time?: string;
   link?: { title: string; subtitle: string };
 };
 
@@ -154,7 +155,8 @@ export function WhatsAppChat({
                     </div>
                   )}
                   <p className="mt-1 text-right text-[9px] text-muted-foreground">
-                    {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {msg.time ??
+                      new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
               </div>
@@ -236,15 +238,21 @@ export const HERO_CHAT: ChatMessage[] = [
 ];
 
 export const AI_PHONE_CHAT: ChatMessage[] = [
-  { id: "1", from: "customer", text: "Hi, I need to change my order address" },
+  { id: "1", from: "customer", text: "Hi, I need to change my order address", time: "10:14 AM" },
   {
     id: "2",
     from: "ai",
     text: "Of course! Here's a link to update your delivery details:",
+    time: "10:15 AM",
     link: { title: "Update delivery address", subtitle: "yourstore.com/orders/update" },
   },
-  { id: "3", from: "customer", text: "Done, thanks!" },
-  { id: "4", from: "ai", text: "Perfect! Your order will arrive at the new address. Anything else I can help with?" },
+  { id: "3", from: "customer", text: "Done, thanks!", time: "10:16 AM" },
+  {
+    id: "4",
+    from: "ai",
+    text: "Perfect! Your order will arrive at the new address. Anything else I can help with?",
+    time: "10:16 AM",
+  },
 ];
 
 export const BENTO_CHAT: ChatMessage[] = [

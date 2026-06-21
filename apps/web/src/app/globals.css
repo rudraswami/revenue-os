@@ -211,3 +211,58 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-border);
   border-radius: 3px;
 }
+
+/* Auth pages */
+.auth-brand-panel {
+  background: linear-gradient(165deg, #0b1c30 0%, #0a2a22 45%, #006c49 100%);
+}
+
+.auth-form-card {
+  @apply rounded-2xl border border-[#dce9ff] bg-white p-6 shadow-[0_4px_24px_rgb(11_28_48/0.06)] sm:p-7;
+}
+
+.auth-submit {
+  @apply h-12 w-full rounded-xl text-[15px] font-semibold shadow-[0_2px_8px_rgb(0_108_73/0.25)] transition-all duration-200;
+}
+.auth-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgb(0 108 73 / 0.3);
+}
+
+/* WhatsApp mockup utilities */
+.phone-frame {
+  border-radius: 2rem;
+  border: 3px solid #0b1c30;
+  background: #0b1c30;
+  padding: 0.5rem;
+  box-shadow: 0 24px 48px rgb(11 28 48 / 0.18);
+}
+.phone-screen {
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background: #ece5dd;
+}
+
+.whatsapp-header {
+  background: #075e54;
+}
+.whatsapp-pattern {
+  background-color: #e5ddd5;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4cdc4' fill-opacity='0.35'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.bg-whatsapp-green {
+  background: #d9fdd3;
+}
+.bg-whatsapp-header {
+  background: #075e54;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+.typing-dot {
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }

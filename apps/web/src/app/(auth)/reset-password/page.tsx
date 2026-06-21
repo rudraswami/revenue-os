@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Lock } from "lucide-react";
 import { Suspense, useState } from "react";
+import { AuthField } from "@/components/auth/auth-field";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { apiFetch, ApiError } from "@/lib/api-client";
 
 function ResetPasswordForm() {
@@ -41,9 +42,9 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="space-y-4 text-sm">
-        <p className="text-destructive">This reset link is invalid or missing.</p>
-        <Button variant="outline" className="w-full" asChild>
+      <div className="space-y-5 text-center">
+        <p className="text-sm text-destructive">This reset link is invalid or missing.</p>
+        <Button variant="accent" className="auth-submit" asChild>
           <Link href="/forgot-password">Request a new link</Link>
         </Button>
       </div>
@@ -51,24 +52,26 @@ function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="password" className="mb-1.5 block text-sm font-medium">
-          New password
-        </label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="At least 8 characters"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={8}
-          required
-        />
-      </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" className="w-full" disabled={loading}>
+    <form onSubmit={onSubmit} className="space-y-5">
+      <AuthField
+        id="password"
+        type="password"
+        label="New password"
+        icon={Lock}
+        autoComplete="new-password"
+        placeholder="At least 8 characters"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        hint="Use at least 8 characters with a mix of letters and numbers."
+        minLength={8}
+        required
+      />
+      {error && (
+        <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <Button type="submit" variant="accent" className="auth-submit" disabled={loading}>
         {loading ? "Updating…" : "Update password"}
       </Button>
     </form>
@@ -77,7 +80,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <AuthShell title="Choose a new password" description="Use at least 8 characters.">
+    <AuthShell title="Choose a new password" description="Pick a strong password for your workspace.">
       <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
         <ResetPasswordForm />
       </Suspense>

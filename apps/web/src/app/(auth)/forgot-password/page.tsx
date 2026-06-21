@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft, Mail } from "lucide-react";
 import { useState } from "react";
+import { AuthField } from "@/components/auth/auth-field";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { apiFetch, ApiError } from "@/lib/api-client";
 
 export default function ForgotPasswordPage() {
@@ -34,37 +35,48 @@ export default function ForgotPasswordPage() {
   return (
     <AuthShell
       title="Reset your password"
-      description="Enter your work email and we will send you a secure reset link."
+      description="Enter your work email and we'll send a secure reset link."
     >
       {sent ? (
-        <div className="space-y-4 text-sm text-muted-foreground">
-          <p>If an account exists for that email, we sent a reset link. Check your inbox.</p>
-          <Button variant="outline" className="w-full" asChild>
+        <div className="space-y-5 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#ecfdf5] text-accent">
+            <Mail className="h-5 w-5" />
+          </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            If an account exists for that email, we sent a reset link. Check your inbox and spam
+            folder.
+          </p>
+          <Button variant="accent" className="auth-submit" asChild>
             <Link href="/login">Back to sign in</Link>
           </Button>
         </div>
       ) : (
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
-              Work email
-            </label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
+        <form onSubmit={onSubmit} className="space-y-5">
+          <AuthField
+            id="email"
+            type="email"
+            label="Work email"
+            icon={Mail}
+            autoComplete="email"
+            placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          {error && (
+            <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <Button type="submit" variant="accent" className="auth-submit" disabled={loading}>
             {loading ? "Sending…" : "Send reset link"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            <Link href="/login" className="text-primary hover:underline">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1 font-medium text-accent hover:underline"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
               Back to sign in
             </Link>
           </p>
