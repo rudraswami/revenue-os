@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     q: "Does AI reply to customers automatically?",
-    a: "Growvisi classifies, scores, and updates your pipeline. Your team replies from the shared inbox — AI suggests replies but does not auto-send by default.",
+    a: "Meta Business Agent replies inside WhatsApp. Growvisi analyzes those conversations — classifies intent, scores leads, and updates your pipeline. Your team can optionally send manual replies from Growvisi; we do not auto-send customer messages.",
   },
   {
     q: "Can multiple agents use one WhatsApp number?",

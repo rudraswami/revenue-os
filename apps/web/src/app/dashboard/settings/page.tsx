@@ -2,11 +2,12 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Building2, Loader2, LogOut, Mail, MessageCircle } from "lucide-react";
+import { Building2, CreditCard, Loader2, LogOut, Mail, MessageCircle } from "lucide-react";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
+import { BillingSettingsCard } from "@/components/settings/billing-settings-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
@@ -52,6 +53,16 @@ export default function SettingsPage() {
             <p className="text-base font-bold">{organization?.name ?? "Your workspace"}</p>
             <p className="mt-1 font-mono text-xs text-muted-foreground">{organization?.slug}</p>
             <TeamMembersCard />
+          </DashboardPanel>
+        </DashboardSection>
+
+        <DashboardSection
+          title="Billing"
+          description="Upgrade your workspace with Razorpay — UPI, cards, and netbanking."
+          icon={CreditCard}
+        >
+          <DashboardPanel delay={0.07}>
+            <BillingSettingsCard />
           </DashboardPanel>
         </DashboardSection>
 

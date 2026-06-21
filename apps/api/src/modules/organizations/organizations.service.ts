@@ -1,7 +1,15 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { randomBytes } from "crypto";
-import type { JwtPayload } from "@growvisi/shared";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { createHash, randomBytes } from "crypto";
+import type { JwtPayload, MembershipRole } from "@growvisi/shared";
+import { GROWVISI_WEB_URL } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { EmailService } from "../auth/email.service";
 
 export interface ReplyTemplate {
   id: string;
@@ -45,7 +53,11 @@ function normalizeTemplates(raw: unknown): ReplyTemplate[] {
 
 @Injectable()
 export class OrganizationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly email: EmailService,
+    private readonly config: ConfigService,
+  ) {}
 
   async getCurrent(user: JwtPayload) {
     const org = await this.prisma.organization.findUnique({
@@ -109,5 +121,138 @@ export class OrganizationsService {
       },
     });
     return { templates: normalized };
+  }
+
+  async previewInvite(token: string) {
+    const tokenHash = createHash("sha256").update(token.trim()).digest("hex");
+    const invite = await this.prisma.organizationInvite.findFirst({
+      where: { tokenHash, acceptedAt: null },
+      include: { organization: { select: { name: true, slug: true } } },
+    });
+    if (!invite || invite.expiresAt < new Date()) {
+      throw new NotFoundException("Invite not found or expired.");
+    }
+    return {
+      email: invite.email,
+      role: invite.role,
+      organizationName: invite.organization.name,
+      expiresAt: invite.expiresAt,
+    };
+  }
+
+  async createInvite(user: JwtPayload, email: string, role: MembershipRole = "AGENT") {
+    if (user.role !== "OWNER" && user.role !== "ADMIN") {
+      throw new ForbiddenException("Only owners and admins can invite teammates.");
+    }
+    const normalized = email.trim().toLowerCase();
+    if (!normalized.includes("@")) {
+      throw new BadRequestException("Enter a valid email address.");
+    }
+
+    const existingMember = await this.prisma.organizationMember.findFirst({
+      where: {
+        organizationId: user.organizationId,
+        user: { email: normalized },
+      },
+    });
+    if (existingMember) {
+      throw new BadRequestException("This person is already on your team.");
+    }
+
+    const token = randomBytes(24).toString("hex");
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { name: true },
+    });
+    if (!org) throw new NotFoundException();
+
+    await this.prisma.organizationInvite.upsert({
+      where: {
+        organizationId_email: {
+          organizationId: user.organizationId,
+          email: normalized,
+        },
+      },
+      create: {
+        organizationId: user.organizationId,
+        email: normalized,
+        role,
+        tokenHash,
+        invitedById: user.sub,
+        expiresAt,
+      },
+      update: {
+        role,
+        tokenHash,
+        invitedById: user.sub,
+        expiresAt,
+        acceptedAt: null,
+      },
+    });
+
+    const appUrl = (
+      this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+    ).replace(/\/$/, "");
+    const inviteUrl = `${appUrl}/register?invite=${token}&email=${encodeURIComponent(normalized)}`;
+
+    await this.email.sendTeamInvite({
+      to: normalized,
+      organizationName: org.name,
+      inviteUrl,
+      role,
+    });
+
+    return { sent: true, email: normalized, expiresAt };
+  }
+
+  async acceptInvite(user: JwtPayload, token: string) {
+    const tokenHash = createHash("sha256").update(token.trim()).digest("hex");
+    const invite = await this.prisma.organizationInvite.findFirst({
+      where: { tokenHash, acceptedAt: null },
+      include: { organization: true },
+    });
+    if (!invite || invite.expiresAt < new Date()) {
+      throw new BadRequestException("This invite link is invalid or expired.");
+    }
+
+    const dbUser = await this.prisma.user.findUnique({ where: { id: user.sub } });
+    if (!dbUser || dbUser.email.toLowerCase() !== invite.email.toLowerCase()) {
+      throw new BadRequestException("Sign in with the email that received the invite.");
+    }
+
+    const existing = await this.prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: invite.organizationId,
+          userId: user.sub,
+        },
+      },
+    });
+    if (existing) {
+      await this.prisma.organizationInvite.update({
+        where: { id: invite.id },
+        data: { acceptedAt: new Date() },
+      });
+      return { organization: invite.organization, alreadyMember: true };
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.organizationMember.create({
+        data: {
+          organizationId: invite.organizationId,
+          userId: user.sub,
+          role: invite.role,
+        },
+      }),
+      this.prisma.organizationInvite.update({
+        where: { id: invite.id },
+        data: { acceptedAt: new Date() },
+      }),
+    ]);
+
+    return { organization: invite.organization, alreadyMember: false };
   }
 }

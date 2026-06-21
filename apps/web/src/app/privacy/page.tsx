@@ -66,8 +66,8 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong className="text-foreground">Payment and billing:</strong> if you purchase a paid plan,
-          payment details are processed by our payment provider; we receive billing status and limited
-          transaction metadata, not full card numbers.
+          payment details are processed by Razorpay; we receive billing status and limited
+          transaction metadata, not full card or UPI credentials.
         </p>
         <p>
           <strong className="text-foreground">Support communications:</strong> information you send when

@@ -1,6 +1,7 @@
 export const QUEUES = {
   WHATSAPP_INBOUND: "whatsapp.inbound",
   AI_CLASSIFY: "ai.classify",
+  /** Reserved — customer replies stay in Meta Business Agent; Growvisi does not auto-send WhatsApp. */
   AI_RESPOND: "ai.respond",
   AI_EMBED: "ai.embed",
   NOTIFICATIONS: "notifications.dispatch",

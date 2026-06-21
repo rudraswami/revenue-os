@@ -13,8 +13,13 @@ export class RegisterDto {
   name!: string;
 
   @IsString()
-  @IsNotEmpty()
-  organizationName!: string;
+  @IsOptional()
+  organizationName?: string;
+
+  /** Join existing workspace from email invite */
+  @IsString()
+  @IsOptional()
+  inviteToken?: string;
 }
 
 export class LoginDto {

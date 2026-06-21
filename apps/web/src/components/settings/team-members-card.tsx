@@ -1,10 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Crown, UserRound } from "lucide-react";
+import { Crown, Loader2, UserPlus, UserRound } from "lucide-react";
+import { useState } from "react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
-import { apiFetch } from "@/lib/api-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface MemberRow {
@@ -22,11 +25,28 @@ interface MemberRow {
 
 export function TeamMembersCard() {
   const token = useAuthStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState<string | null>(null);
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["organization-members"],
     queryFn: () => apiFetch<MemberRow[]>("/organizations/members", { token: token ?? undefined }),
     enabled: !!token,
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: (inviteEmail: string) =>
+      apiFetch<{ sent: boolean; email: string }>("/organizations/invites", {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({ email: inviteEmail, role: "AGENT" }),
+      }),
+    onSuccess: (res) => {
+      setSent(res.email);
+      setEmail("");
+      void queryClient.invalidateQueries({ queryKey: ["organization-members"] });
+    },
   });
 
   return (
@@ -37,6 +57,46 @@ export function TeamMembersCard() {
           {members?.length ?? 0} member{(members?.length ?? 0) !== 1 ? "s" : ""}
         </span>
       </div>
+
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const v = email.trim();
+          if (!v || inviteMutation.isPending) return;
+          inviteMutation.mutate(v);
+        }}
+      >
+        <Input
+          type="email"
+          placeholder="teammate@company.com"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setSent(null);
+          }}
+          className="h-9 text-sm"
+        />
+        <Button type="submit" size="sm" className="shrink-0 rounded-xl" disabled={inviteMutation.isPending}>
+          {inviteMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              <UserPlus className="h-3.5 w-3.5" />
+              Invite
+            </>
+          )}
+        </Button>
+      </form>
+
+      {sent && (
+        <p className="text-xs text-accent">Invite sent to {sent} — valid for 7 days.</p>
+      )}
+      {inviteMutation.isError && (
+        <p className="text-xs text-destructive">
+          {inviteMutation.error instanceof ApiError ? inviteMutation.error.message : "Could not send invite."}
+        </p>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">

@@ -102,6 +102,25 @@ export class EmailService {
     });
   }
 
+  async sendTeamInvite(opts: {
+    to: string;
+    organizationName: string;
+    inviteUrl: string;
+    role: string;
+  }): Promise<void> {
+    await this.sendRaw({
+      to: [opts.to],
+      subject: `You're invited to ${opts.organizationName} on Growvisi`,
+      html: `
+        <p>Hi,</p>
+        <p>You've been invited to join <strong>${opts.organizationName}</strong> on Growvisi as <strong>${opts.role.toLowerCase()}</strong>.</p>
+        <p><a href="${opts.inviteUrl}">Accept invite and create your account</a></p>
+        <p>This link expires in 7 days. Growvisi helps teams classify WhatsApp leads — Meta replies in-chat, we track the pipeline.</p>
+      `,
+      replyTo: "support@growvisi.in",
+    });
+  }
+
   async sendRaw(opts: {
     to: string[];
     subject: string;

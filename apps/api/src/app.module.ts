@@ -16,6 +16,7 @@ import { ContactModule } from "./modules/contact/contact.module";
 import { MetaModule } from "./modules/meta/meta.module";
 import { InternalModule } from "./modules/internal/internal.module";
 import { AutomationsModule } from "./modules/automations/automations.module";
+import { BillingModule } from "./modules/billing/billing.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
 
@@ -35,7 +36,6 @@ import { QUEUES } from "@growvisi/shared";
     BullModule.registerQueue(
       { name: QUEUES.WHATSAPP_INBOUND },
       { name: QUEUES.AI_CLASSIFY },
-      { name: QUEUES.AI_RESPOND },
     ),
     PrismaModule,
     HealthModule,
@@ -51,6 +51,7 @@ import { QUEUES } from "@growvisi/shared";
     MetaModule,
     InternalModule,
     AutomationsModule,
+    BillingModule,
   ],
 })
 export class AppModule {}

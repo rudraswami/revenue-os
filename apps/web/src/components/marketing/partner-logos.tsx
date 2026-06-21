@@ -20,11 +20,11 @@ const partners = [
     ),
   },
   {
-    name: "Stripe",
+    name: "Razorpay",
     svg: (
-      <svg viewBox="0 0 80 32" className="h-7 w-auto" aria-label="Stripe">
-        <text x="0" y="24" fill="currentColor" className="text-[22px] font-bold italic">
-          stripe
+      <svg viewBox="0 0 110 32" className="h-7 w-auto" aria-label="Razorpay">
+        <text x="0" y="24" fill="currentColor" className="text-[20px] font-bold">
+          Razorpay
         </text>
       </svg>
     ),

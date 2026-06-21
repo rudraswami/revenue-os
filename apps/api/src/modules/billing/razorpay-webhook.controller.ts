@@ -1,0 +1,27 @@
+import { BadRequestException, Controller, Headers, Post, Req } from "@nestjs/common";
+import type { RawBodyRequest } from "@nestjs/common";
+import type { Request } from "express";
+import { BillingService } from "./billing.service";
+import { RazorpayService } from "./razorpay.service";
+
+@Controller("webhooks/razorpay")
+export class RazorpayWebhookController {
+  constructor(
+    private readonly billing: BillingService,
+    private readonly razorpay: RazorpayService,
+  ) {}
+
+  @Post()
+  async handle(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers("x-razorpay-signature") signature: string | undefined,
+  ) {
+    const raw = req.rawBody?.toString("utf8") ?? JSON.stringify(req.body ?? {});
+    if (!this.razorpay.verifyWebhookSignature(raw, signature)) {
+      throw new BadRequestException("Invalid Razorpay signature");
+    }
+
+    const payload = typeof req.body === "object" && req.body ? req.body : JSON.parse(raw);
+    return this.billing.handleWebhook(payload as { event: string });
+  }
+}

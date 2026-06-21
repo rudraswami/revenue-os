@@ -51,13 +51,21 @@ export class AuthService {
       throw new ConflictException("An account with this email already exists.");
     }
 
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+
+    if (dto.inviteToken?.trim()) {
+      return this.registerViaInvite(dto, passwordHash);
+    }
+
+    if (!dto.organizationName?.trim()) {
+      throw new BadRequestException("Company name is required.");
+    }
+
     const slug = this.slugify(dto.organizationName);
     const slugTaken = await this.prisma.organization.findUnique({ where: { slug } });
     if (slugTaken) {
       throw new ConflictException("This company name is already taken. Try a different name.");
     }
-
-    const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -71,7 +79,7 @@ export class AuthService {
 
       const organization = await tx.organization.create({
         data: {
-          name: dto.organizationName,
+          name: dto.organizationName!.trim(),
           slug,
         },
       });
@@ -456,6 +464,60 @@ export class AuthService {
 
   private hashToken(token: string) {
     return createHash("sha256").update(token).digest("hex");
+  }
+
+  private async registerViaInvite(
+    dto: RegisterDto,
+    passwordHash: string,
+  ): Promise<AuthSessionResponse> {
+    const tokenHash = this.hashToken(dto.inviteToken!.trim());
+    const invite = await this.prisma.organizationInvite.findFirst({
+      where: { tokenHash, acceptedAt: null },
+      include: { organization: true },
+    });
+    if (!invite || invite.expiresAt < new Date()) {
+      throw new BadRequestException("This invite link is invalid or expired.");
+    }
+    if (invite.email.toLowerCase() !== dto.email.toLowerCase()) {
+      throw new BadRequestException("Use the same email address the invite was sent to.");
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: dto.email.toLowerCase(),
+          passwordHash,
+          name: dto.name,
+          emailVerified: new Date(),
+        },
+      });
+
+      await tx.organizationMember.create({
+        data: {
+          organizationId: invite.organizationId,
+          userId: user.id,
+          role: invite.role,
+        },
+      });
+
+      await tx.organizationInvite.update({
+        where: { id: invite.id },
+        data: { acceptedAt: new Date() },
+      });
+
+      return { user, organization: invite.organization };
+    });
+
+    return this.buildSessionResponse(
+      {
+        sub: result.user.id,
+        email: result.user.email,
+        organizationId: result.organization.id,
+        role: invite.role,
+      },
+      result.user,
+      result.organization,
+    );
   }
 
   private slugify(name: string) {

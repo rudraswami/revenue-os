@@ -63,6 +63,30 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   META_WABA_REGISTER_PIN?: string;
+
+  @IsString()
+  @IsOptional()
+  RAZORPAY_KEY_ID?: string;
+
+  @IsString()
+  @IsOptional()
+  RAZORPAY_KEY_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  RAZORPAY_WEBHOOK_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  RAZORPAY_PLAN_STARTER?: string;
+
+  @IsString()
+  @IsOptional()
+  RAZORPAY_PLAN_GROWTH?: string;
+
+  @IsString()
+  @IsOptional()
+  RAZORPAY_PLAN_PRO?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

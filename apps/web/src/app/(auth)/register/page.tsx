@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Building2, Lock, Mail, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -21,10 +22,30 @@ function passwordStrength(password: string): { label: string; color: string; wid
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite") ?? "";
+  const inviteEmail = searchParams.get("email") ?? "";
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(inviteEmail);
   const strength = passwordStrength(password);
+  const isInvite = inviteToken.length > 0;
+
+  const { data: invitePreview } = useQuery({
+    queryKey: ["invite-preview", inviteToken],
+    queryFn: () =>
+      apiFetch<{ organizationName: string; email: string; role: string }>(
+        `/organizations/invites/preview?token=${encodeURIComponent(inviteToken)}`,
+      ),
+    enabled: isInvite,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (inviteEmail) setEmail(inviteEmail);
+  }, [inviteEmail]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,14 +53,20 @@ export default function RegisterPage() {
     setError(null);
     const form = new FormData(e.currentTarget);
     try {
+      const body: Record<string, string> = {
+        name: String(form.get("name")),
+        email: String(form.get("email")),
+        password: String(form.get("password")),
+      };
+      if (isInvite) {
+        body.inviteToken = inviteToken;
+      } else {
+        body.organizationName = String(form.get("organizationName"));
+      }
+
       const res = await apiFetch<AuthSession>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({
-          name: form.get("name"),
-          email: form.get("email"),
-          password: form.get("password"),
-          organizationName: form.get("organizationName"),
-        }),
+        body: JSON.stringify(body),
       });
       applySession(res);
       router.push(postAuthPath(res.onboarding));
@@ -52,20 +79,26 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      badge="14-day free trial"
-      title="Create your workspace"
-      description="Start free — explore the dashboard, then connect WhatsApp when you're ready."
+      badge={isInvite ? "Team invite" : "14-day free trial"}
+      title={isInvite ? `Join ${invitePreview?.organizationName ?? "your team"}` : "Create your workspace"}
+      description={
+        isInvite
+          ? "Create your account to access the shared Growvisi workspace."
+          : "Start free — explore the dashboard, then connect WhatsApp when you're ready."
+      }
     >
       <form onSubmit={onSubmit} className="space-y-5">
-        <AuthField
-          id="organizationName"
-          name="organizationName"
-          label="Company name"
-          icon={Building2}
-          placeholder="Acme Retail"
-          autoComplete="organization"
-          required
-        />
+        {!isInvite && (
+          <AuthField
+            id="organizationName"
+            name="organizationName"
+            label="Company name"
+            icon={Building2}
+            placeholder="Acme Retail"
+            autoComplete="organization"
+            required
+          />
+        )}
         <div className="grid gap-5 sm:grid-cols-2">
           <AuthField
             id="name"
@@ -84,6 +117,9 @@ export default function RegisterPage() {
             icon={Mail}
             placeholder="you@company.com"
             autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            readOnly={!!inviteEmail}
             required
           />
         </div>
@@ -121,15 +157,17 @@ export default function RegisterPage() {
         )}
 
         <Button type="submit" variant="accent" className="auth-submit" disabled={loading}>
-          {loading ? "Creating workspace…" : CTA.startTrial}
+          {loading ? (isInvite ? "Joining…" : "Creating workspace…") : isInvite ? "Accept invite" : CTA.startTrial}
         </Button>
       </form>
 
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-xs text-muted-foreground">
-        <span>No credit card required</span>
-        <span className="hidden sm:inline">·</span>
-        <span>Connect WhatsApp anytime from Settings</span>
-      </div>
+      {!isInvite && (
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-xs text-muted-foreground">
+          <span>No credit card required</span>
+          <span className="hidden sm:inline">·</span>
+          <span>Connect WhatsApp anytime from Settings</span>
+        </div>
+      )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
