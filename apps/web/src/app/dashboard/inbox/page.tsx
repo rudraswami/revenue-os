@@ -203,18 +203,19 @@ export default function InboxPage() {
           selectedId ? "hidden lg:flex" : "flex",
         )}
       >
-        <div className="border-b border-border/80 bg-white px-4 py-4">
+        <div className="border-b border-[#dce9ff] bg-gradient-to-r from-white to-[#f8f9ff] px-4 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-lg font-bold tracking-tight">Conversations</h1>
             {hasWhatsapp && (
-              <span className="status-pill bg-[#128C7E]/10 text-[#128C7E]">
+              <span className="status-pill bg-[#ecfdf5] text-accent">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
                 WhatsApp linked
               </span>
             )}
             {live && (
-              <span className="status-pill bg-success/15 text-success">
-                <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                Realtime
+              <span className="status-pill bg-[#ecfdf5] text-accent">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+                Live
               </span>
             )}
           </div>
@@ -276,8 +277,9 @@ export default function InboxPage() {
                 className={cn(
                   "flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-all duration-150",
                   selectedId === c.id
-                    ? "bg-primary-soft shadow-sm ring-1 ring-primary/20"
-                    : "hover:bg-muted/70",
+                    ? "bg-[#ecfdf5] shadow-sm ring-1 ring-accent/20"
+                    : "hover:bg-[#f8f9ff]",
+                  c.unreadCount > 0 && selectedId !== c.id && "bg-white ring-1 ring-[#dce9ff]",
                 )}
               >
                 <AvatarInitials name={displayName} size="sm" />
@@ -287,7 +289,7 @@ export default function InboxPage() {
                     {displayName}
                   </p>
                   {c.unreadCount > 0 && (
-                    <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                    <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white">
                       {c.unreadCount}
                     </span>
                   )}
@@ -303,8 +305,8 @@ export default function InboxPage() {
                 {c.lead && (
                   <span
                     className={cn(
-                      "mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-                      selectedId === c.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+                      "mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                      selectedId === c.id ? "bg-accent/10 text-accent" : "bg-[#e5eeff] text-muted-foreground",
                     )}
                   >
                     {formatStage(c.lead.stage)}
@@ -356,12 +358,19 @@ export default function InboxPage() {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {thread.lead?.score != null && thread.lead.score > 0 && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-0.5 text-[10px] font-bold",
+                      thread.lead.score >= 80
+                        ? "bg-accent text-white"
+                        : "bg-[#ecfdf5] text-accent",
+                    )}
+                  >
                     Score {thread.lead.score}
                   </span>
                 )}
                 {thread.lead && (
-                  <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                  <span className="rounded-full bg-[#e5eeff] px-3 py-1 text-xs font-semibold text-accent">
                     {formatStage(thread.lead.stage)}
                   </span>
                 )}
@@ -477,31 +486,31 @@ export default function InboxPage() {
             </div>
 
             {thread.lead && (
-              <aside className="hidden w-72 shrink-0 flex-col border-l border-border/80 bg-white lg:flex">
-                <div className="border-b border-border/80 bg-muted/20 p-4">
+              <aside className="hidden w-72 shrink-0 flex-col border-l border-[#dce9ff] bg-[#f8f9ff]/50 lg:flex">
+                <div className="border-b border-[#dce9ff] bg-white p-4">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-primary" />
-                    <h2 className="text-sm font-semibold">Lead timeline</h2>
+                    <Clock className="h-4 w-4 text-accent" />
+                    <h2 className="text-sm font-bold">Lead timeline</h2>
                   </div>
                   <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                    AI classification and pipeline changes after each message
+                    AI classification & pipeline changes
                   </p>
                   {timeline?.lead.aiConfidence != null && (
-                    <div className="mt-3 rounded-lg bg-primary-soft/50 px-2.5 py-1.5 text-[11px] font-medium text-primary">
-                      AI confidence: {Math.round(timeline.lead.aiConfidence * 100)}%
+                    <div className="mt-3 rounded-xl bg-[#ecfdf5] px-3 py-2 text-[11px] font-semibold text-accent">
+                      AI confidence · {Math.round(timeline.lead.aiConfidence * 100)}%
                     </div>
                   )}
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                   {!timeline?.events.length && (
-                    <p className="rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-4 text-center text-xs text-muted-foreground">
-                      Timeline fills in after the next customer message is classified.
+                    <p className="rounded-xl border border-dashed border-[#dce9ff] bg-white px-3 py-4 text-center text-xs text-muted-foreground">
+                      Timeline fills in after the next message is classified.
                     </p>
                   )}
                   <ul className="space-y-4">
                     {timeline?.events.map((ev) => (
-                      <li key={ev.id} className="relative border-l-2 border-primary/30 pl-4">
-                        <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-primary" />
+                      <li key={ev.id} className="relative border-l-2 border-accent/30 pl-4">
+                        <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-accent" />
                         <p className="text-xs font-semibold">{ev.title}</p>
                         {ev.detail && (
                           <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{ev.detail}</p>

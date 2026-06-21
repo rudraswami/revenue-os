@@ -2,11 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { ArrowRight, Bot, LineChart, Sparkles, Target, UserRound, Zap } from "lucide-react";
@@ -15,34 +16,37 @@ const features = [
   {
     icon: LineChart,
     title: "Conversation classification",
-    description:
-      "Every inbound message is analyzed for intent, sentiment, and pipeline stage — including threads where Meta Business Agent already replied.",
+    description: "Intent, sentiment, and stage detected on every inbound message.",
     href: "/dashboard/inbox",
+    stat: "Live on ingest",
   },
   {
     icon: Target,
     title: "Lead scoring",
-    description: "Leads get a score from message content and engagement so your team focuses on closers.",
+    description: "0–100 score so reps prioritize buyers ready to close.",
     href: "/dashboard/pipeline",
+    stat: "Auto-updated",
   },
   {
     icon: Zap,
     title: "Auto stage updates",
-    description: "Pipeline moves when our classifier detects buying intent, negotiation, or loss signals.",
+    description: "Pipeline moves when buying intent or negotiation signals appear.",
     href: "/dashboard/pipeline",
+    stat: "Proactive",
   },
   {
     icon: UserRound,
     title: "Human handoff flags",
-    description:
-      "When a customer needs a person, Growvisi flags the thread — Meta handles chat; you track who to call.",
+    description: "Complex deals flagged for your team — Meta may still reply in-chat.",
     href: "/dashboard/insights",
+    stat: "Team alerts",
   },
   {
     icon: Bot,
     title: "Lead timeline",
-    description: "Audit trail of AI classifications and stage changes after each customer message.",
+    description: "Full audit trail of AI decisions after each customer message.",
     href: "/dashboard/inbox",
+    stat: "Per contact",
   },
 ];
 
@@ -71,22 +75,37 @@ export default function AiStudioPage() {
     enabled: !!token,
   });
 
+  const isActive = capabilities?.aiClassification;
+
   return (
     <div className="dashboard-page">
       <PageHeader
         eyebrow="AI"
         title="Intelligence"
-        description="Analyze WhatsApp conversations and track revenue outcomes — Meta replies in-chat, Growvisi tracks the funnel."
+        description="Growvisi analyzes every WhatsApp thread — Meta replies in-chat, we track the revenue funnel."
+        badge={
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+              isActive ? "bg-[#ecfdf5] text-accent" : "bg-amber-50 text-amber-700"
+            }`}
+          >
+            {isLoading ? "…" : isActive ? "Active" : "Setup needed"}
+          </span>
+        }
       />
 
       <div className="mb-6">
         <MetaAiNotice />
       </div>
 
-      <Card className="mb-8 overflow-hidden border-primary/20 bg-gradient-to-br from-primary-soft/50 to-card shadow-sm">
-        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+      <DashboardPanel
+        noPadding
+        className="mb-8 overflow-hidden border-accent/20 bg-gradient-to-br from-[#ecfdf5]/80 to-white"
+        delay={0.05}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4 p-6">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/20">
               <Sparkles className="h-6 w-6" />
             </div>
             <div>
@@ -98,53 +117,49 @@ export default function AiStudioPage() {
               ) : (
                 <>
                   <p className="font-semibold">
-                    Classification: {capabilities?.aiClassification ? "Active" : "Configure OPENAI_API_KEY"}
+                    {isActive ? "AI classification running" : "Set OPENAI_API_KEY to enable"}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {stats
-                      ? `${stats.aiClassifications} analyses · ${stats.classifiedLeads} leads scored · ${stats.humanHandoffRecommended} handoffs flagged`
-                      : "Runs automatically on each inbound customer message."}
+                      ? `${stats.aiClassifications} analyses · ${stats.classifiedLeads} scored · ${stats.humanHandoffRecommended} handoffs`
+                      : "Runs on each inbound customer message."}
                   </p>
                 </>
               )}
             </div>
           </div>
-          <Button asChild>
+          <Button asChild className="rounded-xl">
             <Link href="/dashboard/inbox">View conversations</Link>
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardPanel>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {features.map((f) => (
-          <Card key={f.title} className="card-interactive">
-            <CardHeader>
-              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-                <f.icon className="h-5 w-5" />
+        {features.map((f, i) => (
+          <motion.div
+            key={f.title}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 + i * 0.05 }}
+          >
+            <Link href={f.href} className="card-interactive block h-full p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+                  <f.icon className="h-5 w-5" />
+                </div>
+                <span className="rounded-full bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-accent">
+                  {f.stat}
+                </span>
               </div>
-              <CardTitle className="text-base">{f.title}</CardTitle>
-              <CardDescription>{f.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link href={f.href} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+              <h3 className="mt-4 text-base font-bold">{f.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.description}</p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent">
                 Open <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </CardContent>
-          </Card>
+              </span>
+            </Link>
+          </motion.div>
         ))}
       </div>
-
-      {capabilities?.aiSuggestReply && (
-        <Card className="mt-6 border-dashed">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Optional: human takeover replies</CardTitle>
-            <CardDescription>
-              When your team must reply from Growvisi (not Meta Business Agent), use Human takeover
-              in Conversations. This is supplementary — not our primary product surface.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      )}
     </div>
   );
 }

@@ -67,7 +67,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <aside className="flex h-screen w-[260px] shrink-0 flex-col border-r border-border/80 bg-white/95 backdrop-blur-sm">
+    <aside className="flex h-screen w-[260px] shrink-0 flex-col border-r border-[#dce9ff] bg-white/95 backdrop-blur-sm">
       <div className="border-b border-border/80 px-5 py-5">
         <Logo href="/dashboard" />
         {organization && (
@@ -101,7 +101,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {item.label}
               </span>
               {showUnread && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white shadow-sm">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-white shadow-sm">
                   {unread > 99 ? "99+" : unread}
                 </span>
               )}

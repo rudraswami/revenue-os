@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { GripVertical } from "lucide-react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { LeadStage } from "@growvisi/shared";
 
@@ -26,6 +25,12 @@ interface PipelineBoardProps {
   onMoveLead: (leadId: string, stage: LeadStage) => void;
 }
 
+function scoreTone(score: number) {
+  if (score >= 80) return "text-accent font-bold";
+  if (score >= 50) return "text-foreground font-semibold";
+  return "text-muted-foreground";
+}
+
 function LeadCard({
   lead,
   stages,
@@ -45,31 +50,39 @@ function LeadCard({
   onDragEnd: () => void;
   onMoveLead: (leadId: string, stage: LeadStage) => void;
 }) {
+  const hot = lead.score >= 80;
+
   return (
-    <Card
+    <div
       draggable={!isPending}
       onDragStart={(e) => onDragStart(e, lead.id)}
       onDragEnd={onDragEnd}
       className={cn(
-        "border-border/80 shadow-sm transition-all md:cursor-grab md:active:cursor-grabbing",
-        draggingId === lead.id && "opacity-50 shadow-lg ring-2 ring-primary/40",
+        "rounded-2xl border bg-white p-3.5 shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all md:cursor-grab md:active:cursor-grabbing",
+        hot ? "border-accent/25 ring-1 ring-accent/10" : "border-[#dce9ff]",
+        draggingId === lead.id && "scale-[1.02] opacity-60 shadow-lg ring-2 ring-accent/30",
       )}
     >
-      <CardHeader className="flex flex-row items-start gap-3 p-4 pb-2">
-        <GripVertical className="mt-2 hidden h-4 w-4 shrink-0 text-muted-foreground/50 md:block" />
+      <div className="flex items-start gap-2.5">
+        <GripVertical className="mt-2 hidden h-4 w-4 shrink-0 text-muted-foreground/40 md:block" />
         <AvatarInitials name={lead.displayName ?? lead.phone} size="sm" />
-        <CardTitle className="min-w-0 flex-1 pt-1 text-sm leading-snug">
-          {lead.displayName ?? lead.phone}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 p-4 pt-0 md:pl-[3.25rem]">
-        {/* Mobile / touch: stage picker */}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold leading-snug">{lead.displayName ?? lead.phone}</p>
+          {hot && (
+            <span className="mt-1 inline-block rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent">
+              Hot · {lead.score}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-3 md:pl-7">
         <div className="md:hidden">
-          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Move to stage
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Stage
           </label>
           <select
-            className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-xl border border-[#dce9ff] bg-[#f8f9ff] px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
             value={lead.stage}
             disabled={isPending}
             onChange={(e) => {
@@ -87,19 +100,20 @@ function LeadCard({
 
         {lead.score > 0 && (
           <div className="flex items-center gap-2">
-            <div className="h-1.5 flex-1 rounded-full bg-muted">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#e5eeff]">
               <div
-                className="h-full rounded-full bg-primary"
+                className="h-full rounded-full bg-accent transition-all"
                 style={{ width: `${Math.min(lead.score, 100)}%` }}
               />
             </div>
-            <span className="text-[10px] font-medium text-muted-foreground">{lead.score}</span>
+            <span className={cn("text-[10px] tabular-nums", scoreTone(lead.score))}>{lead.score}</span>
           </div>
         )}
+
         {lead.conversation?.id ? (
           <Link
             href={`/dashboard/inbox?c=${lead.conversation.id}`}
-            className="block text-xs font-medium text-primary hover:underline"
+            className="inline-flex text-xs font-semibold text-accent hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
             Open chat →
@@ -107,8 +121,8 @@ function LeadCard({
         ) : (
           <span className="text-xs text-muted-foreground">No chat linked</span>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -144,68 +158,64 @@ export function PipelineBoard({
     e.preventDefault();
     const leadId = e.dataTransfer.getData("text/plain");
     if (!leadId) return;
-
     const lead = stages.flatMap((s) => data?.[s] ?? []).find((l) => l.id === leadId);
-    if (lead && lead.stage !== targetStage) {
-      onMoveLead(leadId, targetStage);
-    }
+    if (lead && lead.stage !== targetStage) onMoveLead(leadId, targetStage);
     setDraggingId(null);
     setDropTarget(null);
   }
 
   return (
     <div>
-      <p className="mb-4 text-xs text-muted-foreground md:hidden">
-        Use the stage dropdown on each card to move leads.
-      </p>
-      <p className="mb-4 hidden text-xs text-muted-foreground md:block">
-        Drag cards between columns to update stages.
-      </p>
+      <p className="mb-4 text-xs text-muted-foreground md:hidden">Use the stage dropdown on each card.</p>
+      <p className="mb-4 hidden text-xs text-muted-foreground md:block">Drag cards between columns — stages sync to WhatsApp leads.</p>
       <div className="flex flex-1 gap-4 overflow-x-auto pb-4 custom-scrollbar">
-        {stages.map((stage) => (
-          <div
-            key={stage}
-            className="min-w-[272px] shrink-0"
-            onDragOver={(e) => handleDragOver(e, stage)}
-            onDragLeave={() => setDropTarget(null)}
-            onDrop={(e) => handleDrop(e, stage)}
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <div className={cn("h-2.5 w-2.5 rounded-full shadow-sm", stageColors[stage])} />
-              <h2 className="text-sm font-semibold">{stageLabels[stage]}</h2>
-              <span className="ml-auto rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-muted-foreground shadow-sm ring-1 ring-border/60">
-                {data?.[stage]?.length ?? 0}
-              </span>
-            </div>
+        {stages.map((stage) => {
+          const count = data?.[stage]?.length ?? 0;
+          return (
             <div
-              className={cn(
-                "min-h-[240px] space-y-2 rounded-xl border border-transparent p-2 transition-colors",
-                dropTarget === stage
-                  ? "border-primary/30 bg-primary/10 ring-2 ring-primary/20"
-                  : "bg-muted/40",
-              )}
+              key={stage}
+              className="min-w-[280px] shrink-0"
+              onDragOver={(e) => handleDragOver(e, stage)}
+              onDragLeave={() => setDropTarget(null)}
+              onDrop={(e) => handleDrop(e, stage)}
             >
-              {(data?.[stage] ?? []).map((lead) => (
-                <LeadCard
-                  key={lead.id}
-                  lead={lead}
-                  stages={stages}
-                  stageLabels={stageLabels}
-                  isPending={isPending}
-                  draggingId={draggingId}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                  onMoveLead={onMoveLead}
-                />
-              ))}
-              {(data?.[stage]?.length ?? 0) === 0 && (
-                <p className="hidden px-2 py-8 text-center text-xs text-muted-foreground md:block">
-                  Drop leads here
-                </p>
-              )}
+              <div className="mb-3 flex items-center gap-2 rounded-xl border border-[#dce9ff] bg-white px-3 py-2 shadow-sm">
+                <div className={cn("h-2.5 w-2.5 rounded-full", stageColors[stage])} />
+                <h2 className="text-sm font-bold">{stageLabels[stage]}</h2>
+                <span className="ml-auto rounded-full bg-[#f8f9ff] px-2.5 py-0.5 text-xs font-bold text-muted-foreground">
+                  {count}
+                </span>
+              </div>
+              <div
+                className={cn(
+                  "min-h-[280px] space-y-2.5 rounded-2xl border-2 border-dashed p-2 transition-colors",
+                  dropTarget === stage
+                    ? "border-accent/40 bg-[#ecfdf5]/50"
+                    : "border-transparent bg-[#f8f9ff]/80",
+                )}
+              >
+                {(data?.[stage] ?? []).map((lead) => (
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    stages={stages}
+                    stageLabels={stageLabels}
+                    isPending={isPending}
+                    draggingId={draggingId}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    onMoveLead={onMoveLead}
+                  />
+                ))}
+                {count === 0 && (
+                  <p className="hidden px-2 py-10 text-center text-xs text-muted-foreground md:block">
+                    Drop leads here
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

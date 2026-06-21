@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { SectionHeader } from "./section-header";
 
 const plans = [
   {
@@ -38,35 +39,41 @@ const plans = [
 
 export function Pricing() {
   return (
-    <section id="pricing" className="scroll-mt-20 border-t border-border bg-[#f8f9ff] py-24 md:py-32">
-      <div className="mx-auto max-w-[1280px] px-6 lg:px-8">
-        <motion.div
-          className="text-center"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-        >
-          <h2 className="display-lg">Transparent pricing</h2>
-          <p className="body-lg mx-auto mt-3 max-w-md">14-day free trial. No credit card.</p>
-        </motion.div>
+    <section id="pricing" className="scroll-mt-20 border-t border-border bg-[#f8f9ff] py-20 md:py-28">
+      <div className="mx-auto max-w-[1100px] px-6 lg:px-8">
+        <SectionHeader
+          label="Pricing"
+          title="Transparent INR pricing"
+          subtitle="14-day free trial on every plan. No credit card to start."
+        />
 
-        <div className="mt-16 grid gap-0 divide-y divide-border overflow-hidden rounded-2xl bg-white ring-1 ring-border md:grid-cols-4 md:divide-x md:divide-y-0">
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
-              className={cn("flex flex-col p-8", plan.popular && "bg-accent/[0.03] ring-2 ring-inset ring-accent")}
-              initial={{ opacity: 0, y: 16 }}
+              className={cn(
+                "relative flex flex-col rounded-3xl border bg-white p-6 shadow-[0_8px_32px_rgb(11_28_48/0.05)] transition-shadow",
+                plan.popular
+                  ? "border-accent ring-2 ring-accent/20"
+                  : "border-[#dce9ff]",
+              )}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.06 }}
+              transition={{ delay: i * 0.07 }}
+              whileHover={{ y: -4, boxShadow: "0 16px 48px rgb(11 28 48 / 0.1)" }}
             >
               {plan.popular && (
-                <span className="mb-3 text-[11px] font-bold uppercase tracking-wide text-accent">
+                <motion.span
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                  animate={{ scale: [1, 1.04, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
                   Most popular
-                </span>
+                </motion.span>
               )}
               <h3 className="text-lg font-bold">{plan.name}</h3>
-              <p className="mt-4 text-3xl font-bold">
+              <p className="mt-3 text-3xl font-bold tracking-tight">
                 {plan.custom ? (
                   "Custom"
                 ) : (
@@ -76,18 +83,21 @@ export function Pricing() {
                   </>
                 )}
               </p>
-              <ul className="mt-6 flex-1 space-y-2.5 text-[13px] text-muted-foreground">
+              <ul className="mt-5 flex-1 space-y-2.5 text-[13px] text-muted-foreground">
                 {plan.features.map((f) => (
-                  <li key={f}>✓ {f}</li>
+                  <li key={f} className="flex gap-2">
+                    <span className="text-accent">✓</span>
+                    {f}
+                  </li>
                 ))}
               </ul>
               <Button
                 asChild
-                className={cn("mt-8 w-full", plan.popular && "btn-primary border-0")}
+                className={cn("mt-6 w-full rounded-xl", plan.popular && "btn-primary border-0")}
                 variant={plan.popular ? "default" : "outline"}
               >
                 <Link href={plan.custom ? "/contact" : "/register"}>
-                  {plan.custom ? "Contact sales" : "Start trial"}
+                  {plan.custom ? "Contact sales" : "Start free trial"}
                 </Link>
               </Button>
             </motion.div>

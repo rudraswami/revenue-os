@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { ProductShowcase } from "./product-showcase";
+import { SectionHeader } from "./section-header";
 import {
   AnalyticsPreview,
   IntelligencePreview,
@@ -14,114 +15,104 @@ import {
 const stories = [
   {
     id: "intelligence",
-    label: "01 · Intelligence",
-    title: "Every conversation, understood",
-    body: "AI reads WhatsApp threads as they arrive — purchase intent, urgency, sentiment — and tags each contact automatically.",
+    label: "Intelligence",
+    title: "Every conversation, understood instantly",
+    body: "AI tags purchase intent, urgency, and sentiment the moment a WhatsApp message lands.",
     Visual: IntelligencePreview,
-    bg: "from-[#eff4ff] to-white",
-    reverse: false,
+    accent: "from-[#e5eeff] to-[#f8f9ff]",
   },
   {
     id: "scoring",
-    label: "02 · Lead scoring",
+    label: "Lead scoring",
     title: "Know who to call first",
-    body: "Scores update in real time so reps spend time on buyers ready to close, not browsers.",
+    body: "Scores refresh live — reps focus on buyers ready to close, not browsers.",
     Visual: ScoringPreview,
-    bg: "from-[#ecfdf5] to-white",
-    reverse: true,
+    accent: "from-[#ecfdf5] to-[#f8f9ff]",
   },
   {
     id: "pipeline",
-    label: "03 · Pipeline",
+    label: "Pipeline",
     title: "Deals move without manual updates",
-    body: "Kanban stages sync with conversation intent. Drag when you need to — AI handles the rest.",
+    body: "Stages sync with conversation intent. Drag when needed — AI handles the rest.",
     Visual: PipelinePreview,
-    bg: "from-[#e8f0ff] to-white",
-    reverse: false,
+    accent: "from-[#e8f0ff] to-[#f8f9ff]",
   },
   {
     id: "analytics",
-    label: "04 · Revenue",
+    label: "Revenue",
     title: "See conversion, not just messages",
-    body: "Funnel metrics, pipeline value, and team performance — tied to WhatsApp, not spreadsheets.",
+    body: "Funnel metrics and pipeline value in INR — tied to WhatsApp, not spreadsheets.",
     Visual: AnalyticsPreview,
-    bg: "from-[#f0fdf4] to-white",
-    reverse: true,
+    accent: "from-[#f0fdf4] to-[#f8f9ff]",
   },
 ];
 
 export function ProductStory() {
   return (
     <section id="product" className="scroll-mt-20">
-      <div className="border-b border-border bg-white py-16 text-center md:py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mx-auto max-w-[640px] px-6"
-        >
-          <p className="section-label">Product</p>
-          <h2 className="display-lg mt-2">Built to close, not just chat</h2>
-          <p className="body-lg mt-4">
-            Four layers that turn WhatsApp into a revenue system.
-          </p>
-        </motion.div>
+      <div className="border-b border-border bg-white py-16 md:py-20">
+        <div className="mx-auto max-w-[1100px] px-6 lg:px-8">
+          <SectionHeader
+            label="Product"
+            title="Built to close, not just chat"
+            subtitle="Four layers that turn WhatsApp into a revenue system."
+          />
+        </div>
       </div>
 
-      {stories.map((story) => {
-        const Visual = story.Visual;
-        return (
-          <div
-            key={story.id}
-            className={`relative overflow-hidden border-b border-border bg-gradient-to-br ${story.bg} py-20 md:py-28`}
-          >
-            <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-6 lg:grid-cols-2 lg:gap-20 lg:px-8">
-              <motion.div
-                className={story.reverse ? "lg:order-2" : ""}
-                initial={{ opacity: 0, x: story.reverse ? 32 : -32 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.6 }}
+      <div className="mx-auto max-w-[1100px] px-6 py-12 lg:px-8 lg:py-16">
+        <div className="grid gap-6 md:grid-cols-2">
+          {stories.map((story, i) => {
+            const Visual = story.Visual;
+            return (
+              <motion.article
+                key={story.id}
+                className={`overflow-hidden rounded-3xl border border-[#dce9ff] bg-gradient-to-br ${story.accent} shadow-[0_12px_40px_rgb(11_28_48/0.05)]`}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: i * 0.08, duration: 0.55 }}
+                whileHover={{ y: -4, boxShadow: "0 20px 48px rgb(11 28 48 / 0.08)" }}
               >
-                <p className="section-label">{story.label}</p>
-                <h3 className="mt-3 text-2xl font-bold tracking-tight md:text-3xl">{story.title}</h3>
-                <p className="mt-4 max-w-[440px] text-[16px] leading-relaxed text-muted-foreground">
-                  {story.body}
-                </p>
-              </motion.div>
-
-              <motion.div
-                className={`relative ${story.reverse ? "lg:order-1" : ""}`}
-                initial={{ opacity: 0, scale: 0.97 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.65, delay: 0.1 }}
-              >
-                <div className="absolute -inset-4 rounded-3xl bg-accent/5 blur-2xl" />
-                <div className="relative overflow-hidden rounded-2xl bg-white/80 p-6 shadow-[0_24px_64px_rgb(11_28_48/0.08)] backdrop-blur-sm ring-1 ring-white">
-                  <Visual />
+                <div className="border-b border-[#dce9ff]/80 bg-white/60 px-5 py-4">
+                  <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+                    {story.label}
+                  </span>
+                  <h3 className="mt-2 text-lg font-bold tracking-tight md:text-xl">{story.title}</h3>
+                  <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">{story.body}</p>
                 </div>
-              </motion.div>
-            </div>
-          </div>
-        );
-      })}
+                <div className="p-5">
+                  <div className="overflow-hidden rounded-2xl bg-white p-4 ring-1 ring-[#dce9ff]">
+                    <Visual />
+                  </div>
+                </div>
+              </motion.article>
+            );
+          })}
+        </div>
+      </div>
 
-      {/* Full-width live product strip */}
-      <div className="relative overflow-hidden bg-[#0b1c30] py-20 md:py-28">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(0_108_73/0.2),transparent_70%)]" />
-        <div className="relative mx-auto max-w-[1280px] px-6 lg:px-8">
-          <div className="mb-12 text-center">
-            <h3 className="text-2xl font-bold text-white md:text-3xl">Your team&apos;s command center</h3>
-            <p className="mt-3 text-white/60">Inbox, intelligence, pipeline, and analytics — one workspace.</p>
-          </div>
-          <div className="overflow-hidden rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 backdrop-blur md:p-6">
+      <div className="relative overflow-hidden bg-[#0b1c30] py-16 md:py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(0_108_73/0.18),transparent_70%)]" />
+        <div className="relative mx-auto max-w-[1100px] px-6 lg:px-8">
+          <SectionHeader
+            light
+            center
+            title="Your team's command center"
+            subtitle="Inbox, intelligence, pipeline, and analytics — one workspace."
+          />
+          <motion.div
+            className="mt-10 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur md:p-6"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
             <ProductShowcase />
-          </div>
-          <div className="mt-10 text-center">
+          </motion.div>
+          <div className="mt-8 text-center">
             <Link
               href="/demo"
-              className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#6cf8bb] hover:underline"
+              className="inline-flex items-center gap-2 rounded-full border border-[#6cf8bb]/40 bg-[#6cf8bb]/10 px-5 py-2.5 text-[14px] font-semibold text-[#6cf8bb] transition-colors hover:bg-[#6cf8bb]/20"
             >
               Open interactive demo
               <ArrowRight className="h-4 w-4" />

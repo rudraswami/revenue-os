@@ -2,8 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import { MetricCard } from "@/components/dashboard/metric-card";
 import { PipelineBoard, type PipelineLead } from "@/components/dashboard/pipeline-board";
-import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { PipelineSkeleton } from "@/components/ui/skeleton";
@@ -32,12 +33,12 @@ const STAGE_LABELS: Record<LeadStage, string> = {
 };
 
 const STAGE_COLORS: Record<LeadStage, string> = {
-  NEW: "bg-blue-500",
-  CONTACTED: "bg-violet-500",
-  QUALIFIED: "bg-indigo-500",
-  PROPOSAL: "bg-amber-500",
-  NEGOTIATION: "bg-orange-500",
-  WON: "bg-success",
+  NEW: "bg-[#0b1c30]/70",
+  CONTACTED: "bg-[#006c49]/60",
+  QUALIFIED: "bg-accent",
+  PROPOSAL: "bg-[#4edea3]",
+  NEGOTIATION: "bg-amber-500",
+  WON: "bg-accent",
   LOST: "bg-muted-foreground",
 };
 
@@ -104,27 +105,27 @@ export default function PipelinePage() {
 
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
   const totalLeads = STAGES.reduce((sum, s) => sum + (data?.[s]?.length ?? 0), 0);
+  const wonCount = data?.WON?.length ?? 0;
+  const hotCount = STAGES.flatMap((s) => data?.[s] ?? []).filter((l) => l.score >= 80).length;
 
   return (
     <div className="dashboard-page flex h-full min-h-0 flex-col">
       <PageHeader
         eyebrow="Sales"
         title="Pipeline"
-        description="Drag leads between stages on desktop, or use the stage picker on mobile."
+        description="Drag leads between stages — synced with WhatsApp conversations and AI scoring."
       />
 
       {!hasWhatsapp && (
-        <Card className="mb-6 border-dashed border-border/80 bg-muted/20">
-          <CardContent className="p-2">
-            <EmptyState
-              compact
-              title="Connect WhatsApp to build your pipeline"
-              description="Leads are created automatically from customer conversations."
-              actionHref="/dashboard/settings"
-              actionLabel="Connect WhatsApp"
-            />
-          </CardContent>
-        </Card>
+        <DashboardPanel className="mb-6" delay={0.05}>
+          <EmptyState
+            compact
+            title="Connect WhatsApp to build your pipeline"
+            description="Leads are created automatically from customer conversations."
+            actionHref="/onboarding"
+            actionLabel="Connect WhatsApp"
+          />
+        </DashboardPanel>
       )}
 
       {isError && !isLoading && (
@@ -134,23 +135,27 @@ export default function PipelinePage() {
       )}
 
       {hasWhatsapp && !isLoading && !isError && totalLeads === 0 && (
-        <Card className="mb-6 border-dashed border-border/80 bg-muted/20">
-          <CardContent className="p-2">
-            <EmptyState
-              compact
-              title="No leads yet"
-              description="When someone messages your business on WhatsApp, they appear here automatically."
-              actionHref="/dashboard/inbox"
-              actionLabel="Go to Inbox"
-            />
-          </CardContent>
-        </Card>
+        <DashboardPanel className="mb-6" delay={0.05}>
+          <EmptyState
+            compact
+            title="No leads yet"
+            description="When someone messages your business on WhatsApp, they appear here automatically."
+            actionHref="/dashboard/inbox"
+            actionLabel="Go to Inbox"
+          />
+        </DashboardPanel>
       )}
 
       {isLoading && <PipelineSkeleton />}
 
       {!isLoading && !isError && totalLeads > 0 && (
-        <PipelineBoard
+        <>
+          <div className="mb-6 grid gap-4 sm:grid-cols-3">
+            <MetricCard title="Total leads" value={totalLeads} delay={0} />
+            <MetricCard title="Won" value={wonCount} highlight delay={0.05} />
+            <MetricCard title="Hot leads (80+)" value={hotCount} delay={0.1} />
+          </div>
+          <PipelineBoard
           stages={STAGES}
           stageLabels={STAGE_LABELS}
           stageColors={STAGE_COLORS}
@@ -158,6 +163,7 @@ export default function PipelinePage() {
           isPending={stageMutation.isPending}
           onMoveLead={(leadId, stage) => stageMutation.mutate({ leadId, stage })}
         />
+        </>
       )}
     </div>
   );

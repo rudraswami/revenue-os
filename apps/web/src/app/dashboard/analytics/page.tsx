@@ -2,27 +2,16 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
+import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
+import { CHART_ACCENT, STAGE_CHART_COLORS, chartTooltipStyle } from "@/lib/chart-theme";
 import { useAuthStore } from "@/stores/auth-store";
 import { BarChart3, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-
-const STAGE_COLORS = ["#6043d0", "#7c5ce0", "#9b7bff", "#f59e0b", "#f97316", "#0d9f6e", "#9ca3af"];
+import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export default function AnalyticsPage() {
   const token = useAuthStore((s) => s.accessToken);
@@ -78,7 +67,7 @@ export default function AnalyticsPage() {
       <PageHeader
         eyebrow="Performance"
         title="Analytics"
-        description="Understand your WhatsApp sales performance at a glance."
+        description="Revenue metrics from your WhatsApp sales pipeline — updated as conversations are classified."
       />
 
       {hasError && !isLoading && (
@@ -95,32 +84,18 @@ export default function AnalyticsPage() {
       {isLoading ? (
         <>
           <MetricCardsSkeleton />
-          <Card className="mt-8">
-            <CardContent className="pt-6">
-              <ChartSkeleton />
-            </CardContent>
-          </Card>
+          <div className="mt-8">
+            <ChartSkeleton />
+          </div>
         </>
       ) : !hasError ? (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard
-              title="Total leads"
-              value={funnel?.total ?? 0}
-              icon={<Users className="h-4 w-4" />}
-            />
-            <MetricCard
-              title="Won deals"
-              value={funnel?.won ?? 0}
-              icon={<TrendingUp className="h-4 w-4" />}
-            />
+            <MetricCard title="Total leads" value={funnel?.total ?? 0} icon={<Users className="h-4 w-4" />} />
+            <MetricCard title="Won deals" value={funnel?.won ?? 0} icon={<TrendingUp className="h-4 w-4" />} highlight />
             <MetricCard
               title="Win rate"
-              value={
-                funnel && funnel.total > 0
-                  ? `${(funnel.conversionRate * 100).toFixed(0)}%`
-                  : "—"
-              }
+              value={funnel && funnel.total > 0 ? `${(funnel.conversionRate * 100).toFixed(0)}%` : "—"}
               icon={<Zap className="h-4 w-4" />}
             />
             <MetricCard
@@ -132,76 +107,66 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <Card className="border-border/80 shadow-sm">
-              <CardHeader className="border-b border-border/60 bg-muted/20">
-                <CardTitle className="text-base">Leads by stage</CardTitle>
-              </CardHeader>
-              <CardContent className="h-72">
-                {barData.some((d) => d.count > 0) ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={barData}>
-                      <XAxis dataKey="stage" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#6043d0" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <EmptyState
-                    compact
-                    className="h-full py-8"
-                    icon={<BarChart3 className="h-6 w-6" />}
-                    title={hasWhatsapp ? "No leads yet" : "Connect WhatsApp first"}
-                    description={
-                      hasWhatsapp
-                        ? "Leads appear when customers message your business number."
-                        : "Link WhatsApp to start tracking leads and pipeline metrics."
-                    }
-                    actionHref={hasWhatsapp ? "/dashboard/inbox" : "/dashboard/settings"}
-                    actionLabel={hasWhatsapp ? "Open Inbox" : "Connect WhatsApp"}
-                  />
-                )}
-              </CardContent>
-            </Card>
+            <DashboardPanel title="Leads by stage" contentClassName="h-72" delay={0.1}>
+              {barData.some((d) => d.count > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData}>
+                    <XAxis dataKey="stage" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                    <Bar dataKey="count" fill={CHART_ACCENT} radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState
+                  compact
+                  className="h-full py-8"
+                  icon={<BarChart3 className="h-6 w-6" />}
+                  title={hasWhatsapp ? "No leads yet" : "Connect WhatsApp first"}
+                  description={
+                    hasWhatsapp
+                      ? "Leads appear when customers message your business number."
+                      : "Link WhatsApp to start tracking pipeline metrics."
+                  }
+                  actionHref={hasWhatsapp ? "/dashboard/inbox" : "/onboarding"}
+                  actionLabel={hasWhatsapp ? "Open Inbox" : "Connect WhatsApp"}
+                />
+              )}
+            </DashboardPanel>
 
-            <Card className="border-border/80 shadow-sm">
-              <CardHeader className="border-b border-border/60 bg-muted/20">
-                <CardTitle className="text-base">Pipeline distribution</CardTitle>
-              </CardHeader>
-              <CardContent className="h-72">
-                {chartData.some((d) => d.value > 0) ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={chartData.filter((d) => d.value > 0)}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={2}
-                      >
-                        {chartData.map((_, i) => (
-                          <Cell key={i} fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <EmptyState
-                    compact
-                    className="h-full py-8"
-                    icon={<TrendingUp className="h-6 w-6" />}
-                    title="No pipeline data"
-                    description="Your stage breakdown will appear once leads are created from conversations."
-                    actionHref="/dashboard/pipeline"
-                    actionLabel="View Pipeline"
-                  />
-                )}
-              </CardContent>
-            </Card>
+            <DashboardPanel title="Pipeline distribution" contentClassName="h-72" delay={0.15}>
+              {chartData.some((d) => d.value > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData.filter((d) => d.value > 0)}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={64}
+                      outerRadius={96}
+                      paddingAngle={3}
+                    >
+                      {chartData.map((_, i) => (
+                        <Cell key={i} fill={STAGE_CHART_COLORS[i % STAGE_CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState
+                  compact
+                  className="h-full py-8"
+                  icon={<TrendingUp className="h-6 w-6" />}
+                  title="No pipeline data"
+                  description="Stage breakdown appears once leads are created from conversations."
+                  actionHref="/dashboard/pipeline"
+                  actionLabel="View Pipeline"
+                />
+              )}
+            </DashboardPanel>
           </div>
         </>
       ) : null}

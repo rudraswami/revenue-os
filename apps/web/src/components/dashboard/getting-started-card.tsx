@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2, Circle, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -55,8 +55,8 @@ export function GettingStartedCard() {
     },
     {
       id: "whatsapp",
-      title: "Connect your existing number",
-      description: "Paste Meta token — auto-detect number & connect in one click.",
+      title: "Connect your WhatsApp number",
+      description: "Paste Meta token — auto-detect & connect in one click.",
       done: whatsappConnected,
       href: "/onboarding",
       action: "Start wizard",
@@ -64,7 +64,7 @@ export function GettingStartedCard() {
     {
       id: "message",
       title: "Verify first inbound message",
-      description: "Tap Open in WhatsApp — we detect it automatically.",
+      description: "Send a test WhatsApp — we detect it automatically.",
       done: firstMessage,
       href: "/dashboard/inbox",
       action: "Open Inbox",
@@ -80,71 +80,68 @@ export function GettingStartedCard() {
   }
 
   return (
-    <Card className="mb-8 overflow-hidden border-border/80 shadow-sm">
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 border-b border-border/60 bg-gradient-to-r from-primary-soft/50 to-transparent pb-4">
+    <motion.div
+      className="mb-8 overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-[#dce9ff]/80 bg-gradient-to-r from-[#ecfdf5]/60 to-white px-5 py-4">
         <div>
-          <CardTitle className="text-base font-semibold">
+          <p className="text-[15px] font-bold">
             Getting started{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
-          </CardTitle>
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {doneCount} of {steps.length} complete — connect WhatsApp when you&apos;re ready.
+            {doneCount} of {steps.length} complete
           </p>
         </div>
         <button
           type="button"
           onClick={dismiss}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Dismiss getting started"
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+          aria-label="Dismiss"
         >
           <X className="h-4 w-4" />
         </button>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="h-1 bg-border">
-          <div
-            className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <ul className="divide-y divide-border">
-          {steps.map((step) => (
-            <li
-              key={step.id}
-              className={cn(
-                "flex items-center justify-between gap-4 px-6 py-4",
-                step.done && "bg-success/5",
+      </div>
+      <div className="h-1.5 bg-[#e5eeff]">
+        <motion.div
+          className="h-full bg-accent"
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        />
+      </div>
+      <ul className="divide-y divide-[#dce9ff]/80">
+        {steps.map((step) => (
+          <li
+            key={step.id}
+            className={cn(
+              "flex items-center justify-between gap-4 px-5 py-4",
+              step.done && "bg-[#ecfdf5]/40",
+            )}
+          >
+            <div className="flex items-start gap-3">
+              {step.done ? (
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+              ) : (
+                <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
               )}
-            >
-              <div className="flex items-start gap-3">
-                {step.done ? (
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" />
-                ) : (
-                  <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-                )}
-                <div>
-                  <p className="text-sm font-medium">{step.title}</p>
-                  <p className="text-xs text-muted-foreground">{step.description}</p>
-                </div>
+              <div>
+                <p className="text-sm font-semibold">{step.title}</p>
+                <p className="text-xs text-muted-foreground">{step.description}</p>
               </div>
-              {!step.done && step.href && (
-                <Button asChild variant="outline" size="sm" className="shrink-0 gap-1">
-                  <Link href={step.href}>
-                    {step.action}
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
-        {!whatsappConnected && (
-          <div className="border-t border-border px-6 py-3 text-center">
-            <Link href="/onboarding" className="text-xs font-medium text-primary hover:underline">
-              Prefer a guided walkthrough? Open setup wizard →
-            </Link>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </div>
+            {!step.done && step.href && (
+              <Button asChild variant="outline" size="sm" className="shrink-0 gap-1 rounded-xl">
+                <Link href={step.href}>
+                  {step.action}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </motion.div>
   );
 }

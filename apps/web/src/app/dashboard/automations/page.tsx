@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -20,30 +21,35 @@ const automations: Array<{
   icon: typeof MessageCircle;
   title: string;
   description: string;
+  impact: string;
 }> = [
   {
     id: "welcome",
     icon: MessageCircle,
     title: "Welcome message",
-    description: "Send an automatic greeting when a new customer messages you for the first time.",
+    description: "Greet first-time customers automatically when they message your number.",
+    impact: "Faster first impression",
   },
   {
     id: "followup",
     icon: Clock,
     title: "Follow-up reminder",
-    description: "Remind your team when a lead hasn't been replied to in 24 hours.",
+    description: "Alert your team when a lead hasn't been replied to in 24 hours.",
+    impact: "Fewer dropped leads",
   },
   {
     id: "stage",
     icon: Zap,
     title: "Auto stage update",
     description: "Move leads to Qualified when AI detects strong buying intent.",
+    impact: "Cleaner pipeline",
   },
   {
     id: "notify",
     icon: Bell,
     title: "Hot lead alert",
     description: "Notify the team when a lead score exceeds 80.",
+    impact: "Close faster",
   },
 ];
 
@@ -60,9 +66,7 @@ export default function AutomationsPage() {
   function toggle(id: AutomationId, enabled: boolean) {
     setToggles((prev) => {
       const next = { ...prev, [id]: enabled };
-      if (organizationId) {
-        saveAutomationPreferences(organizationId, next);
-      }
+      if (organizationId) saveAutomationPreferences(organizationId, next);
       return next;
     });
   }
@@ -74,55 +78,79 @@ export default function AutomationsPage() {
       <PageHeader
         eyebrow="Workflows"
         title="Automations"
-        description="Configure workflows — your preferences are saved and will activate when server execution ships."
+        description="Configure what Growvisi should do proactively — preferences save now, server execution ships next."
+        badge={
+          <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
+            Preview
+          </span>
+        }
         action={
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/dashboard/ai">Intelligence settings</Link>
+          <Button variant="outline" size="sm" className="rounded-xl" asChild>
+            <Link href="/dashboard/ai">Intelligence</Link>
           </Button>
         }
       />
 
-      <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-amber-50/50 px-4 py-3.5 text-sm text-amber-950 shadow-sm">
-        <FlaskConical className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-        <div>
-          <p className="font-medium">Preview mode</p>
-          <p className="mt-0.5 text-xs text-amber-900/90">
-            Toggles save your intent ({queuedCount} queued) but workflows do not run on the server
-            yet. Connect WhatsApp in Settings so you&apos;re ready when automation goes live.
-          </p>
+      <DashboardPanel
+        noPadding
+        className="mb-8 border-amber-200/60 bg-gradient-to-r from-amber-50 to-white"
+        delay={0.05}
+      >
+        <div className="flex items-start gap-3 p-5 text-sm">
+          <FlaskConical className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+          <div>
+            <p className="font-semibold text-amber-950">Preview mode — {queuedCount} workflow{queuedCount !== 1 ? "s" : ""} queued</p>
+            <p className="mt-1 text-[13px] text-amber-900/85">
+              Toggles save your intent locally. Connect WhatsApp in Settings so you&apos;re ready when server workflows launch.
+            </p>
+          </div>
         </div>
-      </div>
+      </DashboardPanel>
 
       {!hydrated ? (
         <div className="space-y-4">
           {automations.map((a) => (
-            <div key={a.id} className="h-24 animate-pulse rounded-xl bg-muted" />
+            <div key={a.id} className="h-28 animate-pulse rounded-2xl bg-muted" />
           ))}
         </div>
       ) : (
         <div className="space-y-4">
-          {automations.map((auto) => (
-            <Card key={auto.id} className="border-border/80 shadow-sm transition-shadow hover:shadow-md">
-              <CardHeader className="flex flex-row items-start gap-4 space-y-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
-                  <auto.icon className="h-5 w-5" />
+          {automations.map((auto, i) => (
+            <motion.div
+              key={auto.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06 }}
+            >
+              <DashboardPanel noPadding className={toggles[auto.id] ? "border-accent/25 ring-1 ring-accent/10" : ""}>
+                <div className="flex flex-row items-start gap-4 p-5">
+                  <div
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                      toggles[auto.id] ? "bg-accent text-white" : "bg-[#ecfdf5] text-accent"
+                    }`}
+                  >
+                    <auto.icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-bold">{auto.title}</h3>
+                      <span className="rounded-full bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                        {auto.impact}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-sm text-muted-foreground">{auto.description}</p>
+                    <p className="mt-2 text-xs font-medium text-accent">
+                      {toggles[auto.id] ? "Queued — activates when server workflows ship" : "Off"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={toggles[auto.id]}
+                    onCheckedChange={(v) => toggle(auto.id, v)}
+                    aria-label={`${auto.title} automation`}
+                  />
                 </div>
-                <div className="flex-1">
-                  <CardTitle className="text-base">{auto.title}</CardTitle>
-                  <CardDescription className="mt-1">{auto.description}</CardDescription>
-                </div>
-                <Switch
-                  checked={toggles[auto.id]}
-                  onCheckedChange={(v) => toggle(auto.id, v)}
-                  aria-label={`${auto.title} automation`}
-                />
-              </CardHeader>
-              <CardContent className="pl-[4.5rem]">
-                <p className="text-xs text-muted-foreground">
-                  {toggles[auto.id] ? "Queued — runs when server workflows launch" : "Off"}
-                </p>
-              </CardContent>
-            </Card>
+              </DashboardPanel>
+            </motion.div>
           ))}
         </div>
       )}

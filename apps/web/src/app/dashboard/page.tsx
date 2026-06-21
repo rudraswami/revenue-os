@@ -4,29 +4,23 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { ArrowRight, Inbox, Kanban, LineChart, Sparkles, TrendingUp, Users } from "lucide-react";
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
+import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { CHART_ACCENT, chartTooltipStyle } from "@/lib/chart-theme";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
-import {
-  Bar,
-  BarChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const quickActions = [
-  { href: "/dashboard/inbox", label: "Conversations", icon: Inbox, desc: "Analyze customer threads" },
-  { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban, desc: "Track deal stages" },
-  { href: "/dashboard/analytics", label: "Analytics", icon: TrendingUp, desc: "Funnel performance" },
-  { href: "/dashboard/ai", label: "Intelligence", icon: LineChart, desc: "Classification & scoring" },
+  { href: "/dashboard/inbox", label: "Conversations", icon: Inbox, desc: "Reply & analyze threads", color: "bg-[#ecfdf5] text-accent" },
+  { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban, desc: "Move deals forward", color: "bg-[#e5eeff] text-primary" },
+  { href: "/dashboard/analytics", label: "Analytics", icon: TrendingUp, desc: "Funnel performance", color: "bg-[#f0fdf4] text-accent" },
+  { href: "/dashboard/insights", label: "Insights", icon: LineChart, desc: "What to do next", color: "bg-amber-50 text-amber-700" },
 ];
 
 export default function DashboardPage() {
@@ -68,6 +62,7 @@ export default function DashboardPage() {
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
   const hasLeads = (funnel?.total ?? 0) > 0;
   const hasConversations = (convStats?.totalConversations ?? 0) > 0;
+  const unread = convStats?.unreadMessages ?? 0;
 
   const chartData =
     funnel?.byStage.map((s) => ({
@@ -79,19 +74,22 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-page">
-      <div className="mb-8 overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-white via-white to-primary-soft/40 p-6 shadow-sm md:p-8">
+      <div className="dashboard-hero">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Overview</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
-              {timeGreeting(user?.name)}
-            </h1>
+            <p className="text-xs font-semibold uppercase tracking-wider text-accent">Overview</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">{timeGreeting(user?.name)}</h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              The AI Revenue Engine for your WhatsApp sales team — turn conversations into scored
-              pipeline and revenue.
+              Your WhatsApp revenue command center — conversations, scores, and pipeline in one place.
             </p>
+            {unread > 0 && (
+              <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                {unread} unread — customers waiting
+              </p>
+            )}
           </div>
-          <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5 bg-white/80">
+          <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5 rounded-xl border-[#dce9ff] bg-white">
             <Link href="/dashboard/inbox">
               Open conversations
               <ArrowRight className="h-3.5 w-3.5" />
@@ -114,12 +112,8 @@ export default function DashboardPage() {
 
       <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {quickActions.map((action) => (
-          <Link
-            key={action.href}
-            href={action.href}
-            className="card-interactive group flex items-center gap-4 p-4"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary transition-all duration-200 group-hover:scale-105 group-hover:bg-primary group-hover:text-white group-hover:shadow-md">
+          <Link key={action.href} href={action.href} className="dashboard-quick-link group">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform group-hover:scale-105 ${action.color}`}>
               <action.icon className="h-5 w-5" />
             </div>
             <div className="min-w-0">
@@ -133,82 +127,78 @@ export default function DashboardPage() {
       {isLoading ? (
         <MetricCardsSkeleton />
       ) : (
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          title="Conversations tracked"
-          value={hasConversations ? convStats!.totalConversations : 0}
-          delta={`${convStats?.inboundMessages ?? 0} customer messages ingested`}
-          trend="neutral"
-          icon={<Inbox className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="AI classifications"
-          value={convStats?.aiClassifications ?? 0}
-          delta={`${convStats?.classifiedLeads ?? 0} leads scored`}
-          trend="neutral"
-          icon={<Sparkles className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="Total leads"
-          value={funnel?.total ?? 0}
-          trend="neutral"
-          icon={<Users className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="Human handoffs"
-          value={convStats?.humanHandoffRecommended ?? 0}
-          delta={hasWhatsapp ? "Needs your team" : "Connect WhatsApp"}
-          trend="neutral"
-          icon={<TrendingUp className="h-4 w-4" />}
-        />
-      </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            title="Conversations"
+            value={hasConversations ? convStats!.totalConversations : 0}
+            delta={`${convStats?.inboundMessages ?? 0} customer messages`}
+            icon={<Inbox className="h-4 w-4" />}
+            delay={0}
+          />
+          <MetricCard
+            title="AI classifications"
+            value={convStats?.aiClassifications ?? 0}
+            delta={`${convStats?.classifiedLeads ?? 0} leads scored`}
+            icon={<Sparkles className="h-4 w-4" />}
+            delay={0.05}
+            highlight
+          />
+          <MetricCard
+            title="Pipeline leads"
+            value={funnel?.total ?? 0}
+            delta={funnel?.won ? `${funnel.won} won` : "Across all stages"}
+            trend={funnel?.won ? "up" : "neutral"}
+            icon={<Users className="h-4 w-4" />}
+            delay={0.1}
+          />
+          <MetricCard
+            title="Needs your team"
+            value={convStats?.humanHandoffRecommended ?? 0}
+            delta={hasWhatsapp ? "Human handoff flagged" : "Connect WhatsApp first"}
+            icon={<TrendingUp className="h-4 w-4" />}
+            delay={0.15}
+          />
+        </div>
       )}
 
       <div className="mt-8">
-        <Card className="border-border/80 shadow-sm">
-          <CardHeader className="border-b border-border/60 bg-muted/20">
-            <CardTitle className="text-base">Leads by stage</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            {isLoading ? (
-              <ChartSkeleton />
-            ) : hasLeads && chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <XAxis dataKey="stage" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#9ca3af" fontSize={12} allowDecimals={false} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#ffffff",
-                      border: "1px solid #e8eaed",
-                      borderRadius: 12,
-                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.07)",
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#6043d0" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-                {hasWhatsapp ? (
-                  <>
-                    <p>Leads appear when customer messages are classified</p>
-                    <Link href="/dashboard/inbox" className="font-medium text-primary hover:underline">
-                      View conversations
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <p>Connect WhatsApp to start tracking conversations</p>
-                    <Link href="/onboarding" className="font-medium text-primary hover:underline">
-                      Connect WhatsApp
-                    </Link>
-                  </>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <DashboardPanel
+          title="Leads by stage"
+          description="Pipeline distribution from classified WhatsApp conversations"
+          contentClassName="h-72"
+          delay={0.2}
+        >
+          {isLoading ? (
+            <ChartSkeleton />
+          ) : hasLeads && chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <XAxis dataKey="stage" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#9ca3af" fontSize={12} allowDecimals={false} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={chartTooltipStyle} />
+                <Bar dataKey="count" fill={CHART_ACCENT} radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+              {hasWhatsapp ? (
+                <>
+                  <p>Leads appear when customer messages are classified</p>
+                  <Link href="/dashboard/inbox" className="font-medium text-accent hover:underline">
+                    View conversations →
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p>Connect WhatsApp to start tracking revenue</p>
+                  <Link href="/onboarding" className="font-medium text-accent hover:underline">
+                    Connect WhatsApp →
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+        </DashboardPanel>
       </div>
     </div>
   );

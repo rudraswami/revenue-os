@@ -97,15 +97,30 @@ h1, h2, h3, h4, h5, h6 {
   @apply mx-auto max-w-7xl p-6 md:p-8;
 }
 
+.dashboard-hero {
+  @apply mb-8 overflow-hidden rounded-2xl border border-[#dce9ff] bg-gradient-to-br from-white via-white to-[#ecfdf5]/40 p-6 shadow-[0_4px_20px_rgb(11_28_48/0.05)] md:p-8;
+}
+
+.dashboard-quick-link {
+  @apply flex items-center gap-4 rounded-2xl border border-[#dce9ff] bg-white p-4 shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all duration-200;
+}
+.dashboard-quick-link:hover {
+  @apply -translate-y-0.5 border-accent/25 shadow-[0_8px_24px_rgb(11_28_48/0.08)];
+}
+
 .card-interactive {
-  @apply rounded-xl border border-border bg-card shadow-sm transition-all duration-200;
+  @apply rounded-2xl border border-[#dce9ff] bg-card shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all duration-200;
 }
 .card-interactive:hover {
-  @apply border-accent/20 shadow-md;
+  @apply border-accent/25 shadow-[0_8px_24px_rgb(11_28_48/0.08)] -translate-y-0.5;
 }
 
 .nav-item-active {
-  @apply relative bg-primary-soft text-primary;
+  @apply relative bg-[#ecfdf5] text-accent font-semibold;
+}
+.nav-item-active::before {
+  content: "";
+  @apply absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent;
 }
 
 .conversation-thread-bg {
