@@ -183,7 +183,7 @@ export class WhatsappAccountsService {
       where: { organizationId: user.organizationId, phoneNumberId },
     });
     if (duplicate) {
-      throw new ConflictException("This WhatsApp number is already connected.");
+      return this.refreshAccessToken(user, duplicate.id, accessToken);
     }
 
     const details = await this.fetchPhoneDetails(phoneNumberId, accessToken);
@@ -257,6 +257,11 @@ export class WhatsappAccountsService {
     if (dto.accessToken) {
       await this.fetchPhoneDetails(existing.phoneNumberId, dto.accessToken);
       data.accessTokenEnc = encryptSecret(dto.accessToken.trim());
+      data.metadata = {
+        ...((existing.metadata ?? {}) as Record<string, unknown>),
+        tokenReminderSentAt: null,
+        tokenUpdatedAt: new Date().toISOString(),
+      };
     }
 
     const updated = await this.prisma.whatsappAccount.update({
@@ -491,6 +496,18 @@ export class WhatsappAccountsService {
       }
     }
 
+    const existing = await this.prisma.whatsappAccount.findFirst({
+      where: { organizationId: user.organizationId, phoneNumberId },
+    });
+    if (existing) {
+      const refreshed = await this.refreshAccessToken(user, existing.id, accessToken);
+      return {
+        account: refreshed.account,
+        discovered: phones,
+        autoSelected: !dto.phoneNumberId?.trim() && phones.length === 1,
+      };
+    }
+
     const account = await this.connect(user, {
       accessToken,
       phoneNumberId,
@@ -518,6 +535,7 @@ export class WhatsappAccountsService {
         metadata: {
           ...((account.metadata ?? {}) as Record<string, unknown>),
           tokenReminderSentAt: null,
+          tokenUpdatedAt: new Date().toISOString(),
         },
       },
     });
@@ -549,7 +567,7 @@ export class WhatsappAccountsService {
       const health = await this.debugInputToken(token);
       return {
         ...health,
-        needsAttention: health.level !== "ok",
+        needsAttention: !health.valid || health.needsRefresh,
         hint:
           health.level === "urgent"
             ? "Generate a new token in Meta API Setup and paste it in Settings under Refresh access token."
@@ -602,22 +620,25 @@ export class WhatsappAccountsService {
     }
 
     const expiresAtUnix = body.data.expires_at ?? 0;
+    // expires_at 0 = non-expiring (system user / long-lived tokens)
     const expiresAt =
       expiresAtUnix > 0 ? new Date(expiresAtUnix * 1000) : null;
     const hoursRemaining = expiresAt
       ? Math.max(0, (expiresAt.getTime() - Date.now()) / 3_600_000)
       : null;
 
+    const valid = !!body.data.is_valid;
+    const needsRefresh =
+      !valid || (hoursRemaining !== null && hoursRemaining < 4);
+
     return {
-      valid: !!body.data.is_valid,
+      valid,
       expiresAt: expiresAt?.toISOString() ?? null,
       hoursRemaining:
         hoursRemaining !== null ? Math.round(hoursRemaining * 10) / 10 : null,
       metaFacebookUserId: body.data.user_id ? String(body.data.user_id) : null,
-      level: this.tokenHealthLevel(!!body.data.is_valid, hoursRemaining),
-      needsRefresh:
-        !body.data.is_valid ||
-        (hoursRemaining !== null && hoursRemaining < 4),
+      level: this.tokenHealthLevel(valid, hoursRemaining),
+      needsRefresh,
     };
   }
 
@@ -626,8 +647,9 @@ export class WhatsappAccountsService {
     hoursRemaining: number | null,
   ): "ok" | "soon" | "urgent" {
     if (!valid) return "urgent";
-    if (hoursRemaining !== null && hoursRemaining < 4) return "urgent";
-    if (hoursRemaining !== null && hoursRemaining < 20) return "soon";
+    if (hoursRemaining === null) return "ok";
+    if (hoursRemaining < 4) return "urgent";
+    if (hoursRemaining < 12) return "soon";
     return "ok";
   }
 

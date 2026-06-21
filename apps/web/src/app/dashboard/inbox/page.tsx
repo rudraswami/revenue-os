@@ -249,51 +249,49 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background max-lg:min-h-[calc(100dvh-57px)]">
+    <div className="flex min-h-[calc(100dvh-4rem)] min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/80 bg-white shadow-[0_2px_16px_rgb(11_28_48/0.05)] max-lg:min-h-[calc(100dvh-57px)] max-lg:rounded-none max-lg:border-0">
       <div
         className={cn(
-          "flex w-full shrink-0 flex-col border-r border-border/80 bg-white lg:w-[320px]",
+          "flex h-full min-h-0 w-full shrink-0 flex-col border-r border-border/80 bg-[#fafbff] lg:w-[300px] xl:w-[320px]",
           selectedId ? "hidden lg:flex" : "flex",
         )}
       >
-        <div className="border-b border-border bg-gradient-to-r from-white to-background px-4 py-4">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="shrink-0 border-b border-border/80 bg-white px-4 py-3.5">
+          <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
                 {EYEBROW.messaging}
               </p>
-              <h1 className="text-lg font-bold tracking-tight">{NAV.conversations}</h1>
+              <h1 className="text-base font-bold tracking-tight">{NAV.conversations}</h1>
             </div>
-            {hasWhatsapp && (
-              <span className="status-pill bg-bento-mint text-accent">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                WhatsApp linked
-              </span>
-            )}
-            {live && (
-              <span className="status-pill bg-bento-mint text-accent">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-                Live
-              </span>
-            )}
+            <div className="flex flex-wrap justify-end gap-1">
+              {hasWhatsapp && (
+                <span className="rounded-full bg-bento-mint px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent">
+                  Live
+                </span>
+              )}
+              {live && (
+                <span className="flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[9px] font-bold text-accent">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+                  Sync
+                </span>
+              )}
+            </div>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Ingest and analyze customer WhatsApp threads
-          </p>
           {conversations.length > 0 && (
             <div className="relative mt-3">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search conversations…"
-                className="h-9 bg-muted/40 pl-9 text-sm"
+                placeholder="Search…"
+                className="h-8 rounded-lg border-border/80 bg-[#f8f9ff] pl-9 text-xs"
               />
             </div>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+        <div className="min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar">
           {listLoading && <InboxListSkeleton />}
 
           {listError && !listLoading && (
@@ -333,11 +331,11 @@ export default function InboxPage() {
                 type="button"
                 onClick={() => selectConversation(c.id)}
                 className={cn(
-                  "flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-all duration-150",
+                  "flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
                   selectedId === c.id
-                    ? "bg-[#ecfdf5] shadow-sm ring-1 ring-accent/20"
-                    : "hover:bg-[#f8f9ff]",
-                  c.unreadCount > 0 && selectedId !== c.id && "bg-white ring-1 ring-[#dce9ff]",
+                    ? "bg-white shadow-sm ring-1 ring-accent/25"
+                    : "hover:bg-white/80",
+                  c.unreadCount > 0 && selectedId !== c.id && "bg-white ring-1 ring-border/80",
                 )}
               >
                 <AvatarInitials name={displayName} size="sm" />
@@ -443,13 +441,14 @@ export default function InboxPage() {
                   <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                     AI
                   </span>
-                  <Switch
-                    checked={thread.aiEnabled}
-                    disabled={aiToggleMutation.isPending}
-                    onCheckedChange={(v) => aiToggleMutation.mutate(v)}
-                    aria-label="Toggle AI classification"
-                    className="scale-90"
-                  />
+                  <span className="scale-90">
+                    <Switch
+                      checked={thread.aiEnabled}
+                      disabled={aiToggleMutation.isPending}
+                      onCheckedChange={(v) => aiToggleMutation.mutate(v)}
+                      aria-label="Toggle AI classification"
+                    />
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
                   <label htmlFor="assign-agent" className="text-[10px] font-medium text-muted-foreground">
@@ -479,16 +478,16 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <div className="conversation-thread-bg flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 custom-scrollbar lg:px-5">
-              <div className="mx-auto mt-auto flex w-full max-w-2xl flex-col gap-2">
+            <div className="conversation-thread-bg flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 custom-scrollbar lg:px-6">
+              <div className="mx-auto mt-auto flex w-full max-w-xl flex-col gap-2.5">
                 {thread.messages.map((m) => (
                   <div
                     key={m.id}
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                      "max-w-[88%] rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed shadow-sm",
                       m.direction === "OUTBOUND"
-                        ? "ml-auto rounded-br-md bg-[#dcf8c6] text-foreground"
-                        : "mr-auto rounded-bl-md bg-white text-foreground",
+                        ? "ml-auto rounded-br-md border border-emerald-200/60 bg-[#d9fdd3] text-foreground"
+                        : "mr-auto rounded-bl-md border border-white/80 bg-white text-foreground",
                     )}
                   >
                     <InboxMessageBody
@@ -515,7 +514,7 @@ export default function InboxPage() {
             </div>
 
             <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 lg:px-5">
-              <div className="mx-auto max-w-2xl">
+              <div className="mx-auto max-w-xl">
                 {showComposer ? (
                 <form onSubmit={handleSend} className="space-y-2">
                   {sendError && (
@@ -546,18 +545,15 @@ export default function InboxPage() {
                       ))}
                     </div>
                   )}
-                  <div className="flex items-end gap-2 rounded-2xl border border-border/80 bg-[#f8f9ff]/80 p-2 shadow-sm">
-                    <div className="min-w-0 flex-1">
+                  <div className="flex items-end gap-2 rounded-xl border border-border/80 bg-[#f8f9ff] p-1.5 shadow-sm">
+                    <div className="min-w-0 flex-1 py-1">
                       <Input
-                        placeholder="Human takeover reply (optional)…"
+                        placeholder="Human takeover reply…"
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         disabled={sendMutation.isPending || !thread.whatsappAccount.isActive}
-                        className="border-0 bg-transparent shadow-none focus-visible:ring-0"
+                        className="border-0 bg-transparent text-sm shadow-none focus-visible:ring-0"
                       />
-                      <p className="px-3 pb-1 text-[10px] text-muted-foreground">
-                        Meta Business Agent handles auto-replies in WhatsApp · 24h window
-                      </p>
                     </div>
                     <div className="flex shrink-0 flex-col gap-1">
                       {capabilities?.aiSuggestReply && (
@@ -593,6 +589,9 @@ export default function InboxPage() {
                       </Button>
                     </div>
                   </div>
+                  <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
+                    Meta Business Agent replies in WhatsApp · use this for human takeover only
+                  </p>
                   <button
                     type="button"
                     className="text-[10px] text-muted-foreground hover:text-foreground"

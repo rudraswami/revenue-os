@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowRight, Clock } from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { cn } from "@/lib/utils";
 
+/**
+ * Global banner — only when token is invalid or expires in &lt; 4 hours.
+ * "Soon" warnings live in Settings → WhatsApp only (temp tokens are ~24h).
+ */
 export function WhatsappTokenExpiryBanner() {
   const token = useAuthStore((s) => s.accessToken);
 
@@ -17,7 +20,7 @@ export function WhatsappTokenExpiryBanner() {
       token: token ?? undefined,
     }),
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
 
   const connected = accounts?.some((a) => a.isActive) ?? false;
@@ -27,72 +30,47 @@ export function WhatsappTokenExpiryBanner() {
     queryFn: () =>
       apiFetch<{
         tokenHealth?: {
-          level?: "ok" | "soon" | "urgent";
+          valid?: boolean;
           needsRefresh: boolean;
-          needsAttention?: boolean;
           hoursRemaining: number | null;
           hint?: string;
         };
       }>("/whatsapp-accounts/connection-health", { token: token ?? undefined }),
     enabled: !!token && connected,
-    staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    staleTime: 30_000,
+    refetchInterval: 2 * 60_000,
   });
 
-  const level = health?.tokenHealth?.level;
-  const show =
-    connected &&
-    (health?.tokenHealth?.needsAttention || health?.tokenHealth?.needsRefresh);
+  const th = health?.tokenHealth;
+  const show = connected && th && (!th.valid || th.needsRefresh);
 
-  if (!show || !health?.tokenHealth) return null;
+  if (!show) return null;
 
-  const urgent = level === "urgent" || health.tokenHealth.needsRefresh;
-  const hours = health.tokenHealth.hoursRemaining;
-
-  const detail = urgent
-    ? hours != null && hours < 1
-      ? "Token expires in less than an hour — message ingestion will stop."
-      : hours != null
-        ? `Token expires in ~${Math.ceil(hours)} hours. Paste a new one in Settings.`
-        : (health.tokenHealth.hint ?? "Your Meta access token needs to be refreshed.")
-    : `Token expires in ~${hours != null ? Math.ceil(hours) : 20} hours. Refresh soon to avoid gaps.`;
+  const hours = th.hoursRemaining;
+  const detail =
+    !th.valid
+      ? (th.hint ?? "Your Meta access token is invalid. Paste a new one in Settings.")
+      : hours != null && hours < 1
+        ? "Token expires in less than an hour — message ingestion will stop."
+        : hours != null
+          ? `Token expires in ~${Math.ceil(hours)} hours. Paste a new token from Meta API Setup.`
+          : (th.hint ?? "Refresh your Meta access token in Settings.");
 
   return (
-    <div
-      className={cn(
-        "border-b px-4 py-3 md:px-6",
-        urgent
-          ? "border-amber-200/80 bg-gradient-to-r from-amber-50 via-amber-50/90 to-orange-50/80"
-          : "border-blue-200/60 bg-gradient-to-r from-blue-50/90 to-primary-soft/30",
-      )}
-    >
+    <div className="border-b border-amber-200/80 bg-gradient-to-r from-amber-50 via-amber-50/95 to-orange-50/80 px-4 py-2.5 md:px-6">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <div
-            className={cn(
-              "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-              urgent ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-primary",
-            )}
-          >
-            {urgent ? <AlertTriangle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-          </div>
+        <div className="flex min-w-0 items-start gap-2.5">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-800" />
           <div className="min-w-0">
-            <p className={cn("text-sm font-semibold", urgent ? "text-amber-950" : "text-foreground")}>
-              {urgent ? "Refresh your WhatsApp access token" : "WhatsApp token expiring soon"}
-            </p>
-            <p className={cn("text-xs", urgent ? "text-amber-900/80" : "text-muted-foreground")}>
-              {detail}
-            </p>
+            <p className="text-sm font-semibold text-amber-950">WhatsApp token needs refresh</p>
+            <p className="text-xs text-amber-900/85">{detail}</p>
           </div>
         </div>
         <Button
           asChild
           size="sm"
           variant="outline"
-          className={cn(
-            "h-8 shrink-0 gap-1.5 bg-white/80",
-            urgent ? "border-amber-300" : "border-primary/30",
-          )}
+          className="h-8 shrink-0 gap-1.5 border-amber-300 bg-white/90"
         >
           <Link href="/dashboard/settings#whatsapp">
             Refresh token
