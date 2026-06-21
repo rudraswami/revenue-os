@@ -21,6 +21,10 @@ class ListQueryDto {
   @Min(1)
   @Max(100)
   pageSize?: number = 20;
+
+  @IsOptional()
+  @IsString()
+  q?: string;
 }
 
 class AssignDto {
@@ -57,7 +61,7 @@ export class ConversationsController {
 
   @Get()
   list(@CurrentUser() user: JwtPayload, @Query() query: ListQueryDto) {
-    return this.conversations.list(user, query.page, query.pageSize);
+    return this.conversations.list(user, query.page, query.pageSize, query.q);
   }
 
   @Get(":id/messages/:messageId/media")

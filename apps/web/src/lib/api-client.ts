@@ -117,3 +117,32 @@ export async function apiFetch<T>(
     throw err;
   }
 }
+
+function resolveApiBase(): string {
+  const raw = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000")
+    .replace(/\\r\\n/g, "")
+    .replace(/[\r\n]+/g, "")
+    .trim()
+    .replace(/\/$/, "");
+  return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
+}
+
+/** Download a binary/text file from the API (e.g. CSV export). */
+export async function apiDownload(path: string, filename: string, token?: string): Promise<void> {
+  const authToken = token ?? useAuthStore.getState().accessToken ?? undefined;
+  const headers = new Headers();
+  if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
+
+  const res = await fetch(`${resolveApiBase()}${path}`, { headers });
+  if (!res.ok) {
+    throw new ApiError(await parseError(res), res.status);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

@@ -6,6 +6,7 @@ import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { InboxListSkeleton, InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
@@ -42,6 +43,7 @@ interface ConversationDetail {
   contactName: string | null;
   contactPhone: string;
   unreadCount: number;
+  aiEnabled: boolean;
   lead: { id: string; stage: string; score?: number; aiConfidence?: number | null } | null;
   messages: Message[];
   whatsappAccount: { displayPhoneNumber: string; isActive: boolean };
@@ -75,7 +77,13 @@ export default function InboxPage() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [showComposer, setShowComposer] = useState(true);
   const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
     const c = new URLSearchParams(window.location.search).get("c");
@@ -83,11 +91,14 @@ export default function InboxPage() {
   }, []);
 
   const { data: listData, isLoading: listLoading, isError: listError, refetch: refetchList } = useQuery({
-    queryKey: ["conversations"],
-    queryFn: () =>
-      apiFetch<{ data: ConversationRow[] }>("/conversations?pageSize=50", {
+    queryKey: ["conversations", searchDebounced],
+    queryFn: () => {
+      const params = new URLSearchParams({ pageSize: "50" });
+      if (searchDebounced) params.set("q", searchDebounced);
+      return apiFetch<{ data: ConversationRow[] }>(`/conversations?${params}`, {
         token: token ?? undefined,
-      }),
+      });
+    },
     enabled: !!token,
     refetchInterval: live ? 5_000 : 8_000,
   });
@@ -130,6 +141,17 @@ export default function InboxPage() {
     staleTime: 300_000,
   });
 
+  const { data: replyTemplates } = useQuery({
+    queryKey: ["reply-templates"],
+    queryFn: () =>
+      apiFetch<{ templates: Array<{ id: string; title: string; body: string }> }>(
+        "/organizations/reply-templates",
+        { token: token ?? undefined },
+      ),
+    enabled: !!token,
+    staleTime: 120_000,
+  });
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [thread?.messages.length]);
@@ -146,6 +168,18 @@ export default function InboxPage() {
     },
     onError: (e) => {
       setSendError(e instanceof ApiError ? e.message : "Could not suggest a reply.");
+    },
+  });
+
+  const aiToggleMutation = useMutation({
+    mutationFn: (aiEnabled: boolean) =>
+      apiFetch<ConversationDetail>(`/conversations/${selectedId}/ai`, {
+        method: "PATCH",
+        token: token ?? undefined,
+        body: JSON.stringify({ aiEnabled }),
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["conversation", selectedId], updated);
     },
   });
 
@@ -169,25 +203,17 @@ export default function InboxPage() {
   });
 
   const conversations = listData?.data ?? [];
-  const filteredConversations = conversations.filter((c) => {
-    if (!search.trim()) return true;
-    const q = search.trim().toLowerCase();
-    const name = (c.contactName ?? c.contactPhone).toLowerCase();
-    const preview = (c.messages[0]?.content ?? "").toLowerCase();
-    return name.includes(q) || preview.includes(q);
-  });
 
   function selectConversation(id: string) {
     setSelectedId(id);
     setSendError(null);
-    setShowComposer(false);
+    setShowComposer(true);
     window.history.replaceState(null, "", `/dashboard/inbox?c=${id}`);
   }
 
   function clearSelection() {
     setSelectedId(null);
     setSendError(null);
-    setShowComposer(false);
     window.history.replaceState(null, "", "/dashboard/inbox");
   }
 
@@ -275,7 +301,7 @@ export default function InboxPage() {
           )}
 
           <div className="space-y-1">
-            {filteredConversations.map((c) => {
+            {conversations.map((c) => {
               const displayName = c.contactName ?? c.contactPhone;
               return (
               <button
@@ -388,6 +414,15 @@ export default function InboxPage() {
                 )}
                 </div>
               </div>
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+                <span className="text-[11px] font-medium text-muted-foreground">AI classify</span>
+                <Switch
+                  checked={thread.aiEnabled}
+                  disabled={aiToggleMutation.isPending}
+                  onCheckedChange={(v) => aiToggleMutation.mutate(v)}
+                  aria-label="Toggle AI classification for this conversation"
+                />
+              </div>
             </div>
 
             <div className="conversation-thread-bg flex-1 overflow-y-auto px-4 py-4 custom-scrollbar lg:px-6">
@@ -455,6 +490,20 @@ export default function InboxPage() {
                         )}
                         Draft suggestion
                       </Button>
+                    </div>
+                  )}
+                  {(replyTemplates?.templates?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {replyTemplates!.templates.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          className="rounded-full border border-border/80 bg-white px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:border-accent/40 hover:text-accent"
+                          onClick={() => setDraft(t.body)}
+                        >
+                          {t.title}
+                        </button>
+                      ))}
                     </div>
                   )}
                   <div className="flex gap-2">

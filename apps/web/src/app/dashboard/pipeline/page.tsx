@@ -8,10 +8,13 @@ import { PipelineBoard, type PipelineLead } from "@/components/dashboard/pipelin
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { PipelineSkeleton } from "@/components/ui/skeleton";
-import { apiFetch } from "@/lib/api-client";
+import { Button } from "@/components/ui/button";
+import { apiDownload, apiFetch } from "@/lib/api-client";
 import { CTA } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import type { LeadStage } from "@growvisi/shared";
+import { Download } from "lucide-react";
+import { useState } from "react";
 
 const STAGES: LeadStage[] = [
   "NEW",
@@ -46,6 +49,7 @@ const STAGE_COLORS: Record<LeadStage, string> = {
 export default function PipelinePage() {
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
+  const [exporting, setExporting] = useState(false);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["pipeline"],
@@ -109,12 +113,36 @@ export default function PipelinePage() {
   const wonCount = data?.WON?.length ?? 0;
   const hotCount = STAGES.flatMap((s) => data?.[s] ?? []).filter((l) => l.score >= 80).length;
 
+  async function handleExport() {
+    if (!token || exporting) return;
+    setExporting(true);
+    try {
+      await apiDownload("/leads/export?period=all", "growvisi-leads.csv", token);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="dashboard-page flex h-full min-h-0 flex-col">
       <PageHeader
         eyebrow="Sales"
         title="Pipeline"
         description="Drag leads between stages — synced with WhatsApp conversations and AI scoring."
+        action={
+          totalLeads > 0 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl gap-1.5"
+              disabled={exporting}
+              onClick={() => void handleExport()}
+            >
+              <Download className="h-3.5 w-3.5" />
+              {exporting ? "Exporting…" : "Export CSV"}
+            </Button>
+          ) : undefined
+        }
       />
 
       {!hasWhatsapp && (

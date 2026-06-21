@@ -2,12 +2,14 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Building2, Loader2, LogOut, Mail, MessageCircle, Users } from "lucide-react";
+import { Building2, Loader2, LogOut, Mail, MessageCircle } from "lucide-react";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
+import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
+import { TeamMembersCard } from "@/components/settings/team-members-card";
 import { logout } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
@@ -49,19 +51,17 @@ export default function SettingsPage() {
           <DashboardPanel delay={0.05}>
             <p className="text-base font-bold">{organization?.name ?? "Your workspace"}</p>
             <p className="mt-1 font-mono text-xs text-muted-foreground">{organization?.slug}</p>
-            <div className="mt-4 flex items-start gap-3 rounded-xl border border-dashed border-[#dce9ff] bg-[#f8f9ff] p-4">
-              <Users className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-semibold">Team & billing</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Invite teammates and manage plans — coming soon.{" "}
-                  <Link href="/contact" className="font-medium text-accent hover:underline">
-                    Contact us
-                  </Link>{" "}
-                  for Enterprise.
-                </p>
-              </div>
-            </div>
+            <TeamMembersCard />
+          </DashboardPanel>
+        </DashboardSection>
+
+        <DashboardSection
+          title="Quick replies"
+          description="Templates your team can use in Conversations."
+          icon={Mail}
+        >
+          <DashboardPanel delay={0.08}>
+            <ReplyTemplatesCard />
           </DashboardPanel>
         </DashboardSection>
 

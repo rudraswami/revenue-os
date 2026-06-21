@@ -102,11 +102,29 @@ export class ConversationsService {
     };
   }
 
-  async list(user: JwtPayload, page = 1, pageSize = 20) {
+  async list(user: JwtPayload, page = 1, pageSize = 20, q?: string) {
     const skip = (page - 1) * pageSize;
+    const query = q?.trim();
+    const where = {
+      organizationId: user.organizationId,
+      ...(query
+        ? {
+            OR: [
+              { contactName: { contains: query, mode: "insensitive" as const } },
+              { contactPhone: { contains: query } },
+              {
+                messages: {
+                  some: { content: { contains: query, mode: "insensitive" as const } },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
     const [data, total] = await Promise.all([
       this.prisma.conversation.findMany({
-        where: { organizationId: user.organizationId },
+        where,
         orderBy: { lastMessageAt: "desc" },
         skip,
         take: pageSize,
@@ -120,7 +138,7 @@ export class ConversationsService {
         },
       }),
       this.prisma.conversation.count({
-        where: { organizationId: user.organizationId },
+        where,
       }),
     ]);
 

@@ -265,4 +265,55 @@ export class LeadsService {
 
     return { period: parsedPeriod, items };
   }
+
+  async exportCsv(user: JwtPayload, period?: MetricsPeriod): Promise<string> {
+    const range = createdAtFilter(parseMetricsPeriod(period));
+    const leads = await this.prisma.lead.findMany({
+      where: {
+        organizationId: user.organizationId,
+        ...(range.gte ? { createdAt: range } : {}),
+      },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        displayName: true,
+        phone: true,
+        email: true,
+        stage: true,
+        score: true,
+        aiConfidence: true,
+        source: true,
+        createdAt: true,
+        lastClassifiedAt: true,
+      },
+    });
+
+    const header = [
+      "name",
+      "phone",
+      "email",
+      "stage",
+      "score",
+      "ai_confidence",
+      "source",
+      "created_at",
+      "last_classified_at",
+    ];
+    const rows = leads.map((l) =>
+      [
+        l.displayName ?? "",
+        l.phone,
+        l.email ?? "",
+        l.stage,
+        String(l.score),
+        l.aiConfidence != null ? String(l.aiConfidence) : "",
+        l.source ?? "",
+        l.createdAt.toISOString(),
+        l.lastClassifiedAt?.toISOString() ?? "",
+      ]
+        .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+        .join(","),
+    );
+
+    return [header.join(","), ...rows].join("\n");
+  }
 }
