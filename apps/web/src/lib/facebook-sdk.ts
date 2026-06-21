@@ -18,6 +18,7 @@ declare global {
           config_id: string;
           response_type: string;
           override_default_response_type: boolean;
+          auth_type?: string;
           extras?: Record<string, unknown>;
         },
       ) => void;
@@ -47,8 +48,12 @@ export interface EmbeddedSignupDiagnostics {
 }
 
 function normalizeGraphVersion(version: string): string {
-  const trimmed = version.trim();
+  const trimmed = version.trim().replace(/\\r\\n$|\\n$|\\r$/, "");
   return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
+}
+
+function cleanMetaId(value: string): string {
+  return value.trim().replace(/\\r\\n$|\\n$|\\r$/, "");
 }
 
 function loadFacebookSdkScript(): Promise<void> {
@@ -88,7 +93,7 @@ function loadFacebookSdkScript(): Promise<void> {
 
 /** Chatwoot pattern: init after script load; re-init if appId changes. */
 export async function initializeFacebook(appId: string, graphApiVersion: string): Promise<void> {
-  const id = appId?.trim();
+  const id = cleanMetaId(appId ?? "");
   if (!id) {
     throw new Error("Missing Meta App ID — set META_APP_ID on the API.");
   }
@@ -218,7 +223,8 @@ export function runEmbeddedSignup(
   graphApiVersion: string,
   options?: { featureType?: string; solutionId?: string },
 ): Promise<EmbeddedSignupCredentials | null> {
-  const cfg = configId?.trim();
+  const cfg = cleanMetaId(configId ?? "");
+  const app = cleanMetaId(appId ?? "");
   if (!cfg) {
     return Promise.reject(
       new Error("Missing META_EMBEDDED_SIGNUP_CONFIG_ID on the API."),
@@ -336,7 +342,7 @@ export function runEmbeddedSignup(
 
     void (async () => {
       try {
-        await initializeFacebook(appId, graphApiVersion);
+        await initializeFacebook(app, graphApiVersion);
 
         if (!window.FB) {
           throw new Error("Facebook SDK not ready after init");
@@ -374,6 +380,7 @@ export function runEmbeddedSignup(
             config_id: cfg,
             response_type: "code",
             override_default_response_type: true,
+            auth_type: "rerequest",
             extras: buildExtras(options?.featureType, options?.solutionId),
           },
         );

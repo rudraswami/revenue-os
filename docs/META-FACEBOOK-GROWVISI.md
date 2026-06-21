@@ -5,9 +5,11 @@ Use this when **Continue with Facebook** shows **Feature Unavailable**, **JSSDK 
 **App ID:** `1694805491426991`  
 **Config ID (env):** `1331710591627115` → `META_EMBEDDED_SIGNUP_CONFIG_ID`
 
-## Important: use www
+## Vercel env corruption (Windows — fixed)
 
-Open Growvisi at **https://www.growvisi.in** (Vercel redirects apex → www).
+If Embedded Signup fails after config looks correct, check Vercel env values were not saved with a literal `\r\n` suffix (Windows `vercel env add` quirk). Symptom: Graph API returns **Invalid OAuth access token signature** and `FB.login` gets app id `1694805491426991\r\n`.
+
+**Fix:** Run `scripts/fix-vercel-meta-env-clean.ps1` from repo root, redeploy API + Web. Growvisi also sanitizes env in `sanitizeEnvValue()` and in `facebook-sdk.ts`.
 
 ---
 

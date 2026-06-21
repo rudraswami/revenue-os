@@ -1,7 +1,12 @@
-/** Strip CRLF and whitespace accidentally added via Windows shells / Vercel CLI. */
+/** Strip CRLF, literal `\\r\\n` suffixes, and whitespace from env values (Windows Vercel CLI quirk). */
 export function sanitizeEnvValue(value: string | undefined): string | undefined {
-  const trimmed = value?.trim();
-  return trimmed || undefined;
+  if (value == null) return undefined;
+  let v = String(value).replace(/\r/g, "").trim();
+  // Vercel CLI on Windows has stored literal backslash-r-backslash-n inside values.
+  while (/\\r\\n$|\\n$|\\r$/.test(v)) {
+    v = v.replace(/\\r\\n$|\\n$|\\r$/, "").trim();
+  }
+  return v || undefined;
 }
 
 /** Custom domain + Vercel preview aliases (legacy revenue-os-web project names included). */
