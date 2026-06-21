@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Send, Sparkles, Clock, ArrowLeft, Inbox } from "lucide-react";
+import { Loader2, Send, Sparkles, ArrowLeft, Inbox } from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { formatStage } from "@/lib/stage-labels";
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
+import { InboxTimeline } from "@/components/dashboard/inbox-timeline";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
@@ -78,6 +79,7 @@ export default function InboxPage() {
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [showComposer, setShowComposer] = useState(true);
+  const [showTimeline, setShowTimeline] = useState(true);
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -247,7 +249,7 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] min-h-0 w-full flex-row overflow-hidden rounded-xl border border-border/80 bg-white shadow-[0_2px_16px_rgb(11_28_48/0.05)] max-lg:h-[calc(100dvh-57px)] max-lg:rounded-none max-lg:border-0">
+    <div className="flex min-h-0 flex-1 flex-row overflow-hidden rounded-xl border border-border/80 bg-white shadow-[0_2px_16px_rgb(11_28_48/0.05)] max-lg:rounded-none max-lg:border-0 lg:mx-4 lg:mb-4 lg:mt-2">
       {/* Conversation list — always visible on md+; mobile shows list OR thread */}
       <div className={cn("h-full shrink-0", selectedId ? "max-md:hidden" : "flex", "md:flex")}>
         <InboxConversationList
@@ -524,48 +526,13 @@ export default function InboxPage() {
             </div>
 
             {thread.lead && (
-              <aside className="hidden w-64 shrink-0 flex-col border-l border-border/80 bg-white lg:flex xl:w-72">
-                <div className="border-b border-border/80 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-accent" />
-                    <h2 className="text-sm font-bold">Timeline</h2>
-                  </div>
-                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                    AI classification & pipeline changes
-                  </p>
-                  {timeline?.lead.aiConfidence != null && (
-                    <div className="mt-3 rounded-xl bg-[#ecfdf5] px-3 py-2 text-[11px] font-semibold text-accent">
-                      AI confidence · {Math.round(timeline.lead.aiConfidence * 100)}%
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                  {!timeline?.events.length && (
-                    <p className="rounded-xl border border-dashed border-[#dce9ff] bg-white px-3 py-4 text-center text-xs text-muted-foreground">
-                      Timeline fills in after the next message is classified.
-                    </p>
-                  )}
-                  <ul className="space-y-4">
-                    {timeline?.events.map((ev) => (
-                      <li key={ev.id} className="relative border-l-2 border-accent/30 pl-4">
-                        <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-accent" />
-                        <p className="text-xs font-semibold">{ev.title}</p>
-                        {ev.detail && (
-                          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{ev.detail}</p>
-                        )}
-                        <p className="mt-1.5 text-[10px] text-muted-foreground">
-                          {new Date(ev.at).toLocaleString([], {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </aside>
+              <InboxTimeline
+                className="hidden lg:flex"
+                events={timeline?.events ?? []}
+                aiConfidence={timeline?.lead.aiConfidence}
+                open={showTimeline}
+                onToggle={() => setShowTimeline((v) => !v)}
+              />
             )}
           </div>
         ) : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { WhatsappSetupBanner } from "@/components/dashboard/whatsapp-setup-banner";
@@ -11,6 +12,8 @@ import { cn } from "@/lib/utils";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const isInbox = pathname === "/dashboard/inbox" || pathname.startsWith("/dashboard/inbox/");
 
   return (
     <div className="flex app-shell">
@@ -56,7 +59,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <div className="w-9" />
         </header>
 
-        <main className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain")}>
+        <main
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            isInbox ? "overflow-hidden" : "overflow-y-auto overscroll-y-contain",
+          )}
+        >
           <TrialExpiredBanner />
           <WhatsappSetupBanner />
           <WhatsappTokenExpiryBanner />
