@@ -1,10 +1,11 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, ClipboardPaste, ExternalLink, Loader2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ChevronUp, ClipboardPaste, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WhatsappMetaSetupGuide } from "@/components/settings/whatsapp-meta-setup-guide";
 import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
@@ -38,6 +39,18 @@ export function WhatsappManualConnect({
   const [error, setError] = useState<string | null>(null);
   const lastAutoDiscover = useRef("");
 
+  const { data: readiness } = useQuery({
+    queryKey: ["whatsapp-onboarding-readiness"],
+    queryFn: () =>
+      apiFetch<{ metaApiSetupUrl: string }>("/whatsapp-accounts/onboarding-readiness", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token && open,
+    staleTime: 60_000,
+  });
+
+  const metaApiSetupUrl = readiness?.metaApiSetupUrl ?? "https://developers.facebook.com/apps/";
+
   useEffect(() => {
     if (defaultOpen || isPrimary) setOpen(true);
   }, [defaultOpen, isPrimary]);
@@ -59,7 +72,7 @@ export function WhatsappManualConnect({
     },
     onError: (e) => {
       setDiscovered([]);
-      setError(e instanceof ApiError ? e.message : "Could not find numbers for this token.");
+      setError(e instanceof ApiError ? e.message : "Could not find a number on this token.");
     },
   });
 
@@ -90,9 +103,9 @@ export function WhatsappManualConnect({
   });
 
   const busy = discoverMutation.isPending || connectMutation.isPending;
+  const needsPhonePick = discovered.length > 1;
   const canConnect =
-    looksLikeMetaToken(accessToken) &&
-    (phoneNumberId.trim().length > 5 || discovered.length === 1);
+    looksLikeMetaToken(accessToken) && (!needsPhonePick || phoneNumberId.trim().length > 5);
 
   const runDiscover = useCallback(() => {
     if (!looksLikeMetaToken(accessToken)) return;
@@ -111,12 +124,8 @@ export function WhatsappManualConnect({
   }, [accessToken, discoverMutation.isPending, runDiscover]);
 
   const shellClass = isPrimary
-    ? "overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm"
-    : "overflow-hidden rounded-2xl border border-border/80 bg-muted/20";
-
-  const headerClass = isPrimary
-    ? "border-b border-border/80 bg-gradient-to-r from-[#25D366]/10 to-primary/5"
-    : "";
+    ? "overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-sm"
+    : "overflow-hidden rounded-2xl border border-[#dce9ff] bg-[#f8f9ff]/50";
 
   return (
     <div id="whatsapp-api-setup" className={shellClass}>
@@ -127,9 +136,9 @@ export function WhatsappManualConnect({
           onClick={() => setOpen((v) => !v)}
         >
           <div>
-            <p className="font-medium text-foreground">Advanced: Meta API Setup</p>
+            <p className="font-semibold text-foreground">Connect with access token</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Paste token — numbers are detected automatically.
+              Paste from Meta API Setup — your number is detected automatically.
             </p>
           </div>
           {open ? (
@@ -141,44 +150,25 @@ export function WhatsappManualConnect({
       )}
 
       {isPrimary && (
-        <div className={cn("px-6 py-5", headerClass)}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#128C7E]">
-            Compact connect
-          </p>
-          <h3 className="text-lg font-semibold">Paste token & connect</h3>
+        <div className="border-b border-[#dce9ff] bg-gradient-to-r from-[#ecfdf5]/60 to-transparent px-6 py-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Quick connect</p>
+          <h3 className="text-lg font-bold">Paste token & connect</h3>
         </div>
       )}
 
       {open && (
-        <div
-          className={cn(
-            "space-y-4 px-5 py-4",
-            !isPrimary && "border-t border-border",
-            isPrimary && "px-6 pb-6",
-          )}
-        >
-          <p className="text-sm text-muted-foreground">
-            Get your token from{" "}
-            <a
-              href="https://developers.facebook.com/apps/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-0.5 font-medium text-primary hover:underline"
-            >
-              Meta → API Setup
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </p>
+        <div className={cn("space-y-5 p-5", isPrimary && "px-6 pb-6")}>
+          <WhatsappMetaSetupGuide metaApiSetupUrl={metaApiSetupUrl} />
 
           {error && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {error}
             </div>
           )}
 
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-xl border border-[#dce9ff] bg-white p-4">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-foreground">Access token</label>
+              <label className="text-sm font-semibold text-foreground">Access token</label>
               <Button
                 type="button"
                 variant="ghost"
@@ -200,28 +190,39 @@ export function WhatsappManualConnect({
             <Input
               type="password"
               autoComplete="off"
-              placeholder="EAA…"
+              placeholder="EAA… from Meta API Setup"
+              className="rounded-xl"
               value={accessToken}
               onChange={(e) => setAccessToken(e.target.value)}
             />
+            {discoverMutation.isPending && (
+              <p className="flex items-center gap-2 text-xs text-accent">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Finding your number…
+              </p>
+            )}
           </div>
 
-          <WhatsappPhonePicker
-            phones={discovered}
-            selectedId={phoneNumberId}
-            onSelect={(p) => {
-              setPhoneNumberId(p.phoneNumberId);
-              setWabaId(p.wabaId);
-            }}
-          />
+          {needsPhonePick && (
+            <WhatsappPhonePicker
+              phones={discovered}
+              selectedId={phoneNumberId}
+              onSelect={(p) => {
+                setPhoneNumberId(p.phoneNumberId);
+                setWabaId(p.wabaId);
+              }}
+            />
+          )}
 
           <Button
             type="button"
+            variant="accent"
+            className="w-full rounded-xl"
             disabled={busy || !canConnect}
             onClick={() => connectMutation.mutate()}
           >
             {connectMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Connect automatically
+            Connect my number
           </Button>
         </div>
       )}

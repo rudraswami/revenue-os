@@ -18,10 +18,10 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
-import { WhatsappManualConnect } from "@/components/settings/whatsapp-manual-connect";
 import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
+import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
 import { WhatsappTokenRefresh } from "@/components/settings/whatsapp-token-refresh";
 
 interface WhatsappAccount {
@@ -356,40 +356,32 @@ export default function WhatsappConnect() {
         <>
           <WhatsappConnectWizard />
 
-          <details className="overflow-hidden rounded-xl border border-border/80 bg-white shadow-sm">
-            <summary className="cursor-pointer px-5 py-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/30">
-              Compact form (same auto-connect)
-            </summary>
-            <div className="border-t border-border p-4">
-              <WhatsappManualConnect variant="primary" defaultOpen />
-            </div>
-          </details>
+          <WhatsappOnboardingHelp />
 
-          <div className="overflow-hidden rounded-2xl border border-dashed border-border bg-muted/20 opacity-90">
+          <div className="overflow-hidden rounded-2xl border border-dashed border-[#dce9ff] bg-[#f8f9ff]/50">
             <div className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e8f0ff] text-[#1877F2]">
                   <Lock className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-foreground">One-click with Facebook</h3>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900">
                       <Clock className="h-3 w-3" />
-                      After Meta approval
+                      After App Review
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Embedded Signup unlocks once Meta App Review and Tech Provider onboarding are
-                    approved. Use Meta API Setup above in the meantime.
+                    No token paste needed — launches automatically once Meta approves Growvisi.
                   </p>
                 </div>
               </div>
               <Button
                 size="lg"
-                className="shrink-0 bg-[#1877F2]/50"
+                className="shrink-0 rounded-xl bg-[#1877F2]/40"
                 disabled
-                title="Available after WHATSAPP_EMBEDDED_SIGNUP_LIVE=true"
+                title="Available after Meta App Review"
               >
                 Continue with Facebook
               </Button>
@@ -397,8 +389,6 @@ export default function WhatsappConnect() {
           </div>
         </>
       )}
-
-      {embeddedLive && <WhatsappManualConnect variant="secondary" />}
     </div>
   );
 }

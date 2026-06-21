@@ -15,12 +15,11 @@ export function looksLikeMetaToken(value: string) {
 
 export const WIZARD_STEP_KEY = "growvisi-wa-wizard-step";
 
-export type WizardStepId = "prepare" | "connect" | "verify";
+export type WizardStepId = "connect" | "verify";
 
 export const WIZARD_STEPS: Array<{ id: WizardStepId; title: string }> = [
-  { id: "prepare", title: "Overview" },
   { id: "connect", title: "Paste token" },
-  { id: "verify", title: "Test" },
+  { id: "verify", title: "Test message" },
 ];
 
 export interface DiscoveredPhone {

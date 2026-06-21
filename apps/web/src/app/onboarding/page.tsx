@@ -73,9 +73,9 @@ export default function OnboardingPage() {
     },
     {
       id: "whatsapp",
-      title: "Connect your existing WhatsApp number",
+      title: "Connect your WhatsApp number",
       done: whatsappConnected,
-      description: "Paste your Meta token — we find your number and connect in one click.",
+      description: "Open Meta API Setup, paste one token — we find your number automatically.",
     },
     {
       id: "inbox",
@@ -121,7 +121,8 @@ export default function OnboardingPage() {
             {timeGreeting(user?.name)}
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Connect your existing WhatsApp business number when you&apos;re ready — explore the app first if you prefer.
+            Connect your business WhatsApp in about 2 minutes. Explore the dashboard first if you
+            prefer — you can always finish setup in Settings.
           </p>
           <div className="mt-5">
             <div className="mb-2 flex justify-between text-[12px] font-medium text-muted-foreground">
@@ -170,7 +171,6 @@ export default function OnboardingPage() {
           <div className="space-y-6">
             <WhatsappConnectWizard />
             <WhatsappOnboardingHelp />
-            <WhatsappOnboardingFaq />
             <p className="text-center text-sm text-muted-foreground">
               Not ready yet?{" "}
               <Link href="/dashboard" className="font-medium text-primary hover:underline">

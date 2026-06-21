@@ -52,11 +52,6 @@ export function WhatsappPhonePicker({
                     {phone.verifiedName ?? phone.businessName ?? "Business line"}
                   </p>
                   <p className="font-mono text-sm text-muted-foreground">{phone.displayPhoneNumber}</p>
-                  {phones.length > 1 && (
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      ID {phone.phoneNumberId}
-                    </p>
-                  )}
                 </div>
               </button>
             </li>

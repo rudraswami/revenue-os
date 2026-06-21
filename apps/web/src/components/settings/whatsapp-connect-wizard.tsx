@@ -2,14 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   ClipboardPaste,
   Loader2,
   ShieldCheck,
-  Sparkles,
-  Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -32,11 +29,10 @@ import { cn } from "@/lib/utils";
 
 export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => void }) {
   const token = useAuthStore((s) => s.accessToken);
-  const organization = useAuthStore((s) => s.organization);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const queryClient = useQueryClient();
 
-  const [step, setStep] = useState<WizardStepId>("prepare");
+  const [step, setStep] = useState<WizardStepId>("connect");
   const [accessToken, setAccessToken] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [wabaId, setWabaId] = useState("");
@@ -46,7 +42,11 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
   const lastAutoDiscover = useRef("");
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(WIZARD_STEP_KEY) as WizardStepId | null;
+    const saved = sessionStorage.getItem(WIZARD_STEP_KEY) as WizardStepId | "prepare" | null;
+    if (saved === "prepare") {
+      setStep("connect");
+      return;
+    }
     if (saved && WIZARD_STEPS.some((s) => s.id === saved)) {
       setStep(saved);
     }
@@ -62,11 +62,10 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
   const { data: readiness } = useQuery({
     queryKey: ["whatsapp-onboarding-readiness"],
     queryFn: () =>
-      apiFetch<{
-        ready: boolean;
-        metaApiSetupUrl: string;
-        checks: Array<{ id: string; ok: boolean; detail: string }>;
-      }>("/whatsapp-accounts/onboarding-readiness", { token: token ?? undefined }),
+      apiFetch<{ ready: boolean; metaApiSetupUrl: string }>(
+        "/whatsapp-accounts/onboarding-readiness",
+        { token: token ?? undefined },
+      ),
     enabled: !!token,
     staleTime: 60_000,
   });
@@ -93,7 +92,7 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
     },
     onError: (e) => {
       setDiscovered([]);
-      setError(e instanceof ApiError ? e.message : "Could not find numbers for this token.");
+      setError(e instanceof ApiError ? e.message : "Could not find a number on this token.");
     },
   });
 
@@ -127,14 +126,15 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
       onConnected?.();
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Connection failed.");
+      setError(e instanceof ApiError ? e.message : "Connection failed. Check your token and try again.");
     },
   });
 
   const busy = discoverMutation.isPending || quickConnectMutation.isPending;
+  const needsPhonePick = discovered.length > 1;
   const canConnect =
     looksLikeMetaToken(accessToken) &&
-    (phoneNumberId.trim().length > 5 || discovered.length === 1);
+    (!needsPhonePick || phoneNumberId.trim().length > 5);
   const stepIndex = WIZARD_STEPS.findIndex((s) => s.id === step);
 
   const runDiscover = useCallback(() => {
@@ -142,7 +142,6 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
     discoverMutation.mutate();
   }, [accessToken, discoverMutation]);
 
-  // Auto-discover when user pastes a Meta token
   useEffect(() => {
     const trimmed = accessToken.trim();
     if (!looksLikeMetaToken(trimmed) || trimmed === lastAutoDiscover.current) return;
@@ -155,16 +154,6 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
 
     return () => clearTimeout(timer);
   }, [accessToken, discoverMutation.isPending, runDiscover]);
-
-  function goNext() {
-    const next = WIZARD_STEPS[stepIndex + 1];
-    if (next) setStep(next.id);
-  }
-
-  function goBack() {
-    const prev = WIZARD_STEPS[stepIndex - 1];
-    if (prev) setStep(prev.id);
-  }
 
   async function pasteFromClipboard() {
     try {
@@ -185,207 +174,157 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
-      <div className="border-b border-border/80 bg-gradient-to-r from-[#25D366]/5 via-primary-soft/30 to-transparent px-6 py-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#128C7E]">
-          Connect your existing WhatsApp Business number
+    <div className="overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
+      <div className="border-b border-[#dce9ff] bg-gradient-to-r from-[#ecfdf5]/80 via-white to-[#f8f9ff] px-6 py-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+          Connect WhatsApp
         </p>
+        <h2 className="mt-1 text-lg font-bold tracking-tight text-foreground">
+          Paste one token — we handle the rest
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          You keep your number — Growvisi only ingests messages for intelligence and pipeline
-          tracking.
+          Keep your existing business number. Growvisi syncs conversations for pipeline and AI
+          insights.
         </p>
-        <div className="mt-5 flex gap-3">
+
+        <div className="mt-5 flex gap-4">
           {WIZARD_STEPS.map((s, i) => (
-            <div key={s.id} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <div key={s.id} className="flex items-center gap-2">
               <div
                 className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors",
+                  "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors",
                   i < stepIndex
-                    ? "bg-success text-white"
+                    ? "bg-accent text-white"
                     : i === stepIndex
-                      ? "bg-primary text-white shadow-md"
-                      : "bg-border text-muted-foreground",
+                      ? "bg-[#0b1c30] text-white shadow-md"
+                      : "bg-[#dce9ff] text-muted-foreground",
                 )}
               >
                 {i < stepIndex ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
               </div>
               <span
                 className={cn(
-                  "hidden truncate text-[10px] font-medium sm:block",
-                  i === stepIndex ? "text-primary" : "text-muted-foreground",
+                  "text-sm font-medium",
+                  i === stepIndex ? "text-foreground" : "text-muted-foreground",
                 )}
               >
                 {s.title}
               </span>
+              {i < WIZARD_STEPS.length - 1 && (
+                <div className="ml-2 hidden h-px w-8 bg-[#dce9ff] sm:block" aria-hidden />
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="space-y-4 px-6 py-6">
+      <div className="space-y-5 px-6 py-6">
         {error && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
 
-        {step === "prepare" && (
-          <>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                {
-                  icon: ShieldCheck,
-                  title: "Same number",
-                  text: "Customers keep messaging the line they already use",
-                },
-                {
-                  icon: Sparkles,
-                  title: "Intelligence only",
-                  text: "Classification, pipeline, insights — Meta still replies in-chat",
-                },
-                {
-                  icon: Zap,
-                  title: "~2 min setup",
-                  text: "Paste one token from Meta — we find your number automatically",
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-xl border border-border/80 bg-muted/20 p-3 text-sm"
-                >
-                  <item.icon className="mb-2 h-4 w-4 text-primary" />
-                  <p className="font-medium">{item.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{item.text}</p>
-                </div>
-              ))}
-            </div>
-
-            {readiness && (
-              <div
-                className={cn(
-                  "rounded-xl border px-4 py-3 text-xs",
-                  readiness.ready
-                    ? "border-success/30 bg-success/5 text-foreground"
-                    : "border-amber-200 bg-amber-50 text-amber-950",
-                )}
-              >
-                <p className="font-semibold">
-                  {readiness.ready
-                    ? "Growvisi is ready to receive your messages"
-                    : "Growvisi server checks — contact support if any fail"}
-                </p>
-                <ul className="mt-2 space-y-1">
-                  {readiness.checks.map((c) => (
-                    <li key={c.id} className={c.ok ? "text-success" : ""}>
-                      {c.ok ? "✓" : "○"} {c.detail}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-              <li>Meta Business account with your WhatsApp Business number on the Cloud API</li>
-              <li>Temporary access token from Meta → WhatsApp → API Setup</li>
-              <li>A personal phone to send one test message after connecting</li>
-            </ol>
-
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={goNext} className="gap-1.5">
-                Start connection
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </>
-        )}
-
         {step === "connect" && (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <WhatsappMetaSetupGuide metaApiSetupUrl={metaApiSetupUrl} />
+          <>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <WhatsappMetaSetupGuide metaApiSetupUrl={metaApiSetupUrl} />
 
-            <div className="space-y-4 rounded-xl border border-border/80 bg-muted/20 p-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-medium text-foreground">Access token</label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1 text-xs"
-                    onClick={() => void pasteFromClipboard()}
-                  >
-                    <ClipboardPaste className="h-3.5 w-3.5" />
-                    Paste
-                  </Button>
+              <div className="flex flex-col rounded-2xl border border-[#dce9ff] bg-[#f8f9ff]/40 p-5">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label htmlFor="wa-access-token" className="text-sm font-semibold text-foreground">
+                      Paste access token
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1 text-xs"
+                      onClick={() => void pasteFromClipboard()}
+                    >
+                      <ClipboardPaste className="h-3.5 w-3.5" />
+                      Paste
+                    </Button>
+                  </div>
+                  <Input
+                    id="wa-access-token"
+                    type="password"
+                    autoComplete="off"
+                    placeholder="EAA… — paste from Meta API Setup"
+                    className="h-12 rounded-xl border-[#dce9ff] bg-white text-sm"
+                    value={accessToken}
+                    onChange={(e) => {
+                      setAccessToken(e.target.value);
+                      setError(null);
+                    }}
+                  />
+                  {discoverMutation.isPending && (
+                    <p className="flex items-center gap-2 text-xs text-accent">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Finding your business number…
+                    </p>
+                  )}
+                  {discovered.length === 1 && !discoverMutation.isPending && (
+                    <p className="flex items-center gap-1.5 text-xs text-[#128C7E]">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Found {discovered[0].displayPhoneNumber}
+                      {discovered[0].verifiedName ? ` · ${discovered[0].verifiedName}` : ""}
+                    </p>
+                  )}
                 </div>
-                <Input
-                  type="password"
-                  autoComplete="off"
-                  placeholder="Paste EAA… token — we detect your number automatically"
-                  value={accessToken}
-                  onChange={(e) => {
-                    setAccessToken(e.target.value);
-                    setError(null);
-                  }}
-                />
-                {discoverMutation.isPending && (
-                  <p className="flex items-center gap-2 text-xs text-primary">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Finding your WhatsApp numbers…
-                  </p>
-                )}
-                {discovered.length > 0 && !discoverMutation.isPending && (
-                  <p className="text-xs text-success">
-                    Found {discovered.length} number{discovered.length > 1 ? "s" : ""} on this token
-                  </p>
-                )}
-              </div>
 
-              <WhatsappPhonePicker
-                phones={discovered}
-                selectedId={phoneNumberId}
-                onSelect={selectPhone}
-              />
+                {needsPhonePick && (
+                  <div className="mt-4">
+                    <WhatsappPhonePicker
+                      phones={discovered}
+                      selectedId={phoneNumberId}
+                      onSelect={selectPhone}
+                    />
+                  </div>
+                )}
 
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button variant="outline" size="sm" onClick={goBack}>
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Button>
                 <Button
                   disabled={busy || !canConnect}
-                  className="gap-1.5"
+                  variant="accent"
+                  size="lg"
+                  className="mt-5 h-12 w-full rounded-xl text-[15px] font-semibold"
                   onClick={() => quickConnectMutation.mutate()}
                 >
-                  {quickConnectMutation.isPending && (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                  {quickConnectMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Connecting…
+                    </>
+                  ) : (
+                    <>
+                      Connect my number
+                      <ArrowRight className="h-4 w-4" />
+                    </>
                   )}
-                  Connect automatically
                 </Button>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                One click verifies your token, enables webhooks, and saves your number securely.
-              </p>
-            </div>
-          </div>
-        )}
 
-        {step === "connect" && (
-          <WhatsappOnboardingFaq />
+                <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
+                  Encrypted on our servers. We verify your token, enable webhooks, and link your
+                  number in one step.
+                </p>
+              </div>
+            </div>
+
+            <WhatsappOnboardingFaq />
+          </>
         )}
 
         {step === "verify" && connected && (
           <>
-            <div className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/5 p-4">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" />
+            <div className="flex items-start gap-3 rounded-2xl border border-[#6cf8bb]/40 bg-[#ecfdf5]/60 p-5">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#128C7E]" />
               <div>
-                <p className="font-medium text-foreground">Connected</p>
-                <p className="text-lg font-semibold">
+                <p className="font-semibold text-foreground">Number connected</p>
+                <p className="text-lg font-bold">
                   {connected.verifiedName ?? connected.displayPhoneNumber}
                 </p>
-                <p className="font-mono text-sm text-muted-foreground">
-                  {connected.displayPhoneNumber}
-                </p>
+                <p className="text-sm text-muted-foreground">{connected.displayPhoneNumber}</p>
               </div>
             </div>
 
@@ -394,9 +333,9 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border/80 bg-muted/20 px-6 py-3 text-xs text-muted-foreground">
-        <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-        Tokens are encrypted. Growvisi never posts replies unless you use optional human takeover.
+      <div className="flex items-center gap-2 border-t border-[#dce9ff] bg-[#f8f9ff]/50 px-6 py-3 text-xs text-muted-foreground">
+        <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-accent" />
+        Meta-compliant · Tokens encrypted · One-click Facebook connect after App Review
       </div>
     </div>
   );
