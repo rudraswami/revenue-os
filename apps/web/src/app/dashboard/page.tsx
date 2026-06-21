@@ -6,7 +6,6 @@ import { ArrowRight, Inbox, Kanban, LineChart, Sparkles, TrendingUp, Users } fro
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
 import { AiCapabilitiesBanner, OnboardingBanner } from "@/components/dashboard/status-banners";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
-import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
@@ -102,10 +101,6 @@ export default function DashboardPage() {
 
       <OnboardingBanner />
       <AiCapabilitiesBanner />
-
-      <div className="mb-6">
-        <MetaAiNotice />
-      </div>
 
       <GettingStartedCard />
 

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
-import { MetaAiNotice } from "@/components/dashboard/meta-ai-notice";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
@@ -94,10 +93,6 @@ export default function AiStudioPage() {
           </span>
         }
       />
-
-      <div className="mb-6">
-        <MetaAiNotice />
-      </div>
 
       <DashboardPanel
         noPadding

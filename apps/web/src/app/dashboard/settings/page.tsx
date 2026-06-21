@@ -139,8 +139,16 @@ export default function SettingsPage() {
                   Privacy
                 </Link>
                 {" · "}
+                <Link href="/terms" className="underline hover:text-foreground">
+                  Terms
+                </Link>
+                {" · "}
                 <Link href="/data-deletion" className="underline hover:text-foreground">
                   Data deletion
+                </Link>
+                {" · "}
+                <Link href="/about" className="underline hover:text-foreground">
+                  How Growvisi works
                 </Link>
               </p>
               <DeleteAccountCard />
