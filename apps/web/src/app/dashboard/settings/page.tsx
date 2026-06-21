@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useEffect } from "react";
 import { Building2, BookOpen, CreditCard, Loader2, LogOut, Mail, MessageCircle } from "lucide-react";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
@@ -31,6 +32,19 @@ export default function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const organization = useAuthStore((s) => s.organization);
 
+  useEffect(() => {
+    function scrollToHash() {
+      const hash = window.location.hash.replace("#", "");
+      if (!hash) return;
+      requestAnimationFrame(() => {
+        document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+    scrollToHash();
+    window.addEventListener("hashchange", scrollToHash);
+    return () => window.removeEventListener("hashchange", scrollToHash);
+  }, []);
+
   async function handleLogout() {
     await logout();
     router.replace("/login");
@@ -58,12 +72,16 @@ export default function SettingsPage() {
         </DashboardSection>
 
         <DashboardSection
+          id="billing"
           title="Billing"
-          description="Upgrade your workspace with Razorpay — UPI, cards, and netbanking."
+          description="Your current plan — view all plans on the pricing page."
           icon={CreditCard}
         >
           <DashboardPanel delay={0.07}>
             <BillingSettingsCard />
+            <Button variant="outline" size="sm" asChild className="mt-4 rounded-xl">
+              <Link href="/dashboard/pricing">View all plans</Link>
+            </Button>
           </DashboardPanel>
         </DashboardSection>
 

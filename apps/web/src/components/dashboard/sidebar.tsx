@@ -8,7 +8,6 @@ import {
   Bot,
   ChevronUp,
   CreditCard,
-  ExternalLink,
   HelpCircle,
   Inbox,
   Kanban,
@@ -17,7 +16,6 @@ import {
   LogOut,
   MessageCircle,
   Settings,
-  Shield,
   Zap,
 } from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
@@ -27,7 +25,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -163,18 +160,32 @@ function WorkspaceCard({
 function UserAccountMenu({
   userName,
   userEmail,
-  organizationName,
   whatsappConnected,
   onLogout,
   onNavigate,
 }: {
   userName: string;
   userEmail: string;
-  organizationName?: string;
   whatsappConnected: boolean;
   onLogout: () => void;
   onNavigate?: () => void;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  function go(href: string) {
+    onNavigate?.();
+    const [path, hash] = href.split("#");
+    if (hash && pathname === path) {
+      window.history.replaceState(null, "", href);
+      requestAnimationFrame(() => {
+        document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
+    }
+    router.push(href);
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -190,69 +201,35 @@ function UserAccountMenu({
           <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold">{userName}</span>
-            <span className="text-xs font-normal text-muted-foreground">{userEmail}</span>
-            {organizationName && (
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                {organizationName}
-              </span>
-            )}
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard/settings" onClick={onNavigate}>
-            <Settings className="h-4 w-4 text-muted-foreground" />
-            Settings
-          </Link>
+      <DropdownMenuContent
+        side="top"
+        align="start"
+        className="w-[var(--radix-dropdown-menu-trigger-width)]"
+      >
+        <DropdownMenuItem onSelect={() => go("/dashboard/settings")}>
+          <Settings className="h-4 w-4 text-muted-foreground" />
+          Settings
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href={whatsappConnected ? "/dashboard/settings" : "/onboarding"} onClick={onNavigate}>
-            <MessageCircle className="h-4 w-4 text-muted-foreground" />
-            {whatsappConnected ? "WhatsApp & channels" : "Connect WhatsApp"}
-          </Link>
+        <DropdownMenuItem
+          onSelect={() =>
+            go(whatsappConnected ? "/dashboard/settings#whatsapp" : "/onboarding")
+          }
+        >
+          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+          {whatsappConnected ? "WhatsApp & channels" : "Connect WhatsApp"}
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard/settings" onClick={onNavigate}>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-            Billing & plan
-          </Link>
+        <DropdownMenuItem onSelect={() => go("/dashboard/pricing")}>
+          <CreditCard className="h-4 w-4 text-muted-foreground" />
+          Plans & pricing
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/onboarding" onClick={onNavigate}>
-            <HelpCircle className="h-4 w-4 text-muted-foreground" />
-            Setup guide
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <a href="/privacy" target="_blank" rel="noopener noreferrer">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            Privacy policy
-            <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground/60" />
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <a href="/terms" target="_blank" rel="noopener noreferrer">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            Terms of service
-            <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground/60" />
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <a href="/data-deletion" target="_blank" rel="noopener noreferrer">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            Data deletion
-            <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground/60" />
-          </a>
+        <DropdownMenuItem onSelect={() => go("/onboarding")}>
+          <HelpCircle className="h-4 w-4 text-muted-foreground" />
+          Setup guide
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-          onClick={onLogout}
+          onSelect={onLogout}
         >
           <LogOut className="h-4 w-4" />
           Sign out
@@ -342,7 +319,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <UserAccountMenu
             userName={displayName}
             userEmail={user.email}
-            organizationName={organization?.name}
             whatsappConnected={whatsappConnected}
             onLogout={() => void handleLogout()}
             onNavigate={onNavigate}
