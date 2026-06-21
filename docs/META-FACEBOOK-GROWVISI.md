@@ -11,6 +11,38 @@ Open Growvisi at **https://www.growvisi.in** (Vercel redirects apex → www).
 
 ---
 
+## App Review vs "Feature Unavailable" (read this first)
+
+These are **three different things**. Meta documentation often mentions them in the same guides, which causes confusion.
+
+| What you see | What it actually means | Fixed by App Review? |
+|--------------|------------------------|----------------------|
+| Growvisi button disabled — **"After App Review"** | `WHATSAPP_EMBEDDED_SIGNUP_LIVE=false` on API — rare; embedded signup is **on by default** | Set env to `true` or remove `false` |
+| Meta popup — **Feature Unavailable** | Meta has **not enabled Facebook Login** for this app + Facebook account yet | **No** — Meta dashboard config (roles, checkup, domains) |
+| Meta popup — **only available for BSPs or TPs** | Tech Provider / BSP program not approved | **Partly** — needs Meta partner onboarding |
+| App Review **Advanced** permissions | `whatsapp_business_messaging` / `management` for **all customers** when app is Live | **Yes** — submit screencasts |
+
+**You can complete App Review using the token-paste flow** (`Connect with Meta API Setup`) — that does **not** require Embedded Signup or Facebook Login to work.
+
+Embedded Signup (`FB.login` + `config_id`) is enabled by default in Growvisi. Set `WHATSAPP_EMBEDDED_SIGNUP_LIVE=false` on the API only if you need to hide one-click connect.
+
+---
+
+## Advanced Settings — do you need a callback URL?
+
+**No callback URL field on App settings → Advanced.** That page is for domains, API version, and security — not OAuth redirects.
+
+| Meta location | What to enter |
+|---------------|----------------|
+| **Advanced → Domain Manager** | `growvisi.in`, `www.growvisi.in` (not a callback path) |
+| **Facebook Login for Business → Settings → Valid OAuth Redirect URIs** | `https://www.growvisi.in/` and `https://growvisi.in/` (site root **with trailing slash** — not `/meta/oauth/callback`) |
+| **Facebook Login for Business → Allowed Domains** | `growvisi.in`, `www.growvisi.in` |
+| **WhatsApp → Configuration → Callback URL** | `https://api.growvisi.in/api/v1/webhooks/whatsapp` (webhooks only — separate from Embedded Signup login) |
+
+Embedded Signup uses **`FB.login()` in a popup** — Meta returns the auth code to the SDK; Growvisi does **not** use a custom browser redirect page.
+
+---
+
 ## Fix "Feature Unavailable" (do in this order)
 
 Meta shows **Feature Unavailable — Facebook Login is currently unavailable for this app** when the app is **not allowed to run Facebook Login yet**. This is **100% Meta dashboard configuration**, not a Growvisi code bug.
@@ -31,7 +63,7 @@ While the app is in **Development** mode, only people listed on the app can log 
 2. Click **Required actions** (red badge in top bar if present)
 3. Finish **Data Use Checkup** and anything else listed — until the list is empty
 
-### Step 3 — App Basic settings
+### Step 3 — App Basic settings + Domain Manager
 
 [App settings → Basic](https://developers.facebook.com/apps/1694805491426991/settings/basic/)
 
@@ -42,6 +74,12 @@ While the app is in **Development** mode, only people listed on the app can log 
 | User data deletion | URL or instructions |
 | App domains | `growvisi.in` |
 | Category | Business |
+
+[App settings → Advanced](https://developers.facebook.com/apps/1694805491426991/settings/advanced/) → **Domain Manager**
+
+| Field | Required |
+|-------|----------|
+| Domains | Add `growvisi.in` and `www.growvisi.in` (screenshot showing "No domains" here often correlates with login failures) |
 
 Save changes.
 

@@ -49,7 +49,7 @@ Run this **before** pushing WhatsApp onboarding + token reminder changes to prod
 
 | Variable | Default |
 |----------|---------|
-| `WHATSAPP_EMBEDDED_SIGNUP_LIVE` | `false` until Meta App Review |
+| `WHATSAPP_EMBEDDED_SIGNUP_LIVE` | `true` (set `false` only to hide one-click connect) |
 | `JWT_ACCESS_EXPIRES_IN` | `15m` (code default) |
 
 ---

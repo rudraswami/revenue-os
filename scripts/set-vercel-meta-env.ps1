@@ -35,6 +35,7 @@ Set-VercelEnv $apiDir "WHATSAPP_API_VERSION" "v21.0"
 Set-VercelEnv $apiDir "WEBHOOK_PUBLIC_URL" "https://api.growvisi.in"
 Set-VercelEnv $apiDir "NEXT_PUBLIC_APP_URL" "https://www.growvisi.in"
 Set-VercelEnv $apiDir "CORS_ORIGINS" "https://growvisi.in,https://www.growvisi.in"
+Set-VercelEnv $apiDir "WHATSAPP_EMBEDDED_SIGNUP_LIVE" "true"
 
 if ($MetaAppSecret) {
   Set-VercelEnv $apiDir "META_APP_SECRET" $MetaAppSecret

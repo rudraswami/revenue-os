@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, CheckCircle2, Circle } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { Button } from "@/components/ui/button";
-import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
+import WhatsappConnect from "@/components/settings/whatsapp-connect";
 import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
 import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
 import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
@@ -82,7 +82,7 @@ export default function OnboardingPage() {
       id: "whatsapp",
       title: "Connect your WhatsApp number",
       done: whatsappConnected,
-      description: "Open Meta API Setup, paste one token — we find your number automatically.",
+      description: "Continue with Facebook or paste a token from Meta API Setup.",
     },
     {
       id: "inbox",
@@ -176,7 +176,7 @@ export default function OnboardingPage() {
 
         {!whatsappConnected ? (
           <div className="space-y-6">
-            <WhatsappConnectWizard />
+            <WhatsappConnect />
             <WhatsappOnboardingHelp />
             <p className="text-center text-sm text-muted-foreground">
               Not ready yet?{" "}

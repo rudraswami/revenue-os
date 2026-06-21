@@ -75,7 +75,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 | Token invalid immediately | Regenerate in API Setup; ensure WABA still has the number |
 | Multiple numbers error | Use phone picker after discover; pass `phoneNumberId` to quick-connect |
 | No reminder emails | `CRON_SECRET`, `RESEND_API_KEY`, cron enabled on Vercel Pro |
-| Embedded Signup unavailable | Expected until App Review — keep manual token flow |
+| Embedded Signup unavailable in UI | Growvisi gate (`WHATSAPP_EMBEDDED_SIGNUP_LIVE=false`) — use token paste; not the same as Meta "Feature Unavailable" |
 
 ## Meta App Review
 

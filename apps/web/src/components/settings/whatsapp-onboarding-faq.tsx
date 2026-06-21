@@ -24,8 +24,8 @@ const FAQ = [
     a: "After pasting your token, pick the correct line from the list, then click Connect my number.",
   },
   {
-    q: "When does one-click Facebook connect arrive?",
-    a: "We're waiting on Meta App Review. Once approved, you'll connect with a single \"Continue with Facebook\" button — no token paste needed.",
+    q: "One-click Facebook vs token paste?",
+    a: "Recommended: Continue with Facebook (Embedded Signup). If Meta shows an error, expand \"Alternative: connect with Meta API Setup token\" and paste your temporary token from Meta API Setup.",
   },
 ];
 

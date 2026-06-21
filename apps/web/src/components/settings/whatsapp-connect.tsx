@@ -5,9 +5,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   CheckCircle2,
-  Clock,
   Loader2,
-  Lock,
   MessageCircle,
   ShieldCheck,
   Smartphone,
@@ -287,6 +285,7 @@ export default function WhatsappConnect() {
       </div>
 
       {embeddedLive ? (
+        <>
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-6">
             <div className="flex items-start gap-4">
@@ -356,41 +355,21 @@ export default function WhatsappConnect() {
             </p>
           </div>
         </div>
+
+        <details className="rounded-2xl border border-border/80 bg-white">
+          <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-muted-foreground hover:text-foreground">
+            Alternative: connect with Meta API Setup token
+          </summary>
+          <div className="border-t border-border/80 px-6 py-6">
+            <WhatsappConnectWizard />
+          </div>
+        </details>
+        </>
       ) : (
         <>
           <WhatsappConnectWizard />
 
           <WhatsappOnboardingHelp />
-
-          <div className="overflow-hidden rounded-2xl border border-dashed border-[#dce9ff] bg-[#f8f9ff]/50">
-            <div className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e8f0ff] text-[#1877F2]">
-                  <Lock className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-foreground">One-click with Facebook</h3>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900">
-                      <Clock className="h-3 w-3" />
-                      After App Review
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    No token paste needed — launches automatically once Meta approves Growvisi.
-                  </p>
-                </div>
-              </div>
-              <Button
-                size="lg"
-                className="shrink-0 rounded-xl bg-[#1877F2]/40"
-                disabled
-                title="Available after Meta App Review"
-              >
-                Continue with Facebook
-              </Button>
-            </div>
-          </div>
         </>
       )}
     </div>

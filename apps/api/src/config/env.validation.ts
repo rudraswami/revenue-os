@@ -55,7 +55,7 @@ class EnvironmentVariables {
   @IsOptional()
   META_EMBEDDED_SIGNUP_CONFIG_ID?: string;
 
-  /** Set to "true" after Meta App Review + Tech Provider approval enables Embedded Signup. */
+  /** Set WHATSAPP_EMBEDDED_SIGNUP_LIVE=false to hide one-click Facebook connect (enabled by default). */
   @IsString()
   @IsOptional()
   WHATSAPP_EMBEDDED_SIGNUP_LIVE?: string;

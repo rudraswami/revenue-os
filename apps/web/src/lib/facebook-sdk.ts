@@ -157,7 +157,19 @@ function formatFbLoginError(response: {
   error?: string;
   errorMessage?: string;
 }): string {
-  const detail = response.errorMessage ?? response.error;
+  const detail = response.errorMessage ?? response.error ?? "";
+  const lower = detail.toLowerCase();
+
+  if (lower.includes("feature unavailable") || lower.includes("currently unavailable")) {
+    return (
+      "Meta blocked Facebook Login for this app (Feature Unavailable). " +
+      "This is a Meta dashboard issue — not App Review and not a Growvisi bug. " +
+      "Fix: add your Facebook account under App roles, complete Required actions / Data Use Checkup, " +
+      "and set Facebook Login for Business → Allowed Domains to growvisi.in + www.growvisi.in. " +
+      "See docs/META-FACEBOOK-GROWVISI.md."
+    );
+  }
+
   if (detail) return detail;
 
   if (response.status === "unknown") {

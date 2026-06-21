@@ -26,8 +26,11 @@ export class EmbeddedSignupService {
     const featureType =
       sanitizeEnvValue(this.config.get<string>("META_EMBEDDED_SIGNUP_FEATURE_TYPE")) ?? "";
 
-    const embeddedSignupLive =
-      sanitizeEnvValue(this.config.get<string>("WHATSAPP_EMBEDDED_SIGNUP_LIVE")) === "true";
+    const embeddedSignupFlag = sanitizeEnvValue(
+      this.config.get<string>("WHATSAPP_EMBEDDED_SIGNUP_LIVE"),
+    );
+    /** On by default; set WHATSAPP_EMBEDDED_SIGNUP_LIVE=false to hide one-click connect. */
+    const embeddedSignupLive = embeddedSignupFlag !== "false";
 
     return {
       enabled: !!(appId && configId && this.appSecret()),
