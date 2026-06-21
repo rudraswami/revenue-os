@@ -123,7 +123,7 @@ export function TeamMembersCard() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Need more seats or SSO?{" "}
+        Need more seats?{" "}
         <Link href="/contact" className="font-medium text-accent hover:underline">
           Contact us for Enterprise
         </Link>

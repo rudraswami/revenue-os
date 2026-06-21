@@ -25,7 +25,10 @@ export function applySession(session: AuthSession) {
   syncAuthCookie(true);
 }
 
-export function postAuthPath(_onboarding?: { complete: boolean } | null): string {
+export function postAuthPath(onboarding?: { whatsappConnected?: boolean } | null): string {
+  if (onboarding && onboarding.whatsappConnected === false) {
+    return "/onboarding";
+  }
   return "/dashboard";
 }
 

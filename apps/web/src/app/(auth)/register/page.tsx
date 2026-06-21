@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Building2, Lock, Mail, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -20,7 +20,7 @@ function passwordStrength(password: string): { label: string; color: string; wid
   return { label: "Strong", color: "bg-accent", width: "100%" };
 }
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite") ?? "";
@@ -84,7 +84,7 @@ export default function RegisterPage() {
       description={
         isInvite
           ? "Create your account to access the shared Growvisi workspace."
-          : "Start free — explore the dashboard, then connect WhatsApp when you're ready."
+          : "Start free — connect WhatsApp in the onboarding wizard."
       }
     >
       <form onSubmit={onSubmit} className="space-y-5">
@@ -165,7 +165,7 @@ export default function RegisterPage() {
         <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-xs text-muted-foreground">
           <span>No credit card required</span>
           <span className="hidden sm:inline">·</span>
-          <span>Connect WhatsApp anytime from Settings</span>
+          <span>Razorpay when you upgrade</span>
         </div>
       )}
 
@@ -176,5 +176,19 @@ export default function RegisterPage() {
         </Link>
       </p>
     </AuthShell>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="grid min-h-screen place-items-center bg-[#f8f9ff]">
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

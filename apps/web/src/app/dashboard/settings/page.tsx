@@ -2,11 +2,12 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Building2, CreditCard, Loader2, LogOut, Mail, MessageCircle } from "lucide-react";
+import { Building2, BookOpen, CreditCard, Loader2, LogOut, Mail, MessageCircle } from "lucide-react";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
+import { BusinessContextCard } from "@/components/settings/business-context-card";
 import { BillingSettingsCard } from "@/components/settings/billing-settings-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
@@ -63,6 +64,16 @@ export default function SettingsPage() {
         >
           <DashboardPanel delay={0.07}>
             <BillingSettingsCard />
+          </DashboardPanel>
+        </DashboardSection>
+
+        <DashboardSection
+          title="Business context"
+          description="Product and policy notes for your sales team."
+          icon={BookOpen}
+        >
+          <DashboardPanel delay={0.09}>
+            <BusinessContextCard />
           </DashboardPanel>
         </DashboardSection>
 

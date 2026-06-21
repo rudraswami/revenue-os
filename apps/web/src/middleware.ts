@@ -21,8 +21,20 @@ export function middleware(request: NextRequest) {
   }
 
   const guestRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
-  if (guestRoutes.some((r) => pathname === r || pathname.startsWith(`${r}/`)) && loggedIn) {
+  const inviteFlow =
+    pathname.startsWith("/invite") ||
+    request.nextUrl.searchParams.has("invite") ||
+    request.nextUrl.searchParams.has("token");
+  if (
+    guestRoutes.some((r) => pathname === r || pathname.startsWith(`${r}/`)) &&
+    loggedIn &&
+    !inviteFlow
+  ) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  if (pathname.startsWith("/invite")) {
+    return NextResponse.next();
   }
 
   if (pathname === "/" && loggedIn) {
@@ -43,5 +55,6 @@ export const config = {
     "/register",
     "/forgot-password",
     "/reset-password",
+    "/invite",
   ],
 };

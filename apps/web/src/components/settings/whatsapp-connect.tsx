@@ -262,15 +262,19 @@ export default function WhatsappConnect() {
 
   if (!config?.enabled) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
-        <h2 className="text-lg font-semibold">WhatsApp setup coming soon</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your workspace is not ready for WhatsApp connection yet. Contact support to enable it.
-        </p>
+      <div className="space-y-6">
+        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            Connect your <strong className="text-foreground">WhatsApp Business number</strong> with a
+            Meta API Setup token. Meta Business Agent replies in-chat — Growvisi classifies messages and
+            tracks pipeline.
+          </p>
+        </div>
+        <WhatsappConnectWizard />
+        <WhatsappOnboardingHelp />
       </div>
     );
   }
-
 
   return (
     <div className="space-y-6">

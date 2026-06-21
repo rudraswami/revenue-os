@@ -196,7 +196,7 @@ export class OrganizationsService {
     const appUrl = (
       this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
     ).replace(/\/$/, "");
-    const inviteUrl = `${appUrl}/register?invite=${token}&email=${encodeURIComponent(normalized)}`;
+    const inviteUrl = `${appUrl}/invite?token=${token}`;
 
     await this.email.sendTeamInvite({
       to: normalized,

@@ -32,7 +32,7 @@ const plans = [
   {
     name: "Enterprise",
     price: null,
-    features: ["Unlimited leads", "Dedicated manager", "SSO", "SLA"],
+    features: ["Unlimited leads", "Dedicated manager", "Priority support", "SLA"],
     popular: false,
     custom: true,
   },

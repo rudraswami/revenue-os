@@ -18,8 +18,10 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const resetDone = searchParams.get("reset") === "1";
   const deletedDone = searchParams.get("deleted") === "1";
+  const inviteToken = searchParams.get("invite") ?? "";
+  const inviteEmail = searchParams.get("email") ?? "";
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(inviteEmail);
   const [password, setPassword] = useState("");
   const [organizations, setOrganizations] = useState<OrganizationOption[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,12 @@ function LoginForm() {
 
       applySession(res as AuthSession);
       setLoading(false);
+
+      if (inviteToken) {
+        router.push(`/invite?token=${encodeURIComponent(inviteToken)}`);
+        return;
+      }
+
       const next = searchParams.get("next");
       const safeNext =
         next?.startsWith("/dashboard") || next?.startsWith("/onboarding") ? next : null;
