@@ -104,7 +104,7 @@ export class OrganizationsService {
       data: {
         settings: {
           ...settings,
-          replyTemplates: normalized,
+          replyTemplates: normalized as unknown as object,
         },
       },
     });
