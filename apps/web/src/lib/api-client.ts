@@ -37,7 +37,11 @@ async function rawFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, { ...options, headers });
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
   } catch {
     throw new ApiError(
       `Cannot reach API at ${API_URL}. Start the API: cd growvisi && pnpm dev:api`,
@@ -57,17 +61,16 @@ async function rawFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
 export async function refreshAccessToken(): Promise<string | null> {
   const { refreshToken, setSession, clear } = useAuthStore.getState();
-  if (!refreshToken) {
-    clear();
-    return null;
-  }
 
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
+        // The refresh token lives in an HttpOnly cookie (sent via credentials:
+        // "include"). We only send it in the body as a fallback for the current
+        // session before a reload, when it is still held in memory.
         const session = await rawFetch<AuthSession>("/auth/refresh", {
           method: "POST",
-          body: JSON.stringify({ refreshToken }),
+          body: refreshToken ? JSON.stringify({ refreshToken }) : undefined,
         });
         setSession(session);
         return session.accessToken;
@@ -118,22 +121,39 @@ export async function apiFetch<T>(
   }
 }
 
-/** Download a binary/text file from the API (e.g. CSV export). */
-export async function apiDownload(path: string, filename: string, token?: string): Promise<void> {
+async function authedBlob(path: string, token?: string): Promise<Blob> {
   const authToken = token ?? useAuthStore.getState().accessToken ?? undefined;
-  const headers = new Headers();
-  if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
 
-  const res = await fetch(`${API_URL}${path}`, { headers });
+  const doFetch = (bearer?: string) => {
+    const headers = new Headers();
+    if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
+    return fetch(`${API_URL}${path}`, { headers, credentials: "include" });
+  };
+
+  let res = await doFetch(authToken);
+  if (res.status === 401 && authToken) {
+    const newToken = await refreshAccessToken();
+    if (newToken) res = await doFetch(newToken);
+  }
   if (!res.ok) {
     throw new ApiError(await parseError(res), res.status);
   }
+  return res.blob();
+}
 
-  const blob = await res.blob();
+/** Download a binary/text file from the API (e.g. CSV export). */
+export async function apiDownload(path: string, filename: string, token?: string): Promise<void> {
+  const blob = await authedBlob(path, token);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** Fetch an authenticated binary resource (e.g. inbox media) as an object URL. */
+export async function apiObjectUrl(path: string, token?: string): Promise<string> {
+  const blob = await authedBlob(path, token);
+  return URL.createObjectURL(blob);
 }

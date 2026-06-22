@@ -178,6 +178,16 @@ export class EmbeddedSignupService {
       throw new BadRequestException("This WhatsApp number is already connected to your workspace.");
     }
 
+    const conflict = await this.prisma.whatsappAccount.findFirst({
+      where: { phoneNumberId, NOT: { organizationId: user.organizationId } },
+      select: { id: true },
+    });
+    if (conflict) {
+      throw new BadRequestException(
+        "This WhatsApp number is already connected to another Growvisi workspace. Disconnect it there first.",
+      );
+    }
+
     const businessToken = await this.exchangeCode(input.code.trim());
     await this.subscribeWebhooks(wabaId, businessToken);
     await this.tryRegisterPhone(phoneNumberId, businessToken);

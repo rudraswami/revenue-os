@@ -15,6 +15,16 @@ class EnvironmentVariables {
   @IsNotEmpty()
   JWT_SECRET!: string;
 
+  /** Dedicated key for encrypting WhatsApp tokens at rest (falls back to JWT_SECRET). */
+  @IsString()
+  @IsOptional()
+  TOKEN_ENCRYPTION_KEY?: string;
+
+  /** Shared secret protecting internal cron endpoints. */
+  @IsString()
+  @IsOptional()
+  CRON_SECRET?: string;
+
   @IsString()
   @IsNotEmpty()
   REDIS_URL!: string;
@@ -97,5 +107,32 @@ export function validateEnv(config: Record<string, unknown>) {
   if (errors.length > 0) {
     throw new Error(errors.toString());
   }
+
+  if ((validated.JWT_SECRET ?? "").length < 32) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[env] JWT_SECRET is shorter than 32 characters — use a longer random secret in production.",
+    );
+  }
+
+  const isProd = config.NODE_ENV === "production" || config.VERCEL === "1";
+  if (isProd) {
+    const recommended: Array<[string, unknown]> = [
+      ["WHATSAPP_APP_SECRET / META_APP_SECRET", validated.WHATSAPP_APP_SECRET ?? validated.META_APP_SECRET],
+      ["WHATSAPP_VERIFY_TOKEN", validated.WHATSAPP_VERIFY_TOKEN],
+      ["RAZORPAY_WEBHOOK_SECRET", config.RAZORPAY_WEBHOOK_SECRET],
+      ["TOKEN_ENCRYPTION_KEY", validated.TOKEN_ENCRYPTION_KEY],
+      ["CRON_SECRET", validated.CRON_SECRET],
+    ];
+    const missing = recommended.filter(([, v]) => !v).map(([k]) => k);
+    if (missing.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[env] Production deploy is missing recommended secrets: ${missing.join(", ")}. ` +
+          `Webhooks fail closed and tokens fall back to JWT_SECRET until these are set.`,
+      );
+    }
+  }
+
   return validated;
 }

@@ -24,7 +24,7 @@ export default function PricingPage() {
   const token = useAuthStore((s) => s.accessToken);
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
 
-  const { data } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["billing-status"],
     queryFn: () => apiFetch<BillingStatus>("/billing", { token: token ?? undefined }),
     enabled: !!token,
@@ -60,6 +60,16 @@ export default function PricingPage() {
         title="Plans & pricing"
         description="Transparent INR pricing. 14-day free trial — upgrade anytime with Razorpay."
       />
+
+      {isLoading && (
+        <div className="mb-8 h-20 animate-pulse rounded-2xl border border-border/80 bg-[#f8f9ff]/60" />
+      )}
+
+      {isError && (
+        <p className="mb-8 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Couldn&apos;t load your current plan. You can still choose a plan below.
+        </p>
+      )}
 
       {data && (
         <div className="mb-8 rounded-2xl border border-border/80 bg-[#f8f9ff]/60 px-5 py-4 text-sm">

@@ -33,6 +33,7 @@ export interface InboundMessageEvent {
 }
 
 import { AiClassifyService } from "../ai/ai-classify.service";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 
 @Injectable()
@@ -45,6 +46,7 @@ export class WhatsappService {
     @InjectQueue(QUEUES.WHATSAPP_INBOUND) private readonly inboundQueue: Queue,
     private readonly aiClassify: AiClassifyService,
     private readonly realtime: RealtimeGateway,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   verifySignature(rawBody: Buffer, signature: string | undefined): boolean {
@@ -237,24 +239,41 @@ export class WhatsappService {
       },
     });
 
-    const lead = await this.prisma.lead.upsert({
+    let lead = await this.prisma.lead.findUnique({
       where: { organizationId_phone: { organizationId, phone: from } },
-      create: {
-        organizationId,
-        phone: from,
-        displayName: contactName,
-        stage: "NEW",
-      },
-      update: {
-        displayName: contactName ?? undefined,
-      },
     });
 
-    if (conversation.leadId !== lead.id) {
+    if (lead) {
+      if (contactName && contactName !== lead.displayName) {
+        lead = await this.prisma.lead.update({
+          where: { id: lead.id },
+          data: { displayName: contactName },
+        });
+      }
+    } else if (await this.entitlements.canCreateLead(organizationId)) {
+      lead = await this.prisma.lead.create({
+        data: {
+          organizationId,
+          phone: from,
+          displayName: contactName,
+          stage: "NEW",
+        },
+      });
+    } else {
+      // Monthly lead cap reached for this plan: still ingest the message and
+      // conversation, but do not create a new lead until they upgrade.
+      this.logger.warn(`Monthly lead cap reached for org=${organizationId} — message stored without new lead`);
+    }
+
+    if (lead && conversation.leadId !== lead.id) {
       await this.prisma.conversation.update({
         where: { id: conversation.id },
         data: { leadId: lead.id },
       });
+    }
+
+    if (!lead) {
+      return null;
     }
 
     return {

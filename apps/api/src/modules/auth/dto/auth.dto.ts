@@ -36,15 +36,17 @@ export class LoginDto {
 }
 
 export class RefreshTokenDto {
+  /** Optional: the refresh token is normally read from the HttpOnly cookie. */
   @IsString()
-  @IsNotEmpty()
-  refreshToken!: string;
+  @IsOptional()
+  refreshToken?: string;
 }
 
 export class LogoutDto {
+  /** Optional: the refresh token is normally read from the HttpOnly cookie. */
   @IsString()
-  @IsNotEmpty()
-  refreshToken!: string;
+  @IsOptional()
+  refreshToken?: string;
 }
 
 export class ForgotPasswordDto {

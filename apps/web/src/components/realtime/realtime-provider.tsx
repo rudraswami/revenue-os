@@ -43,6 +43,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     socket.on("connect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));
+    socket.on("connect_error", () => setConnected(false));
 
     const refresh = (conversationId?: string) => {
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });

@@ -64,18 +64,22 @@ export class BillingService {
       existingCustomerId: existing?.razorpayCustomerId,
     });
 
+    // Do NOT switch planId/status here. The selected plan lives in the Razorpay
+    // subscription `notes.planId` and is applied by the webhook once payment is
+    // ACTIVE. Flipping planId to a paid tier while status is still TRIALING would
+    // make `resolveSubscriptionAccess` return hasAccess=false and lock the user
+    // out the moment they start paying. Keep them on trial until Razorpay confirms.
     await this.prisma.subscription.upsert({
       where: { organizationId: user.organizationId },
       create: {
         organizationId: user.organizationId,
-        planId,
+        planId: "trial",
         status: "TRIALING",
         razorpayCustomerId: checkout.customerId,
         razorpaySubscriptionId: checkout.subscriptionId,
         razorpayPlanId: this.razorpay.planIdFor(planId as GrowvisiPlanId),
       },
       update: {
-        planId,
         razorpayCustomerId: checkout.customerId,
         razorpaySubscriptionId: checkout.subscriptionId,
         razorpayPlanId: this.razorpay.planIdFor(planId as GrowvisiPlanId),

@@ -38,7 +38,7 @@ export default function DashboardPage() {
     enabled: !!token,
   });
 
-  const { data: convStats, isLoading: convLoading } = useQuery({
+  const { data: convStats, isLoading: convLoading, isError: convError, refetch: refetchConv } = useQuery({
     queryKey: ["conversation-stats"],
     queryFn: () =>
       apiFetch<{
@@ -104,9 +104,14 @@ export default function DashboardPage() {
 
       <GettingStartedCard />
 
-      {funnelError && !funnelLoading && (
+      {(funnelError || convError) && !isLoading && (
         <div className="mb-8">
-          <QueryErrorState onRetry={() => void refetchFunnel()} />
+          <QueryErrorState
+            onRetry={() => {
+              if (funnelError) void refetchFunnel();
+              if (convError) void refetchConv();
+            }}
+          />
         </div>
       )}
 

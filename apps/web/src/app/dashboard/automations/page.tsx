@@ -114,6 +114,15 @@ export default function AutomationsPage() {
         </div>
       </DashboardPanel>
 
+      {mutation.isError && (
+        <p
+          role="alert"
+          className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        >
+          Couldn&apos;t save that change. Please try again.
+        </p>
+      )}
+
       {isLoading ? (
         <div className="space-y-4">
           {SERVER_AUTOMATIONS.map((a) => (

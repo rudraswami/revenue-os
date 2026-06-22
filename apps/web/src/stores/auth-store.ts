@@ -58,9 +58,12 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "growvisi-auth",
+      // NOTE: refreshToken is deliberately NOT persisted. It lives in an HttpOnly
+      // cookie set by the API, so it cannot be stolen via XSS from localStorage.
+      // The short-lived accessToken is persisted to avoid a refresh round-trip on
+      // every reload; it is rotated via the cookie when it expires.
       partialize: (state) => ({
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         user: state.user,
         organization: state.organization,
         onboarding: state.onboarding,

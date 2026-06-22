@@ -5,12 +5,22 @@ import {
   Get,
   Patch,
   Post,
+  Req,
+  Res,
+  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import type { Request, Response } from "express";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { AuthService } from "./auth.service";
+import {
+  clearRefreshCookie,
+  readRefreshCookie,
+  setRefreshCookie,
+} from "./auth-cookie.util";
 import {
   ForgotPasswordDto,
   LoginDto,
@@ -23,27 +33,59 @@ import {
 } from "./dto/auth.dto";
 
 @Controller("auth")
+@UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post("register")
-  register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto);
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.register(dto);
+    setRefreshCookie(res, result.refreshToken);
+    return result;
   }
 
   @Post("login")
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto);
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.login(dto);
+    if ("accessToken" in result) {
+      setRefreshCookie(res, result.refreshToken);
+    }
+    return result;
   }
 
   @Post("refresh")
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.auth.refresh(dto.refreshToken);
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  async refresh(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const token = dto.refreshToken?.trim() || readRefreshCookie(req);
+    if (!token) {
+      throw new UnauthorizedException("Session expired. Please sign in again.");
+    }
+    const result = await this.auth.refresh(token);
+    setRefreshCookie(res, result.refreshToken);
+    return result;
   }
 
   @Post("logout")
-  logout(@Body() dto: LogoutDto) {
-    return this.auth.logout(dto.refreshToken);
+  async logout(
+    @Body() dto: LogoutDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const token = dto.refreshToken?.trim() || readRefreshCookie(req);
+    clearRefreshCookie(res);
+    if (token) {
+      return this.auth.logout(token);
+    }
+    return { ok: true };
   }
 
   @Get("me")
@@ -59,11 +101,13 @@ export class AuthController {
   }
 
   @Post("forgot-password")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.auth.forgotPassword(dto);
   }
 
   @Post("reset-password")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto);
   }

@@ -213,6 +213,19 @@ export class WhatsappAccountsService {
     const accessToken = dto.accessToken.trim();
     const phoneNumberId = dto.phoneNumberId.trim();
 
+    // A WhatsApp phone_number_id maps to exactly one business line. Prevent the
+    // same number being connected to two workspaces, which would make inbound
+    // webhook routing ambiguous (cross-tenant message leakage).
+    const conflict = await this.prisma.whatsappAccount.findFirst({
+      where: { phoneNumberId, NOT: { organizationId: user.organizationId } },
+      select: { id: true },
+    });
+    if (conflict) {
+      throw new BadRequestException(
+        "This WhatsApp number is already connected to another Growvisi workspace. Disconnect it there first.",
+      );
+    }
+
     const details = await this.fetchPhoneDetails(phoneNumberId, accessToken);
     const wabaId = dto.wabaId?.trim() || (await this.resolveWabaForPhone(phoneNumberId, accessToken));
     if (!wabaId) {

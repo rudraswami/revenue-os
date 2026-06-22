@@ -8,6 +8,7 @@ import {
 } from "@nestjs/websockets";
 import type { JwtPayload } from "@growvisi/shared";
 import { Server, Socket } from "socket.io";
+import { PrismaService } from "../prisma/prisma.service";
 
 export interface MessageNewEvent {
   conversationId: string;
@@ -30,7 +31,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   @WebSocketServer()
   server!: Server;
 
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async handleConnection(client: Socket) {
     try {
@@ -40,6 +44,18 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
         return;
       }
       const payload = await this.jwt.verifyAsync<JwtPayload>(token);
+
+      // Re-validate that the user is still an active member of the org they claim,
+      // so a stale/forged token cannot subscribe to another workspace's events.
+      const member = await this.prisma.organizationMember.findFirst({
+        where: { organizationId: payload.organizationId, userId: payload.sub },
+        select: { id: true },
+      });
+      if (!member) {
+        client.disconnect();
+        return;
+      }
+
       client.join(`org:${payload.organizationId}`);
       client.data.organizationId = payload.organizationId;
       this.logger.debug(`Client ${client.id} joined org:${payload.organizationId}`);

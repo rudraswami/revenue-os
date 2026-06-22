@@ -14,6 +14,13 @@ async function bootstrap() {
     rawBody: true,
   });
 
+  // Behind Railway/Vercel proxies — trust the first proxy hop so rate limiting
+  // and logging see the real client IP (X-Forwarded-For) instead of the proxy.
+  const httpAdapter = app.getHttpAdapter().getInstance() as {
+    set?: (key: string, value: unknown) => void;
+  };
+  httpAdapter.set?.("trust proxy", 1);
+
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: "cross-origin" },

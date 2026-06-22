@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
@@ -13,6 +14,7 @@ export class ConversationsService {
     private readonly whatsapp: WhatsappMessagingService,
     private readonly config: ConfigService,
     private readonly realtime: RealtimeGateway,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   getCapabilities() {
@@ -177,6 +179,8 @@ export class ConversationsService {
   }
 
   async sendMessage(user: JwtPayload, conversationId: string, content: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+
     const text = content.trim();
     if (!text) {
       throw new BadRequestException("Message cannot be empty.");
@@ -219,6 +223,8 @@ export class ConversationsService {
   }
 
   async suggestReply(user: JwtPayload, conversationId: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+
     const apiKey = this.config.get<string>("OPENAI_API_KEY");
     if (!apiKey) {
       throw new BadRequestException("Smart replies are not available on this workspace.");
@@ -303,6 +309,16 @@ export class ConversationsService {
   }
 
   async assign(user: JwtPayload, id: string, assignToUserId: string | null) {
+    if (assignToUserId) {
+      const member = await this.prisma.organizationMember.findFirst({
+        where: { organizationId: user.organizationId, userId: assignToUserId },
+        select: { id: true },
+      });
+      if (!member) {
+        throw new BadRequestException("You can only assign conversations to members of your workspace.");
+      }
+    }
+
     const conversation = await this.prisma.conversation.updateMany({
       where: { id, organizationId: user.organizationId },
       data: {

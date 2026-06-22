@@ -70,6 +70,8 @@ export class WhatsappAccountsController {
   }
 
   @Get("technical")
+  @UseGuards(MembershipRoleGuard)
+  @Roles("OWNER", "ADMIN")
   getTechnical() {
     return this.accounts.getTechnicalSetup();
   }

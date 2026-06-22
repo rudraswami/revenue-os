@@ -151,7 +151,7 @@ function RegisterForm() {
         </div>
 
         {error && (
-          <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}

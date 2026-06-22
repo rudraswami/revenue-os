@@ -243,6 +243,16 @@ export class OrganizationsService {
       return { organization: invite.organization, alreadyMember: true };
     }
 
+    const access = await this.entitlements.getAccess(invite.organizationId);
+    const memberCount = await this.prisma.organizationMember.count({
+      where: { organizationId: invite.organizationId },
+    });
+    if (memberCount >= access.limits.teamMembers) {
+      throw new BadRequestException(
+        "This workspace has reached its team member limit. Ask the owner to upgrade the plan.",
+      );
+    }
+
     await this.prisma.$transaction([
       this.prisma.organizationMember.create({
         data: {

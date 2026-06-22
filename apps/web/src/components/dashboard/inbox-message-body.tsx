@@ -2,6 +2,7 @@
 
 import { FileText, ImageIcon, Loader2, Mic, Video } from "lucide-react";
 import { useEffect, useState } from "react";
+import { apiObjectUrl } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -11,14 +12,6 @@ interface MessageMediaProps {
   type: string;
   content: string | null;
   className?: string;
-}
-
-function apiBase(): string {
-  const raw = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000")
-    .replace(/[\r\n]+/g, "")
-    .trim()
-    .replace(/\/$/, "");
-  return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
 }
 
 function mediaIcon(type: string) {
@@ -54,14 +47,15 @@ function useAuthenticatedMediaUrl(
 
     void (async () => {
       try {
-        const res = await fetch(
-          `${apiBase()}/conversations/${conversationId}/messages/${messageId}/media`,
-          { headers: { Authorization: `Bearer ${token}` } },
+        const created = await apiObjectUrl(
+          `/conversations/${conversationId}/messages/${messageId}/media`,
         );
-        if (!res.ok || cancelled) return;
-        const blob = await res.blob();
-        objectUrl = URL.createObjectURL(blob);
-        if (!cancelled) setUrl(objectUrl);
+        if (cancelled) {
+          URL.revokeObjectURL(created);
+          return;
+        }
+        objectUrl = created;
+        setUrl(created);
       } catch {
         if (!cancelled) setUrl(null);
       }

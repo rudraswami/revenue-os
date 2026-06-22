@@ -2,8 +2,28 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypt
 
 const ALGORITHM = "aes-256-gcm";
 
+function isProduction(): boolean {
+  return process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+}
+
+/**
+ * Dedicated key for encrypting WhatsApp access tokens at rest.
+ * Prefer TOKEN_ENCRYPTION_KEY so rotating JWT_SECRET never bricks stored tokens.
+ * Falls back to JWT_SECRET for backward compatibility with already-encrypted
+ * values. In production a real secret is required — the dev-only fallback is
+ * never used so we cannot silently encrypt with a guessable key.
+ */
 function getKey(): Buffer {
-  const secret = process.env.JWT_SECRET ?? "growvisi-dev-key";
+  const secret =
+    process.env.TOKEN_ENCRYPTION_KEY?.trim() || process.env.JWT_SECRET?.trim();
+  if (!secret) {
+    if (isProduction()) {
+      throw new Error(
+        "TOKEN_ENCRYPTION_KEY (or JWT_SECRET) must be set to encrypt WhatsApp tokens.",
+      );
+    }
+    return scryptSync("growvisi-dev-key", "growvisi-whatsapp-token", 32);
+  }
   return scryptSync(secret, "growvisi-whatsapp-token", 32);
 }
 

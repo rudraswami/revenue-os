@@ -69,6 +69,18 @@ export class EntitlementsService {
     }
   }
 
+  /** Non-throwing monthly-lead cap check for webhook ingestion (never 500 a webhook). */
+  async canCreateLead(organizationId: string): Promise<boolean> {
+    const access = await this.getAccess(organizationId);
+    const monthStart = new Date();
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+    const used = await this.prisma.lead.count({
+      where: { organizationId, createdAt: { gte: monthStart } },
+    });
+    return used < access.limits.monthlyLeads;
+  }
+
   async usageSnapshot(organizationId: string) {
     const access = await this.getAccess(organizationId);
     const monthStart = new Date();

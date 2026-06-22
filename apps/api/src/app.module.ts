@@ -2,6 +2,7 @@ import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { ThrottlerModule } from "@nestjs/throttler";
 import { AuthModule } from "./modules/auth/auth.module";
 import { ConversationsModule } from "./modules/conversations/conversations.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -30,6 +31,7 @@ import { QUEUES } from "@growvisi/shared";
       validate: validateEnv,
     }),
     EventEmitterModule.forRoot(),
+    ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: 120 }]),
     BullModule.forRoot({
       connection: {
         url: process.env.REDIS_URL ?? "redis://localhost:6379",
