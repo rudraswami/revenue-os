@@ -39,7 +39,7 @@ export function GuestGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (accessToken) {
-    return null;
+    return <LoadingScreen message="Redirecting…" />;
   }
 
   return <>{children}</>;
