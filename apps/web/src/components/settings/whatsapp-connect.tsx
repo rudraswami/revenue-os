@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
+import { WhatsappEmbeddedSignupDiagnostics } from "@/components/settings/whatsapp-embedded-signup-diagnostics";
 import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
 import { WhatsappTokenRefresh } from "@/components/settings/whatsapp-token-refresh";
 
@@ -353,6 +354,7 @@ export default function WhatsappConnect() {
             <p className="text-xs text-muted-foreground">
               Secure connection powered by Meta. Growvisi never sees your Facebook password.
             </p>
+            <WhatsappEmbeddedSignupDiagnostics />
           </div>
         </div>
 

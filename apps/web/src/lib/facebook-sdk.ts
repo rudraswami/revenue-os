@@ -144,14 +144,14 @@ function buildExtras(featureType?: string, solutionId?: string): Record<string, 
     setup.solutionID = solutionId.trim();
   }
 
-  const extras: Record<string, unknown> = {
-    setup,
-    sessionInfoVersion: "3",
-  };
+  // Meta Embedded Signup v4: extras is { setup: {} } — config_id drives the flow.
+  // sessionInfoVersion / featureType only for custom flows (e.g. coex, waba-only).
+  const extras: Record<string, unknown> = { setup };
 
   const feature = featureType?.trim();
   if (feature) {
     extras.featureType = feature;
+    extras.sessionInfoVersion = "3";
   }
 
   return extras;
@@ -210,6 +210,28 @@ export function getEmbeddedSignupDiagnostics(
     graphApiVersion: normalizeGraphVersion(graphApiVersion || DEFAULT_GRAPH_VERSION),
     sdkReady: !!window.FB,
     domainOk: allowedHosts.has(hostname),
+  };
+}
+
+export function getEmbeddedSignupLoginPayload(
+  appId: string,
+  configId: string,
+  graphApiVersion: string,
+  options?: { featureType?: string; solutionId?: string },
+) {
+  const cfg = cleanMetaId(configId ?? "");
+  const app = cleanMetaId(appId ?? "");
+  return {
+    appId: app,
+    configId: cfg,
+    graphApiVersion: normalizeGraphVersion(graphApiVersion || DEFAULT_GRAPH_VERSION),
+    loginOptions: {
+      config_id: cfg,
+      response_type: "code",
+      override_default_response_type: true,
+      auth_type: "rerequest",
+      extras: buildExtras(options?.featureType, options?.solutionId),
+    },
   };
 }
 
