@@ -167,15 +167,16 @@ export class ConversationsService {
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
 
-    if (conversation.unreadCount > 0) {
-      await this.prisma.conversation.update({
-        where: { id },
-        data: { unreadCount: 0 },
-      });
-      conversation.unreadCount = 0;
-    }
-
     return conversation;
+  }
+
+  async markRead(user: JwtPayload, id: string) {
+    const result = await this.prisma.conversation.updateMany({
+      where: { id, organizationId: user.organizationId },
+      data: { unreadCount: 0 },
+    });
+    if (result.count === 0) throw new NotFoundException("Conversation not found");
+    return { ok: true };
   }
 
   async sendMessage(user: JwtPayload, conversationId: string, content: string) {

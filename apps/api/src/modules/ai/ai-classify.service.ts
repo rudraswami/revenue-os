@@ -148,10 +148,17 @@ export class AiClassifyService {
       );
 
       if (result.requiresHuman) {
+        const conv = await this.prisma.conversation.findUnique({
+          where: { id: data.conversationId },
+          select: { metadata: true },
+        });
+        const existingMeta =
+          conv?.metadata && typeof conv.metadata === "object" ? conv.metadata : {};
         await this.prisma.conversation.update({
           where: { id: data.conversationId },
           data: {
             metadata: {
+              ...(existingMeta as Record<string, unknown>),
               requiresHuman: true,
               handoffReason: result.intent,
               handoffAt: new Date().toISOString(),

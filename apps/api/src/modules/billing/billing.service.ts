@@ -114,13 +114,23 @@ export class BillingService {
     if (!sub) return { handled: false };
 
     const status = this.mapStatus(entity.status, payload.event);
-    const planId = (entity.notes?.planId as GrowvisiPlanId | undefined) ?? (sub.planId as GrowvisiPlanId);
+
+    const notesPlanId = entity.notes?.planId as GrowvisiPlanId | undefined;
+    const validNotesPlan =
+      notesPlanId && PAID_PLAN_IDS.includes(notesPlanId as (typeof PAID_PLAN_IDS)[number])
+        ? notesPlanId
+        : undefined;
+
+    const resolvedPlanId =
+      status === "ACTIVE"
+        ? validNotesPlan ?? sub.planId
+        : sub.planId;
 
     await this.prisma.subscription.update({
       where: { id: sub.id },
       data: {
         status: status as never,
-        planId: status === "ACTIVE" || status === "TRIALING" ? planId : sub.planId,
+        planId: resolvedPlanId as string,
         currentPeriodEnd: entity.current_end
           ? new Date(entity.current_end * 1000)
           : sub.currentPeriodEnd,
@@ -137,6 +147,8 @@ export class BillingService {
     if (status === "active" || event === "subscription.activated" || event === "subscription.charged") {
       return "ACTIVE";
     }
+    if (status === "pending" || status === "paused") return "PAST_DUE";
+    if (status === "expired") return "CANCELED";
     if (status === "authenticated" || status === "created") return "TRIALING";
     return "TRIALING";
   }

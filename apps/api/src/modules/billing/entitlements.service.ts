@@ -11,10 +11,14 @@ export class EntitlementsService {
       where: { organizationId },
     });
     if (!sub) {
+      const org = await this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { createdAt: true },
+      });
       return resolveSubscriptionAccess({
         planId: "trial",
         status: "TRIALING",
-        createdAt: new Date(),
+        createdAt: org?.createdAt ?? new Date(),
       });
     }
     return resolveSubscriptionAccess({
@@ -72,6 +76,7 @@ export class EntitlementsService {
   /** Non-throwing monthly-lead cap check for webhook ingestion (never 500 a webhook). */
   async canCreateLead(organizationId: string): Promise<boolean> {
     const access = await this.getAccess(organizationId);
+    if (!access.hasAccess) return false;
     const monthStart = new Date();
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);

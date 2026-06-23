@@ -9,6 +9,8 @@ import {
 import type { JwtPayload } from "@growvisi/shared";
 import { Server, Socket } from "socket.io";
 import { PrismaService } from "../prisma/prisma.service";
+import { JWT_ISSUER, JWT_AUDIENCE } from "../auth/jwt.constants";
+import { isAllowedCorsOrigin } from "../../config/cors-origins";
 
 export interface MessageNewEvent {
   conversationId: string;
@@ -16,11 +18,9 @@ export interface MessageNewEvent {
 
 @WebSocketGateway({
   cors: {
-    origin: [
-      process.env.NEXT_PUBLIC_APP_URL,
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-    ].filter(Boolean) as string[],
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      callback(null, isAllowedCorsOrigin(origin));
+    },
     credentials: true,
   },
   namespace: "/realtime",
@@ -43,15 +43,16 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
         client.disconnect();
         return;
       }
-      const payload = await this.jwt.verifyAsync<JwtPayload>(token);
+      const payload = await this.jwt.verifyAsync<JwtPayload>(token, {
+        issuer: JWT_ISSUER,
+        audience: JWT_AUDIENCE,
+      });
 
-      // Re-validate that the user is still an active member of the org they claim,
-      // so a stale/forged token cannot subscribe to another workspace's events.
       const member = await this.prisma.organizationMember.findFirst({
         where: { organizationId: payload.organizationId, userId: payload.sub },
-        select: { id: true },
+        include: { user: { select: { status: true } } },
       });
-      if (!member) {
+      if (!member || member.user.status !== "ACTIVE") {
         client.disconnect();
         return;
       }

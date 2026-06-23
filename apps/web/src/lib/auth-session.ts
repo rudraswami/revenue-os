@@ -32,12 +32,22 @@ export function postAuthPath(onboarding?: { whatsappConnected?: boolean } | null
   return "/dashboard";
 }
 
+/** Patch user/org profile into the store without wiping the refresh token. */
+function patchProfile(me: MeResponse) {
+  const current = useAuthStore.getState();
+  useAuthStore.getState().setSession({
+    accessToken: current.accessToken!,
+    refreshToken: current.refreshToken ?? "",
+    user: me.user,
+    organization: me.organization,
+    onboarding: me.onboarding,
+  });
+  syncAuthCookie(true);
+}
+
 /** Restore session on app load: refresh tokens + sync profile from API. */
 export async function bootstrapAuth(): Promise<void> {
   const state = useAuthStore.getState();
-  // The refresh token is no longer persisted to localStorage — after a reload it
-  // lives only in the HttpOnly cookie. Attempt restore when we have a persisted
-  // access token or the client-readable session hint cookie.
   if (!state.refreshToken && !state.accessToken && !hasSessionHint()) {
     return;
   }
@@ -46,35 +56,27 @@ export async function bootstrapAuth(): Promise<void> {
 
   if (!token) {
     token = await refreshAccessToken();
-    if (!token) return;
+    if (!token) {
+      useAuthStore.getState().clear();
+      syncAuthCookie(false);
+      return;
+    }
   }
 
   try {
     const me = await apiFetch<MeResponse>("/auth/me", { token });
-    const current = useAuthStore.getState();
-    useAuthStore.getState().setSession({
-      accessToken: current.accessToken!,
-      refreshToken: current.refreshToken!,
-      user: me.user,
-      organization: me.organization,
-      onboarding: me.onboarding,
-    });
-    syncAuthCookie(true);
+    patchProfile(me);
   } catch {
     const refreshed = await refreshAccessToken();
-    if (!refreshed) return;
+    if (!refreshed) {
+      useAuthStore.getState().clear();
+      syncAuthCookie(false);
+      return;
+    }
 
     try {
       const me = await apiFetch<MeResponse>("/auth/me");
-      const current = useAuthStore.getState();
-      useAuthStore.getState().setSession({
-        accessToken: current.accessToken!,
-        refreshToken: current.refreshToken!,
-        user: me.user,
-        organization: me.organization,
-        onboarding: me.onboarding,
-      });
-      syncAuthCookie(true);
+      patchProfile(me);
     } catch {
       useAuthStore.getState().clear();
       syncAuthCookie(false);

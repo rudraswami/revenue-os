@@ -112,7 +112,7 @@ function InviteAcceptForm() {
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
       {emailMismatch ? (
         <Button asChild variant="outline" className="rounded-xl">
-          <Link href="/login">Switch account</Link>
+          <Link href={`/login?invite=${token}&email=${encodeURIComponent(preview.email)}`}>Switch account</Link>
         </Button>
       ) : (
         <Button

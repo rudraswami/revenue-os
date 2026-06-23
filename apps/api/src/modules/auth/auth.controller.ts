@@ -65,7 +65,8 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const token = dto.refreshToken?.trim() || readRefreshCookie(req);
+    const cookieToken = readRefreshCookie(req);
+    const token = cookieToken ?? dto.refreshToken?.trim();
     if (!token) {
       throw new UnauthorizedException("Session expired. Please sign in again.");
     }
@@ -114,7 +115,14 @@ export class AuthController {
 
   @Delete("account")
   @UseGuards(JwtAuthGuard)
-  deleteAccount(@CurrentUser() user: JwtPayload, @Body() dto: DeleteAccountDto) {
-    return this.auth.deleteAccount(user, dto);
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async deleteAccount(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: DeleteAccountDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.deleteAccount(user, dto);
+    clearRefreshCookie(res);
+    return result;
   }
 }

@@ -127,7 +127,6 @@ model User {
   notifications     Notification[]
   sentInvites       OrganizationInvite[] @relation("SentInvites")
 
-  @@index([email])
   @@map("users")
 }
 
@@ -188,7 +187,6 @@ model Organization {
   usageMeters        UsageMeter[]
   invites            OrganizationInvite[]
 
-  @@index([slug])
   @@map("organizations")
 }
 
@@ -222,7 +220,7 @@ model OrganizationInvite {
   createdAt      DateTime       @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  invitedBy    User         @relation("SentInvites", fields: [invitedById], references: [id])
+  invitedBy    User         @relation("SentInvites", fields: [invitedById], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -310,7 +308,7 @@ model Conversation {
 
   organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   workspace       Workspace?      @relation(fields: [workspaceId], references: [id])
-  whatsappAccount WhatsappAccount @relation(fields: [whatsappAccountId], references: [id])
+  whatsappAccount WhatsappAccount @relation(fields: [whatsappAccountId], references: [id], onDelete: Cascade)
   lead            Lead?           @relation(fields: [leadId], references: [id])
   assignedTo      User?           @relation("AssignedAgent", fields: [assignedToId], references: [id])
   messages        Message[]
@@ -319,6 +317,7 @@ model Conversation {
 
   @@unique([organizationId, waConversationKey])
   @@index([organizationId, status, lastMessageAt])
+  @@index([organizationId, status, lastInboundAt])
   @@index([assignedToId])
   @@map("conversations")
 }
@@ -375,6 +374,7 @@ model Lead {
 
   @@unique([organizationId, phone])
   @@index([organizationId, stage])
+  @@index([organizationId, createdAt])
   @@map("leads")
 }
 
@@ -520,6 +520,7 @@ model Subscription {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([razorpaySubscriptionId])
   @@map("subscriptions")
 }
 

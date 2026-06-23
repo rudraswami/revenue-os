@@ -29,7 +29,7 @@ export interface InboundMessageEvent {
   organizationId: string;
   conversationId: string;
   messageId: string;
-  leadId: string;
+  leadId: string | null;
 }
 
 import { AiClassifyService } from "../ai/ai-classify.service";
@@ -99,7 +99,9 @@ export class WhatsappService {
           this.realtime.emitMessageNew(inbound.organizationId, {
             conversationId: inbound.conversationId,
           });
-          await this.aiClassify.enqueue(inbound);
+          if (inbound.leadId) {
+            await this.aiClassify.enqueue(inbound as typeof inbound & { leadId: string });
+          }
         }
         for (const orgId of orgIds) {
           this.realtime.emitInboxUpdated(orgId);
@@ -147,13 +149,9 @@ export class WhatsappService {
           });
           if (account && account.phoneNumberId !== phoneNumberId) {
             this.logger.warn(
-              `Matched WABA ${entry.id} but webhook phone_number_id=${phoneNumberId} differs from stored ${account.phoneNumberId} — updating`,
+              `Matched WABA ${entry.id} but webhook phone_number_id=${phoneNumberId} differs from stored ${account.phoneNumberId} — skipping (reconnect required)`,
             );
-            await this.prisma.whatsappAccount.update({
-              where: { id: account.id },
-              data: { phoneNumberId },
-            });
-            account = { ...account, phoneNumberId };
+            account = null;
           }
         }
         if (!account) {
@@ -196,6 +194,13 @@ export class WhatsappService {
 
     const waConversationKey = `${whatsappAccountId}:${from}`;
 
+    const existing = await this.prisma.message.findUnique({
+      where: { organizationId_waMessageId: { organizationId, waMessageId } },
+    });
+    if (existing) return null;
+
+    const isReaction = String(msg.type ?? "text") === "reaction";
+
     const conversation = await this.prisma.conversation.upsert({
       where: {
         organizationId_waConversationKey: { organizationId, waConversationKey },
@@ -208,36 +213,44 @@ export class WhatsappService {
         contactName,
         lastMessageAt: new Date(),
         lastInboundAt: new Date(),
-        unreadCount: 1,
+        unreadCount: isReaction ? 0 : 1,
       },
       update: {
         contactName: contactName ?? undefined,
         lastMessageAt: new Date(),
         lastInboundAt: new Date(),
-        unreadCount: { increment: 1 },
+        ...(isReaction ? {} : { unreadCount: { increment: 1 } }),
       },
     });
-
-    const existing = await this.prisma.message.findUnique({
-      where: { organizationId_waMessageId: { organizationId, waMessageId } },
-    });
-    if (existing) return null;
 
     const type = this.mapMessageType(String(msg.type ?? "text"));
     const content = this.extractContent(msg);
 
-    const message = await this.prisma.message.create({
-      data: {
-        organizationId,
-        conversationId: conversation.id,
-        waMessageId,
-        direction: "INBOUND",
-        type,
-        status: "DELIVERED",
-        content,
-        payload: msg as object,
-      },
-    });
+    let message;
+    try {
+      message = await this.prisma.message.create({
+        data: {
+          organizationId,
+          conversationId: conversation.id,
+          waMessageId,
+          direction: "INBOUND",
+          type,
+          status: "DELIVERED",
+          content,
+          payload: msg as object,
+        },
+      });
+    } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "code" in err &&
+        (err as { code: string }).code === "P2002"
+      ) {
+        return null;
+      }
+      throw err;
+    }
 
     let lead = await this.prisma.lead.findUnique({
       where: { organizationId_phone: { organizationId, phone: from } },
@@ -272,17 +285,21 @@ export class WhatsappService {
       });
     }
 
-    if (!lead) {
-      return null;
-    }
-
     return {
       organizationId,
       conversationId: conversation.id,
       messageId: message.id,
-      leadId: lead.id,
+      leadId: lead?.id ?? null,
     };
   }
+
+  private static STATUS_RANK: Record<string, number> = {
+    PENDING: 0,
+    SENT: 1,
+    DELIVERED: 2,
+    READ: 3,
+    FAILED: -1,
+  };
 
   private async updateMessageStatus(organizationId: string, status: Record<string, unknown>) {
     const waMessageId = String(status.id);
@@ -301,10 +318,22 @@ export class WhatsappService {
 
     if (!mapped) return;
 
-    await this.prisma.message.updateMany({
+    const existing = await this.prisma.message.findFirst({
       where: { organizationId, waMessageId },
-      data: { status: mapped as never },
+      select: { status: true },
     });
+
+    if (!existing) return;
+
+    const currentRank = WhatsappService.STATUS_RANK[existing.status] ?? 0;
+    const newRank = WhatsappService.STATUS_RANK[mapped] ?? 0;
+
+    if (mapped === "FAILED" || newRank > currentRank) {
+      await this.prisma.message.updateMany({
+        where: { organizationId, waMessageId },
+        data: { status: mapped as never },
+      });
+    }
   }
 
   private mapMessageType(type: string) {

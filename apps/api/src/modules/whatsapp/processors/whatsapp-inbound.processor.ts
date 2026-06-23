@@ -40,7 +40,9 @@ export class WhatsappInboundProcessor extends WorkerHost {
         this.realtime.emitMessageNew(event.organizationId, {
           conversationId: event.conversationId,
         });
-        await this.aiClassify.enqueue(event);
+        if (event.leadId) {
+          await this.aiClassify.enqueue(event as typeof event & { leadId: string });
+        }
       }
       for (const orgId of orgIds) {
         this.realtime.emitInboxUpdated(orgId);

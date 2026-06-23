@@ -78,15 +78,17 @@ export function InboxMessageBody({
   className,
 }: MessageMediaProps) {
   const Icon = mediaIcon(type);
-  const isVisual = type === "IMAGE" || type === "VIDEO" || type === "STICKER";
+  const isImage = type === "IMAGE" || type === "STICKER";
+  const isVideo = type === "VIDEO";
   const isAudio = type === "AUDIO";
+  const needsMedia = isImage || isVideo || isAudio;
   const mediaUrl = useAuthenticatedMediaUrl(
     conversationId,
     messageId,
-    isVisual || isAudio,
+    needsMedia,
   );
 
-  if ((isVisual || isAudio) && !mediaUrl) {
+  if (needsMedia && !mediaUrl) {
     return (
       <div className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -95,7 +97,7 @@ export function InboxMessageBody({
     );
   }
 
-  if (isVisual && mediaUrl) {
+  if (isImage && mediaUrl) {
     return (
       <div className={cn("space-y-2", className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -105,6 +107,23 @@ export function InboxMessageBody({
           className="max-h-64 rounded-lg object-cover"
           loading="lazy"
         />
+        {content && !content.startsWith("[") && (
+          <p className="whitespace-pre-wrap text-sm">{content}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (isVideo && mediaUrl) {
+    return (
+      <div className={cn("space-y-2", className)}>
+        <video
+          controls
+          className="max-h-64 rounded-lg"
+          preload="metadata"
+        >
+          <source src={mediaUrl} />
+        </video>
         {content && !content.startsWith("[") && (
           <p className="whitespace-pre-wrap text-sm">{content}</p>
         )}

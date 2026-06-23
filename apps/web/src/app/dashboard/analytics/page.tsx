@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
             <DashboardPanel title="Leads by stage" contentClassName="h-72" delay={0.1}>
               {barData.some((d) => d.count > 0) ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                   <BarChart data={barData}>
                     <XAxis dataKey="stage" fontSize={11} tickLine={false} axisLine={false} />
                     <YAxis fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
@@ -163,7 +163,7 @@ export default function AnalyticsPage() {
 
             <DashboardPanel title="Pipeline distribution" contentClassName="h-72" delay={0.15}>
               {chartData.some((d) => d.value > 0) ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                   <PieChart>
                     <Pie
                       data={chartData.filter((d) => d.value > 0)}
@@ -175,9 +175,11 @@ export default function AnalyticsPage() {
                       outerRadius={96}
                       paddingAngle={3}
                     >
-                      {chartData.map((_, i) => (
-                        <Cell key={i} fill={STAGE_CHART_COLORS[i % STAGE_CHART_COLORS.length]} />
-                      ))}
+                      {chartData
+                        .filter((d) => d.value > 0)
+                        .map((_, i) => (
+                          <Cell key={i} fill={STAGE_CHART_COLORS[i % STAGE_CHART_COLORS.length]} />
+                        ))}
                     </Pie>
                     <Tooltip contentStyle={chartTooltipStyle} />
                   </PieChart>

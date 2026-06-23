@@ -307,6 +307,11 @@ export class AuthService {
       const plainToken = randomBytes(32).toString("hex");
       const tokenHash = this.hashToken(plainToken);
 
+      await this.prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+
       await this.prisma.passwordResetToken.create({
         data: {
           userId: user.id,
@@ -321,7 +326,11 @@ export class AuthService {
       ).replace(/\/$/, "");
       const resetUrl = `${appUrl}/reset-password?token=${plainToken}`;
 
-      await this.email.sendPasswordReset(user.email, resetUrl);
+      try {
+        await this.email.sendPasswordReset(user.email, resetUrl);
+      } catch {
+        // Swallow email errors so attacker cannot distinguish existing accounts
+      }
     }
 
     return {
@@ -511,6 +520,22 @@ export class AuthService {
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const memberCount = await tx.organizationMember.count({
+        where: { organizationId: invite.organizationId },
+      });
+      const sub = await tx.subscription.findUnique({
+        where: { organizationId: invite.organizationId },
+      });
+      const { resolveSubscriptionAccess } = await import("@growvisi/shared");
+      const access = resolveSubscriptionAccess(
+        sub ?? { planId: "trial", status: "TRIALING", createdAt: new Date() },
+      );
+      if (memberCount >= access.limits.teamMembers) {
+        throw new BadRequestException(
+          "This workspace has reached its team member limit. Ask the owner to upgrade the plan.",
+        );
+      }
+
       const user = await tx.user.create({
         data: {
           email: dto.email.toLowerCase(),
@@ -549,10 +574,16 @@ export class AuthService {
   }
 
   private slugify(name: string) {
-    return name
+    const slug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 48);
+    if (!slug) {
+      throw new BadRequestException(
+        "Company name must contain at least one letter or number.",
+      );
+    }
+    return slug;
   }
 }

@@ -44,6 +44,8 @@ class SendMessageDto {
   content!: string;
 }
 
+class MarkReadDto {}
+
 @Controller("conversations")
 @UseGuards(JwtAuthGuard)
 export class ConversationsController {
@@ -94,6 +96,11 @@ export class ConversationsController {
   @Post(":id/suggest-reply")
   suggestReply(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.conversations.suggestReply(user, id);
+  }
+
+  @Post(":id/read")
+  markRead(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.conversations.markRead(user, id);
   }
 
   @Patch(":id/assign")

@@ -37,13 +37,16 @@ export class LeadsService {
     });
     if (!lead) throw new NotFoundException();
 
+    if (lead.stage === stage) return lead;
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.lead.update({
         where: { id },
         data: {
           stage: stage as never,
-          wonAt: stage === "WON" ? new Date() : lead.wonAt,
-          lostAt: stage === "LOST" ? new Date() : lead.lostAt,
+          wonAt: stage === "WON" ? new Date() : null,
+          lostAt: stage === "LOST" ? new Date() : null,
+          lostReason: stage === ("LOST" as string) ? reason ?? lead.lostReason : lead.lostReason,
         },
       });
 

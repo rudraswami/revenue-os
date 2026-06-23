@@ -92,6 +92,13 @@ export default function InboxPage() {
   useEffect(() => {
     const c = new URLSearchParams(window.location.search).get("c");
     if (c) setSelectedId(c);
+
+    function onPopState() {
+      const param = new URLSearchParams(window.location.search).get("c");
+      setSelectedId(param);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   const { data: listData, isLoading: listLoading, isError: listError, refetch: refetchList } = useQuery({
@@ -117,7 +124,7 @@ export default function InboxPage() {
 
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
 
-  const { data: thread, isLoading: threadLoading } = useQuery({
+  const { data: thread, isLoading: threadLoading, isError: threadError, refetch: refetchThread } = useQuery({
     queryKey: ["conversation", selectedId],
     queryFn: () =>
       apiFetch<ConversationDetail>(`/conversations/${selectedId}`, { token: token ?? undefined }),
@@ -233,6 +240,10 @@ export default function InboxPage() {
     setSendError(null);
     setShowComposer(true);
     window.history.replaceState(null, "", `/dashboard/inbox?c=${id}`);
+    void apiFetch(`/conversations/${id}/read`, {
+      method: "POST",
+      token: token ?? undefined,
+    }).catch(() => {});
   }
 
   function clearSelection() {
@@ -303,6 +314,26 @@ export default function InboxPage() {
           </div>
         ) : threadLoading && !thread ? (
           <InboxThreadSkeleton />
+        ) : threadError ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+            <p className="text-sm text-destructive">Could not load this conversation.</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void refetchThread()}
+                className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90"
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => clearSelection()}
+                className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+              >
+                Back to list
+              </button>
+            </div>
+          </div>
         ) : thread ? (
           <div className="flex min-h-0 flex-1 min-w-0">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">

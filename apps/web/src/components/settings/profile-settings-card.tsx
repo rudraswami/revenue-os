@@ -12,7 +12,6 @@ import { useAuthStore } from "@/stores/auth-store";
 export function ProfileSettingsCard() {
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
-  const refreshToken = useAuthStore((s) => s.refreshToken);
   const [name, setName] = useState(user?.name ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -68,7 +67,7 @@ export function ProfileSettingsCard() {
         size="sm"
         variant="accent"
         className="rounded-xl"
-        disabled={!name.trim() || mutation.isPending || !refreshToken}
+        disabled={!name.trim() || mutation.isPending || !token}
         onClick={() => mutation.mutate()}
       >
         {mutation.isPending ? "Saving…" : "Save profile"}
