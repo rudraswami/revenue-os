@@ -15,7 +15,17 @@ export interface CreateCampaignInput {
   templateName?: string | null;
   languageCode?: string;
   messageBody?: string | null;
+  templateParams?: string[];
   audience: AudienceFilter;
+}
+
+export interface ImportCampaignInput {
+  name: string;
+  templateName: string;
+  languageCode?: string;
+  messageBody?: string | null;
+  templateParams?: string[];
+  recipients: Array<{ phone: string; name?: string | null }>;
 }
 
 @Injectable()
@@ -91,7 +101,11 @@ export class CampaignsService {
         status: "DRAFT",
         templateName: input.templateName?.trim() || null,
         messageBody: input.messageBody?.slice(0, 1024) || null,
-        audienceFilter: input.audience as object,
+        audienceFilter: {
+          ...input.audience,
+          languageCode: input.languageCode ?? "en",
+          templateParams: input.templateParams ?? [],
+        } as object,
         totalRecipients: leads.length,
         createdById: user.sub,
         recipients: {
@@ -99,6 +113,83 @@ export class CampaignsService {
             leadId: l.id,
             phone: l.phone,
             name: l.displayName,
+            status: "PENDING" as const,
+          })),
+        },
+      },
+      include: { recipients: { take: 50 } },
+    });
+  }
+
+  async createFromImport(user: JwtPayload, input: ImportCampaignInput) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    const name = input.name.trim();
+    const templateName = input.templateName.trim();
+    if (!name) throw new BadRequestException("Campaign name required");
+    if (!templateName) throw new BadRequestException("Template name required for imported campaigns.");
+
+    const normalized = input.recipients
+      .map((r) => ({
+        phone: r.phone.replace(/\D/g, ""),
+        name: r.name?.trim() || null,
+      }))
+      .filter((r) => r.phone.length >= 10);
+
+    if (normalized.length === 0) {
+      throw new BadRequestException("No valid phone numbers in import.");
+    }
+    if (normalized.length > 5000) {
+      throw new BadRequestException("Maximum 5,000 recipients per campaign.");
+    }
+
+    const unique = new Map<string, { phone: string; name: string | null }>();
+    for (const r of normalized) {
+      if (!unique.has(r.phone)) unique.set(r.phone, r);
+    }
+
+    const recipientRows: Array<{ leadId?: string; phone: string; name: string | null }> = [];
+    for (const r of unique.values()) {
+      let lead = await this.prisma.lead.findUnique({
+        where: { organizationId_phone: { organizationId: user.organizationId, phone: r.phone } },
+        select: { id: true, displayName: true },
+      });
+      if (!lead && (await this.entitlements.canCreateLead(user.organizationId))) {
+        lead = await this.prisma.lead.create({
+          data: {
+            organizationId: user.organizationId,
+            phone: r.phone,
+            displayName: r.name,
+            source: "import",
+          },
+          select: { id: true, displayName: true },
+        });
+      }
+      recipientRows.push({
+        leadId: lead?.id,
+        phone: r.phone,
+        name: r.name ?? lead?.displayName ?? null,
+      });
+    }
+
+    return this.prisma.campaign.create({
+      data: {
+        organizationId: user.organizationId,
+        name: name.slice(0, 120),
+        status: "DRAFT",
+        templateName,
+        messageBody: input.messageBody?.slice(0, 1024) || null,
+        audienceFilter: {
+          source: "csv_import",
+          languageCode: input.languageCode ?? "en",
+          templateParams: input.templateParams ?? [],
+        } as object,
+        totalRecipients: recipientRows.length,
+        createdById: user.sub,
+        recipients: {
+          create: recipientRows.map((r) => ({
+            leadId: r.leadId,
+            phone: r.phone,
+            name: r.name,
             status: "PENDING" as const,
           })),
         },
@@ -158,7 +249,18 @@ export class CampaignsService {
       where: { campaignId: id, status: "PENDING" },
     });
 
-    const languageCode = "en";
+    const filter = (campaign.audienceFilter ?? {}) as Record<string, unknown>;
+    const languageCode = typeof filter.languageCode === "string" ? filter.languageCode : "en";
+    const storedParams = Array.isArray(filter.templateParams)
+      ? filter.templateParams.map(String)
+      : [];
+    const bodyParams =
+      storedParams.length > 0
+        ? storedParams
+        : campaign.messageBody?.trim()
+          ? [campaign.messageBody.trim()]
+          : [];
+
     let sent = 0;
     let failed = 0;
 
@@ -169,6 +271,7 @@ export class CampaignsService {
           recipient.phone,
           campaign.templateName,
           languageCode,
+          bodyParams,
         );
         await this.prisma.campaignRecipient.update({
           where: { id: recipient.id },

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
@@ -9,6 +9,17 @@ export interface ContactListFilters {
   stage?: LeadStage;
   tagId?: string;
   ownerId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CreateContactInput {
+  phone: string;
+  displayName?: string | null;
+  email?: string | null;
+  company?: string | null;
+  ownerId?: string | null;
+  stage?: LeadStage;
 }
 
 export interface UpdateContactInput {
@@ -16,6 +27,7 @@ export interface UpdateContactInput {
   email?: string | null;
   company?: string | null;
   ownerId?: string | null;
+  valueCents?: number | null;
   profile?: Record<string, unknown>;
 }
 
@@ -368,22 +380,14 @@ export class LeadsService {
 
   async exportCsv(user: JwtPayload, period?: MetricsPeriod): Promise<string> {
     const range = createdAtFilter(parseMetricsPeriod(period));
-    const leads = await this.prisma.lead.findMany({
+    const rows = await this.prisma.lead.findMany({
       where: {
         organizationId: user.organizationId,
         ...(range.gte ? { createdAt: range } : {}),
       },
       orderBy: { updatedAt: "desc" },
-      select: {
-        displayName: true,
-        phone: true,
-        email: true,
-        stage: true,
-        score: true,
-        aiConfidence: true,
-        source: true,
-        createdAt: true,
-        lastClassifiedAt: true,
+      include: {
+        tags: { include: { tag: true } },
       },
     });
 
@@ -391,20 +395,26 @@ export class LeadsService {
       "name",
       "phone",
       "email",
+      "company",
       "stage",
       "score",
+      "value_inr",
+      "tags",
       "ai_confidence",
       "source",
       "created_at",
       "last_classified_at",
     ];
-    const rows = leads.map((l) =>
+    const csvRows = rows.map((l) =>
       [
         l.displayName ?? "",
         l.phone,
         l.email ?? "",
+        l.company ?? "",
         l.stage,
         String(l.score),
+        l.valueCents != null ? String(l.valueCents / 100) : "",
+        l.tags.map((t) => t.tag.name).join("; "),
         l.aiConfidence != null ? String(l.aiConfidence) : "",
         l.source ?? "",
         l.createdAt.toISOString(),
@@ -414,12 +424,16 @@ export class LeadsService {
         .join(","),
     );
 
-    return [header.join(","), ...rows].join("\n");
+    return [header.join(","), ...csvRows].join("\n");
   }
 
   // ─── Contacts (CRM) ──────────────────────────────────────────────────────
 
   async listContacts(user: JwtPayload, filters: ContactListFilters) {
+    const page = Math.max(1, filters.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 50));
+    const skip = (page - 1) * pageSize;
+
     const where: Record<string, unknown> = { organizationId: user.organizationId };
     if (filters.stage) where.stage = filters.stage;
     if (filters.ownerId) where.ownerId = filters.ownerId;
@@ -434,18 +448,22 @@ export class LeadsService {
       ];
     }
 
-    const leads = await this.prisma.lead.findMany({
-      where,
-      orderBy: { updatedAt: "desc" },
-      take: 200,
-      include: {
-        tags: { include: { tag: true } },
-        conversation: { select: { id: true, unreadCount: true, lastMessageAt: true, status: true } },
-        _count: { select: { tasks: true, notes: true } },
-      },
-    });
+    const [leads, total] = await Promise.all([
+      this.prisma.lead.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        skip,
+        take: pageSize,
+        include: {
+          tags: { include: { tag: true } },
+          conversation: { select: { id: true, unreadCount: true, lastMessageAt: true, status: true } },
+          _count: { select: { tasks: true, notes: true } },
+        },
+      }),
+      this.prisma.lead.count({ where }),
+    ]);
 
-    return leads.map((l) => ({
+    const data = leads.map((l) => ({
       id: l.id,
       displayName: l.displayName,
       phone: l.phone,
@@ -465,6 +483,50 @@ export class LeadsService {
       taskCount: l._count.tasks,
       noteCount: l._count.notes,
     }));
+
+    return { data, total, page, pageSize, hasMore: skip + data.length < total };
+  }
+
+  async createContact(user: JwtPayload, input: CreateContactInput) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    if (!(await this.entitlements.canCreateLead(user.organizationId))) {
+      throw new BadRequestException("Lead limit reached for your plan.");
+    }
+
+    const phone = input.phone.replace(/\D/g, "");
+    if (phone.length < 10 || phone.length > 15) {
+      throw new BadRequestException("Enter a valid phone number with country code.");
+    }
+
+    const existing = await this.prisma.lead.findUnique({
+      where: { organizationId_phone: { organizationId: user.organizationId, phone } },
+    });
+    if (existing) {
+      throw new BadRequestException("A contact with this phone number already exists.");
+    }
+
+    if (input.ownerId) {
+      const member = await this.prisma.organizationMember.findFirst({
+        where: { organizationId: user.organizationId, userId: input.ownerId },
+      });
+      if (!member) throw new NotFoundException("Owner must be a workspace member");
+    }
+
+    return this.prisma.lead.create({
+      data: {
+        organizationId: user.organizationId,
+        phone,
+        displayName: input.displayName?.trim() || null,
+        email: input.email?.trim() || null,
+        company: input.company?.trim() || null,
+        ownerId: input.ownerId ?? null,
+        stage: (input.stage ?? "NEW") as never,
+        source: "manual",
+      },
+      include: {
+        tags: { include: { tag: true } },
+      },
+    });
   }
 
   async getContact(user: JwtPayload, id: string) {
@@ -523,7 +585,8 @@ export class LeadsService {
         ...(input.email !== undefined ? { email: input.email } : {}),
         ...(input.company !== undefined ? { company: input.company } : {}),
         ...(input.ownerId !== undefined ? { ownerId: input.ownerId } : {}),
-        ...(profile !== undefined ? { profile: profile as object } : {}),
+        ...(input.profile !== undefined ? { profile: profile as object } : {}),
+        ...(input.valueCents !== undefined ? { valueCents: input.valueCents } : {}),
       },
     });
   }

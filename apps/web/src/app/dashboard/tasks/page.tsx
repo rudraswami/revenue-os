@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { apiFetch } from "@/lib/api-client";
+import { canWrite } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   formatDate,
@@ -34,6 +35,8 @@ interface TaskRow {
 
 export default function TasksPage() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const canEdit = canWrite(role);
   const qc = useQueryClient();
   const [scope, setScope] = useState<"mine" | "open" | "all">("open");
   const [title, setTitle] = useState("");
@@ -131,6 +134,7 @@ export default function TasksPage() {
         <StatCard label="Assigned to me" value={summary?.mine ?? 0} accent />
       </div>
 
+      {canEdit && (
       <DashboardPanel className="mb-6" title="New task">
         <form
           className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto_auto] md:items-end"
@@ -187,6 +191,7 @@ export default function TasksPage() {
           </Button>
         </form>
       </DashboardPanel>
+      )}
 
       <div className="mb-4 flex gap-1.5">
         {(["open", "mine", "all"] as const).map((s) => (
@@ -228,6 +233,7 @@ export default function TasksPage() {
                 !done && t.dueAt && new Date(t.dueAt).getTime() < Date.now();
               return (
                 <li key={t.id} className="flex items-center gap-3 px-5 py-3">
+                  {canEdit ? (
                   <button
                     type="button"
                     onClick={() => toggle.mutate({ id: t.id, status: done ? "OPEN" : "DONE" })}
@@ -240,6 +246,16 @@ export default function TasksPage() {
                   >
                     <Check className="h-3.5 w-3.5" />
                   </button>
+                  ) : (
+                  <div
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
+                      done ? "border-success bg-success text-white" : "border-border",
+                    )}
+                  >
+                    {done && <Check className="h-3.5 w-3.5" />}
+                  </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className={cn("truncate text-sm font-medium", done && "text-muted-foreground line-through")}>
                       {t.title}
@@ -262,6 +278,7 @@ export default function TasksPage() {
                     {t.assignedTo && (
                       <AvatarInitials name={t.assignedTo.name ?? t.assignedTo.email} size="sm" />
                     )}
+                    {canEdit ? (
                     <Select
                       value={t.assignedTo?.id ?? ""}
                       onChange={(e) => reassign.mutate({ id: t.id, assignedToId: e.target.value })}
@@ -274,6 +291,13 @@ export default function TasksPage() {
                         </option>
                       ))}
                     </Select>
+                    ) : (
+                      t.assignedTo && (
+                        <span className="text-xs text-muted-foreground">
+                          {t.assignedTo.name ?? t.assignedTo.email}
+                        </span>
+                      )
+                    )}
                   </div>
                 </li>
               );

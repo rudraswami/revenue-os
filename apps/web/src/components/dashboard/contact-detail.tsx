@@ -86,6 +86,7 @@ export function ContactDetailDrawer({
   const [noteBody, setNoteBody] = useState("");
   const [newTask, setNewTask] = useState("");
   const [tagOpen, setTagOpen] = useState(false);
+  const [dealValue, setDealValue] = useState("");
 
   const { data: contact, isLoading } = useQuery({
     queryKey: ["contact", leadId],
@@ -111,6 +112,9 @@ export function ContactDetailDrawer({
       setName(contact.displayName ?? "");
       setEmail(contact.email ?? "");
       setCompany(contact.company ?? "");
+      setDealValue(
+        contact.valueCents != null ? String(Math.round(contact.valueCents / 100)) : "",
+      );
     }
   }, [contact]);
 
@@ -292,11 +296,23 @@ export function ContactDetailDrawer({
                   </div>
                   <div>
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Value
+                      Value (₹)
                     </p>
-                    <div className="flex h-9 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-foreground">
-                      {formatInr(contact.valueCents)}
-                    </div>
+                    <Input
+                      value={dealValue}
+                      onChange={(e) => setDealValue(e.target.value)}
+                      onBlur={() => {
+                        const rupees = dealValue.trim() === "" ? null : Math.round(Number(dealValue) * 100);
+                        const current = contact.valueCents ?? null;
+                        if (rupees !== current) {
+                          saveProfile.mutate({ valueCents: rupees });
+                        }
+                      }}
+                      type="number"
+                      min={0}
+                      className="h-9 text-sm"
+                      placeholder="0"
+                    />
                   </div>
                 </div>
 

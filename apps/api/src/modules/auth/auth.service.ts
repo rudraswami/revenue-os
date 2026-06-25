@@ -29,6 +29,7 @@ export interface OnboardingStatusResponse {
 export interface AuthSessionResponse {
   user: { id: string; email: string; name: string | null };
   organization: { id: string; name: string; slug: string };
+  role: JwtPayload["role"];
   accessToken: string;
   refreshToken: string;
   onboarding: OnboardingStatusResponse;
@@ -439,9 +440,31 @@ export class AuthService {
         name: organization.name,
         slug: organization.slug,
       },
+      role: payload.role,
       onboarding,
       ...tokens,
     };
+  }
+
+  async switchOrganization(userId: string, organizationId: string): Promise<AuthSessionResponse> {
+    const member = await this.prisma.organizationMember.findUnique({
+      where: { organizationId_userId: { organizationId, userId } },
+      include: { user: true, organization: true },
+    });
+    if (!member) {
+      throw new UnauthorizedException("You do not have access to that workspace.");
+    }
+
+    return this.buildSessionResponse(
+      {
+        sub: member.user.id,
+        email: member.user.email,
+        organizationId: member.organizationId,
+        role: member.role as JwtPayload["role"],
+      },
+      member.user,
+      member.organization,
+    );
   }
 
   private async getOnboardingStatus(organizationId: string): Promise<OnboardingStatusResponse> {

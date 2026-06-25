@@ -67,12 +67,63 @@ class CreateCampaignDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(10)
+  languageCode?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(1024)
   messageBody?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  templateParams?: string[];
 
   @ValidateNested()
   @Type(() => AudienceDto)
   audience!: AudienceDto;
+}
+
+class ImportRecipientDto {
+  @IsString()
+  phone!: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string | null;
+}
+
+class ImportCampaignDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  name!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  templateName!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  languageCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  messageBody?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  templateParams?: string[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImportRecipientDto)
+  recipients!: ImportRecipientDto[];
 }
 
 @Controller("campaigns")
@@ -100,6 +151,12 @@ export class CampaignsController {
   @Roles(...MANAGE_ROLES)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateCampaignDto) {
     return this.campaigns.create(user, dto);
+  }
+
+  @Post("import")
+  @Roles(...MANAGE_ROLES)
+  import(@CurrentUser() user: JwtPayload, @Body() dto: ImportCampaignDto) {
+    return this.campaigns.createFromImport(user, dto);
   }
 
   @Post(":id/send")

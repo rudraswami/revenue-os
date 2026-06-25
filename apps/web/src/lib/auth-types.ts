@@ -1,3 +1,5 @@
+import type { MembershipRole } from "@growvisi/shared";
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -19,6 +21,7 @@ export interface OnboardingStatus {
 export interface AuthSession {
   user: AuthUser;
   organization: AuthOrganization;
+  role: MembershipRole;
   accessToken: string;
   refreshToken: string;
   onboarding: OnboardingStatus;
@@ -27,7 +30,7 @@ export interface AuthSession {
 export interface MeResponse {
   user: AuthUser;
   organization: AuthOrganization;
-  role: string;
+  role: MembershipRole;
   onboarding: OnboardingStatus;
 }
 

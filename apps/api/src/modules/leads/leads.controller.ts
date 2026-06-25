@@ -60,6 +60,41 @@ class UpdateContactDto {
   @IsOptional()
   @IsString()
   ownerId?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  valueCents?: number | null;
+}
+
+class CreateContactDto {
+  @IsString()
+  @MaxLength(20)
+  phone!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  displayName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  email?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  company?: string | null;
+
+  @IsOptional()
+  @IsString()
+  ownerId?: string | null;
+
+  @IsOptional()
+  @IsEnum(STAGES)
+  stage?: LeadStage;
 }
 
 class AddNoteDto {
@@ -85,8 +120,23 @@ export class LeadsController {
     @Query("stage") stage?: LeadStage,
     @Query("tagId") tagId?: string,
     @Query("ownerId") ownerId?: string,
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
   ) {
-    return this.leads.listContacts(user, { q, stage, tagId, ownerId });
+    return this.leads.listContacts(user, {
+      q,
+      stage,
+      tagId,
+      ownerId,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
+  }
+
+  @Post("contacts")
+  @Roles(...WRITE_ROLES)
+  createContact(@CurrentUser() user: JwtPayload, @Body() dto: CreateContactDto) {
+    return this.leads.createContact(user, dto);
   }
 
   @Get("activity")
@@ -117,7 +167,7 @@ export class LeadsController {
   ) {
     const csv = await this.leads.exportCsv(user, period);
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", 'attachment; filename="growvisi-leads.csv"');
+    res.setHeader("Content-Disposition", 'attachment; filename="growvisi-contacts.csv"');
     res.send(csv);
   }
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { Inbox, MessageSquare, Search } from "lucide-react";
+import { Inbox, MessageSquare, MessageSquarePlus, Search } from "lucide-react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { InboxListSkeleton } from "@/components/ui/skeleton";
@@ -45,6 +46,7 @@ export function InboxConversationList({
   listError,
   onRetry,
   onSelect,
+  onNewMessage,
 }: {
   conversations: InboxConversationRow[];
   selectedId: string | null;
@@ -56,6 +58,7 @@ export function InboxConversationList({
   listError: boolean;
   onRetry: () => void;
   onSelect: (id: string) => void;
+  onNewMessage?: () => void;
 }) {
   return (
     <aside className="flex h-full w-full shrink-0 flex-col border-r border-border/80 bg-[#f8f9ff] md:w-[min(100%,300px)] lg:w-[320px]">
@@ -68,6 +71,18 @@ export function InboxConversationList({
             <h1 className="text-base font-bold tracking-tight">{NAV.conversations}</h1>
           </div>
           <div className="flex items-center gap-1.5">
+            {onNewMessage && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1 px-2 text-[10px]"
+                onClick={onNewMessage}
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+                New
+              </Button>
+            )}
             {hasWhatsapp && (
               <span className="rounded-full bg-bento-mint px-2 py-0.5 text-[9px] font-bold uppercase text-accent">
                 Live

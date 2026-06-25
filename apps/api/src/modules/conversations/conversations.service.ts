@@ -367,4 +367,138 @@ export class ConversationsService {
     });
     return this.getById(user, id);
   }
+
+  /**
+   * Start or continue an outbound conversation. New numbers require an approved
+   * WhatsApp template (Meta policy). Existing threads within 24h can use text.
+   */
+  async startOutbound(
+    user: JwtPayload,
+    input: {
+      phone: string;
+      displayName?: string | null;
+      content?: string;
+      templateName?: string;
+      languageCode?: string;
+      templateParams?: string[];
+    },
+  ) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+
+    const phone = input.phone.replace(/\D/g, "");
+    if (phone.length < 10 || phone.length > 15) {
+      throw new BadRequestException("Enter a valid phone number with country code (e.g. 919876543210).");
+    }
+
+    const account = await this.prisma.whatsappAccount.findFirst({
+      where: { organizationId: user.organizationId, isActive: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!account) {
+      throw new BadRequestException("Connect an active WhatsApp number before sending messages.");
+    }
+
+    const waConversationKey = `${account.id}:${phone}`;
+    let conversation = await this.prisma.conversation.findUnique({
+      where: { organizationId_waConversationKey: { organizationId: user.organizationId, waConversationKey } },
+    });
+
+    const withinWindow =
+      conversation?.lastInboundAt &&
+      Date.now() - conversation.lastInboundAt.getTime() < 24 * 60 * 60 * 1000;
+
+    let lead = await this.prisma.lead.findUnique({
+      where: { organizationId_phone: { organizationId: user.organizationId, phone } },
+    });
+
+    if (!lead) {
+      if (!(await this.entitlements.canCreateLead(user.organizationId))) {
+        throw new BadRequestException("Lead limit reached for your plan.");
+      }
+      lead = await this.prisma.lead.create({
+        data: {
+          organizationId: user.organizationId,
+          phone,
+          displayName: input.displayName?.trim() || null,
+          source: "outbound",
+        },
+      });
+    } else if (input.displayName?.trim() && !lead.displayName) {
+      lead = await this.prisma.lead.update({
+        where: { id: lead.id },
+        data: { displayName: input.displayName.trim() },
+      });
+    }
+
+    if (!conversation) {
+      conversation = await this.prisma.conversation.create({
+        data: {
+          organizationId: user.organizationId,
+          whatsappAccountId: account.id,
+          waConversationKey,
+          contactPhone: phone,
+          contactName: input.displayName?.trim() || lead.displayName,
+          leadId: lead.id,
+          lastMessageAt: new Date(),
+        },
+      });
+      await this.prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { leadId: lead.id },
+      });
+    }
+
+    let waMessageId: string;
+    let messageType: "TEXT" | "TEMPLATE" = "TEXT";
+    let content = input.content?.trim() ?? "";
+
+    if (input.templateName?.trim()) {
+      waMessageId = await this.whatsapp.sendTemplate(
+        account,
+        phone,
+        input.templateName.trim(),
+        input.languageCode ?? "en",
+        input.templateParams ?? [],
+      );
+      messageType = "TEMPLATE";
+      content = input.templateName.trim();
+    } else if (content) {
+      if (!withinWindow && !conversation.lastInboundAt) {
+        throw new BadRequestException(
+          "First message to a new number must use an approved WhatsApp template. Select a template name.",
+        );
+      }
+      if (!withinWindow) {
+        throw new BadRequestException(
+          "The 24-hour reply window has expired. Use an approved WhatsApp template to re-engage.",
+        );
+      }
+      waMessageId = await this.whatsapp.sendText(account, phone, content);
+    } else {
+      throw new BadRequestException("Provide a message or an approved template name.");
+    }
+
+    const message = await this.prisma.message.create({
+      data: {
+        organizationId: user.organizationId,
+        conversationId: conversation.id,
+        waMessageId,
+        direction: "OUTBOUND",
+        type: messageType,
+        status: "SENT",
+        content: messageType === "TEXT" ? content : `Template: ${content}`,
+        sentByUserId: user.sub,
+      },
+    });
+
+    await this.prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: new Date(), contactName: conversation.contactName ?? input.displayName ?? undefined },
+    });
+
+    this.realtime.emitMessageNew(user.organizationId, { conversationId: conversation.id });
+    this.realtime.emitInboxUpdated(user.organizationId);
+
+    return { conversation: await this.getById(user, conversation.id), message };
+  }
 }

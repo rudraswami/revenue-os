@@ -10,11 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { formatStage } from "@/lib/stage-labels";
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
+import { OutboundCompose } from "@/components/dashboard/outbound-compose";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
 import { InboxTimeline } from "@/components/dashboard/inbox-timeline";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+import { canWrite } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 interface ConversationRow {
@@ -73,6 +75,8 @@ interface LeadTimeline {
 
 export default function InboxPage() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const canSend = canWrite(role);
   const queryClient = useQueryClient();
   const { connected: live } = useRealtime();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -82,6 +86,7 @@ export default function InboxPage() {
   const [showTimeline, setShowTimeline] = useState(true);
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
+  const [showOutbound, setShowOutbound] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -260,6 +265,7 @@ export default function InboxPage() {
   }
 
   return (
+    <>
     <div className="flex min-h-0 flex-1 flex-row overflow-hidden rounded-xl border border-border/80 bg-white shadow-[0_2px_16px_rgb(11_28_48/0.05)] max-lg:rounded-none max-lg:border-0 lg:mx-4 lg:mb-4 lg:mt-2">
       {/* Conversation list — always visible on md+; mobile shows list OR thread */}
       <div className={cn("h-full shrink-0", selectedId ? "max-md:hidden" : "flex", "md:flex")}>
@@ -274,6 +280,7 @@ export default function InboxPage() {
           listError={listError}
           onRetry={() => void refetchList()}
           onSelect={selectConversation}
+          onNewMessage={canSend && hasWhatsapp ? () => setShowOutbound(true) : undefined}
         />
       </div>
 
@@ -569,5 +576,11 @@ export default function InboxPage() {
         ) : null}
       </div>
     </div>
+    <OutboundCompose
+      open={showOutbound}
+      onClose={() => setShowOutbound(false)}
+      onSent={(id) => selectConversation(id)}
+    />
+    </>
   );
 }

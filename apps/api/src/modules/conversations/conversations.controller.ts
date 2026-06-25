@@ -1,12 +1,16 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 import { Type } from "class-transformer";
 import type { Response } from "express";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import type { MetricsPeriod } from "../../common/date-range";
 import { ConversationsService } from "./conversations.service";
 import type { JwtPayload } from "@growvisi/shared";
+
+const WRITE_ROLES = ["OWNER", "ADMIN", "MANAGER", "AGENT"] as const;
 
 class ListQueryDto {
   @IsOptional()
@@ -44,10 +48,40 @@ class SendMessageDto {
   content!: string;
 }
 
-class MarkReadDto {}
+class StartOutboundDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  phone!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  displayName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4096)
+  content?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  templateName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  languageCode?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  templateParams?: string[];
+}
 
 @Controller("conversations")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, MembershipRoleGuard)
 export class ConversationsController {
   constructor(private readonly conversations: ConversationsService) {}
 
@@ -64,6 +98,12 @@ export class ConversationsController {
   @Get()
   list(@CurrentUser() user: JwtPayload, @Query() query: ListQueryDto) {
     return this.conversations.list(user, query.page, query.pageSize, query.q);
+  }
+
+  @Post("outbound")
+  @Roles(...WRITE_ROLES)
+  startOutbound(@CurrentUser() user: JwtPayload, @Body() dto: StartOutboundDto) {
+    return this.conversations.startOutbound(user, dto);
   }
 
   @Get(":id/messages/:messageId/media")
@@ -85,6 +125,7 @@ export class ConversationsController {
   }
 
   @Post(":id/messages")
+  @Roles(...WRITE_ROLES)
   sendMessage(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
@@ -94,6 +135,7 @@ export class ConversationsController {
   }
 
   @Post(":id/suggest-reply")
+  @Roles(...WRITE_ROLES)
   suggestReply(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.conversations.suggestReply(user, id);
   }
@@ -104,11 +146,13 @@ export class ConversationsController {
   }
 
   @Patch(":id/assign")
+  @Roles(...WRITE_ROLES)
   assign(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: AssignDto) {
     return this.conversations.assign(user, id, dto.assignToUserId ?? null);
   }
 
   @Patch(":id/ai")
+  @Roles("OWNER", "ADMIN", "MANAGER")
   toggleAi(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: ToggleAiDto) {
     return this.conversations.toggleAi(user, id, dto.aiEnabled);
   }

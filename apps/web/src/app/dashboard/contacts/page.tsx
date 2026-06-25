@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Tag as TagIcon, Users } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InboxListSkeleton } from "@/components/ui/skeleton";
 import { apiDownload, apiFetch } from "@/lib/api-client";
+import { canWrite } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   formatInr,
@@ -55,27 +56,57 @@ const TAG_PALETTE = [
 
 export default function ContactsPage() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const canEdit = canWrite(role);
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [stage, setStage] = useState<LeadStage | "">("");
   const [tagId, setTagId] = useState("");
+  const [ownerId, setOwnerId] = useState("");
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
   const [showTagManager, setShowTagManager] = useState(false);
+  const [showAddContact, setShowAddContact] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState(TAG_PALETTE[0]);
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editTagName, setEditTagName] = useState("");
+  const [editTagColor, setEditTagColor] = useState(TAG_PALETTE[0]);
+  const [newPhone, setNewPhone] = useState("");
+  const [newName, setNewName] = useState("");
 
   const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("pageSize", "50");
   if (q.trim()) params.set("q", q.trim());
   if (stage) params.set("stage", stage);
   if (tagId) params.set("tagId", tagId);
+  if (ownerId) params.set("ownerId", ownerId);
   const query = params.toString();
 
-  const { data: contacts, isLoading } = useQuery({
-    queryKey: ["contacts", q, stage, tagId],
+  const { data: contactPage, isLoading } = useQuery({
+    queryKey: ["contacts", q, stage, tagId, ownerId, page],
     queryFn: () =>
-      apiFetch<ContactRow[]>(`/leads/contacts${query ? `?${query}` : ""}`, {
-        token: token ?? undefined,
-      }),
+      apiFetch<{ data: ContactRow[]; total: number; page: number; hasMore: boolean }>(
+        `/leads/contacts?${query}`,
+        { token: token ?? undefined },
+      ),
+    enabled: !!token,
+  });
+
+  const contacts = contactPage?.data ?? [];
+
+  useEffect(() => {
+    setPage(1);
+  }, [q, stage]);
+
+  const { data: members } = useQuery({
+    queryKey: ["organization-members"],
+    queryFn: () =>
+      apiFetch<Array<{ user: { id: string; name: string | null; email: string } }>>(
+        "/organizations/members",
+        { token: token ?? undefined },
+      ),
     enabled: !!token,
   });
 
@@ -101,8 +132,40 @@ export default function ContactsPage() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["tags"] }),
   });
 
-  const total = contacts?.length ?? 0;
-  const hot = useMemo(() => (contacts ?? []).filter((c) => c.score >= 80).length, [contacts]);
+  const updateTag = useMutation({
+    mutationFn: ({ id, name, color }: { id: string; name: string; color: string }) =>
+      apiFetch(`/tags/${id}`, {
+        method: "PATCH",
+        token: token ?? undefined,
+        body: JSON.stringify({ name, color }),
+      }),
+    onSuccess: () => {
+      setEditingTagId(null);
+      void qc.invalidateQueries({ queryKey: ["tags"] });
+      void qc.invalidateQueries({ queryKey: ["contacts"] });
+    },
+  });
+
+  const createContact = useMutation({
+    mutationFn: () =>
+      apiFetch("/leads/contacts", {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({
+          phone: newPhone.trim(),
+          displayName: newName.trim() || undefined,
+        }),
+      }),
+    onSuccess: () => {
+      setNewPhone("");
+      setNewName("");
+      setShowAddContact(false);
+      void qc.invalidateQueries({ queryKey: ["contacts"] });
+    },
+  });
+
+  const total = contactPage?.total ?? 0;
+  const hot = useMemo(() => contacts.filter((c) => c.score >= 80).length, [contacts]);
   const filtersActive = !!(q.trim() || stage || tagId);
 
   return (
@@ -113,6 +176,11 @@ export default function ContactsPage() {
         description="Every WhatsApp lead in one searchable place — profiles, tags, notes, tasks and deal value."
         action={
           <div className="flex gap-2">
+            {canEdit && (
+              <Button variant="accent" size="sm" className="gap-1.5" onClick={() => setShowAddContact(true)}>
+                <Plus className="h-3.5 w-3.5" /> Add contact
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -189,16 +257,50 @@ export default function ContactsPage() {
                 className="group inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
                 style={{ backgroundColor: t.color, color: readableOn(t.color) }}
               >
-                {t.name}
-                <span className="opacity-70">· {t.leadCount}</span>
-                <button
-                  type="button"
-                  onClick={() => deleteTag.mutate(t.id)}
-                  className="opacity-60 transition hover:opacity-100"
-                  aria-label={`Delete ${t.name}`}
-                >
-                  ×
-                </button>
+                {editingTagId === t.id ? (
+                  <>
+                    <input
+                      value={editTagName}
+                      onChange={(e) => setEditTagName(e.target.value)}
+                      className="w-20 rounded bg-white/90 px-1 text-[11px] text-foreground"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateTag.mutate({ id: t.id, name: editTagName.trim(), color: editTagColor })
+                      }
+                      className="text-[10px] underline"
+                    >
+                      Save
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (canEdit) {
+                          setEditingTagId(t.id);
+                          setEditTagName(t.name);
+                          setEditTagColor(t.color);
+                        }
+                      }}
+                    >
+                      {t.name}
+                    </button>
+                    <span className="opacity-70">· {t.leadCount}</span>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => deleteTag.mutate(t.id)}
+                        className="opacity-60 transition hover:opacity-100"
+                        aria-label={`Delete ${t.name}`}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </>
+                )}
               </span>
             ))}
           </div>
@@ -235,13 +337,31 @@ export default function ContactsPage() {
         </Select>
         <Select
           value={tagId}
-          onChange={(e) => setTagId(e.target.value)}
+          onChange={(e) => {
+            setTagId(e.target.value);
+            setPage(1);
+          }}
           className="h-10 w-auto text-sm"
         >
           <option value="">All tags</option>
           {(tags ?? []).map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={ownerId}
+          onChange={(e) => {
+            setOwnerId(e.target.value);
+            setPage(1);
+          }}
+          className="h-10 w-auto text-sm"
+        >
+          <option value="">All owners</option>
+          {(members ?? []).map((m) => (
+            <option key={m.user.id} value={m.user.id}>
+              {m.user.name ?? m.user.email}
             </option>
           ))}
         </Select>
@@ -279,7 +399,7 @@ export default function ContactsPage() {
                 </tr>
               </thead>
               <tbody>
-                {contacts!.map((c) => (
+                {contacts.map((c) => (
                   <tr
                     key={c.id}
                     onClick={() => setSelected(c.id)}
@@ -341,9 +461,70 @@ export default function ContactsPage() {
                 ))}
               </tbody>
             </table>
+            {contactPage && contactPage.total > contactPage.data.length && (
+              <div className="flex items-center justify-between border-t border-border px-5 py-3 text-sm">
+                <span className="text-muted-foreground">
+                  Page {contactPage.page} · {contactPage.total} contacts
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!contactPage.hasMore}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DashboardPanel>
+
+      {showAddContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold">Add contact</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Phone with country code (e.g. 919876543210). Use outbound from Inbox to message them.
+            </p>
+            <div className="mt-4 space-y-3">
+              <Input
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="Phone number"
+                className="h-10"
+              />
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Name (optional)"
+                className="h-10"
+              />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAddContact(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => createContact.mutate()}
+                disabled={!newPhone.trim() || createContact.isPending}
+              >
+                {createContact.isPending ? "Saving…" : "Add contact"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ContactDetailDrawer leadId={selected} onClose={() => setSelected(null)} />
     </div>

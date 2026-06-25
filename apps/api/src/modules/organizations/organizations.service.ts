@@ -8,6 +8,7 @@ import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
 import { GROWVISI_WEB_URL } from "@growvisi/shared";
+import { AuthService } from "../auth/auth.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
@@ -59,6 +60,7 @@ export class OrganizationsService {
     private readonly email: EmailService,
     private readonly config: ConfigService,
     private readonly entitlements: EntitlementsService,
+    private readonly auth: AuthService,
   ) {}
 
   async getCurrent(user: JwtPayload) {
@@ -106,6 +108,7 @@ export class OrganizationsService {
     user: JwtPayload,
     templates?: Array<{ id?: string; title: string; body: string }>,
   ) {
+    this.assertAdmin(user);
     const normalized = normalizeTemplates(templates);
     const org = await this.prisma.organization.findUnique({
       where: { id: user.organizationId },
@@ -123,6 +126,97 @@ export class OrganizationsService {
       },
     });
     return { templates: normalized };
+  }
+
+  async listInvites(user: JwtPayload) {
+    this.assertAdmin(user);
+    return this.prisma.organizationInvite.findMany({
+      where: { organizationId: user.organizationId, acceptedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        expiresAt: true,
+        createdAt: true,
+        invitedBy: { select: { name: true, email: true } },
+      },
+    });
+  }
+
+  async revokeInvite(user: JwtPayload, inviteId: string) {
+    this.assertAdmin(user);
+    const invite = await this.prisma.organizationInvite.findFirst({
+      where: { id: inviteId, organizationId: user.organizationId, acceptedAt: null },
+    });
+    if (!invite) throw new NotFoundException("Invite not found.");
+    await this.prisma.organizationInvite.delete({ where: { id: inviteId } });
+    return { ok: true };
+  }
+
+  async updateMemberRole(user: JwtPayload, memberId: string, role: MembershipRole) {
+    this.assertAdmin(user);
+    if (role === "OWNER") {
+      throw new BadRequestException("Transfer ownership is not supported yet.");
+    }
+
+    const member = await this.prisma.organizationMember.findFirst({
+      where: { id: memberId, organizationId: user.organizationId },
+    });
+    if (!member) throw new NotFoundException("Member not found.");
+    if (member.role === "OWNER" && user.role !== "OWNER") {
+      throw new ForbiddenException("Only the owner can change another owner's role.");
+    }
+    if (member.userId === user.sub && role !== member.role) {
+      throw new BadRequestException("You cannot change your own role.");
+    }
+
+    return this.prisma.organizationMember.update({
+      where: { id: memberId },
+      data: { role },
+      include: {
+        user: { select: { id: true, email: true, name: true, avatarUrl: true, lastLoginAt: true } },
+      },
+    });
+  }
+
+  async removeMember(user: JwtPayload, memberId: string) {
+    this.assertAdmin(user);
+    const member = await this.prisma.organizationMember.findFirst({
+      where: { id: memberId, organizationId: user.organizationId },
+    });
+    if (!member) throw new NotFoundException("Member not found.");
+    if (member.userId === user.sub) {
+      throw new BadRequestException("You cannot remove yourself. Ask another admin.");
+    }
+    if (member.role === "OWNER") {
+      throw new ForbiddenException("Cannot remove the workspace owner.");
+    }
+
+    await this.prisma.organizationMember.delete({ where: { id: memberId } });
+    return { ok: true };
+  }
+
+  async getTeamLimits(user: JwtPayload) {
+    const access = await this.entitlements.getAccess(user.organizationId);
+    const memberCount = await this.prisma.organizationMember.count({
+      where: { organizationId: user.organizationId },
+    });
+    const pendingInvites = await this.prisma.organizationInvite.count({
+      where: { organizationId: user.organizationId, acceptedAt: null, expiresAt: { gt: new Date() } },
+    });
+    return {
+      memberCount,
+      pendingInvites,
+      limit: access.limits.teamMembers,
+      canInvite: memberCount + pendingInvites < access.limits.teamMembers,
+    };
+  }
+
+  private assertAdmin(user: JwtPayload) {
+    if (user.role !== "OWNER" && user.role !== "ADMIN") {
+      throw new ForbiddenException("Only owners and admins can manage the team.");
+    }
   }
 
   async previewInvite(token: string) {
@@ -240,7 +334,8 @@ export class OrganizationsService {
         where: { id: invite.id },
         data: { acceptedAt: new Date() },
       });
-      return { organization: invite.organization, alreadyMember: true };
+      const session = await this.auth.switchOrganization(user.sub, invite.organizationId);
+      return { ...session, alreadyMember: true };
     }
 
     const access = await this.entitlements.getAccess(invite.organizationId);
@@ -267,6 +362,7 @@ export class OrganizationsService {
       }),
     ]);
 
-    return { organization: invite.organization, alreadyMember: false };
+    const session = await this.auth.switchOrganization(user.sub, invite.organizationId);
+    return { ...session, alreadyMember: false };
   }
 }

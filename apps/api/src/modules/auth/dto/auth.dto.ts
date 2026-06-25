@@ -93,3 +93,9 @@ export class UpdateProfileDto {
   @Transform(({ value }) => (value as string)?.trim())
   name!: string;
 }
+
+export class SwitchOrganizationDto {
+  @IsString()
+  @IsNotEmpty()
+  organizationId!: string;
+}

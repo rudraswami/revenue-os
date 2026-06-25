@@ -30,6 +30,7 @@ import {
   ResetPasswordDto,
   DeleteAccountDto,
   UpdateProfileDto,
+  SwitchOrganizationDto,
 } from "./dto/auth.dto";
 
 @Controller("auth")
@@ -99,6 +100,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   updateMe(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
     return this.auth.updateProfile(user, dto);
+  }
+
+  @Post("switch-organization")
+  @UseGuards(JwtAuthGuard)
+  async switchOrganization(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: SwitchOrganizationDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.switchOrganization(user.sub, dto.organizationId);
+    setRefreshCookie(res, result.refreshToken);
+    return result;
   }
 
   @Post("forgot-password")

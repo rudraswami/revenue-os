@@ -7,7 +7,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import { bootstrapAuth } from "@/lib/auth-session";
+import { applySession } from "@/lib/auth-session";
+import type { AuthSession } from "@/lib/auth-types";
 import { useAuthStore } from "@/stores/auth-store";
 
 function InviteAcceptForm() {
@@ -30,13 +31,13 @@ function InviteAcceptForm() {
 
   const acceptMutation = useMutation({
     mutationFn: () =>
-      apiFetch("/organizations/invites/accept", {
+      apiFetch<AuthSession & { alreadyMember?: boolean }>("/organizations/invites/accept", {
         method: "POST",
         token: accessToken ?? undefined,
         body: JSON.stringify({ token }),
       }),
-    onSuccess: async () => {
-      await bootstrapAuth();
+    onSuccess: (session) => {
+      applySession(session);
       router.push("/dashboard");
     },
     onError: (e) => {

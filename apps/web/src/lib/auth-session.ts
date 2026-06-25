@@ -40,6 +40,7 @@ function patchProfile(me: MeResponse) {
     refreshToken: current.refreshToken ?? "",
     user: me.user,
     organization: me.organization,
+    role: me.role,
     onboarding: me.onboarding,
   });
   syncAuthCookie(true);

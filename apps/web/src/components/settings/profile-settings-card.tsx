@@ -30,6 +30,7 @@ export function ProfileSettingsCard() {
         refreshToken: current.refreshToken!,
         user: me.user,
         organization: me.organization,
+        role: me.role,
         onboarding: me.onboarding,
       });
       setError(null);

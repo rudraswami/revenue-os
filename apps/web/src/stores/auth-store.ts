@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { syncAuthCookie } from "@/lib/auth-cookie";
+import type { MembershipRole } from "@growvisi/shared";
 import type { AuthOrganization, AuthSession, AuthUser, OnboardingStatus } from "@/lib/auth-types";
 
 interface AuthState {
@@ -8,6 +9,7 @@ interface AuthState {
   refreshToken: string | null;
   user: AuthUser | null;
   organization: AuthOrganization | null;
+  role: MembershipRole | null;
   onboarding: OnboardingStatus | null;
   /** User chose to explore dashboard before connecting WhatsApp */
   onboardingDismissed: boolean;
@@ -27,6 +29,7 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       user: null,
       organization: null,
+      role: null,
       onboarding: null,
       onboardingDismissed: false,
       hydrated: false,
@@ -38,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: session.refreshToken,
           user: session.user,
           organization: session.organization,
+          role: session.role,
           onboarding: session.onboarding,
         });
       },
@@ -50,6 +54,7 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: null,
           user: null,
           organization: null,
+          role: null,
           onboarding: null,
           onboardingDismissed: false,
         });
@@ -66,6 +71,7 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         user: state.user,
         organization: state.organization,
+        role: state.role,
         onboarding: state.onboarding,
         onboardingDismissed: state.onboardingDismissed,
       }),
