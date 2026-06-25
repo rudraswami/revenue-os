@@ -228,11 +228,20 @@ export class AiClassifyService {
         messages: [
           {
             role: "system",
-            content: `You classify WhatsApp sales conversations for an Indian SMB using Growvisi (analytics layer).
-The business may use Meta Business Agent to reply inside WhatsApp — analyze the full thread (customer + business messages) to infer sales intent and pipeline stage. You do not draft customer-facing replies.
-Return JSON only with keys: stage, confidence, intent, sentiment, suggestedActions, requiresHuman.
-stage must be one of: ${stages}.
-confidence is 0-1. requiresHuman is true if the customer asks for a person, is angry, payment dispute, or the request is too complex for automated handling.
+            content: `You are an AI revenue agent for Growvisi — classifying WhatsApp sales conversations for Indian SMBs.
+The business may use Meta Business Agent to reply inside WhatsApp. Analyze the full thread to infer sales intent, pipeline stage, and what the team should do next.
+
+Return JSON with these keys:
+- stage: one of ${stages}
+- confidence: 0-1
+- intent: short intent phrase (e.g. "Pricing inquiry", "Ready to buy", "Complaint")
+- sentiment: "positive" | "neutral" | "negative"
+- suggestedActions: array of 1-3 concrete next steps for the sales team
+- requiresHuman: true if customer asks for a person, is angry, payment dispute, or request is too complex
+- summary: 1-2 sentence summary of what happened in this conversation so far
+- tags: array of 1-4 short tags that describe this lead (e.g. "high-intent", "price-sensitive", "returning-customer", "urgent", "bulk-order")
+- nextAction: the single most important thing the sales rep should do right now (e.g. "Send pricing PDF", "Call within 2 hours", "Follow up on delivery status")
+
 Current pipeline stage: ${currentStage}.`,
           },
           {
@@ -270,7 +279,31 @@ Current pipeline stage: ${currentStage}.`,
         ? parsed.suggestedActions.map(String)
         : [],
       requiresHuman: Boolean(parsed.requiresHuman),
+      summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 500) : undefined,
+      tags: Array.isArray(parsed.tags) ? parsed.tags.map(String).slice(0, 4) : [],
+      nextAction: typeof parsed.nextAction === "string" ? parsed.nextAction.slice(0, 200) : undefined,
     };
+  }
+
+  private async autoAssignTags(organizationId: string, leadId: string, tagNames: string[]) {
+    for (const name of tagNames) {
+      const clean = name.trim().toLowerCase().slice(0, 40);
+      if (!clean) continue;
+      try {
+        const tag = await this.prisma.tag.upsert({
+          where: { organizationId_name: { organizationId, name: clean } },
+          create: { organizationId, name: clean, color: "#006c49" },
+          update: {},
+        });
+        await this.prisma.leadTag.upsert({
+          where: { leadId_tagId: { leadId, tagId: tag.id } },
+          create: { leadId, tagId: tag.id },
+          update: {},
+        });
+      } catch {
+        // Tag creation can race — safe to skip
+      }
+    }
   }
 
   private normalizeStage(value: unknown): LeadStage {
@@ -321,6 +354,9 @@ Current pipeline stage: ${currentStage}.`,
           lastIntent: result.intent,
           lastSentiment: result.sentiment,
           suggestedActions: result.suggestedActions,
+          summary: result.summary,
+          nextAction: result.nextAction,
+          aiTags: result.tags,
         },
         ...(updateStage
           ? {
@@ -331,6 +367,10 @@ Current pipeline stage: ${currentStage}.`,
           : {}),
       },
     });
+
+    if (result.tags?.length) {
+      await this.autoAssignTags(organizationId, leadId, result.tags);
+    }
 
     if (updateStage) {
       await this.prisma.leadStageHistory.create({

@@ -420,7 +420,9 @@ export class WhatsappAccountsService {
       })),
       stats: { conversationCount, inboundCount },
       tokenHealth: await this.tokenHealthForOrg(accounts),
-      recentWebhooks: webhookSummary.slice(0, 8),
+      // Only expose webhook events that belong to this org's numbers. Never leak
+      // other tenants' phone_number_id / waba_id through the diagnostics panel.
+      recentWebhooks: webhooksForYou.slice(0, 8),
       metaSetup: {
         webhookUrl: technical.webhookUrl,
         verifyTokenHint: technical.verifyToken

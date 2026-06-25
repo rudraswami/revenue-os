@@ -37,4 +37,14 @@ export class AutomationsController {
   updatePreferences(@CurrentUser() user: JwtPayload, @Body() dto: UpdateAutomationsDto) {
     return this.automations.updatePreferences(user, dto);
   }
+
+  @Get("logs")
+  getLogs(@CurrentUser() user: JwtPayload) {
+    return this.automations.getRecentLogs(user.organizationId);
+  }
+
+  @Get("stats")
+  getStats(@CurrentUser() user: JwtPayload) {
+    return this.automations.getLogStats(user.organizationId);
+  }
 }

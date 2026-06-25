@@ -1,12 +1,12 @@
 import { Module } from "@nestjs/common";
 import { BillingModule } from "../billing/billing.module";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
-import { LeadsController } from "./leads.controller";
-import { LeadsService } from "./leads.service";
+import { TagsController } from "./tags.controller";
+import { TagsService } from "./tags.service";
 
 @Module({
   imports: [BillingModule],
-  controllers: [LeadsController],
-  providers: [LeadsService, MembershipRoleGuard],
+  controllers: [TagsController],
+  providers: [TagsService, MembershipRoleGuard],
 })
-export class LeadsModule {}
+export class TagsModule {}

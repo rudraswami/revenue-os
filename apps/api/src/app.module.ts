@@ -20,6 +20,9 @@ import { AutomationsModule } from "./modules/automations/automations.module";
 import { BillingModule } from "./modules/billing/billing.module";
 import { KnowledgeModule } from "./modules/knowledge/knowledge.module";
 import { ApiKeysModule } from "./modules/api-keys/api-keys.module";
+import { TagsModule } from "./modules/tags/tags.module";
+import { TasksModule } from "./modules/tasks/tasks.module";
+import { CampaignsModule } from "./modules/campaigns/campaigns.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
 
@@ -58,6 +61,9 @@ import { QUEUES } from "@growvisi/shared";
     BillingModule,
     KnowledgeModule,
     ApiKeysModule,
+    TagsModule,
+    TasksModule,
+    CampaignsModule,
   ],
 })
 export class AppModule {}

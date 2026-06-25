@@ -57,6 +57,76 @@ export class WhatsappMessagingService {
     return waMessageId;
   }
 
+  /**
+   * Send a pre-approved WhatsApp message template (required by Meta for
+   * business-initiated / outbound messages outside the 24h customer service
+   * window). The template must already be approved in the WhatsApp Manager.
+   */
+  async sendTemplate(
+    account: WhatsappAccountRow,
+    toPhone: string,
+    templateName: string,
+    languageCode = "en",
+    bodyParams: string[] = [],
+  ): Promise<string> {
+    if (!account.isActive) {
+      throw new BadRequestException("WhatsApp number is not active.");
+    }
+
+    const token = decryptSecret(account.accessTokenEnc);
+    const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+    const to = toPhone.replace(/\D/g, "");
+
+    const components =
+      bodyParams.length > 0
+        ? [
+            {
+              type: "body",
+              parameters: bodyParams.map((text) => ({ type: "text", text })),
+            },
+          ]
+        : undefined;
+
+    const res = await fetch(
+      `https://graph.facebook.com/${version}/${account.phoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to,
+          type: "template",
+          template: {
+            name: templateName,
+            language: { code: languageCode },
+            ...(components ? { components } : {}),
+          },
+        }),
+      },
+    );
+
+    const data = (await res.json()) as {
+      messages?: Array<{ id: string }>;
+      error?: { message?: string };
+    };
+
+    if (!res.ok) {
+      this.logger.warn(`Meta template send failed: ${data.error?.message ?? res.status}`);
+      throw new BadRequestException(
+        data.error?.message ?? "Could not send template message. Check the template name and approval status.",
+      );
+    }
+
+    const waMessageId = data.messages?.[0]?.id;
+    if (!waMessageId) {
+      throw new BadRequestException("Template sent but no confirmation from WhatsApp.");
+    }
+    return waMessageId;
+  }
+
   async fetchMedia(
     account: WhatsappAccountRow,
     mediaId: string,

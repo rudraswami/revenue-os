@@ -105,6 +105,38 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  PAUSED
+  FAILED
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  SKIPPED
+}
+
 // ─── Identity & Tenancy ──────────────────────────────────────────────────────
 
 model User {
@@ -126,6 +158,9 @@ model User {
   auditLogs         AuditLog[]
   notifications     Notification[]
   sentInvites       OrganizationInvite[] @relation("SentInvites")
+  assignedTasks     Task[]               @relation("AssignedTasks")
+  createdTasks      Task[]               @relation("CreatedTasks")
+  leadNotes         LeadNote[]
 
   @@map("users")
 }
@@ -186,6 +221,11 @@ model Organization {
   aiRuns             AiRun[]
   usageMeters        UsageMeter[]
   invites            OrganizationInvite[]
+  tags               Tag[]
+  tasks              Task[]
+  leadNotes          LeadNote[]
+  campaigns          Campaign[]
+  automationLogs     AutomationLog[]
 
   @@map("organizations")
 }
@@ -368,13 +408,18 @@ model Lead {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  ownerId        String?
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   conversation Conversation?
   stageHistory LeadStageHistory[]
+  tags         LeadTag[]
+  notes        LeadNote[]
+  tasks        Task[]
 
   @@unique([organizationId, phone])
   @@index([organizationId, stage])
   @@index([organizationId, createdAt])
+  @@index([ownerId])
   @@map("leads")
 }
 
@@ -504,6 +549,22 @@ model Automation {
   @@map("automations")
 }
 
+model AutomationLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  automationType String
+  trigger        String
+  result         String
+  leadId         String?
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("automation_logs")
+}
+
 // ─── Billing (architecture-ready) ────────────────────────────────────────────
 
 model Subscription {
@@ -590,4 +651,122 @@ model WebhookEvent {
   @@index([source, createdAt])
   @@index([organizationId, processedAt])
   @@map("webhook_events")
+}
+
+// ─── CRM: Tags, Notes, Tasks ─────────────────────────────────────────────────
+
+model Tag {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  color          String   @default("#006c49")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leads        LeadTag[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("tags")
+}
+
+model LeadTag {
+  id        String   @id @default(cuid())
+  leadId    String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, tagId])
+  @@index([tagId])
+  @@map("lead_tags")
+}
+
+model LeadNote {
+  id             String   @id @default(cuid())
+  organizationId String
+  leadId         String
+  authorId       String?
+  body           String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  author       User?        @relation(fields: [authorId], references: [id])
+
+  @@index([leadId, createdAt])
+  @@map("lead_notes")
+}
+
+model Task {
+  id             String       @id @default(cuid())
+  organizationId String
+  title          String
+  description    String?
+  status         TaskStatus   @default(OPEN)
+  priority       TaskPriority @default(MEDIUM)
+  dueAt          DateTime?
+  completedAt    DateTime?
+  leadId         String?
+  assignedToId   String?
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  assignedTo   User?        @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdBy    User?        @relation("CreatedTasks", fields: [createdById], references: [id])
+
+  @@index([organizationId, status, dueAt])
+  @@index([assignedToId, status])
+  @@index([leadId])
+  @@map("tasks")
+}
+
+// ─── Campaigns / Broadcasts ──────────────────────────────────────────────────
+
+model Campaign {
+  id              String         @id @default(cuid())
+  organizationId  String
+  name            String
+  status          CampaignStatus @default(DRAFT)
+  templateName    String?
+  messageBody     String?
+  audienceFilter  Json           @default("{}")
+  totalRecipients Int            @default(0)
+  sentCount       Int            @default(0)
+  deliveredCount  Int            @default(0)
+  failedCount     Int            @default(0)
+  createdById     String?
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recipients   CampaignRecipient[]
+
+  @@index([organizationId, status])
+  @@map("campaigns")
+}
+
+model CampaignRecipient {
+  id         String                  @id @default(cuid())
+  campaignId String
+  leadId     String?
+  phone      String
+  name       String?
+  status     CampaignRecipientStatus @default(PENDING)
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime                @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, status])
+  @@map("campaign_recipients")
 }

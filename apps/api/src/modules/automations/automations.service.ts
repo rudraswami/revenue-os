@@ -66,9 +66,55 @@ export class AutomationsService {
     newStage: string;
   }) {
     const prefs = await this.getPreferencesForOrg(opts.organizationId);
+
+    if (opts.stageChanged && prefs.stage) {
+      await this.logExecution(opts.organizationId, "stage", "ai_classification",
+        `AI moved lead to ${opts.newStage}`, opts.leadId);
+    }
+
     if (prefs.notify && opts.score >= 80) {
       await this.maybeSendHotLeadAlert(opts.organizationId, opts);
+      await this.logExecution(opts.organizationId, "notify", "score_threshold",
+        `Hot lead alert sent (score: ${opts.score})`, opts.leadId);
     }
+  }
+
+  async logExecution(
+    organizationId: string,
+    automationType: string,
+    trigger: string,
+    result: string,
+    leadId?: string,
+  ) {
+    await this.prisma.automationLog.create({
+      data: { organizationId, automationType, trigger, result, leadId },
+    });
+  }
+
+  async getRecentLogs(organizationId: string, limit = 20) {
+    return this.prisma.automationLog.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+  }
+
+  async getLogStats(organizationId: string) {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [total, byType] = await Promise.all([
+      this.prisma.automationLog.count({
+        where: { organizationId, createdAt: { gte: since } },
+      }),
+      this.prisma.automationLog.groupBy({
+        by: ["automationType"],
+        where: { organizationId, createdAt: { gte: since } },
+        _count: { id: true },
+      }),
+    ]);
+    return {
+      totalRuns30d: total,
+      byType: byType.map((b) => ({ type: b.automationType, count: b._count.id })),
+    };
   }
 
   async runFollowupReminderJob() {
@@ -154,6 +200,8 @@ export class AutomationsService {
         });
       }
 
+      await this.logExecution(org.id, "followup", "daily_cron",
+        `Follow-up reminder sent for ${stale.length} stale conversation(s)`);
       emailed++;
     }
 

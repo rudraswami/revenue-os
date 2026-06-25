@@ -6,7 +6,9 @@ import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   Bot,
+  CheckSquare,
   ChevronUp,
+  Contact,
   CreditCard,
   HelpCircle,
   Inbox,
@@ -15,6 +17,7 @@ import {
   Lightbulb,
   LogOut,
   MessageCircle,
+  Megaphone,
   Settings,
   Zap,
 } from "lucide-react";
@@ -55,7 +58,9 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Engage",
     items: [
       { href: "/dashboard/inbox", label: "Conversations", icon: Inbox, badge: "unread" },
+      { href: "/dashboard/contacts", label: "Contacts", icon: Contact },
       { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban },
+      { href: "/dashboard/tasks", label: "Tasks", icon: CheckSquare },
     ],
   },
   {
@@ -68,7 +73,10 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Automate",
-    items: [{ href: "/dashboard/automations", label: "Automations", icon: Zap }],
+    items: [
+      { href: "/dashboard/campaigns", label: "Campaigns", icon: Megaphone },
+      { href: "/dashboard/automations", label: "Automations", icon: Zap },
+    ],
   },
 ];
 

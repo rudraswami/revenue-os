@@ -10,7 +10,18 @@ import { QueryErrorState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { AlertCircle, ArrowRight, Lightbulb, TrendingUp, UserRound } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  ArrowUpRight,
+  Bot,
+  Lightbulb,
+  Sparkles,
+  Target,
+  TrendingUp,
+  UserRound,
+  Zap,
+} from "lucide-react";
 import { METRICS_PERIOD_OPTIONS, type MetricsPeriod } from "@/lib/metrics-period";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -22,6 +33,12 @@ const iconMap = {
   Tip: Lightbulb,
   "Getting started": Lightbulb,
 } as const;
+
+const sentimentColors: Record<string, string> = {
+  positive: "text-accent bg-bento-mint",
+  neutral: "text-blue-600 bg-blue-50",
+  negative: "text-red-600 bg-red-50",
+};
 
 function InsightCardSkeleton() {
   return (
@@ -49,11 +66,23 @@ export default function InsightsPage() {
           href: string;
           actionLabel: string;
         }>;
+        actionLeads: Array<{
+          id: string;
+          name: string;
+          score: number;
+          stage: string;
+          nextAction: string | null;
+          summary: string | null;
+          intent: string | null;
+          sentiment: string | null;
+          tags: string[];
+        }>;
       }>(`/leads/metrics/insights?period=${period}`, { token: token ?? undefined }),
     enabled: !!token,
   });
 
   const insights = data?.items ?? [];
+  const actionLeads = data?.actionLeads ?? [];
 
   const toneFor = (type: string) => {
     switch (type) {
@@ -73,7 +102,7 @@ export default function InsightsPage() {
       <PageHeader
         eyebrow="Recommendations"
         title="Insights"
-        description="Proactive actions from classified WhatsApp conversations."
+        description="AI-powered recommendations and next-best-actions from your revenue pipeline."
         badge={
           insights.length > 0 && !isLoading ? (
             <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-bold text-accent">
@@ -106,51 +135,166 @@ export default function InsightsPage() {
 
       {isLoading && <InsightCardSkeleton />}
 
-      {!isLoading && !isError && insights.length === 0 && (
-        <DashboardPanel>
-          <EmptyState
-            icon={<Lightbulb className="h-6 w-6" />}
-            title="You're on track"
-            description="No urgent insights right now. Keep selling and check back after more conversations."
-            actionHref="/dashboard/inbox"
-            actionLabel="Open conversations"
-          />
-        </DashboardPanel>
-      )}
+      {!isLoading && !isError && (
+        <div className="grid gap-8 lg:grid-cols-5">
+          {/* Left: Insights */}
+          <div className="lg:col-span-3 space-y-4">
+            {insights.length === 0 && (
+              <DashboardPanel>
+                <EmptyState
+                  icon={<Lightbulb className="h-6 w-6" />}
+                  title="You're on track"
+                  description="No urgent insights right now. Keep selling and check back after more conversations."
+                  actionHref="/dashboard/inbox"
+                  actionLabel="Open conversations"
+                />
+              </DashboardPanel>
+            )}
 
-      {!isLoading && !isError && insights.length > 0 && (
-        <div className="space-y-4">
-          {insights.map((item, i) => {
-            const Icon = iconMap[item.type as keyof typeof iconMap] ?? Lightbulb;
-            const { tone, iconBg } = toneFor(item.type);
-            return (
+            {insights.map((item, i) => {
+              const Icon = iconMap[item.type as keyof typeof iconMap] ?? Lightbulb;
+              const { tone, iconBg } = toneFor(item.type);
+              return (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.07 }}
+              >
+                <DashboardPanel noPadding className={tone}>
+                  <div className="flex flex-row items-start gap-4 p-5">
+                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{item.type}</p>
+                      <h3 className="mt-1 text-base font-bold">{item.title}</h3>
+                      <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
+                      <Button asChild size="sm" variant="link" className="mt-3 h-auto p-0 text-accent">
+                        <Link href={item.href} className="inline-flex items-center gap-1">
+                          {item.actionLabel}
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </DashboardPanel>
+              </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Right: AI Action leads */}
+          <div className="lg:col-span-2">
             <motion.div
-              key={item.title}
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.07 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
             >
-              <DashboardPanel noPadding className={tone}>
-                <div className="flex flex-row items-start gap-4 p-5">
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-                    <Icon className="h-5 w-5" />
+              <DashboardPanel
+                title="AI next-best-action"
+                description="Top leads that need your attention"
+                delay={0.2}
+              >
+                {actionLeads.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    <Bot className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                    <p>No high-priority leads right now.</p>
+                    <p className="mt-1 text-xs">Leads with score 70+ will appear here with AI-generated action items.</p>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{item.type}</p>
-                    <h3 className="mt-1 text-base font-bold">{item.title}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
-                    <Button asChild size="sm" variant="link" className="mt-3 h-auto p-0 text-accent">
-                      <Link href={item.href} className="inline-flex items-center gap-1">
-                        {item.actionLabel}
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </Button>
+                ) : (
+                  <div className="space-y-3">
+                    {actionLeads.map((lead, i) => (
+                      <motion.div
+                        key={lead.id}
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.25 + i * 0.06 }}
+                      >
+                        <Link
+                          href={`/dashboard/contacts`}
+                          className="block rounded-xl border border-border p-3.5 transition-all hover:border-accent/25 hover:shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold truncate">{lead.name}</p>
+                                <span className="shrink-0 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-bold text-accent">
+                                  {lead.score}
+                                </span>
+                              </div>
+                              <p className="mt-0.5 text-[11px] text-muted-foreground capitalize">
+                                {lead.stage.toLowerCase().replace("_", " ")}
+                                {lead.intent && ` · ${lead.intent}`}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {lead.sentiment && (
+                                <span className={cn(
+                                  "rounded-full px-1.5 py-0.5 text-[9px] font-bold capitalize",
+                                  sentimentColors[lead.sentiment] ?? "text-muted-foreground bg-muted",
+                                )}>
+                                  {lead.sentiment}
+                                </span>
+                              )}
+                              <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                          </div>
+
+                          {lead.nextAction && (
+                            <div className="mt-2 flex items-start gap-2 rounded-lg bg-bento-mint/40 p-2">
+                              <Target className="mt-0.5 h-3 w-3 shrink-0 text-accent" />
+                              <p className="text-xs font-medium text-accent">{lead.nextAction}</p>
+                            </div>
+                          )}
+
+                          {lead.summary && (
+                            <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{lead.summary}</p>
+                          )}
+
+                          {lead.tags.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {lead.tags.map((tag) => (
+                                <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </Link>
+                      </motion.div>
+                    ))}
                   </div>
+                )}
+              </DashboardPanel>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mt-4"
+            >
+              <DashboardPanel noPadding className="border-accent/20 bg-gradient-to-r from-bento-mint/30 to-white">
+                <div className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-accent" />
+                    <p className="text-sm font-bold">Powered by AI</p>
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Summaries, tags, and next-actions are generated automatically when AI classifies
+                    your WhatsApp conversations. Keep conversations flowing for richer insights.
+                  </p>
+                  <Button asChild size="sm" variant="link" className="mt-2 h-auto p-0 text-accent">
+                    <Link href="/dashboard/ai" className="inline-flex items-center gap-1">
+                      How Intelligence works
+                      <Zap className="h-3 w-3" />
+                    </Link>
+                  </Button>
                 </div>
               </DashboardPanel>
             </motion.div>
-            );
-          })}
+          </div>
         </div>
       )}
     </div>

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { GripVertical } from "lucide-react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { cn } from "@/lib/utils";
+import { readableOn } from "@/lib/crm";
 import type { LeadStage } from "@growvisi/shared";
 
 export interface PipelineLead {
@@ -16,6 +17,7 @@ export interface PipelineLead {
   valueCents: number | null;
   currency?: string;
   conversation: { id: string } | null;
+  tags?: Array<{ id: string; name: string; color: string }>;
 }
 
 interface PipelineBoardProps {
@@ -81,6 +83,19 @@ function LeadCard({
             <span className="mt-1 inline-block rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent">
               Hot · {lead.score}
             </span>
+          )}
+          {lead.tags && lead.tags.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {lead.tags.slice(0, 3).map((t) => (
+                <span
+                  key={t.id}
+                  className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+                  style={{ backgroundColor: t.color, color: readableOn(t.color) }}
+                >
+                  {t.name}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       </div>

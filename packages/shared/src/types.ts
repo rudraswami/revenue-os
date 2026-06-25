@@ -23,6 +23,9 @@ export interface AiClassificationResult {
   sentiment: "positive" | "neutral" | "negative";
   suggestedActions: string[];
   requiresHuman: boolean;
+  summary?: string;
+  tags?: string[];
+  nextAction?: string;
 }
 
 export interface PaginatedResult<T> {

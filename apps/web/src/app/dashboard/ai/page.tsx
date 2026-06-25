@@ -10,7 +10,18 @@ import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { CTA, EYEBROW } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
-import { ArrowRight, Bot, LineChart, Sparkles, Target, UserRound, Zap } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  Bot,
+  Clock,
+  LineChart,
+  Sparkles,
+  Tag,
+  Target,
+  UserRound,
+  Zap,
+} from "lucide-react";
 
 const features = [
   {
@@ -43,10 +54,17 @@ const features = [
   },
   {
     icon: Bot,
-    title: "Lead timeline",
-    description: "Full audit trail of AI decisions after each customer message.",
-    href: "/dashboard/inbox",
+    title: "Conversation summaries",
+    description: "AI generates a summary of every conversation, stored per lead.",
+    href: "/dashboard/contacts",
     stat: "Per contact",
+  },
+  {
+    icon: Tag,
+    title: "Auto-tagging",
+    description: "AI extracts relevant tags from conversations and assigns them to leads automatically.",
+    href: "/dashboard/contacts",
+    stat: "Automatic",
   },
 ];
 
@@ -75,6 +93,19 @@ export default function AiStudioPage() {
     enabled: !!token,
   });
 
+  const { data: agentStatus } = useQuery({
+    queryKey: ["agent-status"],
+    queryFn: () =>
+      apiFetch<{
+        classificationsToday: number;
+        automationsToday: number;
+        lastClassifiedAt: string | null;
+        lastLatencyMs: number | null;
+        lastSummary: string | null;
+      }>("/leads/agent-status", { token: token ?? undefined }),
+    enabled: !!token,
+  });
+
   const isActive = capabilities?.aiClassification;
 
   return (
@@ -82,7 +113,7 @@ export default function AiStudioPage() {
       <PageHeader
         eyebrow={EYEBROW.intelligence}
         title="Intelligence"
-        description="Growvisi analyzes every WhatsApp thread — Meta replies in-chat, we track the revenue funnel."
+        description="Your AI revenue agent — classifying, scoring, tagging, and routing leads automatically."
         badge={
           <span
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
@@ -94,6 +125,7 @@ export default function AiStudioPage() {
         }
       />
 
+      {/* Agent status hero card */}
       <DashboardPanel
         noPadding
         className="mb-8 overflow-hidden border-accent/20 bg-gradient-to-br from-[#ecfdf5]/80 to-white"
@@ -101,8 +133,8 @@ export default function AiStudioPage() {
       >
         <div className="flex flex-wrap items-center justify-between gap-4 p-6">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/20">
-              <Sparkles className="h-6 w-6" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/20">
+              <Sparkles className="h-7 w-7" />
             </div>
             <div>
               {isLoading ? (
@@ -112,12 +144,12 @@ export default function AiStudioPage() {
                 </>
               ) : (
                 <>
-                  <p className="font-semibold">
-                    {isActive ? "AI classification running" : "Set OPENAI_API_KEY to enable"}
+                  <p className="text-lg font-bold">
+                    {isActive ? "AI Revenue Agent running" : "Set OPENAI_API_KEY to enable"}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {stats
-                      ? `${stats.aiClassifications} analyses · ${stats.classifiedLeads} scored · ${stats.humanHandoffRecommended} handoffs`
+                      ? `${stats.aiClassifications} total analyses · ${stats.classifiedLeads} scored · ${stats.humanHandoffRecommended} handoffs`
                       : "Runs on each inbound customer message."}
                   </p>
                 </>
@@ -130,13 +162,72 @@ export default function AiStudioPage() {
         </div>
       </DashboardPanel>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Agent metrics */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-8 grid gap-4 sm:grid-cols-3"
+      >
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent">
+            <Activity className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{agentStatus?.classificationsToday ?? 0}</p>
+            <p className="text-[11px] text-muted-foreground">Classifications today</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            <Zap className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{agentStatus?.automationsToday ?? 0}</p>
+            <p className="text-[11px] text-muted-foreground">Automations triggered</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+            <Clock className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">
+              {agentStatus?.lastLatencyMs ? `${(agentStatus.lastLatencyMs / 1000).toFixed(1)}s` : "—"}
+            </p>
+            <p className="text-[11px] text-muted-foreground">Last response time</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Latest summary */}
+      {agentStatus?.lastSummary && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-8"
+        >
+          <DashboardPanel noPadding className="border-accent/20 bg-gradient-to-r from-bento-mint/30 to-white">
+            <div className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Bot className="h-4 w-4 text-accent" />
+                <p className="text-xs font-bold uppercase tracking-wider text-accent">Latest AI conversation summary</p>
+              </div>
+              <p className="text-sm leading-relaxed">{agentStatus.lastSummary}</p>
+            </div>
+          </DashboardPanel>
+        </motion.div>
+      )}
+
+      {/* Feature cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f, i) => (
           <motion.div
             key={f.title}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 + i * 0.05 }}
+            transition={{ delay: 0.12 + i * 0.05 }}
           >
             <Link href={f.href} className="card-interactive block h-full p-5">
               <div className="flex items-start justify-between gap-3">

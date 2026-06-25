@@ -1,12 +1,12 @@
 import { Module } from "@nestjs/common";
 import { BillingModule } from "../billing/billing.module";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
-import { LeadsController } from "./leads.controller";
-import { LeadsService } from "./leads.service";
+import { TasksController } from "./tasks.controller";
+import { TasksService } from "./tasks.service";
 
 @Module({
   imports: [BillingModule],
-  controllers: [LeadsController],
-  providers: [LeadsService, MembershipRoleGuard],
+  controllers: [TasksController],
+  providers: [TasksService, MembershipRoleGuard],
 })
-export class LeadsModule {}
+export class TasksModule {}

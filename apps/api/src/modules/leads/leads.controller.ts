@@ -1,15 +1,31 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
-import { IsEnum, IsInt, IsOptional, IsString, Min } from "class-validator";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
+import { IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
 import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { LeadsService } from "./leads.service";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import type { MetricsPeriod } from "../../common/date-range";
 import type { Response } from "express";
 
+const STAGES = ["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON", "LOST"] as const;
+const WRITE_ROLES = ["OWNER", "ADMIN", "MANAGER", "AGENT"] as const;
+
 class UpdateStageDto {
-  @IsEnum(["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON", "LOST"])
+  @IsEnum(STAGES)
   stage!: LeadStage;
 
   @IsOptional()
@@ -25,14 +41,62 @@ class UpdateLeadDto {
   valueCents?: number | null;
 }
 
+class UpdateContactDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  displayName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  email?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  company?: string | null;
+
+  @IsOptional()
+  @IsString()
+  ownerId?: string | null;
+}
+
+class AddNoteDto {
+  @IsString()
+  @MaxLength(4000)
+  body!: string;
+}
+
 @Controller("leads")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, MembershipRoleGuard)
 export class LeadsController {
   constructor(private readonly leads: LeadsService) {}
 
   @Get("pipeline")
   pipeline(@CurrentUser() user: JwtPayload) {
     return this.leads.listByStage(user);
+  }
+
+  @Get("contacts")
+  contacts(
+    @CurrentUser() user: JwtPayload,
+    @Query("q") q?: string,
+    @Query("stage") stage?: LeadStage,
+    @Query("tagId") tagId?: string,
+    @Query("ownerId") ownerId?: string,
+  ) {
+    return this.leads.listContacts(user, { q, stage, tagId, ownerId });
+  }
+
+  @Get("activity")
+  activity(@CurrentUser() user: JwtPayload) {
+    return this.leads.getActivityFeed(user);
+  }
+
+  @Get("agent-status")
+  agentStatus(@CurrentUser() user: JwtPayload) {
+    return this.leads.getAgentStatus(user);
   }
 
   @Get("metrics/funnel")
@@ -62,7 +126,13 @@ export class LeadsController {
     return this.leads.getTimeline(user, id);
   }
 
+  @Get(":id")
+  contact(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.leads.getContact(user, id);
+  }
+
   @Patch(":id/stage")
+  @Roles(...WRITE_ROLES)
   updateStage(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
@@ -71,12 +141,35 @@ export class LeadsController {
     return this.leads.updateStage(user, id, dto.stage, dto.reason);
   }
 
-  @Patch(":id")
-  updateLead(
+  @Patch(":id/contact")
+  @Roles(...WRITE_ROLES)
+  updateContact(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
-    @Body() dto: UpdateLeadDto,
+    @Body() dto: UpdateContactDto,
   ) {
+    return this.leads.updateContact(user, id, dto);
+  }
+
+  @Post(":id/notes")
+  @Roles(...WRITE_ROLES)
+  addNote(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: AddNoteDto) {
+    return this.leads.addNote(user, id, dto.body);
+  }
+
+  @Delete(":id/notes/:noteId")
+  @Roles(...WRITE_ROLES)
+  deleteNote(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Param("noteId") noteId: string,
+  ) {
+    return this.leads.deleteNote(user, id, noteId);
+  }
+
+  @Patch(":id")
+  @Roles(...WRITE_ROLES)
+  updateLead(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: UpdateLeadDto) {
     return this.leads.updateLead(user, id, dto);
   }
 }

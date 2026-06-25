@@ -1,11 +1,30 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
+
+export interface ContactListFilters {
+  q?: string;
+  stage?: LeadStage;
+  tagId?: string;
+  ownerId?: string;
+}
+
+export interface UpdateContactInput {
+  displayName?: string | null;
+  email?: string | null;
+  company?: string | null;
+  ownerId?: string | null;
+  profile?: Record<string, unknown>;
+}
 
 @Injectable()
 export class LeadsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   async listByStage(user: JwtPayload) {
     const leads = await this.prisma.lead.findMany({
@@ -15,23 +34,30 @@ export class LeadsService {
         conversation: {
           select: { id: true, unreadCount: true, lastMessageAt: true },
         },
+        tags: { include: { tag: true } },
       },
     });
 
-    const grouped = leads.reduce(
+    const mapped = leads.map(({ tags, ...rest }) => ({
+      ...rest,
+      tags: tags.map((lt) => ({ id: lt.tag.id, name: lt.tag.name, color: lt.tag.color })),
+    }));
+
+    const grouped = mapped.reduce(
       (acc, lead) => {
         const stage = lead.stage;
         if (!acc[stage]) acc[stage] = [];
         acc[stage].push(lead);
         return acc;
       },
-      {} as Record<string, typeof leads>,
+      {} as Record<string, typeof mapped>,
     );
 
     return grouped;
   }
 
   async updateStage(user: JwtPayload, id: string, stage: LeadStage, reason?: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
     const lead = await this.prisma.lead.findFirst({
       where: { id, organizationId: user.organizationId },
     });
@@ -67,6 +93,7 @@ export class LeadsService {
   }
 
   async updateLead(user: JwtPayload, id: string, data: { valueCents?: number | null }) {
+    await this.entitlements.assertHasAccess(user.organizationId);
     const lead = await this.prisma.lead.findFirst({
       where: { id, organizationId: user.organizationId },
     });
@@ -311,7 +338,32 @@ export class LeadsService {
 
     items.sort((a, b) => a.priority - b.priority);
 
-    return { period: parsedPeriod, items };
+    const hotLeads = await this.prisma.lead.findMany({
+      where: { organizationId: orgId, score: { gte: 70 }, stage: { notIn: ["WON", "LOST"] } },
+      orderBy: { score: "desc" },
+      take: 5,
+      select: {
+        id: true, displayName: true, phone: true, score: true, stage: true,
+        aiConfidence: true, profile: true,
+      },
+    });
+
+    const actionLeads = hotLeads.map((lead) => {
+      const profile = (lead.profile ?? {}) as Record<string, unknown>;
+      return {
+        id: lead.id,
+        name: lead.displayName ?? lead.phone,
+        score: lead.score,
+        stage: lead.stage,
+        nextAction: profile.nextAction ?? null,
+        summary: profile.summary ?? null,
+        intent: profile.lastIntent ?? null,
+        sentiment: profile.lastSentiment ?? null,
+        tags: Array.isArray(profile.aiTags) ? profile.aiTags : [],
+      };
+    });
+
+    return { period: parsedPeriod, items, actionLeads };
   }
 
   async exportCsv(user: JwtPayload, period?: MetricsPeriod): Promise<string> {
@@ -363,5 +415,298 @@ export class LeadsService {
     );
 
     return [header.join(","), ...rows].join("\n");
+  }
+
+  // ─── Contacts (CRM) ──────────────────────────────────────────────────────
+
+  async listContacts(user: JwtPayload, filters: ContactListFilters) {
+    const where: Record<string, unknown> = { organizationId: user.organizationId };
+    if (filters.stage) where.stage = filters.stage;
+    if (filters.ownerId) where.ownerId = filters.ownerId;
+    if (filters.tagId) where.tags = { some: { tagId: filters.tagId } };
+    if (filters.q) {
+      const q = filters.q.trim();
+      where.OR = [
+        { displayName: { contains: q, mode: "insensitive" } },
+        { phone: { contains: q } },
+        { email: { contains: q, mode: "insensitive" } },
+        { company: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const leads = await this.prisma.lead.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      take: 200,
+      include: {
+        tags: { include: { tag: true } },
+        conversation: { select: { id: true, unreadCount: true, lastMessageAt: true, status: true } },
+        _count: { select: { tasks: true, notes: true } },
+      },
+    });
+
+    return leads.map((l) => ({
+      id: l.id,
+      displayName: l.displayName,
+      phone: l.phone,
+      email: l.email,
+      company: l.company,
+      stage: l.stage,
+      score: l.score,
+      valueCents: l.valueCents,
+      currency: l.currency,
+      ownerId: l.ownerId,
+      source: l.source,
+      lastClassifiedAt: l.lastClassifiedAt,
+      createdAt: l.createdAt,
+      updatedAt: l.updatedAt,
+      conversation: l.conversation,
+      tags: l.tags.map((lt) => ({ id: lt.tag.id, name: lt.tag.name, color: lt.tag.color })),
+      taskCount: l._count.tasks,
+      noteCount: l._count.notes,
+    }));
+  }
+
+  async getContact(user: JwtPayload, id: string) {
+    const lead = await this.prisma.lead.findFirst({
+      where: { id, organizationId: user.organizationId },
+      include: {
+        tags: { include: { tag: true } },
+        conversation: {
+          select: { id: true, status: true, unreadCount: true, lastMessageAt: true, aiEnabled: true },
+        },
+        notes: {
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: { author: { select: { id: true, name: true, email: true } } },
+        },
+        tasks: {
+          orderBy: [{ status: "asc" }, { dueAt: "asc" }],
+          take: 50,
+          include: { assignedTo: { select: { id: true, name: true, email: true } } },
+        },
+        stageHistory: { orderBy: { createdAt: "desc" }, take: 20 },
+      },
+    });
+    if (!lead) throw new NotFoundException();
+
+    return {
+      ...lead,
+      tags: lead.tags.map((lt) => ({ id: lt.tag.id, name: lt.tag.name, color: lt.tag.color })),
+    };
+  }
+
+  async updateContact(user: JwtPayload, id: string, input: UpdateContactInput) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    const lead = await this.prisma.lead.findFirst({
+      where: { id, organizationId: user.organizationId },
+    });
+    if (!lead) throw new NotFoundException();
+
+    if (input.ownerId) {
+      const member = await this.prisma.organizationMember.findFirst({
+        where: { organizationId: user.organizationId, userId: input.ownerId },
+        select: { id: true },
+      });
+      if (!member) throw new NotFoundException("Owner must be a workspace member");
+    }
+
+    const profile =
+      input.profile !== undefined
+        ? { ...((lead.profile as Record<string, unknown>) ?? {}), ...input.profile }
+        : undefined;
+
+    return this.prisma.lead.update({
+      where: { id },
+      data: {
+        ...(input.displayName !== undefined ? { displayName: input.displayName } : {}),
+        ...(input.email !== undefined ? { email: input.email } : {}),
+        ...(input.company !== undefined ? { company: input.company } : {}),
+        ...(input.ownerId !== undefined ? { ownerId: input.ownerId } : {}),
+        ...(profile !== undefined ? { profile: profile as object } : {}),
+      },
+    });
+  }
+
+  async addNote(user: JwtPayload, id: string, body: string) {
+    const lead = await this.prisma.lead.findFirst({
+      where: { id, organizationId: user.organizationId },
+      select: { id: true },
+    });
+    if (!lead) throw new NotFoundException();
+    const clean = body.trim();
+    if (!clean) throw new NotFoundException("Note body required");
+
+    return this.prisma.leadNote.create({
+      data: {
+        organizationId: user.organizationId,
+        leadId: id,
+        authorId: user.sub,
+        body: clean.slice(0, 4000),
+      },
+      include: { author: { select: { id: true, name: true, email: true } } },
+    });
+  }
+
+  async deleteNote(user: JwtPayload, id: string, noteId: string) {
+    const note = await this.prisma.leadNote.findFirst({
+      where: { id: noteId, leadId: id, organizationId: user.organizationId },
+      select: { id: true },
+    });
+    if (!note) throw new NotFoundException();
+    await this.prisma.leadNote.delete({ where: { id: noteId } });
+    return { ok: true };
+  }
+
+  async getActivityFeed(user: JwtPayload, limit = 30) {
+    const orgId = user.organizationId;
+
+    const [stageChanges, aiRuns, tasks, notes, automationLogs] = await Promise.all([
+      this.prisma.leadStageHistory.findMany({
+        where: { lead: { organizationId: orgId } },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        include: { lead: { select: { id: true, displayName: true, phone: true } } },
+      }),
+      this.prisma.aiRun.findMany({
+        where: { organizationId: orgId, status: "COMPLETED" },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        select: {
+          id: true, type: true, output: true, createdAt: true, completedAt: true,
+          conversation: { select: { contactName: true, contactPhone: true, leadId: true } },
+        },
+      }),
+      this.prisma.task.findMany({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        select: {
+          id: true, title: true, status: true, priority: true, createdAt: true, completedAt: true,
+          assignedTo: { select: { name: true } },
+          lead: { select: { displayName: true, phone: true } },
+        },
+      }),
+      this.prisma.leadNote.findMany({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true, body: true, createdAt: true,
+          author: { select: { name: true } },
+          lead: { select: { displayName: true, phone: true } },
+        },
+      }),
+      this.prisma.automationLog.findMany({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      }),
+    ]);
+
+    type FeedItem = { type: string; time: Date; data: Record<string, unknown> };
+    const items: FeedItem[] = [];
+
+    for (const sc of stageChanges) {
+      items.push({
+        type: "stage_change",
+        time: sc.createdAt,
+        data: {
+          leadName: sc.lead?.displayName ?? sc.lead?.phone ?? "Unknown",
+          leadId: sc.lead?.id,
+          from: sc.fromStage, to: sc.toStage,
+          reason: sc.reason,
+          isAi: !!sc.aiRunId,
+        },
+      });
+    }
+    for (const ai of aiRuns) {
+      const output = (ai.output ?? {}) as Record<string, unknown>;
+      items.push({
+        type: "ai_classification",
+        time: ai.createdAt,
+        data: {
+          contactName: ai.conversation?.contactName ?? ai.conversation?.contactPhone,
+          leadId: ai.conversation?.leadId,
+          summary: output.summary, stage: output.stage,
+          intent: output.intent, nextAction: output.nextAction,
+        },
+      });
+    }
+    for (const t of tasks) {
+      items.push({
+        type: t.completedAt ? "task_completed" : "task_created",
+        time: t.completedAt ?? t.createdAt,
+        data: {
+          title: t.title, status: t.status, priority: t.priority,
+          assignee: t.assignedTo?.name,
+          leadName: t.lead?.displayName ?? t.lead?.phone,
+        },
+      });
+    }
+    for (const n of notes) {
+      items.push({
+        type: "note_added",
+        time: n.createdAt,
+        data: {
+          body: n.body.slice(0, 100),
+          author: n.author?.name,
+          leadName: n.lead?.displayName ?? n.lead?.phone,
+        },
+      });
+    }
+    for (const log of automationLogs) {
+      items.push({
+        type: "automation_run",
+        time: log.createdAt,
+        data: {
+          automationType: log.automationType,
+          trigger: log.trigger,
+          result: log.result,
+        },
+      });
+    }
+
+    items.sort((a, b) => b.time.getTime() - a.time.getTime());
+    return items.slice(0, limit);
+  }
+
+  async getAgentStatus(user: JwtPayload) {
+    const orgId = user.organizationId;
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [classCount, latestRun, autoLogs, taskStats] = await Promise.all([
+      this.prisma.aiRun.count({
+        where: { organizationId: orgId, status: "COMPLETED", createdAt: { gte: since24h } },
+      }),
+      this.prisma.aiRun.findFirst({
+        where: { organizationId: orgId, status: "COMPLETED" },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true, latencyMs: true, output: true },
+      }),
+      this.prisma.automationLog.count({
+        where: { organizationId: orgId, createdAt: { gte: since24h } },
+      }),
+      this.prisma.task.groupBy({
+        by: ["status"],
+        where: { organizationId: orgId },
+        _count: { id: true },
+      }),
+    ]);
+
+    const latestOutput = (latestRun?.output ?? {}) as Record<string, unknown>;
+
+    return {
+      classificationsToday: classCount,
+      automationsToday: autoLogs,
+      lastClassifiedAt: latestRun?.createdAt,
+      lastLatencyMs: latestRun?.latencyMs,
+      lastSummary: latestOutput.summary,
+      tasks: {
+        open: taskStats.find((s) => s.status === "OPEN")?._count.id ?? 0,
+        inProgress: taskStats.find((s) => s.status === "IN_PROGRESS")?._count.id ?? 0,
+        done: taskStats.find((s) => s.status === "DONE")?._count.id ?? 0,
+      },
+    };
   }
 }
