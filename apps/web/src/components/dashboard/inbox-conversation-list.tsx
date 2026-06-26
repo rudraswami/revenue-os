@@ -165,7 +165,7 @@ export function InboxConversationList({
               icon={<MessageSquare className="h-6 w-6" />}
               title="WhatsApp not connected"
               description="Connect your business number to see customer messages here."
-              actionHref="/dashboard/settings#whatsapp"
+              actionHref="/dashboard/settings?tab=whatsapp"
               actionLabel="Connect WhatsApp"
             />
           </div>
@@ -178,7 +178,7 @@ export function InboxConversationList({
               icon={<Inbox className="h-6 w-6" />}
               title="No messages yet"
               description="Message your business number from your phone to start."
-              actionHref="/dashboard/settings#whatsapp"
+              actionHref="/dashboard/settings?tab=whatsapp"
               actionLabel="WhatsApp settings"
             />
           </div>

@@ -257,13 +257,13 @@ function UserAccountMenu({
         align="start"
         className="w-[var(--radix-dropdown-menu-trigger-width)]"
       >
-        <DropdownMenuItem onSelect={() => go("/dashboard/settings")}>
+        <DropdownMenuItem onSelect={() => go("/dashboard/settings?tab=account")}>
           <Settings className="h-4 w-4 text-muted-foreground" />
           Settings
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() =>
-            go(whatsappConnected ? "/dashboard/settings#whatsapp" : "/onboarding")
+            go(whatsappConnected ? "/dashboard/settings?tab=whatsapp" : "/onboarding")
           }
         >
           <MessageCircle className="h-4 w-4 text-muted-foreground" />

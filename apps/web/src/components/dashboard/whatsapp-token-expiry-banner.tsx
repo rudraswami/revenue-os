@@ -72,7 +72,7 @@ export function WhatsappTokenExpiryBanner() {
           variant="outline"
           className="h-8 shrink-0 gap-1.5 border-amber-300 bg-white/90"
         >
-          <Link href="/dashboard/settings#whatsapp">
+          <Link href="/dashboard/settings?tab=whatsapp">
             Refresh token
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>

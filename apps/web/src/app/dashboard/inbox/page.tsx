@@ -589,7 +589,7 @@ export default function InboxPage() {
                       {(sendError.toLowerCase().includes("auth") ||
                         sendError.toLowerCase().includes("token")) && (
                         <a
-                          href="/dashboard/settings#whatsapp"
+                          href="/dashboard/settings?tab=whatsapp"
                           className="mt-1 inline-block font-semibold underline"
                         >
                           Refresh WhatsApp token →
