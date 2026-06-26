@@ -25,6 +25,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import { CampaignsService } from "./campaigns.service";
 
@@ -141,7 +142,7 @@ class ScheduleCampaignDto {
 }
 
 @Controller("campaigns")
-@UseGuards(JwtAuthGuard, MembershipRoleGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class CampaignsController {
   constructor(private readonly campaigns: CampaignsService) {}
 

@@ -16,6 +16,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import { LeadsService } from "./leads.service";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import type { MetricsPeriod } from "../../common/date-range";
@@ -120,7 +121,7 @@ class AssignHandoffsDto {
 }
 
 @Controller("leads")
-@UseGuards(JwtAuthGuard, MembershipRoleGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class LeadsController {
   constructor(private readonly leads: LeadsService) {}
 
@@ -205,6 +206,7 @@ export class LeadsController {
   }
 
   @Get("export")
+  @Roles(...WRITE_ROLES)
   async exportCsv(
     @CurrentUser() user: JwtPayload,
     @Query("period") period: MetricsPeriod | undefined,

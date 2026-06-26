@@ -106,6 +106,32 @@ export default function AiStudioPage() {
     enabled: !!token,
   });
 
+  const { data: activityFeed } = useQuery({
+    queryKey: ["intelligence-activity"],
+    queryFn: () =>
+      apiFetch<Array<{ type: string; time: string; data: Record<string, unknown> }>>(
+        "/leads/activity",
+        { token: token ?? undefined },
+      ),
+    enabled: !!token,
+    staleTime: 30_000,
+  });
+
+  const { data: knowledgeDocs } = useQuery({
+    queryKey: ["knowledge-documents"],
+    queryFn: () =>
+      apiFetch<Array<{ status: string; chunkCount?: number }>>("/knowledge/documents", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+    retry: false,
+  });
+
+  const recentClassifications = (activityFeed ?? [])
+    .filter((a) => a.type === "ai_classification")
+    .slice(0, 6);
+
+  const ragChunks = (knowledgeDocs ?? []).reduce((n, d) => n + (d.chunkCount ?? 0), 0);
   const isActive = capabilities?.aiClassification;
 
   return (
@@ -219,6 +245,63 @@ export default function AiStudioPage() {
           </DashboardPanel>
         </motion.div>
       )}
+
+      {/* Capabilities + RAG status */}
+      <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        <DashboardPanel title="What AI does" description="Honest boundaries — Meta replies in-chat; Growvisi classifies and routes.">
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>
+              <strong className="text-foreground">Classification:</strong>{" "}
+              {capabilities?.aiClassification ? "On — runs on every inbound message" : "Off — set OPENAI_API_KEY"}
+            </li>
+            <li>
+              <strong className="text-foreground">Smart reply drafts:</strong>{" "}
+              {capabilities?.aiSuggestReply ? "On — human takeover suggestions" : "Off"}
+            </li>
+            <li>
+              <strong className="text-foreground">Business context (RAG):</strong>{" "}
+              {ragChunks > 0
+                ? `${ragChunks} knowledge chunks indexed for classify + suggest`
+                : "Add docs in Settings → Business context"}
+            </li>
+          </ul>
+        </DashboardPanel>
+
+        <DashboardPanel
+          title="Recent classifications"
+          description="Live explainers from your workspace — not marketing claims."
+        >
+          {recentClassifications.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No classifications yet. They appear here as customers message on WhatsApp.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {recentClassifications.map((item, i) => {
+                const d = item.data;
+                const name = String(d.contactName ?? d.leadName ?? "Lead");
+                const intent = String(d.intent ?? "Inquiry");
+                const summary = typeof d.summary === "string" ? d.summary : null;
+                const next =
+                  typeof d.nextAction === "string" ? d.nextAction : null;
+                return (
+                  <li key={`${item.time}-${i}`} className="rounded-xl border border-border/70 bg-[#f8f9ff]/50 p-3">
+                    <p className="text-sm font-semibold">
+                      {name} — <span className="text-accent">{intent}</span>
+                    </p>
+                    {summary && (
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{summary}</p>
+                    )}
+                    {next && (
+                      <p className="mt-1 text-xs font-medium text-accent">Next: {next}</p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </DashboardPanel>
+      </div>
 
       {/* Feature cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CheckSquare, Plus } from "lucide-react";
+import { Check, CheckSquare, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { apiFetch } from "@/lib/api-client";
-import { canWrite } from "@/lib/permissions";
+import { canManageCampaigns, canWrite } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   formatDate,
@@ -38,6 +38,7 @@ export default function TasksPage() {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canEdit = canWrite(role);
+  const canDelete = canManageCampaigns(role);
   const qc = useQueryClient();
   const [scope, setScope] = useState<"mine" | "open" | "all">("open");
   const [title, setTitle] = useState("");
@@ -115,6 +116,12 @@ export default function TasksPage() {
         token: token ?? undefined,
         body: JSON.stringify({ assignedToId: assignedToId || null }),
       }),
+    onSuccess: invalidate,
+  });
+
+  const removeTask = useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/tasks/${id}`, { method: "DELETE", token: token ?? undefined }),
     onSuccess: invalidate,
   });
 
@@ -302,6 +309,17 @@ export default function TasksPage() {
                           {t.assignedTo.name ?? t.assignedTo.email}
                         </span>
                       )
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => removeTask.mutate(t.id)}
+                        disabled={removeTask.isPending}
+                        className="rounded-md p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                        aria-label="Delete task"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     )}
                   </div>
                 </li>

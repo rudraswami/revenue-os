@@ -9,6 +9,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit() {
     await this.$connect();
+    await this.$executeRawUnsafe(`SET search_path TO public, extensions`);
   }
 
   async onModuleDestroy() {

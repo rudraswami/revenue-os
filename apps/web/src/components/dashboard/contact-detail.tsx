@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { TagChip } from "./tag-chip";
+import { LostReasonDialog } from "./lost-reason-dialog";
 import { cn } from "@/lib/utils";
 
 interface ContactNote {
@@ -57,6 +58,7 @@ interface ContactDetail {
   email?: string | null;
   company?: string | null;
   stage: LeadStage;
+  lostReason?: string | null;
   score: number;
   valueCents?: number | null;
   ownerId?: string | null;
@@ -87,6 +89,8 @@ export function ContactDetailDrawer({
   const [newTask, setNewTask] = useState("");
   const [tagOpen, setTagOpen] = useState(false);
   const [dealValue, setDealValue] = useState("");
+  const [lostPrompt, setLostPrompt] = useState(false);
+  const [pendingStage, setPendingStage] = useState<LeadStage | null>(null);
 
   const { data: contact, isLoading } = useQuery({
     queryKey: ["contact", leadId],
@@ -135,11 +139,11 @@ export function ContactDetailDrawer({
   });
 
   const setStage = useMutation({
-    mutationFn: (stage: LeadStage) =>
+    mutationFn: ({ stage, reason }: { stage: LeadStage; reason?: string }) =>
       apiFetch(`/leads/${leadId}/stage`, {
         method: "PATCH",
         token: token ?? undefined,
-        body: JSON.stringify({ stage }),
+        body: JSON.stringify({ stage, reason }),
       }),
     onSuccess: invalidate,
   });
@@ -269,7 +273,15 @@ export function ContactDetailDrawer({
                     </p>
                     <Select
                       value={contact.stage}
-                      onChange={(e) => setStage.mutate(e.target.value as LeadStage)}
+                      onChange={(e) => {
+                        const next = e.target.value as LeadStage;
+                        if (next === "LOST" && contact.stage !== "LOST") {
+                          setPendingStage(next);
+                          setLostPrompt(true);
+                          return;
+                        }
+                        setStage.mutate({ stage: next });
+                      }}
                       className="h-9 text-xs"
                     >
                       {LEAD_STAGES.map((s) => (
@@ -278,6 +290,11 @@ export function ContactDetailDrawer({
                         </option>
                       ))}
                     </Select>
+                    {contact.stage === "LOST" && contact.lostReason && (
+                      <p className="mt-1.5 text-[11px] text-muted-foreground">
+                        Lost reason: <span className="font-medium text-foreground">{contact.lostReason}</span>
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -548,6 +565,28 @@ export function ContactDetailDrawer({
           </motion.aside>
         </>
       )}
+      <LostReasonDialog
+        open={lostPrompt}
+        leadName={contact?.displayName}
+        loading={setStage.isPending}
+        onCancel={() => {
+          setLostPrompt(false);
+          setPendingStage(null);
+        }}
+        onConfirm={(reason) => {
+          if (pendingStage) {
+            setStage.mutate(
+              { stage: pendingStage, reason },
+              {
+                onSuccess: () => {
+                  setLostPrompt(false);
+                  setPendingStage(null);
+                },
+              },
+            );
+          }
+        }}
+      />
     </AnimatePresence>
   );
 }

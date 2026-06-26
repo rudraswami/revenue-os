@@ -534,6 +534,8 @@ model KnowledgeChunk {
 
 // ─── Automations ─────────────────────────────────────────────────────────────
 
+// Legacy table — runtime automations use organizations.settings.automations JSON + AutomationLog.
+
 model Automation {
   id             String                @id @default(cuid())
   organizationId String
@@ -793,7 +795,7 @@ model TrackingLink {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@unique([organizationId, slug])
+  @@unique([slug])
   @@index([organizationId])
   @@map("tracking_links")
 }

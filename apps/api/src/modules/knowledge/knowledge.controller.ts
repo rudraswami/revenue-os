@@ -1,9 +1,14 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { KnowledgeService } from "./knowledge.service";
+
+const MANAGE_ROLES = ["OWNER", "ADMIN", "MANAGER"] as const;
 
 class CreateDocumentDto {
   @IsString()
@@ -30,7 +35,7 @@ class UpdateDocumentDto {
 }
 
 @Controller("knowledge/documents")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class KnowledgeController {
   constructor(private readonly knowledge: KnowledgeService) {}
 
@@ -40,11 +45,13 @@ export class KnowledgeController {
   }
 
   @Post()
+  @Roles(...MANAGE_ROLES)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateDocumentDto) {
     return this.knowledge.create(user, dto.title, dto.content);
   }
 
   @Patch(":id")
+  @Roles(...MANAGE_ROLES)
   update(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: UpdateDocumentDto) {
     return this.knowledge.update(user, id, {
       title: dto.title,
@@ -53,11 +60,13 @@ export class KnowledgeController {
   }
 
   @Delete(":id")
+  @Roles(...MANAGE_ROLES)
   remove(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.knowledge.remove(user, id);
   }
 
   @Post(":id/reindex")
+  @Roles(...MANAGE_ROLES)
   reindex(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.knowledge.reindex(user, id);
   }

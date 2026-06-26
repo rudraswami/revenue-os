@@ -3,6 +3,7 @@ import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
+import { AuditService } from "../audit/audit.service";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 
 export interface ContactListFilters {
@@ -38,6 +39,7 @@ export class LeadsService {
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementsService,
     private readonly webhooks: WebhookDispatchService,
+    private readonly audit: AuditService,
   ) {}
 
   async listByStage(user: JwtPayload) {
@@ -111,6 +113,17 @@ export class LeadsService {
       displayName: lead.displayName,
       at: new Date().toISOString(),
     });
+
+    this.audit.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: "UPDATE",
+      resource: "lead",
+      resourceId: id,
+      metadata: { fromStage: lead.stage, toStage: stage, reason: reason ?? null },
+    });
+
+    return updated;
 
     return updated;
   }
@@ -652,6 +665,7 @@ export class LeadsService {
   }
 
   async exportCsv(user: JwtPayload, period?: MetricsPeriod): Promise<string> {
+    await this.entitlements.assertHasAccess(user.organizationId);
     const range = createdAtFilter(parseMetricsPeriod(period));
     const rows = await this.prisma.lead.findMany({
       where: {
@@ -696,6 +710,14 @@ export class LeadsService {
         .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
         .join(","),
     );
+
+    this.audit.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: "EXPORT",
+      resource: "leads",
+      metadata: { period: period ?? "all", rowCount: rows.length },
+    });
 
     return [header.join(","), ...csvRows].join("\n");
   }

@@ -82,7 +82,7 @@ export default function DashboardPage() {
     queryKey: ["funnel-metrics"],
     queryFn: () =>
       apiFetch<{ total: number; won: number; conversionRate: number; byStage: { stage: string; count: number }[] }>(
-        "/leads/metrics/funnel",
+        "/leads/metrics/funnel?period=30d",
         { token: token ?? undefined },
       ),
     enabled: !!token,

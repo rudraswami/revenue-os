@@ -21,6 +21,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { TasksService } from "./tasks.service";
 
@@ -86,7 +87,7 @@ class UpdateTaskDto {
 const WRITE_ROLES = ["OWNER", "ADMIN", "MANAGER", "AGENT"] as const;
 
 @Controller("tasks")
-@UseGuards(JwtAuthGuard, MembershipRoleGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class TasksController {
   constructor(private readonly tasks: TasksService) {}
 

@@ -1,9 +1,14 @@
 import { Body, Controller, Get, Patch, UseGuards } from "@nestjs/common";
 import { IsBoolean, IsOptional } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { AutomationsService } from "./automations.service";
+
+const MANAGE_ROLES = ["OWNER", "ADMIN", "MANAGER"] as const;
 
 class UpdateAutomationsDto {
   @IsOptional()
@@ -28,7 +33,7 @@ class UpdateAutomationsDto {
 }
 
 @Controller("automations")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class AutomationsController {
   constructor(private readonly automations: AutomationsService) {}
 
@@ -38,6 +43,7 @@ export class AutomationsController {
   }
 
   @Patch("preferences")
+  @Roles(...MANAGE_ROLES)
   updatePreferences(@CurrentUser() user: JwtPayload, @Body() dto: UpdateAutomationsDto) {
     return this.automations.updatePreferences(user, dto);
   }

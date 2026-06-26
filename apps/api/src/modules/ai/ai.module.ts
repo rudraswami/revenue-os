@@ -5,6 +5,7 @@ import { AutomationsModule } from "../automations/automations.module";
 import { AssignmentModule } from "../assignments/assignment.module";
 import { WebhooksModule } from "../webhooks/webhooks.module";
 import { BillingModule } from "../billing/billing.module";
+import { KnowledgeModule } from "../knowledge/knowledge.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { AiClassifyService } from "./ai-classify.service";
 import { AiClassifyProcessor } from "./processors/ai-classify.processor";
@@ -19,6 +20,7 @@ const isVercel = process.env.VERCEL === "1";
     BillingModule,
     AssignmentModule,
     WebhooksModule,
+    KnowledgeModule,
   ],
   providers: [AiClassifyService, ...(isVercel ? [] : [AiClassifyProcessor])],
   exports: [AiClassifyService],

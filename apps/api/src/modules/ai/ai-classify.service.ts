@@ -10,6 +10,7 @@ import { AutomationsService } from "../automations/automations.service";
 import { AssignmentService } from "../assignments/assignment.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { EntitlementsService } from "../billing/entitlements.service";
+import { KnowledgeEmbedService } from "../knowledge/knowledge-embed.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 
 export interface ClassifyJobData {
@@ -41,6 +42,7 @@ export class AiClassifyService {
     private readonly entitlements: EntitlementsService,
     private readonly assignments: AssignmentService,
     private readonly webhooks: WebhookDispatchService,
+    private readonly knowledge: KnowledgeEmbedService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -115,6 +117,18 @@ export class AiClassifyService {
     const model = this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini";
     const started = Date.now();
 
+    const lastInbound = [...ordered]
+      .reverse()
+      .find((m) => m.direction === "INBOUND")?.content;
+    const ragQuery = (lastInbound ?? transcript).slice(0, 600);
+    const ragChunks = await this.knowledge.search(data.organizationId, ragQuery, 4);
+    const businessContext =
+      ragChunks.length > 0
+        ? ragChunks
+            .map((c) => `- ${c.title}: ${c.content.slice(0, 320)}`)
+            .join("\n")
+        : "";
+
     const aiRun = await this.prisma.aiRun.create({
       data: {
         organizationId: data.organizationId,
@@ -128,7 +142,13 @@ export class AiClassifyService {
     });
 
     try {
-      const result = await this.callOpenAi(apiKey, model, lead.stage as LeadStage, transcript);
+      const result = await this.callOpenAi(
+        apiKey,
+        model,
+        lead.stage as LeadStage,
+        transcript,
+        businessContext,
+      );
       const latencyMs = Date.now() - started;
 
       await this.prisma.aiRun.update({
@@ -234,8 +254,12 @@ export class AiClassifyService {
     model: string,
     currentStage: LeadStage,
     transcript: string,
+    businessContext?: string,
   ): Promise<AiClassificationResult> {
     const stages = LEAD_STAGE_ORDER.join(", ");
+    const contextBlock = businessContext?.trim()
+      ? `\n\nBusiness knowledge (use to interpret pricing, policies, and offers — do not invent facts beyond this):\n${businessContext}`
+      : "";
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -263,7 +287,7 @@ Return JSON with these keys:
 - tags: array of 1-4 short tags that describe this lead (e.g. "high-intent", "price-sensitive", "returning-customer", "urgent", "bulk-order")
 - nextAction: the single most important thing the sales rep should do right now (e.g. "Send pricing PDF", "Call within 2 hours", "Follow up on delivery status")
 
-Current pipeline stage: ${currentStage}.`,
+Current pipeline stage: ${currentStage}.${contextBlock}`,
           },
           {
             role: "user",

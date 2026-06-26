@@ -80,7 +80,7 @@ export class KnowledgeEmbedService {
 
       await this.prisma.$executeRawUnsafe(
         `INSERT INTO knowledge_chunks (id, "documentId", content, metadata, embedding)
-         VALUES ($1, $2, $3, '{}'::jsonb, $4::vector)`,
+         VALUES ($1, $2, $3, '{}'::jsonb, $4::extensions.vector)`,
         id,
         documentId,
         content,
@@ -112,7 +112,7 @@ export class KnowledgeEmbedService {
       Array<{ content: string; title: string; similarity: number }>
     >(
       `SELECT kc.content, kd.title,
-        1 - (kc.embedding <=> $1::vector) AS similarity
+        1 - (kc.embedding <=> $1::extensions.vector) AS similarity
       FROM knowledge_chunks kc
       INNER JOIN knowledge_documents kd ON kd.id = kc."documentId"
       WHERE kd."organizationId" = $2

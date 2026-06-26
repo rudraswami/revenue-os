@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   Bot,
+  Building2,
   CheckSquare,
+  ChevronDown,
   ChevronUp,
   Contact,
   CreditCard,
@@ -32,7 +35,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { apiFetch } from "@/lib/api-client";
-import { logout } from "@/lib/auth-session";
+import { applySession, logout } from "@/lib/auth-session";
+import type { AuthSession, MeResponse } from "@/lib/auth-types";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -121,19 +125,58 @@ function WorkspaceCard({
   organizationName,
   whatsappConnected,
   live,
+  workspaces,
+  switchingId,
+  onSwitch,
   onNavigate,
 }: {
   organizationName: string;
   whatsappConnected: boolean;
   live: boolean;
+  workspaces?: MeResponse["workspaces"];
+  switchingId?: string | null;
+  onSwitch?: (organizationId: string) => void;
   onNavigate?: () => void;
 }) {
+  const hasMultiple = (workspaces?.length ?? 0) > 1;
+
   return (
     <div className="mx-3 mt-3 rounded-xl border border-border/80 bg-gradient-to-br from-[#f8f9ff] to-white p-3 shadow-[0_1px_8px_rgb(11_28_48/0.04)]">
       <div className="flex items-center gap-3">
         <AvatarInitials name={organizationName} size="sm" className="rounded-lg" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-foreground">{organizationName}</p>
+          {hasMultiple ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-1 text-left focus-visible:outline-none"
+                >
+                  <p className="truncate text-[13px] font-semibold text-foreground">
+                    {organizationName}
+                  </p>
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                {workspaces!.map((ws) => (
+                  <DropdownMenuItem
+                    key={ws.id}
+                    disabled={ws.isCurrent || switchingId === ws.id}
+                    onSelect={() => onSwitch?.(ws.id)}
+                  >
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="truncate">{ws.name}</span>
+                    {ws.isCurrent && (
+                      <span className="ml-auto text-[10px] font-semibold text-accent">Current</span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <p className="truncate text-[13px] font-semibold text-foreground">{organizationName}</p>
+          )}
           <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             Workspace
           </p>
@@ -254,6 +297,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const user = useAuthStore((s) => s.user);
   const organization = useAuthStore((s) => s.organization);
   const { connected: live } = useRealtime();
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
+
+  const { data: me } = useQuery({
+    queryKey: ["auth-me"],
+    queryFn: () => apiFetch<MeResponse>("/auth/me", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: 120_000,
+  });
 
   const { data: accounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -281,6 +332,23 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     router.replace("/login");
   }
 
+  async function switchWorkspace(organizationId: string) {
+    if (!token || switchingId) return;
+    setSwitchingId(organizationId);
+    try {
+      const session = await apiFetch<AuthSession>("/auth/switch-organization", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ organizationId }),
+      });
+      applySession(session);
+      onNavigate?.();
+      window.location.href = "/dashboard";
+    } finally {
+      setSwitchingId(null);
+    }
+  }
+
   return (
     <aside className="flex h-full w-[260px] shrink-0 flex-col border-r border-border bg-[#fafbfc]">
       <div className="border-b border-border/80 px-5 py-4">
@@ -292,6 +360,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           organizationName={organization.name}
           whatsappConnected={whatsappConnected}
           live={live}
+          workspaces={me?.workspaces}
+          switchingId={switchingId}
+          onSwitch={(id) => void switchWorkspace(id)}
           onNavigate={onNavigate}
         />
       )}

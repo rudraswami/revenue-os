@@ -85,6 +85,7 @@ export class CampaignsService {
   }
 
   async previewAudience(user: JwtPayload, audience: AudienceFilter) {
+    await this.assertCampaignsPlan(user.organizationId);
     const where = this.buildLeadWhere(user.organizationId, audience);
     const [count, sample] = await Promise.all([
       this.prisma.lead.count({ where }),
@@ -98,7 +99,12 @@ export class CampaignsService {
     return { count, sample };
   }
 
+  private async assertCampaignsPlan(organizationId: string) {
+    await this.entitlements.assertPlanAtLeast(organizationId, "growth");
+  }
+
   async list(user: JwtPayload) {
+    await this.assertCampaignsPlan(user.organizationId);
     return this.prisma.campaign.findMany({
       where: { organizationId: user.organizationId },
       orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
@@ -107,6 +113,7 @@ export class CampaignsService {
   }
 
   async get(user: JwtPayload, id: string) {
+    await this.assertCampaignsPlan(user.organizationId);
     const campaign = await this.prisma.campaign.findFirst({
       where: { id, organizationId: user.organizationId },
       include: {
@@ -118,7 +125,7 @@ export class CampaignsService {
   }
 
   async create(user: JwtPayload, input: CreateCampaignInput) {
-    await this.entitlements.assertHasAccess(user.organizationId);
+    await this.assertCampaignsPlan(user.organizationId);
     const name = input.name.trim();
     if (!name) throw new BadRequestException("Campaign name required");
     if (!input.templateName?.trim()) {
@@ -166,7 +173,7 @@ export class CampaignsService {
   }
 
   async createFromImport(user: JwtPayload, input: ImportCampaignInput) {
-    await this.entitlements.assertHasAccess(user.organizationId);
+    await this.assertCampaignsPlan(user.organizationId);
     const name = input.name.trim();
     const templateName = input.templateName.trim();
     if (!name) throw new BadRequestException("Campaign name required");
@@ -246,6 +253,7 @@ export class CampaignsService {
   }
 
   async schedule(user: JwtPayload, id: string, scheduledAtRaw: string) {
+    await this.assertCampaignsPlan(user.organizationId);
     await this.entitlements.assertHasAccess(user.organizationId);
     const campaign = await this.assertCampaignMutable(user.organizationId, id, [
       "DRAFT",
@@ -288,7 +296,7 @@ export class CampaignsService {
    * customers and never bypasses Meta's policy.
    */
   async send(user: JwtPayload, id: string) {
-    await this.entitlements.assertHasAccess(user.organizationId);
+    await this.assertCampaignsPlan(user.organizationId);
     const campaign = await this.prisma.campaign.findFirst({
       where: { id, organizationId: user.organizationId },
     });

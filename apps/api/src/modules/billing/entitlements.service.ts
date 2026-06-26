@@ -46,6 +46,26 @@ export class EntitlementsService {
     return access;
   }
 
+  async assertPlanAtLeast(
+    organizationId: string,
+    minimum: "growth" | "pro",
+  ): Promise<SubscriptionAccess> {
+    const access = await this.assertHasAccess(organizationId);
+    const rank: Record<GrowvisiPlanId, number> = {
+      trial: 0,
+      starter: 1,
+      growth: 2,
+      pro: 3,
+    };
+    const minRank = minimum === "growth" ? 2 : 3;
+    if (rank[access.planId] < minRank) {
+      throw new ForbiddenException(
+        `This feature requires the ${minimum === "growth" ? "Growth" : "Pro"} plan or higher.`,
+      );
+    }
+    return access;
+  }
+
   async assertCanAddWhatsappNumber(organizationId: string): Promise<void> {
     const access = await this.assertHasAccess(organizationId);
     const active = await this.prisma.whatsappAccount.count({

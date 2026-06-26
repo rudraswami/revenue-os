@@ -12,6 +12,7 @@ import { IsOptional, IsString, MaxLength } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { TrackingService } from "./tracking.service";
 
@@ -54,25 +55,25 @@ export class TrackingController {
   constructor(private readonly tracking: TrackingService) {}
 
   @Get("tracking/links")
-  @UseGuards(JwtAuthGuard, MembershipRoleGuard)
+  @UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
   list(@CurrentUser() user: JwtPayload) {
     return this.tracking.list(user);
   }
 
   @Get("tracking/metrics")
-  @UseGuards(JwtAuthGuard, MembershipRoleGuard)
+  @UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
   metrics(@CurrentUser() user: JwtPayload) {
     return this.tracking.metricsByCampaign(user.organizationId);
   }
 
   @Post("tracking/links")
-  @UseGuards(JwtAuthGuard, MembershipRoleGuard)
+  @UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateTrackingLinkDto) {
     return this.tracking.create(user, dto);
   }
 
   @Delete("tracking/links/:id")
-  @UseGuards(JwtAuthGuard, MembershipRoleGuard)
+  @UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
   remove(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.tracking.remove(user, id);
   }

@@ -214,11 +214,24 @@ export class AuthService {
     }
 
     const onboarding = await this.getOnboardingStatus(user.organizationId);
+    const memberships = await this.prisma.organizationMember.findMany({
+      where: { userId: user.sub },
+      include: { organization: { select: { id: true, name: true, slug: true } } },
+      orderBy: { organization: { name: "asc" } },
+    });
+
     return {
       user: dbUser,
       organization: org,
       role: user.role,
       onboarding,
+      workspaces: memberships.map((m) => ({
+        id: m.organization.id,
+        name: m.organization.name,
+        slug: m.organization.slug,
+        role: m.role,
+        isCurrent: m.organizationId === user.organizationId,
+      })),
     };
   }
 

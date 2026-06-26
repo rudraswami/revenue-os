@@ -4,6 +4,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { TagsService } from "./tags.service";
 
@@ -30,7 +31,7 @@ class UpdateTagDto {
 }
 
 @Controller("tags")
-@UseGuards(JwtAuthGuard, MembershipRoleGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class TagsController {
   constructor(private readonly tags: TagsService) {}
 

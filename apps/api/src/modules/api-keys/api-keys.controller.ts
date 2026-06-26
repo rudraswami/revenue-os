@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/c
 import { IsNotEmpty, IsString } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { ApiKeysService } from "./api-keys.service";
 
@@ -12,7 +13,7 @@ class CreateApiKeyDto {
 }
 
 @Controller("api-keys")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard)
 export class ApiKeysController {
   constructor(private readonly apiKeys: ApiKeysService) {}
 

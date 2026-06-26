@@ -6,6 +6,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { MetricsPeriod } from "../../common/date-range";
 import { ConversationsService } from "./conversations.service";
 import type { JwtPayload } from "@growvisi/shared";
@@ -85,7 +86,7 @@ class StartOutboundDto {
 }
 
 @Controller("conversations")
-@UseGuards(JwtAuthGuard, MembershipRoleGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class ConversationsController {
   constructor(private readonly conversations: ConversationsService) {}
 

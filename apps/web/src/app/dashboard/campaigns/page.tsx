@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
@@ -120,6 +121,20 @@ export default function CampaignsPage() {
   const role = useAuthStore((s) => s.role);
   const canManage = canManageCampaigns(role);
   const qc = useQueryClient();
+
+  const { data: billing } = useQuery({
+    queryKey: ["billing-status"],
+    queryFn: () =>
+      apiFetch<{ planId: string; entitlements?: { hasAccess: boolean } }>("/billing", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+  });
+
+  const campaignsPlanOk =
+    billing?.entitlements?.hasAccess &&
+    billing.planId !== "trial" &&
+    billing.planId !== "starter";
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<CreateMode>("audience");
@@ -147,7 +162,8 @@ export default function CampaignsPage() {
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns"],
     queryFn: () => apiFetch<CampaignRow[]>("/campaigns", { token: token ?? undefined }),
-    enabled: !!token,
+    enabled: !!token && campaignsPlanOk,
+    retry: false,
   });
 
   const { data: tags } = useQuery({
@@ -159,7 +175,7 @@ export default function CampaignsPage() {
   const { data: detail, isLoading: detailLoading } = useQuery({
     queryKey: ["campaign", detailId],
     queryFn: () => apiFetch<CampaignDetail>(`/campaigns/${detailId}`, { token: token ?? undefined }),
-    enabled: !!token && !!detailId,
+    enabled: !!token && !!detailId && campaignsPlanOk,
   });
 
   function audience() {
@@ -353,6 +369,16 @@ export default function CampaignsPage() {
         description="Reach segments of your WhatsApp contacts with approved message templates."
       />
 
+      {!campaignsPlanOk && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+          WhatsApp campaigns are available on <strong>Growth</strong> and <strong>Pro</strong> plans.{" "}
+          <Link href="/dashboard/pricing" className="font-semibold text-accent underline">
+            Upgrade to unlock outbound campaigns
+          </Link>
+          .
+        </div>
+      )}
+
       {!canManage && (
         <div className="mb-6 rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
           You have view-only access. Ask an admin or manager to create and send campaigns.
@@ -365,7 +391,7 @@ export default function CampaignsPage() {
         Manager. Growvisi sends only approved templates to contacts you choose.
       </div>
 
-      {canManage && (
+      {canManage && campaignsPlanOk && (
         <DashboardPanel className="mb-6" title="New campaign" description="Build from your CRM audience or import a CSV list.">
           <div className="mb-4 flex gap-2">
             <Button

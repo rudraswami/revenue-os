@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import { BillingModule } from "../billing/billing.module";
 import { KnowledgeModule } from "../knowledge/knowledge.module";
 import { RealtimeModule } from "../realtime/realtime.module";
@@ -10,7 +11,7 @@ import { ConversationsService } from "./conversations.service";
 @Module({
   imports: [WhatsappModule, RealtimeModule, BillingModule, KnowledgeModule],
   controllers: [ConversationsController],
-  providers: [ConversationsService, MembershipRoleGuard],
+  providers: [ConversationsService, MembershipRoleGuard, SubscriptionGuard],
   exports: [ConversationsService],
 })
 export class ConversationsModule {}

@@ -15,6 +15,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { LeadStage } from "@growvisi/shared";
 import { Download } from "lucide-react";
 import { useState } from "react";
+import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 
 const STAGES: LeadStage[] = [
   "NEW",
@@ -50,6 +51,9 @@ export default function PipelinePage() {
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
   const [exporting, setExporting] = useState(false);
+  const [lostPrompt, setLostPrompt] = useState<{ leadId: string; name?: string | null } | null>(
+    null,
+  );
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["pipeline"],
@@ -69,11 +73,19 @@ export default function PipelinePage() {
   });
 
   const stageMutation = useMutation({
-    mutationFn: ({ leadId, stage }: { leadId: string; stage: LeadStage }) =>
+    mutationFn: ({
+      leadId,
+      stage,
+      reason,
+    }: {
+      leadId: string;
+      stage: LeadStage;
+      reason?: string;
+    }) =>
       apiFetch(`/leads/${leadId}/stage`, {
         method: "PATCH",
         token: token ?? undefined,
-        body: JSON.stringify({ stage }),
+        body: JSON.stringify({ stage, reason }),
       }),
     onMutate: async ({ leadId, stage }) => {
       await queryClient.cancelQueries({ queryKey: ["pipeline"] });
@@ -127,10 +139,19 @@ export default function PipelinePage() {
     if (!token || exporting) return;
     setExporting(true);
     try {
-      await apiDownload("/leads/export?period=all", "growvisi-leads.csv", token);
+      await apiDownload("/leads/export?period=all", "growvisi-contacts.csv", token);
     } finally {
       setExporting(false);
     }
+  }
+
+  function handleMoveLead(leadId: string, stage: LeadStage) {
+    if (stage === "LOST") {
+      const lead = STAGES.flatMap((s) => data?.[s] ?? []).find((l) => l.id === leadId);
+      setLostPrompt({ leadId, name: lead?.displayName });
+      return;
+    }
+    stageMutation.mutate({ leadId, stage });
   }
 
   return (
@@ -200,11 +221,25 @@ export default function PipelinePage() {
           stageColors={STAGE_COLORS}
           data={data}
           isPending={stageMutation.isPending || valueMutation.isPending}
-          onMoveLead={(leadId, stage) => stageMutation.mutate({ leadId, stage })}
+          onMoveLead={handleMoveLead}
           onUpdateValue={(leadId, valueCents) => valueMutation.mutate({ leadId, valueCents })}
         />
         </>
       )}
+
+      <LostReasonDialog
+        open={!!lostPrompt}
+        leadName={lostPrompt?.name}
+        loading={stageMutation.isPending}
+        onCancel={() => setLostPrompt(null)}
+        onConfirm={(reason) => {
+          if (!lostPrompt) return;
+          stageMutation.mutate(
+            { leadId: lostPrompt.leadId, stage: "LOST", reason },
+            { onSuccess: () => setLostPrompt(null) },
+          );
+        }}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { JwtPayload } from "@growvisi/shared";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { KnowledgeEmbedService } from "./knowledge-embed.service";
 
@@ -8,6 +9,7 @@ export class KnowledgeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly embed: KnowledgeEmbedService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async list(user: JwtPayload) {
@@ -39,6 +41,7 @@ export class KnowledgeService {
   }
 
   async create(user: JwtPayload, title: string, content: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
     const doc = await this.prisma.knowledgeDocument.create({
       data: {
         organizationId: user.organizationId,
@@ -67,6 +70,7 @@ export class KnowledgeService {
     id: string,
     patch: { title?: string; content?: string },
   ) {
+    await this.entitlements.assertHasAccess(user.organizationId);
     const existing = await this.prisma.knowledgeDocument.findFirst({
       where: { id, organizationId: user.organizationId },
     });
@@ -95,6 +99,7 @@ export class KnowledgeService {
   }
 
   async reindex(user: JwtPayload, id: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
     const existing = await this.prisma.knowledgeDocument.findFirst({
       where: { id, organizationId: user.organizationId },
     });
@@ -105,6 +110,7 @@ export class KnowledgeService {
   }
 
   async remove(user: JwtPayload, id: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
     const existing = await this.prisma.knowledgeDocument.findFirst({
       where: { id, organizationId: user.organizationId },
     });

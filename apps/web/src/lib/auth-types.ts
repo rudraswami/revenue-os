@@ -32,6 +32,15 @@ export interface MeResponse {
   organization: AuthOrganization;
   role: MembershipRole;
   onboarding: OnboardingStatus;
+  workspaces?: WorkspaceOption[];
+}
+
+export interface WorkspaceOption {
+  id: string;
+  name: string;
+  slug: string;
+  role: MembershipRole;
+  isCurrent: boolean;
 }
 
 export interface OrganizationOption {

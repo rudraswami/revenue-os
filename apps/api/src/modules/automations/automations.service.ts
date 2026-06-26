@@ -2,6 +2,8 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
 import { GROWVISI_WEB_URL } from "@growvisi/shared";
+import { EntitlementsService } from "../billing/entitlements.service";
+import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import {
@@ -15,6 +17,8 @@ export class AutomationsService {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly entitlements: EntitlementsService,
+    private readonly audit: AuditService,
   ) {}
 
   async getPreferences(user: JwtPayload): Promise<AutomationPreferences> {
@@ -35,6 +39,7 @@ export class AutomationsService {
     user: JwtPayload,
     patch: Partial<AutomationPreferences>,
   ): Promise<AutomationPreferences> {
+    await this.entitlements.assertHasAccess(user.organizationId);
     const { welcome: _ignored, ...serverPatch } = patch;
     const current = await this.getPreferences(user);
     const next: AutomationPreferences = { ...current, ...serverPatch };
@@ -51,6 +56,13 @@ export class AutomationsService {
           automations: next,
         },
       },
+    });
+    this.audit.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: "SETTINGS_CHANGE",
+      resource: "automations",
+      metadata: { patch: serverPatch },
     });
     return next;
   }

@@ -13,6 +13,7 @@ import {
   DEFAULT_AUTOMATIONS,
 } from "@/lib/automation-preferences";
 import { apiFetch } from "@/lib/api-client";
+import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { Activity, Bell, Clock, MessageCircle, Sparkles, UserRound, Zap } from "lucide-react";
 
@@ -69,6 +70,8 @@ function timeAgo(date: string | Date) {
 
 export default function AutomationsPage() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const canManage = canManageCampaigns(role);
   const queryClient = useQueryClient();
 
   const { data: toggles, isLoading } = useQuery({
@@ -274,7 +277,7 @@ export default function AutomationsPage() {
                   </div>
                   <Switch
                     checked={enabled}
-                    disabled={mutation.isPending}
+                    disabled={!canManage || mutation.isPending}
                     onCheckedChange={(v) => toggle(auto.id, v)}
                     aria-label={`${auto.title} automation`}
                   />

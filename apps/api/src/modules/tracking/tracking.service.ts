@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { randomBytes } from "crypto";
 import type { JwtPayload } from "@growvisi/shared";
@@ -29,10 +29,7 @@ export class TrackingService {
   ) {}
 
   private async assertGrowthPlus(organizationId: string) {
-    const access = await this.entitlements.getAccess(organizationId);
-    if (!access.hasAccess || access.planId === "trial" || access.planId === "starter") {
-      throw new ForbiddenException("Click-to-chat links are available on Growth and Pro plans.");
-    }
+    await this.entitlements.assertPlanAtLeast(organizationId, "growth");
   }
 
   private slugify(name: string): string {
@@ -88,9 +85,7 @@ export class TrackingService {
     if (phone.length < 10) throw new BadRequestException("Valid phone number required.");
 
     let slug = this.slugify(name);
-    const existing = await this.prisma.trackingLink.findFirst({
-      where: { organizationId: user.organizationId, slug },
-    });
+    const existing = await this.prisma.trackingLink.findUnique({ where: { slug } });
     if (existing) slug = `${slug}-${randomBytes(2).toString("hex")}`;
 
     const row = await this.prisma.trackingLink.create({
@@ -121,7 +116,7 @@ export class TrackingService {
   }
 
   async redirect(slug: string) {
-    const link = await this.prisma.trackingLink.findFirst({
+    const link = await this.prisma.trackingLink.findUnique({
       where: { slug },
     });
     if (!link) throw new NotFoundException("Link not found.");
@@ -147,7 +142,7 @@ export class TrackingService {
 
     const slug = match[1].toLowerCase();
     const link = await this.prisma.trackingLink.findFirst({
-      where: { organizationId, slug },
+      where: { organizationId, slug: slug.toLowerCase() },
     });
     if (!link) return;
 

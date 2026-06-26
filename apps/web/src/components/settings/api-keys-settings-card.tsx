@@ -83,10 +83,15 @@ export function ApiKeysSettingsCard() {
           <code className="mt-2 block break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11px]">
             {newSecret}
           </code>
-          <p className="mt-3 font-medium text-foreground">Example request</p>
+          <p className="mt-3 font-medium text-foreground">Example requests</p>
           <code className="mt-1 block whitespace-pre-wrap break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
-            {`curl -H "Authorization: Bearer ${newSecret}" \\
-  https://api.growvisi.in/api/v1/external/leads`}
+            {`# List leads
+curl -H "Authorization: Bearer ${newSecret}" \\
+  https://api.growvisi.in/api/v1/external/leads
+
+# List conversations
+curl -H "Authorization: Bearer ${newSecret}" \\
+  https://api.growvisi.in/api/v1/external/conversations`}
           </code>
         </div>
       )}

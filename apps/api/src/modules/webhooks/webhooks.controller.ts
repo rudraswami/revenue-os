@@ -4,6 +4,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import type { WebhookEventType } from "../organizations/webhook-settings";
 import { WebhookDispatchService } from "./webhook-dispatch.service";
@@ -46,7 +47,7 @@ class UpdateWebhookDto {
 }
 
 @Controller("webhooks")
-@UseGuards(JwtAuthGuard, MembershipRoleGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class WebhooksController {
   constructor(private readonly webhooks: WebhookDispatchService) {}
 
