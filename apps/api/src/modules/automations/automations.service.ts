@@ -79,6 +79,92 @@ export class AutomationsService {
     }
   }
 
+  async handleHandoff(opts: {
+    organizationId: string;
+    conversationId: string;
+    leadId: string;
+    leadName: string | null;
+    leadPhone: string;
+    reason: string;
+    assigneeUserId?: string | null;
+  }) {
+    const prefs = await this.getPreferencesForOrg(opts.organizationId);
+    if (!prefs.handoff) return;
+
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: opts.conversationId },
+      select: { metadata: true, assignedToId: true },
+    });
+    if (!conv) return;
+
+    const meta = (conv.metadata ?? {}) as Record<string, unknown>;
+    if (meta.handoffTaskId) return;
+
+    const label = opts.leadName?.trim() || opts.leadPhone;
+    const task = await this.prisma.task.create({
+      data: {
+        organizationId: opts.organizationId,
+        title: `Handoff: ${label}`,
+        description: `AI flagged this conversation for human follow-up (${opts.reason}).`,
+        priority: "HIGH",
+        status: "OPEN",
+        leadId: opts.leadId,
+        assignedToId: opts.assigneeUserId ?? conv.assignedToId ?? undefined,
+      },
+    });
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: opts.organizationId },
+      select: { name: true },
+    });
+
+    const assigneeId = task.assignedToId;
+    let recipients: string[] = [];
+    if (assigneeId) {
+      const assignee = await this.prisma.user.findUnique({
+        where: { id: assigneeId },
+        select: { email: true },
+      });
+      if (assignee?.email) recipients = [assignee.email];
+    }
+    if (recipients.length === 0) {
+      recipients = await this.ownerEmails(opts.organizationId);
+    }
+
+    const appUrl = (
+      this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+    ).replace(/\/$/, "");
+
+    if (recipients.length > 0) {
+      await this.email.sendHandoffAlert({
+        to: recipients,
+        organizationName: org?.name ?? "your workspace",
+        leadLabel: label,
+        reason: opts.reason,
+        inboxUrl: `${appUrl}/dashboard/inbox?c=${opts.conversationId}`,
+      });
+    }
+
+    await this.prisma.conversation.update({
+      where: { id: opts.conversationId },
+      data: {
+        metadata: {
+          ...meta,
+          handoffTaskId: task.id,
+          handoffTaskCreatedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    await this.logExecution(
+      opts.organizationId,
+      "handoff",
+      "requires_human",
+      `Handoff task created for ${label}`,
+      opts.leadId,
+    );
+  }
+
   async logExecution(
     organizationId: string,
     automationType: string,

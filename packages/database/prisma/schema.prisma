@@ -226,6 +226,7 @@ model Organization {
   leadNotes          LeadNote[]
   campaigns          Campaign[]
   automationLogs     AutomationLog[]
+  trackingLinks      TrackingLink[]
 
   @@map("organizations")
 }
@@ -341,6 +342,8 @@ model Conversation {
   aiEnabled         Boolean            @default(true)
   lastMessageAt     DateTime?
   lastInboundAt     DateTime?
+  firstResponseAt   DateTime?
+  slaBreached       Boolean            @default(false)
   unreadCount       Int                @default(0)
   metadata          Json               @default("{}")
   createdAt         DateTime           @default(now())
@@ -769,4 +772,28 @@ model CampaignRecipient {
 
   @@index([campaignId, status])
   @@map("campaign_recipients")
+}
+
+// ─── Attribution / Click-to-chat ─────────────────────────────────────────────
+
+model TrackingLink {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  phone          String
+  prefilledText  String?
+  utmSource      String?
+  utmMedium      String?
+  utmCampaign    String?
+  utmContent     String?
+  clickCount     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("tracking_links")
 }

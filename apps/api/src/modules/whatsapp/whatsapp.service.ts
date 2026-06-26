@@ -33,6 +33,9 @@ export interface InboundMessageEvent {
 }
 
 import { AiClassifyService } from "../ai/ai-classify.service";
+import { AssignmentService } from "../assignments/assignment.service";
+import { TrackingService } from "../tracking/tracking.service";
+import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 
@@ -47,6 +50,9 @@ export class WhatsappService {
     private readonly aiClassify: AiClassifyService,
     private readonly realtime: RealtimeGateway,
     private readonly entitlements: EntitlementsService,
+    private readonly assignments: AssignmentService,
+    private readonly tracking: TrackingService,
+    private readonly webhooks: WebhookDispatchService,
   ) {}
 
   verifySignature(rawBody: Buffer, signature: string | undefined): boolean {
@@ -256,6 +262,8 @@ export class WhatsappService {
       where: { organizationId_phone: { organizationId, phone: from } },
     });
 
+    let isNewLead = false;
+
     if (lead) {
       if (contactName && contactName !== lead.displayName) {
         lead = await this.prisma.lead.update({
@@ -272,6 +280,7 @@ export class WhatsappService {
           stage: "NEW",
         },
       });
+      isNewLead = true;
     } else {
       // Monthly lead cap reached for this plan: still ingest the message and
       // conversation, but do not create a new lead until they upgrade.
@@ -283,6 +292,33 @@ export class WhatsappService {
         where: { id: conversation.id },
         data: { leadId: lead.id },
       });
+    }
+
+    if (lead && typeof content === "string") {
+      void this.tracking
+        .attributeLeadFromMessage(organizationId, lead.id, content, lead.profile)
+        .catch(() => undefined);
+    }
+
+    if (isNewLead && lead) {
+      void this.webhooks.emit(organizationId, "lead.created", {
+        leadId: lead.id,
+        phone: lead.phone,
+        displayName: lead.displayName,
+        stage: lead.stage,
+        at: new Date().toISOString(),
+      });
+    }
+
+    try {
+      await this.assignments.applyAutoAssign(organizationId, {
+        conversationId: conversation.id,
+        leadId: lead?.id ?? null,
+        reason: "new_inbound",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Auto-assign failed for conversation ${conversation.id}: ${message}`);
     }
 
     return {

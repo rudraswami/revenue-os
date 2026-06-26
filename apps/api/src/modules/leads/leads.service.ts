@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
+import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 
 export interface ContactListFilters {
@@ -36,6 +37,7 @@ export class LeadsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementsService,
+    private readonly webhooks: WebhookDispatchService,
   ) {}
 
   async listByStage(user: JwtPayload) {
@@ -99,6 +101,15 @@ export class LeadsService {
       });
 
       return result;
+    });
+
+    void this.webhooks.emit(user.organizationId, "lead.stage.changed", {
+      leadId: id,
+      fromStage: lead.stage,
+      toStage: stage,
+      phone: lead.phone,
+      displayName: lead.displayName,
+      at: new Date().toISOString(),
     });
 
     return updated;
@@ -259,6 +270,53 @@ export class LeadsService {
     };
   }
 
+  async getRevenueMetrics(user: JwtPayload, period?: MetricsPeriod) {
+    const parsedPeriod = parseMetricsPeriod(period);
+    const range = createdAtFilter(parsedPeriod);
+    const orgId = user.organizationId;
+
+    const [openAgg, wonAgg, byStageRows] = await Promise.all([
+      this.prisma.lead.aggregate({
+        where: {
+          organizationId: orgId,
+          stage: { notIn: ["WON", "LOST"] },
+          valueCents: { not: null },
+        },
+        _sum: { valueCents: true },
+        _count: { id: true },
+      }),
+      this.prisma.lead.aggregate({
+        where: {
+          organizationId: orgId,
+          stage: "WON",
+          ...(range.gte ? { wonAt: range } : {}),
+          valueCents: { not: null },
+        },
+        _sum: { valueCents: true },
+        _count: { id: true },
+      }),
+      this.prisma.lead.groupBy({
+        by: ["stage"],
+        where: { organizationId: orgId, valueCents: { not: null } },
+        _sum: { valueCents: true },
+        _count: { id: true },
+      }),
+    ]);
+
+    return {
+      period: parsedPeriod,
+      pipelineValueCents: openAgg._sum.valueCents ?? 0,
+      pipelineDealsWithValue: openAgg._count.id,
+      wonValueCents: wonAgg._sum.valueCents ?? 0,
+      wonDealsWithValue: wonAgg._count.id,
+      byStage: byStageRows.map((r) => ({
+        stage: r.stage,
+        count: r._count.id,
+        valueCents: r._sum.valueCents ?? 0,
+      })),
+    };
+  }
+
   async getInsights(user: JwtPayload, period?: MetricsPeriod) {
     const parsedPeriod = parseMetricsPeriod(period);
     const range = createdAtFilter(parsedPeriod);
@@ -267,6 +325,8 @@ export class LeadsService {
       organizationId: orgId,
       ...(range.gte ? { createdAt: range } : {}),
     };
+
+    const dismissed = await this.getDismissedInsights(orgId);
 
     const [funnel, handoffs, unreadAgg, stalled] = await Promise.all([
       this.funnelMetrics(user, parsedPeriod),
@@ -288,63 +348,99 @@ export class LeadsService {
     const unread = unreadAgg._sum.unreadCount ?? 0;
     const winRate = funnel.total > 0 ? funnel.conversionRate * 100 : 0;
 
+    type InsightAction = {
+      type: "link" | "api";
+      label: string;
+      href?: string;
+      endpoint?: string;
+      method?: string;
+    };
+
     const items: Array<{
+      id: string;
       type: string;
       title: string;
       body: string;
       href: string;
       actionLabel: string;
       priority: number;
+      actions: InsightAction[];
     }> = [];
 
-    if (handoffs > 0) {
+    if (handoffs > 0 && !this.isDismissed(dismissed, "handoffs")) {
       items.push({
+        id: "handoffs",
         type: "Urgent",
         title: `${handoffs} conversation${handoffs > 1 ? "s" : ""} need your team`,
         body: "Growvisi flagged these after classification. Follow up for complex deals.",
-        href: "/dashboard/inbox",
-        actionLabel: "Open conversations",
+        href: "/dashboard/inbox?filter=handoff",
+        actionLabel: "Open handoffs",
         priority: 1,
+        actions: [
+          { type: "link", label: "Open handoffs", href: "/dashboard/inbox?filter=handoff" },
+          {
+            type: "api",
+            label: "Assign to me",
+            endpoint: "/leads/metrics/insights/actions/assign-handoffs",
+            method: "POST",
+          },
+        ],
       });
     }
-    if (unread > 0) {
+    if (unread > 0 && !this.isDismissed(dismissed, "unread")) {
       items.push({
+        id: "unread",
         type: "Action needed",
         title: `${unread} unread message${unread > 1 ? "s" : ""}`,
         body: "Customers are waiting. Faster replies improve conversion.",
         href: "/dashboard/inbox",
         actionLabel: "Open conversations",
         priority: 2,
+        actions: [{ type: "link", label: "Open conversations", href: "/dashboard/inbox" }],
       });
     }
-    if (stalled > 0) {
+    if (stalled > 0 && !this.isDismissed(dismissed, "stalled")) {
       items.push({
+        id: "stalled",
         type: "Pipeline",
         title: `${stalled} deal${stalled > 1 ? "s" : ""} in negotiation`,
         body: "Review classified threads and push deals toward Won.",
         href: "/dashboard/pipeline",
         actionLabel: "View Pipeline",
         priority: 3,
+        actions: [
+          { type: "link", label: "View Pipeline", href: "/dashboard/pipeline" },
+          {
+            type: "api",
+            label: "Create follow-up tasks",
+            endpoint: "/leads/metrics/insights/actions/create-tasks",
+            method: "POST",
+          },
+        ],
       });
     }
-    if (funnel.total > 0 && winRate < 20) {
+    if (funnel.total > 0 && winRate < 20 && !this.isDismissed(dismissed, "low_win_rate")) {
       items.push({
+        id: "low_win_rate",
         type: "Tip",
         title: "Win rate below 20%",
         body: "Use AI-suggested replies and faster first responses.",
-        href: "/dashboard/ai",
-        actionLabel: "Explore Intelligence",
+        href: "/dashboard/analytics",
+        actionLabel: "View Analytics",
         priority: 4,
+        actions: [{ type: "link", label: "View Analytics", href: "/dashboard/analytics" }],
       });
     }
-    if (funnel.total === 0) {
+    if (funnel.total === 0 && !this.isDismissed(dismissed, "getting_started")) {
       items.push({
+        id: "getting_started",
         type: "Getting started",
         title: "No leads tracked yet",
         body: "Connect WhatsApp and send a test message to see your first classified lead.",
         href: "/onboarding",
         actionLabel: "Connect WhatsApp",
         priority: 5,
+        actions: [{ type: "link", label: "Connect WhatsApp", href: "/onboarding" }],
       });
     }
 
@@ -355,8 +451,14 @@ export class LeadsService {
       orderBy: { score: "desc" },
       take: 5,
       select: {
-        id: true, displayName: true, phone: true, score: true, stage: true,
-        aiConfidence: true, profile: true,
+        id: true,
+        displayName: true,
+        phone: true,
+        score: true,
+        stage: true,
+        aiConfidence: true,
+        profile: true,
+        conversation: { select: { id: true } },
       },
     });
 
@@ -364,6 +466,7 @@ export class LeadsService {
       const profile = (lead.profile ?? {}) as Record<string, unknown>;
       return {
         id: lead.id,
+        conversationId: lead.conversation?.id ?? null,
         name: lead.displayName ?? lead.phone,
         score: lead.score,
         stage: lead.stage,
@@ -376,6 +479,176 @@ export class LeadsService {
     });
 
     return { period: parsedPeriod, items, actionLeads };
+  }
+
+  private async getDismissedInsights(orgId: string): Promise<Record<string, string>> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { settings: true },
+    });
+    const settings = (org?.settings ?? {}) as Record<string, unknown>;
+    const raw = settings.dismissedInsights;
+    return raw && typeof raw === "object" ? (raw as Record<string, string>) : {};
+  }
+
+  private isDismissed(dismissed: Record<string, string>, id: string): boolean {
+    const until = dismissed[id];
+    if (!until) return false;
+    return new Date(until).getTime() > Date.now();
+  }
+
+  async dismissInsight(user: JwtPayload, insightId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { settings: true },
+    });
+    const settings = (org?.settings ?? {}) as Record<string, unknown>;
+    const dismissed = (settings.dismissedInsights ?? {}) as Record<string, string>;
+    const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    await this.prisma.organization.update({
+      where: { id: user.organizationId },
+      data: {
+        settings: {
+          ...settings,
+          dismissedInsights: { ...dismissed, [insightId]: until },
+        },
+      },
+    });
+    return { ok: true, dismissedUntil: until };
+  }
+
+  async assignHandoffConversations(user: JwtPayload, assignToUserId?: string) {
+    const targetId = assignToUserId ?? user.sub;
+    await this.assertMember(user.organizationId, targetId);
+
+    const handoffs = await this.prisma.conversation.findMany({
+      where: {
+        organizationId: user.organizationId,
+        metadata: { path: ["requiresHuman"], equals: true },
+      },
+      select: { id: true },
+      take: 50,
+    });
+
+    if (handoffs.length === 0) {
+      return { assigned: 0 };
+    }
+
+    await this.prisma.conversation.updateMany({
+      where: { id: { in: handoffs.map((h) => h.id) } },
+      data: { assignedToId: targetId },
+    });
+
+    return { assigned: handoffs.length, assigneeId: targetId };
+  }
+
+  async createInsightTasks(user: JwtPayload, insightId: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    let created = 0;
+
+    if (insightId === "stalled") {
+      const leads = await this.prisma.lead.findMany({
+        where: {
+          organizationId: user.organizationId,
+          stage: "NEGOTIATION",
+        },
+        take: 20,
+        select: { id: true, displayName: true, phone: true, ownerId: true },
+      });
+
+      for (const lead of leads) {
+        const existing = await this.prisma.task.findFirst({
+          where: {
+            organizationId: user.organizationId,
+            leadId: lead.id,
+            status: { in: ["OPEN", "IN_PROGRESS"] },
+            title: { contains: "Follow up" },
+          },
+        });
+        if (existing) continue;
+
+        await this.prisma.task.create({
+          data: {
+            organizationId: user.organizationId,
+            title: `Follow up: ${lead.displayName ?? lead.phone}`,
+            description: "Deal in negotiation — push toward close.",
+            priority: "HIGH",
+            leadId: lead.id,
+            assignedToId: lead.ownerId ?? user.sub,
+            createdById: user.sub,
+          },
+        });
+        created++;
+      }
+    } else if (insightId === "hot_leads") {
+      const leads = await this.prisma.lead.findMany({
+        where: {
+          organizationId: user.organizationId,
+          score: { gte: 70 },
+          stage: { notIn: ["WON", "LOST"] },
+        },
+        take: 10,
+        select: { id: true, displayName: true, phone: true, profile: true, ownerId: true },
+      });
+
+      for (const lead of leads) {
+        const profile = (lead.profile ?? {}) as Record<string, unknown>;
+        const nextAction =
+          typeof profile.nextAction === "string" && profile.nextAction.trim()
+            ? profile.nextAction.trim()
+            : `Follow up with ${lead.displayName ?? lead.phone}`;
+
+        await this.prisma.task.create({
+          data: {
+            organizationId: user.organizationId,
+            title: nextAction.slice(0, 120),
+            priority: "HIGH",
+            leadId: lead.id,
+            assignedToId: lead.ownerId ?? user.sub,
+            createdById: user.sub,
+          },
+        });
+        created++;
+      }
+    }
+
+    return { created, insightId };
+  }
+
+  async createTaskForLead(user: JwtPayload, leadId: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    const lead = await this.prisma.lead.findFirst({
+      where: { id: leadId, organizationId: user.organizationId },
+      select: { id: true, displayName: true, phone: true, profile: true, ownerId: true },
+    });
+    if (!lead) throw new NotFoundException("Lead not found");
+
+    const profile = (lead.profile ?? {}) as Record<string, unknown>;
+    const title =
+      typeof profile.nextAction === "string" && profile.nextAction.trim()
+        ? profile.nextAction.trim().slice(0, 120)
+        : `Follow up: ${lead.displayName ?? lead.phone}`;
+
+    const task = await this.prisma.task.create({
+      data: {
+        organizationId: user.organizationId,
+        title,
+        priority: "HIGH",
+        leadId: lead.id,
+        assignedToId: lead.ownerId ?? user.sub,
+        createdById: user.sub,
+      },
+    });
+    return task;
+  }
+
+  private async assertMember(organizationId: string, userId: string) {
+    const member = await this.prisma.organizationMember.findFirst({
+      where: { organizationId, userId },
+      select: { id: true },
+    });
+    if (!member) throw new BadRequestException("User is not a workspace member");
   }
 
   async exportCsv(user: JwtPayload, period?: MetricsPeriod): Promise<string> {

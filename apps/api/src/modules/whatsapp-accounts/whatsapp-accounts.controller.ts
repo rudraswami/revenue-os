@@ -59,6 +59,13 @@ export class WhatsappAccountsController {
     return this.accounts.list(user);
   }
 
+  @Get("templates")
+  @UseGuards(MembershipRoleGuard)
+  @Roles("OWNER", "ADMIN", "MANAGER", "AGENT")
+  listTemplates(@CurrentUser() user: JwtPayload) {
+    return this.accounts.listMessageTemplates(user);
+  }
+
   @Get("connection-health")
   connectionHealth(@CurrentUser() user: JwtPayload) {
     return this.accounts.getConnectionHealth(user);

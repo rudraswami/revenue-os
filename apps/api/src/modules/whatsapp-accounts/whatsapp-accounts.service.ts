@@ -14,6 +14,7 @@ import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { WhatsappWebhookPayload } from "../whatsapp/whatsapp.service";
+import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import { ConnectWhatsappDto, CreateWhatsappAccountDto, UpdateWhatsappAccountDto } from "./dto/whatsapp-account.dto";
 
 export interface WhatsappAccountSafe {
@@ -59,6 +60,7 @@ export class WhatsappAccountsService {
     private readonly config: ConfigService,
     private readonly email: EmailService,
     private readonly entitlements: EntitlementsService,
+    private readonly messaging: WhatsappMessagingService,
   ) {}
 
   /** Developer / IT only — not shown in main product UI */
@@ -81,6 +83,28 @@ export class WhatsappAccountsService {
       include: { _count: { select: { conversations: true } } },
     });
     return rows.map((r) => this.toSafe(r, r._count.conversations));
+  }
+
+  async listMessageTemplates(user: JwtPayload) {
+    const account = await this.prisma.whatsappAccount.findFirst({
+      where: { organizationId: user.organizationId, isActive: true },
+      orderBy: { createdAt: "desc" },
+      select: { wabaId: true, accessTokenEnc: true },
+    });
+    if (!account?.accessTokenEnc) {
+      throw new BadRequestException(
+        "Connect an active WhatsApp number before loading templates.",
+      );
+    }
+    const templates = await this.messaging.listMessageTemplates(
+      account.wabaId,
+      account.accessTokenEnc,
+    );
+    return {
+      templates,
+      syncedAt: new Date().toISOString(),
+      count: templates.length,
+    };
   }
 
   async discoverPhones(accessToken: string): Promise<DiscoveredPhone[]> {

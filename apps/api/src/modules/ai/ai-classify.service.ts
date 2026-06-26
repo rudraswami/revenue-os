@@ -7,6 +7,8 @@ import type { AiClassificationResult, LeadStage } from "@growvisi/shared";
 import { LEAD_STAGE_ORDER, QUEUES } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AutomationsService } from "../automations/automations.service";
+import { AssignmentService } from "../assignments/assignment.service";
+import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 
@@ -37,6 +39,8 @@ export class AiClassifyService {
     private readonly realtime: RealtimeGateway,
     private readonly automations: AutomationsService,
     private readonly entitlements: EntitlementsService,
+    private readonly assignments: AssignmentService,
+    private readonly webhooks: WebhookDispatchService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -169,6 +173,23 @@ export class AiClassifyService {
           conversationId: data.conversationId,
           leadId: lead.id,
           reason: result.intent,
+        });
+
+        const assigneeUserId = await this.assignments.applyAutoAssign(data.organizationId, {
+          conversationId: data.conversationId,
+          leadId: lead.id,
+          handoff: true,
+          reason: result.intent,
+        });
+
+        void this.automations.handleHandoff({
+          organizationId: data.organizationId,
+          conversationId: data.conversationId,
+          leadId: lead.id,
+          leadName: lead.displayName,
+          leadPhone: lead.phone,
+          reason: result.intent || result.summary || "Complex or sensitive request",
+          assigneeUserId,
         });
       }
 
@@ -387,6 +408,20 @@ Current pipeline stage: ${currentStage}.`,
         fromStage: currentStage,
         toStage: result.stage,
         confidence: result.confidence,
+      });
+
+      const lead = await this.prisma.lead.findUnique({
+        where: { id: leadId },
+        select: { phone: true, displayName: true },
+      });
+      void this.webhooks.emit(organizationId, "lead.stage.changed", {
+        leadId,
+        fromStage: currentStage,
+        toStage: result.stage,
+        phone: lead?.phone,
+        displayName: lead?.displayName,
+        isAi: true,
+        at: new Date().toISOString(),
       });
       return true;
     }

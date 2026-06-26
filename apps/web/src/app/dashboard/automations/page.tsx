@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import { DailyDigestCard } from "@/components/dashboard/daily-digest-card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@/lib/automation-preferences";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { Activity, Bell, Clock, MessageCircle, Sparkles, Zap } from "lucide-react";
+import { Activity, Bell, Clock, MessageCircle, Sparkles, UserRound, Zap } from "lucide-react";
 
 const SERVER_AUTOMATIONS: Array<{
   id: Exclude<AutomationId, "welcome">;
@@ -46,6 +47,15 @@ const SERVER_AUTOMATIONS: Array<{
     description: "Email owners when a lead score hits 80 or higher.",
     impact: "Close faster",
     serverNote: "Email alert when enabled",
+  },
+  {
+    id: "handoff",
+    icon: UserRound,
+    title: "Human handoff",
+    description:
+      "When AI flags a conversation for your team, create a high-priority task and email the assignee.",
+    impact: "No complex chats dropped",
+    serverNote: "Task + email on requiresHuman",
   },
 ];
 
@@ -115,6 +125,7 @@ export default function AutomationsPage() {
     stage: Zap,
     notify: Bell,
     followup: Clock,
+    handoff: Activity,
   };
 
   return (
@@ -134,6 +145,10 @@ export default function AutomationsPage() {
           </Button>
         }
       />
+
+      <div className="mb-8">
+        <DailyDigestCard />
+      </div>
 
       {/* Stats bar */}
       <motion.div

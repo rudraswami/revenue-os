@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { formatStage } from "@/lib/stage-labels";
+import { LEAD_STAGES, STAGE_LABELS } from "@/lib/crm";
+import type { LeadStage } from "@growvisi/shared";
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
+import { InboxAiPanel, type InboxAiContext } from "@/components/dashboard/inbox-ai-panel";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
 import { InboxTimeline } from "@/components/dashboard/inbox-timeline";
@@ -25,6 +28,7 @@ interface ConversationRow {
   contactPhone: string;
   unreadCount: number;
   lastMessageAt: string | null;
+  requiresHuman?: boolean;
   lead: { id: string; stage: string } | null;
   messages: Array<{ content: string | null }>;
 }
@@ -44,6 +48,9 @@ interface ConversationDetail {
   contactPhone: string;
   unreadCount: number;
   aiEnabled: boolean;
+  requiresHuman?: boolean;
+  handoffReason?: string | null;
+  aiContext?: InboxAiContext | null;
   assignedTo: { id: string; name: string | null; email: string } | null;
   lead: { id: string; stage: string; score?: number; aiConfidence?: number | null } | null;
   messages: Message[];
@@ -76,6 +83,7 @@ interface LeadTimeline {
 export default function InboxPage() {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
+  const myUserId = useAuthStore((s) => s.user?.id);
   const canSend = canWrite(role);
   const queryClient = useQueryClient();
   const { connected: live } = useRealtime();
@@ -87,6 +95,7 @@ export default function InboxPage() {
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [showOutbound, setShowOutbound] = useState(false);
+  const [listFilter, setListFilter] = useState<"all" | "handoff">("all");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -95,28 +104,42 @@ export default function InboxPage() {
   }, [search]);
 
   useEffect(() => {
-    const c = new URLSearchParams(window.location.search).get("c");
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("c");
     if (c) setSelectedId(c);
+    if (params.get("filter") === "handoff") setListFilter("handoff");
 
     function onPopState() {
-      const param = new URLSearchParams(window.location.search).get("c");
-      setSelectedId(param);
+      const p = new URLSearchParams(window.location.search);
+      setSelectedId(p.get("c"));
+      setListFilter(p.get("filter") === "handoff" ? "handoff" : "all");
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   const { data: listData, isLoading: listLoading, isError: listError, refetch: refetchList } = useQuery({
-    queryKey: ["conversations", searchDebounced],
+    queryKey: ["conversations", searchDebounced, listFilter],
     queryFn: () => {
       const params = new URLSearchParams({ pageSize: "50" });
       if (searchDebounced) params.set("q", searchDebounced);
+      if (listFilter === "handoff") params.set("filter", "handoff");
       return apiFetch<{ data: ConversationRow[] }>(`/conversations?${params}`, {
         token: token ?? undefined,
       });
     },
     enabled: !!token,
     refetchInterval: live ? 5_000 : 8_000,
+  });
+
+  const { data: convStats } = useQuery({
+    queryKey: ["conversation-stats"],
+    queryFn: () =>
+      apiFetch<{ humanHandoffRecommended: number }>("/conversations/stats", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+    staleTime: 30_000,
   });
 
   const { data: whatsappAccounts } = useQuery({
@@ -219,6 +242,47 @@ export default function InboxPage() {
     },
   });
 
+  const stageMutation = useMutation({
+    mutationFn: (stage: LeadStage) =>
+      apiFetch(`/leads/${thread?.lead?.id}/stage`, {
+        method: "PATCH",
+        token: token ?? undefined,
+        body: JSON.stringify({ stage, reason: "Updated from Conversations" }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      if (leadId) void queryClient.invalidateQueries({ queryKey: ["lead-timeline", leadId] });
+    },
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: (title: string) =>
+      apiFetch("/tasks", {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({
+          title: title.slice(0, 120),
+          priority: "HIGH",
+          leadId: thread?.lead?.id,
+          assignedToId: myUserId,
+        }),
+      }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+
+  const resolveHandoffMutation = useMutation({
+    mutationFn: () =>
+      apiFetch(`/conversations/${selectedId}/resolve-handoff`, {
+        method: "POST",
+        token: token ?? undefined,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+
   const sendMutation = useMutation({
     mutationFn: (content: string) =>
       apiFetch(`/conversations/${selectedId}/messages`, {
@@ -244,11 +308,22 @@ export default function InboxPage() {
     setSelectedId(id);
     setSendError(null);
     setShowComposer(true);
-    window.history.replaceState(null, "", `/dashboard/inbox?c=${id}`);
+    const params = new URLSearchParams(window.location.search);
+    params.set("c", id);
+    window.history.replaceState(null, "", `/dashboard/inbox?${params.toString()}`);
     void apiFetch(`/conversations/${id}/read`, {
       method: "POST",
       token: token ?? undefined,
     }).catch(() => {});
+  }
+
+  function setInboxFilter(filter: "all" | "handoff") {
+    setListFilter(filter);
+    const params = new URLSearchParams(window.location.search);
+    if (filter === "handoff") params.set("filter", "handoff");
+    else params.delete("filter");
+    const q = params.toString();
+    window.history.replaceState(null, "", q ? `/dashboard/inbox?${q}` : "/dashboard/inbox");
   }
 
   function clearSelection() {
@@ -281,6 +356,9 @@ export default function InboxPage() {
           onRetry={() => void refetchList()}
           onSelect={selectConversation}
           onNewMessage={canSend && hasWhatsapp ? () => setShowOutbound(true) : undefined}
+          listFilter={listFilter}
+          onListFilterChange={setInboxFilter}
+          handoffCount={convStats?.humanHandoffRecommended}
         />
       </div>
 
@@ -378,12 +456,52 @@ export default function InboxPage() {
                     </span>
                   )}
                   {thread.lead && (
-                    <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[10px] font-semibold text-accent">
-                      {formatStage(thread.lead.stage)}
+                    canSend ? (
+                      <select
+                        className="max-w-[110px] truncate rounded-full border border-primary-soft bg-primary-soft px-2 py-0.5 text-[10px] font-semibold text-accent"
+                        value={thread.lead.stage}
+                        disabled={stageMutation.isPending}
+                        onChange={(e) => stageMutation.mutate(e.target.value as LeadStage)}
+                      >
+                        {LEAD_STAGES.map((s) => (
+                          <option key={s} value={s}>
+                            {STAGE_LABELS[s]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[10px] font-semibold text-accent">
+                        {formatStage(thread.lead.stage)}
+                      </span>
+                    )
+                  )}
+                  {thread.requiresHuman && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                      Handoff
                     </span>
                   )}
                 </div>
               </div>
+              <InboxAiPanel
+                aiContext={thread.aiContext ?? null}
+                requiresHuman={thread.requiresHuman}
+                handoffReason={thread.handoffReason}
+                canEdit={canSend}
+                taskPending={createTaskMutation.isPending}
+                assignPending={assignMutation.isPending}
+                resolvePending={resolveHandoffMutation.isPending}
+                onCreateTask={(title) => {
+                  const t =
+                    title ||
+                    thread.aiContext?.nextAction ||
+                    `Follow up: ${thread.contactName ?? thread.contactPhone}`;
+                  createTaskMutation.mutate(t);
+                }}
+                onAssignToMe={() => {
+                  if (myUserId) assignMutation.mutate(myUserId);
+                }}
+                onResolveHandoff={() => resolveHandoffMutation.mutate()}
+              />
               <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-[#f8f9ff]/60 px-4 py-2 lg:px-5">
                 <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
                   <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">

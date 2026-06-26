@@ -29,6 +29,10 @@ class ListQueryDto {
   @IsOptional()
   @IsString()
   q?: string;
+
+  @IsOptional()
+  @IsString()
+  filter?: string;
 }
 
 class AssignDto {
@@ -95,9 +99,14 @@ export class ConversationsController {
     return this.conversations.getCapabilities();
   }
 
+  @Get("metrics/sla")
+  slaMetrics(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
+    return this.conversations.getSlaMetrics(user, period);
+  }
+
   @Get()
   list(@CurrentUser() user: JwtPayload, @Query() query: ListQueryDto) {
-    return this.conversations.list(user, query.page, query.pageSize, query.q);
+    return this.conversations.list(user, query.page, query.pageSize, query.q, query.filter);
   }
 
   @Post("outbound")
@@ -143,6 +152,12 @@ export class ConversationsController {
   @Post(":id/read")
   markRead(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.conversations.markRead(user, id);
+  }
+
+  @Post(":id/resolve-handoff")
+  @Roles(...WRITE_ROLES)
+  resolveHandoff(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.conversations.resolveHandoff(user, id);
   }
 
   @Patch(":id/assign")

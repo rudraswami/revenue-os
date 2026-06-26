@@ -22,6 +22,7 @@ import {
   type TeamMember,
 } from "@/lib/crm";
 import { cn } from "@/lib/utils";
+import { TeamWorkloadPanel } from "@/components/dashboard/team-workload-panel";
 
 interface TaskRow {
   id: string;
@@ -132,6 +133,10 @@ export default function TasksPage() {
         <StatCard label="Due today" value={summary?.dueToday ?? 0} />
         <StatCard label="Overdue" value={summary?.overdue ?? 0} danger={(summary?.overdue ?? 0) > 0} />
         <StatCard label="Assigned to me" value={summary?.mine ?? 0} accent />
+      </div>
+
+      <div className="mb-6">
+        <TeamWorkloadPanel />
       </div>
 
       {canEdit && (

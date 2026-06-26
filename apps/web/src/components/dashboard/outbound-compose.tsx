@@ -6,6 +6,7 @@ import { Loader2, MessageSquarePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { WhatsappTemplatePicker } from "@/components/dashboard/whatsapp-template-picker";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function OutboundCompose({
@@ -25,6 +26,7 @@ export function OutboundCompose({
   const [templateName, setTemplateName] = useState("");
   const [languageCode, setLanguageCode] = useState("en");
   const [templateParam, setTemplateParam] = useState("");
+  const [templateVarCount, setTemplateVarCount] = useState(0);
   const [mode, setMode] = useState<"template" | "text">("template");
   const [error, setError] = useState<string | null>(null);
 
@@ -114,24 +116,22 @@ export function OutboundCompose({
 
           {mode === "template" ? (
             <>
-              <Input
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="Approved template name"
-                className="h-10"
+              <WhatsappTemplatePicker
+                templateName={templateName}
+                languageCode={languageCode}
+                templateParam={templateParam}
+                onTemplateNameChange={setTemplateName}
+                onLanguageCodeChange={setLanguageCode}
+                onVariableCountChange={setTemplateVarCount}
               />
-              <Input
-                value={languageCode}
-                onChange={(e) => setLanguageCode(e.target.value)}
-                placeholder="Language code (en)"
-                className="h-10"
-              />
-              <Input
-                value={templateParam}
-                onChange={(e) => setTemplateParam(e.target.value)}
-                placeholder="Template body variable {{1}} (optional)"
-                className="h-10"
-              />
+              {(templateVarCount > 0 || templateParam) && (
+                <Input
+                  value={templateParam}
+                  onChange={(e) => setTemplateParam(e.target.value)}
+                  placeholder="Template body variable {{1}} (optional)"
+                  className="h-10"
+                />
+              )}
             </>
           ) : (
             <textarea

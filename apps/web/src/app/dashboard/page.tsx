@@ -21,12 +21,15 @@ import {
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
 import { AiCapabilitiesBanner, OnboardingBanner } from "@/components/dashboard/status-banners";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import { InsightActionButtons, type InsightAction } from "@/components/dashboard/insight-action-buttons";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { TeamWorkloadPanel } from "@/components/dashboard/team-workload-panel";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { CTA, EYEBROW, NAV } from "@/lib/brand-copy";
+import { formatInr } from "@/lib/crm";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -127,6 +130,45 @@ export default function DashboardPage() {
     refetchInterval: 15_000,
   });
 
+  const { data: homeInsights } = useQuery({
+    queryKey: ["home-insights"],
+    queryFn: () =>
+      apiFetch<{
+        items: Array<{
+          id: string;
+          type: string;
+          title: string;
+          body: string;
+          actions: InsightAction[];
+        }>;
+      }>("/leads/metrics/insights?period=30d", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: 60_000,
+  });
+
+  const { data: slaSnapshot } = useQuery({
+    queryKey: ["sla-metrics", "30d"],
+    queryFn: () =>
+      apiFetch<{
+        medianLabel: string | null;
+        breachCount: number;
+        unansweredOver24h: number;
+        targetHours: number;
+      }>("/conversations/metrics/sla?period=30d", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: 120_000,
+  });
+
+  const { data: revenueSnapshot } = useQuery({
+    queryKey: ["revenue-metrics", "30d"],
+    queryFn: () =>
+      apiFetch<{ pipelineValueCents: number }>("/leads/metrics/revenue?period=30d", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+    staleTime: 120_000,
+  });
+
   const { data: whatsappAccounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
     queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
@@ -154,6 +196,13 @@ export default function DashboardPage() {
               <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
                 {unread} unread — customers waiting
+              </p>
+            )}
+            {(slaSnapshot?.unansweredOver24h ?? 0) > 0 && (
+              <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                <Clock className="h-3.5 w-3.5" />
+                {slaSnapshot!.unansweredOver24h} conversation
+                {slaSnapshot!.unansweredOver24h === 1 ? "" : "s"} waiting 24h+ for a reply
               </p>
             )}
           </div>
@@ -207,7 +256,7 @@ export default function DashboardPage() {
       {isLoading ? (
         <MetricCardsSkeleton />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <MetricCard
             title="Conversations"
             value={convStats?.totalConversations ?? 0}
@@ -232,12 +281,60 @@ export default function DashboardPage() {
             delay={0.1}
           />
           <MetricCard
+            title="Open pipeline"
+            value={formatInr(revenueSnapshot?.pipelineValueCents)}
+            delta="Deal value on open leads"
+            icon={<TrendingUp className="h-4 w-4" />}
+            delay={0.12}
+          />
+          <MetricCard
             title="Needs your team"
             value={convStats?.humanHandoffRecommended ?? 0}
             delta={hasWhatsapp ? "Human handoff flagged" : "Connect WhatsApp first"}
-            icon={<TrendingUp className="h-4 w-4" />}
+            icon={<Users className="h-4 w-4" />}
             delay={0.15}
           />
+          {slaSnapshot?.medianLabel && (
+            <MetricCard
+              title="Median reply time"
+              value={slaSnapshot.medianLabel}
+              delta={`Target ${slaSnapshot.targetHours}h · from Growvisi`}
+              icon={<Clock className="h-4 w-4" />}
+              delay={0.18}
+            />
+          )}
+        </div>
+      )}
+
+      <div className="mb-8 rounded-2xl border border-[#dce9ff] bg-white px-4 py-3">
+        <TeamWorkloadPanel compact />
+      </div>
+
+      {(homeInsights?.items.length ?? 0) > 0 && (
+        <div className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Action needed</p>
+              <h2 className="text-lg font-bold">Top insights</h2>
+            </div>
+            <Button asChild variant="link" size="sm" className="h-auto p-0 text-accent">
+              <Link href="/dashboard/insights">View all</Link>
+            </Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {homeInsights!.items.slice(0, 3).map((item) => (
+              <DashboardPanel key={item.id} noPadding className="border-[#dce9ff]">
+                <div className="p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {item.type}
+                  </p>
+                  <h3 className="mt-1 text-sm font-bold leading-snug">{item.title}</h3>
+                  <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">{item.body}</p>
+                  <InsightActionButtons insightId={item.id} actions={item.actions} compact />
+                </div>
+              </DashboardPanel>
+            ))}
+          </div>
         </div>
       )}
 

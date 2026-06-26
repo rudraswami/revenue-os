@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import {
   IsArray,
+  IsDateString,
   IsEnum,
   IsInt,
   IsOptional,
@@ -83,6 +84,10 @@ class CreateCampaignDto {
   @ValidateNested()
   @Type(() => AudienceDto)
   audience!: AudienceDto;
+
+  @IsOptional()
+  @IsDateString()
+  scheduledAt?: string | null;
 }
 
 class ImportRecipientDto {
@@ -124,6 +129,15 @@ class ImportCampaignDto {
   @ValidateNested({ each: true })
   @Type(() => ImportRecipientDto)
   recipients!: ImportRecipientDto[];
+
+  @IsOptional()
+  @IsDateString()
+  scheduledAt?: string | null;
+}
+
+class ScheduleCampaignDto {
+  @IsDateString()
+  scheduledAt!: string;
 }
 
 @Controller("campaigns")
@@ -163,6 +177,22 @@ export class CampaignsController {
   @Roles(...MANAGE_ROLES)
   send(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.campaigns.send(user, id);
+  }
+
+  @Post(":id/schedule")
+  @Roles(...MANAGE_ROLES)
+  schedule(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: ScheduleCampaignDto,
+  ) {
+    return this.campaigns.schedule(user, id, dto.scheduledAt);
+  }
+
+  @Post(":id/cancel-schedule")
+  @Roles(...MANAGE_ROLES)
+  cancelSchedule(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.campaigns.cancelSchedule(user, id);
   }
 
   @Delete(":id")

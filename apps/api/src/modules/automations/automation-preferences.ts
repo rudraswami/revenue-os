@@ -1,4 +1,4 @@
-export type AutomationId = "welcome" | "followup" | "stage" | "notify";
+export type AutomationId = "welcome" | "followup" | "stage" | "notify" | "handoff";
 
 export type AutomationPreferences = Record<AutomationId, boolean>;
 
@@ -7,6 +7,7 @@ export const DEFAULT_AUTOMATION_PREFERENCES: AutomationPreferences = {
   followup: true,
   stage: true,
   notify: false,
+  handoff: true,
 };
 
 export function normalizeAutomationPreferences(
@@ -20,5 +21,6 @@ export function normalizeAutomationPreferences(
     followup: input.followup ?? DEFAULT_AUTOMATION_PREFERENCES.followup,
     stage: input.stage ?? DEFAULT_AUTOMATION_PREFERENCES.stage,
     notify: input.notify ?? DEFAULT_AUTOMATION_PREFERENCES.notify,
+    handoff: input.handoff ?? DEFAULT_AUTOMATION_PREFERENCES.handoff,
   };
 }

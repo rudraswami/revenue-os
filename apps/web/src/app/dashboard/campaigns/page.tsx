@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  CalendarClock,
   ChevronRight,
   FileUp,
   Loader2,
@@ -23,7 +24,9 @@ import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   CAMPAIGN_STATUS_BADGE,
+  CAMPAIGN_STATUS_LABELS,
   formatDate,
+  formatDateTimeIst,
   LEAD_STAGES,
   readableOn,
   STAGE_LABELS,
@@ -32,6 +35,15 @@ import {
 } from "@/lib/crm";
 import type { LeadStage } from "@growvisi/shared";
 import { cn } from "@/lib/utils";
+import { WhatsappTemplatePicker } from "@/components/dashboard/whatsapp-template-picker";
+import {
+  CampaignSchedulePicker,
+  defaultScheduleLocal,
+  localDatetimeToIso,
+  toDatetimeLocalValue,
+  type CampaignSaveMode,
+} from "@/components/dashboard/campaign-schedule-picker";
+import { TemplatePreviewBubble } from "@/components/dashboard/template-preview-bubble";
 
 interface CampaignRow {
   id: string;
@@ -43,6 +55,9 @@ interface CampaignRow {
   failedCount: number;
   deliveredCount: number;
   createdAt: string;
+  scheduledAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
 }
 
 interface PreviewSample {
@@ -55,6 +70,7 @@ interface PreviewSample {
 
 interface CampaignDetail extends CampaignRow {
   messageBody?: string | null;
+  scheduledAt?: string | null;
   audienceFilter?: {
     source?: string;
     languageCode?: string;
@@ -72,6 +88,14 @@ interface CampaignDetail extends CampaignRow {
 }
 
 type CreateMode = "audience" | "import";
+type ListFilter = "all" | "draft" | "scheduled" | "sent";
+
+const LIST_FILTERS: { id: ListFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "draft", label: "Drafts" },
+  { id: "scheduled", label: "Scheduled" },
+  { id: "sent", label: "Sent" },
+];
 
 function parseCsvRecipients(text: string): Array<{ phone: string; name?: string }> {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
@@ -103,6 +127,7 @@ export default function CampaignsPage() {
   const [templateName, setTemplateName] = useState("");
   const [languageCode, setLanguageCode] = useState("en");
   const [templateParam, setTemplateParam] = useState("");
+  const [templateVarCount, setTemplateVarCount] = useState(0);
   const [messageBody, setMessageBody] = useState("");
   const [stages, setStages] = useState<LeadStage[]>([]);
   const [tagIds, setTagIds] = useState<string[]>([]);
@@ -114,6 +139,10 @@ export default function CampaignsPage() {
   const [importFileName, setImportFileName] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveMode, setSaveMode] = useState<CampaignSaveMode>("draft");
+  const [scheduledLocal, setScheduledLocal] = useState(defaultScheduleLocal);
+  const [listFilter, setListFilter] = useState<ListFilter>("all");
+  const [detailScheduleLocal, setDetailScheduleLocal] = useState(defaultScheduleLocal);
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns"],
@@ -149,6 +178,11 @@ export default function CampaignsPage() {
     };
   }
 
+  function schedulePayload() {
+    if (saveMode !== "schedule" || !scheduledLocal) return {};
+    return { scheduledAt: localDatetimeToIso(scheduledLocal) };
+  }
+
   function resetForm() {
     setName("");
     setTemplateName("");
@@ -162,6 +196,8 @@ export default function CampaignsPage() {
     setImportRecipients([]);
     setImportFileName(null);
     setError(null);
+    setSaveMode("draft");
+    setScheduledLocal(defaultScheduleLocal());
   }
 
   const previewMut = useMutation({
@@ -186,6 +222,7 @@ export default function CampaignsPage() {
           templateName: templateName.trim() || undefined,
           audience: audience(),
           ...templatePayload(),
+          ...schedulePayload(),
         }),
       }),
     onSuccess: () => {
@@ -205,6 +242,7 @@ export default function CampaignsPage() {
           templateName: templateName.trim(),
           recipients: importRecipients,
           ...templatePayload(),
+          ...schedulePayload(),
         }),
       }),
     onSuccess: () => {
@@ -234,6 +272,33 @@ export default function CampaignsPage() {
     },
   });
 
+  const scheduleMut = useMutation({
+    mutationFn: ({ id, scheduledAt }: { id: string; scheduledAt: string }) =>
+      apiFetch(`/campaigns/${id}/schedule`, {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({ scheduledAt }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["campaigns"] });
+      if (detailId) void qc.invalidateQueries({ queryKey: ["campaign", detailId] });
+    },
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Could not schedule campaign"),
+  });
+
+  const cancelScheduleMut = useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/campaigns/${id}/cancel-schedule`, {
+        method: "POST",
+        token: token ?? undefined,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["campaigns"] });
+      if (detailId) void qc.invalidateQueries({ queryKey: ["campaign", detailId] });
+    },
+  });
+
   function toggleStage(s: LeadStage) {
     setStages((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
     setPreview(null);
@@ -257,13 +322,28 @@ export default function CampaignsPage() {
   }
 
   const canSubmitAudience =
-    canManage && name.trim() && (preview?.count ?? 0) > 0 && !createMut.isPending;
+    canManage &&
+    name.trim() &&
+    templateName.trim() &&
+    (preview?.count ?? 0) > 0 &&
+    (saveMode === "draft" || !!scheduledLocal) &&
+    !createMut.isPending;
   const canSubmitImport =
     canManage &&
     name.trim() &&
     templateName.trim() &&
     importRecipients.length > 0 &&
+    (saveMode === "draft" || !!scheduledLocal) &&
     !importMut.isPending;
+
+  const filteredCampaigns = (campaigns ?? []).filter((c) => {
+    if (listFilter === "all") return true;
+    if (listFilter === "draft") return c.status === "DRAFT" || c.status === "FAILED";
+    if (listFilter === "scheduled") return c.status === "SCHEDULED";
+    return c.status === "COMPLETED" || c.status === "RUNNING";
+  });
+
+  const scheduledCount = (campaigns ?? []).filter((c) => c.status === "SCHEDULED").length;
 
   return (
     <div className="dashboard-page">
@@ -322,23 +402,18 @@ export default function CampaignsPage() {
                   className="h-10 text-sm"
                 />
               </Field>
-              <Field label="Approved template name">
-                <Input
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  placeholder="e.g. seasonal_offer_v1"
-                  className="h-10 text-sm"
+              <Field label="Approved template">
+                <WhatsappTemplatePicker
+                  templateName={templateName}
+                  languageCode={languageCode}
+                  templateParam={templateParam}
+                  onTemplateNameChange={setTemplateName}
+                  onLanguageCodeChange={setLanguageCode}
+                  onVariableCountChange={setTemplateVarCount}
+                  disabled={!canManage}
                 />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Language code">
-                  <Input
-                    value={languageCode}
-                    onChange={(e) => setLanguageCode(e.target.value)}
-                    placeholder="en"
-                    className="h-10 text-sm"
-                  />
-                </Field>
+              {(templateVarCount > 0 || templateParam) && (
                 <Field label="Template variable {{1}}">
                   <Input
                     value={templateParam}
@@ -347,7 +422,7 @@ export default function CampaignsPage() {
                     className="h-10 text-sm"
                   />
                 </Field>
-              </div>
+              )}
               <Field label="Fallback message body (optional)">
                 <textarea
                   value={messageBody}
@@ -356,6 +431,14 @@ export default function CampaignsPage() {
                   className="min-h-[72px] w-full rounded-xl border border-border px-3 py-2 text-sm"
                 />
               </Field>
+
+              <CampaignSchedulePicker
+                mode={saveMode}
+                onModeChange={setSaveMode}
+                scheduledLocal={scheduledLocal}
+                onScheduledLocalChange={setScheduledLocal}
+                disabled={!canManage}
+              />
             </div>
 
             {mode === "audience" ? (
@@ -510,12 +593,12 @@ export default function CampaignsPage() {
             {mode === "audience" ? (
               <Button size="sm" onClick={() => createMut.mutate()} disabled={!canSubmitAudience}>
                 {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Save campaign
+                {saveMode === "schedule" ? "Schedule campaign" : "Save campaign"}
               </Button>
             ) : (
               <Button size="sm" onClick={() => importMut.mutate()} disabled={!canSubmitImport}>
                 {importMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Import & save
+                {saveMode === "schedule" ? "Schedule import" : "Import & save"}
               </Button>
             )}
           </div>
@@ -523,22 +606,40 @@ export default function CampaignsPage() {
       )}
 
       <DashboardPanel noPadding title="Your campaigns">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-5 py-3">
+          {LIST_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setListFilter(f.id)}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-semibold transition",
+                listFilter === f.id
+                  ? "bg-accent text-white"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80",
+              )}
+            >
+              {f.label}
+              {f.id === "scheduled" && scheduledCount > 0 && ` (${scheduledCount})`}
+            </button>
+          ))}
+        </div>
         {isLoading ? (
           <div className="space-y-2 p-5">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-14 animate-pulse rounded-lg bg-muted" />
             ))}
           </div>
-        ) : (campaigns?.length ?? 0) === 0 ? (
+        ) : filteredCampaigns.length === 0 ? (
           <EmptyState
             compact
             icon={<Megaphone className="h-6 w-6" />}
-            title="No campaigns yet"
+            title={listFilter === "all" ? "No campaigns yet" : `No ${listFilter} campaigns`}
             description="Create your first broadcast above to re-engage a segment of contacts."
           />
         ) : (
           <ul className="divide-y divide-border/60">
-            {campaigns!.map((c) => (
+            {filteredCampaigns.map((c) => (
               <li key={c.id}>
                 <button
                   type="button"
@@ -554,8 +655,14 @@ export default function CampaignsPage() {
                           CAMPAIGN_STATUS_BADGE[c.status],
                         )}
                       >
-                        {c.status}
+                        {CAMPAIGN_STATUS_LABELS[c.status]}
                       </span>
+                      {c.status === "SCHEDULED" && c.scheduledAt && (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-sky-700">
+                          <CalendarClock className="h-3 w-3" />
+                          {formatDateTimeIst(c.scheduledAt)}
+                        </span>
+                      )}
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {c.totalRecipients} recipients
@@ -601,19 +708,103 @@ export default function CampaignsPage() {
                 </div>
               ) : (
                 <>
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-1 text-xs font-semibold",
+                        CAMPAIGN_STATUS_BADGE[detail.status],
+                      )}
+                    >
+                      {CAMPAIGN_STATUS_LABELS[detail.status]}
+                    </span>
+                    {detail.scheduledAt && detail.status === "SCHEDULED" && (
+                      <span className="flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800">
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        Sends {formatDateTimeIst(detail.scheduledAt)}
+                      </span>
+                    )}
+                  </div>
+
+                  {detail.totalRecipients > 0 && (
+                    <div className="mb-4">
+                      <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                        <span>Delivery progress</span>
+                        <span>
+                          {detail.sentCount} / {detail.totalRecipients}
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-accent transition-all"
+                          style={{
+                            width: `${Math.min(100, (detail.sentCount / detail.totalRecipients) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mb-4 grid grid-cols-2 gap-3 text-sm">
-                    <Stat label="Status" value={detail.status} />
                     <Stat label="Recipients" value={String(detail.totalRecipients)} />
                     <Stat label="Sent" value={String(detail.sentCount)} />
                     <Stat label="Failed" value={String(detail.failedCount)} />
+                    <Stat
+                      label="Created"
+                      value={formatDate(detail.createdAt)}
+                    />
                   </div>
+
                   {detail.templateName && (
-                    <p className="mb-4 text-xs text-muted-foreground">
-                      Template: <strong>{detail.templateName}</strong>
-                      {detail.audienceFilter?.languageCode
-                        ? ` · ${detail.audienceFilter.languageCode}`
-                        : ""}
-                    </p>
+                    <div className="mb-4 rounded-xl border border-border/80 bg-[#f8f9ff] p-3">
+                      <p className="text-xs text-muted-foreground">
+                        Template: <strong className="text-foreground">{detail.templateName}</strong>
+                        {detail.audienceFilter?.languageCode
+                          ? ` · ${detail.audienceFilter.languageCode}`
+                          : ""}
+                      </p>
+                      {detail.messageBody && (
+                        <TemplatePreviewBubble
+                          className="mt-3 border-none bg-transparent p-0"
+                          body={detail.messageBody}
+                          params={detail.audienceFilter?.templateParams ?? []}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {(detail.status === "DRAFT" || detail.status === "FAILED") && (
+                    <div className="mb-5 rounded-xl border border-border/80 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Schedule instead of sending now
+                      </p>
+                      <Input
+                        type="datetime-local"
+                        value={detailScheduleLocal}
+                        onChange={(e) => setDetailScheduleLocal(e.target.value)}
+                        className="mt-2 h-10 text-sm"
+                        min={toDatetimeLocalValue(new Date(Date.now() + 6 * 60_000))}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 w-full"
+                        disabled={scheduleMut.isPending}
+                        onClick={() => {
+                          setError(null);
+                          scheduleMut.mutate({
+                            id: detail.id,
+                            scheduledAt: localDatetimeToIso(detailScheduleLocal),
+                          });
+                        }}
+                      >
+                        {scheduleMut.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CalendarClock className="h-4 w-4" />
+                        )}
+                        Schedule send
+                      </Button>
+                    </div>
                   )}
 
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -655,10 +846,41 @@ export default function CampaignsPage() {
             </div>
 
             {detail && canManage && (
-              <div className="flex gap-2 border-t border-border p-4">
+              <div className="flex flex-col gap-2 border-t border-border p-4">
+                {error && (
+                  <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {error}
+                  </p>
+                )}
+                {detail.status === "SCHEDULED" && (
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        setError(null);
+                        sendMut.mutate(detail.id);
+                      }}
+                      disabled={sendMut.isPending}
+                    >
+                      {sendMut.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      Send now
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => cancelScheduleMut.mutate(detail.id)}
+                      disabled={cancelScheduleMut.isPending}
+                    >
+                      Cancel schedule
+                    </Button>
+                  </div>
+                )}
                 {(detail.status === "DRAFT" || detail.status === "FAILED") && (
                   <Button
-                    className="flex-1"
+                    className="w-full"
                     onClick={() => {
                       setError(null);
                       sendMut.mutate(detail.id);
@@ -670,16 +892,18 @@ export default function CampaignsPage() {
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
-                    Send campaign
+                    Send campaign now
                   </Button>
                 )}
                 {detail.status !== "RUNNING" && (
                   <Button
                     variant="outline"
+                    className="w-full"
                     onClick={() => deleteMut.mutate(detail.id)}
                     disabled={deleteMut.isPending}
                   >
                     <Trash2 className="h-4 w-4" />
+                    Delete campaign
                   </Button>
                 )}
               </div>

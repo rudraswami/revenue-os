@@ -6,12 +6,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { formatRelative } from "@/lib/crm";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface ApiKeyRow {
   id: string;
   name: string;
   keyPrefix: string;
+  scopes: string[];
+  lastUsedAt: string | null;
   createdAt: string;
 }
 
@@ -69,7 +72,7 @@ export function ApiKeysSettingsCard() {
         <div>
           <p className="text-sm font-semibold">API keys</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Pro plan — programmatic read access (more scopes coming soon).
+            Pro plan — read leads and conversations from your own integrations.
           </p>
         </div>
       </div>
@@ -79,6 +82,11 @@ export function ApiKeysSettingsCard() {
           <p className="font-semibold text-accent">Copy your key now — it won&apos;t be shown again.</p>
           <code className="mt-2 block break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11px]">
             {newSecret}
+          </code>
+          <p className="mt-3 font-medium text-foreground">Example request</p>
+          <code className="mt-1 block whitespace-pre-wrap break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
+            {`curl -H "Authorization: Bearer ${newSecret}" \\
+  https://api.growvisi.in/api/v1/external/leads`}
           </code>
         </div>
       )}
@@ -116,6 +124,10 @@ export function ApiKeysSettingsCard() {
               <div>
                 <p className="font-medium">{k.name}</p>
                 <p className="font-mono text-[11px] text-muted-foreground">{k.keyPrefix}…</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {k.scopes.join(", ")}
+                  {k.lastUsedAt ? ` · used ${formatRelative(k.lastUsedAt)}` : " · never used"}
+                </p>
               </div>
               <Button
                 type="button"

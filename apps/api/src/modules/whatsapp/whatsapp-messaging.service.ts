@@ -127,6 +127,63 @@ export class WhatsappMessagingService {
     return waMessageId;
   }
 
+  async listMessageTemplates(
+    wabaId: string,
+    accessTokenEnc: string,
+  ): Promise<
+    Array<{
+      name: string;
+      language: string;
+      status: string;
+      category?: string;
+      bodyPreview: string;
+      bodyVariableCount: number;
+    }>
+  > {
+    const token = decryptSecret(accessTokenEnc);
+    const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+
+    const res = await fetch(
+      `https://graph.facebook.com/${version}/${wabaId}/message_templates?limit=100&fields=name,status,language,category,components`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+
+    const data = (await res.json()) as {
+      data?: Array<{
+        name: string;
+        status: string;
+        language: string;
+        category?: string;
+        components?: Array<{ type: string; text?: string }>;
+      }>;
+      error?: { message?: string };
+    };
+
+    if (!res.ok) {
+      this.logger.warn(`Meta template list failed: ${data.error?.message ?? res.status}`);
+      throw new BadRequestException(
+        data.error?.message ??
+          "Could not load templates from WhatsApp. Refresh your token in Settings.",
+      );
+    }
+
+    return (data.data ?? [])
+      .filter((t) => t.status === "APPROVED")
+      .map((t) => {
+        const body = t.components?.find((c) => c.type === "BODY")?.text ?? "";
+        const matches = body.match(/\{\{\d+\}\}/g);
+        return {
+          name: t.name,
+          language: t.language,
+          status: t.status,
+          category: t.category,
+          bodyPreview: body.slice(0, 200),
+          bodyVariableCount: matches?.length ?? 0,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   async fetchMedia(
     account: WhatsappAccountRow,
     mediaId: string,

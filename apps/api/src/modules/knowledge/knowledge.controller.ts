@@ -56,4 +56,9 @@ export class KnowledgeController {
   remove(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.knowledge.remove(user, id);
   }
+
+  @Post(":id/reindex")
+  reindex(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.knowledge.reindex(user, id);
+  }
 }

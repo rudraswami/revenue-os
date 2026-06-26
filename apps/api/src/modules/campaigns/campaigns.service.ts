@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
@@ -17,6 +17,7 @@ export interface CreateCampaignInput {
   messageBody?: string | null;
   templateParams?: string[];
   audience: AudienceFilter;
+  scheduledAt?: string | null;
 }
 
 export interface ImportCampaignInput {
@@ -26,10 +27,16 @@ export interface ImportCampaignInput {
   messageBody?: string | null;
   templateParams?: string[];
   recipients: Array<{ phone: string; name?: string | null }>;
+  scheduledAt?: string | null;
 }
+
+const MIN_SCHEDULE_MS = 5 * 60_000;
+const MAX_SCHEDULE_MS = 90 * 24 * 60 * 60_000;
 
 @Injectable()
 export class CampaignsService {
+  private readonly logger = new Logger(CampaignsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementsService,
@@ -44,6 +51,37 @@ export class CampaignsService {
       where.tags = { some: { tagId: { in: audience.tagIds } } };
     }
     return where;
+  }
+
+  private parseScheduledAt(raw: string | null | undefined): Date | null {
+    if (!raw?.trim()) return null;
+    const at = new Date(raw);
+    if (Number.isNaN(at.getTime())) {
+      throw new BadRequestException("Invalid schedule time.");
+    }
+    const delta = at.getTime() - Date.now();
+    if (delta < MIN_SCHEDULE_MS) {
+      throw new BadRequestException("Schedule at least 5 minutes from now.");
+    }
+    if (delta > MAX_SCHEDULE_MS) {
+      throw new BadRequestException("Campaigns can be scheduled up to 90 days ahead.");
+    }
+    return at;
+  }
+
+  private async assertCampaignMutable(
+    organizationId: string,
+    id: string,
+    allowed: Array<"DRAFT" | "SCHEDULED" | "FAILED">,
+  ) {
+    const campaign = await this.prisma.campaign.findFirst({
+      where: { id, organizationId },
+    });
+    if (!campaign) throw new NotFoundException();
+    if (!allowed.includes(campaign.status as "DRAFT" | "SCHEDULED" | "FAILED")) {
+      throw new BadRequestException(`Campaign cannot be modified while ${campaign.status.toLowerCase()}.`);
+    }
+    return campaign;
   }
 
   async previewAudience(user: JwtPayload, audience: AudienceFilter) {
@@ -63,7 +101,7 @@ export class CampaignsService {
   async list(user: JwtPayload) {
     return this.prisma.campaign.findMany({
       where: { organizationId: user.organizationId },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
       take: 100,
     });
   }
@@ -83,6 +121,11 @@ export class CampaignsService {
     await this.entitlements.assertHasAccess(user.organizationId);
     const name = input.name.trim();
     if (!name) throw new BadRequestException("Campaign name required");
+    if (!input.templateName?.trim()) {
+      throw new BadRequestException("Select an approved WhatsApp template before saving.");
+    }
+
+    const scheduledAt = this.parseScheduledAt(input.scheduledAt);
 
     const where = this.buildLeadWhere(user.organizationId, input.audience);
     const leads = await this.prisma.lead.findMany({
@@ -98,7 +141,7 @@ export class CampaignsService {
       data: {
         organizationId: user.organizationId,
         name: name.slice(0, 120),
-        status: "DRAFT",
+        status: scheduledAt ? "SCHEDULED" : "DRAFT",
         templateName: input.templateName?.trim() || null,
         messageBody: input.messageBody?.slice(0, 1024) || null,
         audienceFilter: {
@@ -108,6 +151,7 @@ export class CampaignsService {
         } as object,
         totalRecipients: leads.length,
         createdById: user.sub,
+        scheduledAt,
         recipients: {
           create: leads.map((l) => ({
             leadId: l.id,
@@ -127,6 +171,8 @@ export class CampaignsService {
     const templateName = input.templateName.trim();
     if (!name) throw new BadRequestException("Campaign name required");
     if (!templateName) throw new BadRequestException("Template name required for imported campaigns.");
+
+    const scheduledAt = this.parseScheduledAt(input.scheduledAt);
 
     const normalized = input.recipients
       .map((r) => ({
@@ -175,7 +221,7 @@ export class CampaignsService {
       data: {
         organizationId: user.organizationId,
         name: name.slice(0, 120),
-        status: "DRAFT",
+        status: scheduledAt ? "SCHEDULED" : "DRAFT",
         templateName,
         messageBody: input.messageBody?.slice(0, 1024) || null,
         audienceFilter: {
@@ -185,6 +231,7 @@ export class CampaignsService {
         } as object,
         totalRecipients: recipientRows.length,
         createdById: user.sub,
+        scheduledAt,
         recipients: {
           create: recipientRows.map((r) => ({
             leadId: r.leadId,
@@ -195,6 +242,30 @@ export class CampaignsService {
         },
       },
       include: { recipients: { take: 50 } },
+    });
+  }
+
+  async schedule(user: JwtPayload, id: string, scheduledAtRaw: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    const campaign = await this.assertCampaignMutable(user.organizationId, id, [
+      "DRAFT",
+      "FAILED",
+    ]);
+    if (!campaign.templateName) {
+      throw new BadRequestException("Add an approved template before scheduling.");
+    }
+    const scheduledAt = this.parseScheduledAt(scheduledAtRaw);
+    return this.prisma.campaign.update({
+      where: { id },
+      data: { status: "SCHEDULED", scheduledAt },
+    });
+  }
+
+  async cancelSchedule(user: JwtPayload, id: string) {
+    const campaign = await this.assertCampaignMutable(user.organizationId, id, ["SCHEDULED"]);
+    return this.prisma.campaign.update({
+      where: { id: campaign.id },
+      data: { status: "DRAFT", scheduledAt: null },
     });
   }
 
@@ -214,13 +285,60 @@ export class CampaignsService {
   /**
    * Send the campaign via Meta WhatsApp message templates. Outbound business-
    * initiated messages REQUIRE a pre-approved template — Growvisi never spams
-   * customers and never bypasses Meta's policy. A template name is mandatory.
+   * customers and never bypasses Meta's policy.
    */
   async send(user: JwtPayload, id: string) {
     await this.entitlements.assertHasAccess(user.organizationId);
-
     const campaign = await this.prisma.campaign.findFirst({
       where: { id, organizationId: user.organizationId },
+    });
+    if (!campaign) throw new NotFoundException();
+    if (campaign.status === "RUNNING" || campaign.status === "COMPLETED") {
+      throw new BadRequestException("Campaign already sent.");
+    }
+    return this.executeSend(user.organizationId, id);
+  }
+
+  async processDueScheduledCampaigns() {
+    const due = await this.prisma.campaign.findMany({
+      where: {
+        status: "SCHEDULED",
+        scheduledAt: { lte: new Date() },
+      },
+      orderBy: { scheduledAt: "asc" },
+      take: 5,
+    });
+
+    const results: Array<{ id: string; organizationId: string; ok: boolean; error?: string }> =
+      [];
+
+    for (const campaign of due) {
+      try {
+        await this.entitlements.assertHasAccess(campaign.organizationId);
+        await this.executeSend(campaign.organizationId, campaign.id);
+        results.push({ id: campaign.id, organizationId: campaign.organizationId, ok: true });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Send failed";
+        this.logger.warn(`Scheduled campaign ${campaign.id} failed: ${message}`);
+        await this.prisma.campaign.update({
+          where: { id: campaign.id },
+          data: { status: "FAILED", completedAt: new Date() },
+        });
+        results.push({
+          id: campaign.id,
+          organizationId: campaign.organizationId,
+          ok: false,
+          error: message,
+        });
+      }
+    }
+
+    return { processed: results.length, results };
+  }
+
+  private async executeSend(organizationId: string, id: string) {
+    const campaign = await this.prisma.campaign.findFirst({
+      where: { id, organizationId },
     });
     if (!campaign) throw new NotFoundException();
     if (campaign.status === "RUNNING" || campaign.status === "COMPLETED") {
@@ -233,17 +351,24 @@ export class CampaignsService {
     }
 
     const account = await this.prisma.whatsappAccount.findFirst({
-      where: { organizationId: user.organizationId, isActive: true },
+      where: { organizationId, isActive: true },
       orderBy: { createdAt: "asc" },
     });
     if (!account) {
       throw new BadRequestException("Connect an active WhatsApp number before sending campaigns.");
     }
 
-    await this.prisma.campaign.update({
-      where: { id },
-      data: { status: "RUNNING", startedAt: new Date() },
+    const claimed = await this.prisma.campaign.updateMany({
+      where: {
+        id,
+        organizationId,
+        status: { in: ["DRAFT", "SCHEDULED", "FAILED"] },
+      },
+      data: { status: "RUNNING", startedAt: new Date(), scheduledAt: null },
     });
+    if (claimed.count === 0) {
+      throw new BadRequestException("Campaign is already being sent.");
+    }
 
     const recipients = await this.prisma.campaignRecipient.findMany({
       where: { campaignId: id, status: "PENDING" },

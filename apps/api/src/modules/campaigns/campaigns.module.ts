@@ -9,5 +9,6 @@ import { CampaignsService } from "./campaigns.service";
   imports: [BillingModule, WhatsappModule],
   controllers: [CampaignsController],
   providers: [CampaignsService, MembershipRoleGuard],
+  exports: [CampaignsService],
 })
 export class CampaignsModule {}

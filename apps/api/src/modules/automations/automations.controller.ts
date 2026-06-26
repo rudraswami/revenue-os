@@ -21,6 +21,10 @@ class UpdateAutomationsDto {
   @IsOptional()
   @IsBoolean()
   notify?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  handoff?: boolean;
 }
 
 @Controller("automations")

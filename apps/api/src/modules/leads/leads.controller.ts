@@ -103,6 +103,22 @@ class AddNoteDto {
   body!: string;
 }
 
+class DismissInsightDto {
+  @IsString()
+  insightId!: string;
+}
+
+class CreateInsightTasksDto {
+  @IsString()
+  insightId!: string;
+}
+
+class AssignHandoffsDto {
+  @IsOptional()
+  @IsString()
+  assignToUserId?: string;
+}
+
 @Controller("leads")
 @UseGuards(JwtAuthGuard, MembershipRoleGuard)
 export class LeadsController {
@@ -154,9 +170,38 @@ export class LeadsController {
     return this.leads.funnelMetrics(user, period);
   }
 
+  @Get("metrics/revenue")
+  revenue(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
+    return this.leads.getRevenueMetrics(user, period);
+  }
+
   @Get("metrics/insights")
   insights(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
     return this.leads.getInsights(user, period);
+  }
+
+  @Post("metrics/insights/dismiss")
+  @Roles(...WRITE_ROLES)
+  dismissInsight(@CurrentUser() user: JwtPayload, @Body() dto: DismissInsightDto) {
+    return this.leads.dismissInsight(user, dto.insightId);
+  }
+
+  @Post("metrics/insights/actions/assign-handoffs")
+  @Roles(...WRITE_ROLES)
+  assignHandoffs(@CurrentUser() user: JwtPayload, @Body() dto: AssignHandoffsDto) {
+    return this.leads.assignHandoffConversations(user, dto.assignToUserId);
+  }
+
+  @Post("metrics/insights/actions/create-tasks")
+  @Roles(...WRITE_ROLES)
+  createInsightTasks(@CurrentUser() user: JwtPayload, @Body() dto: CreateInsightTasksDto) {
+    return this.leads.createInsightTasks(user, dto.insightId);
+  }
+
+  @Post("metrics/insights/actions/lead-task/:leadId")
+  @Roles(...WRITE_ROLES)
+  createLeadTask(@CurrentUser() user: JwtPayload, @Param("leadId") leadId: string) {
+    return this.leads.createTaskForLead(user, leadId);
   }
 
   @Get("export")

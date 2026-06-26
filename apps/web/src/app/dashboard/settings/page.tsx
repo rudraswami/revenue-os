@@ -3,18 +3,21 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect } from "react";
-import { Building2, BookOpen, CreditCard, Key, Loader2, LogOut, Mail, MessageCircle, User } from "lucide-react";
+import { Building2, BookOpen, CreditCard, Key, Link2, Loader2, LogOut, Mail, MessageCircle, User } from "lucide-react";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { ApiKeysSettingsCard } from "@/components/settings/api-keys-settings-card";
+import { WebhooksSettingsCard } from "@/components/settings/webhooks-settings-card";
+import { TrackingLinksCard } from "@/components/settings/tracking-links-card";
 import { BusinessContextCard } from "@/components/settings/business-context-card";
 import { BillingSettingsCard } from "@/components/settings/billing-settings-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
+import { AssignmentRulesCard } from "@/components/settings/assignment-rules-card";
 import { logout } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
@@ -69,6 +72,7 @@ export default function SettingsPage() {
             <p className="text-base font-bold">{organization?.name ?? "Your workspace"}</p>
             <p className="mt-1 font-mono text-xs text-muted-foreground">{organization?.slug}</p>
             <TeamMembersCard />
+            <AssignmentRulesCard />
           </DashboardPanel>
         </DashboardSection>
 
@@ -114,6 +118,16 @@ export default function SettingsPage() {
           iconClassName="bg-[#ecfdf5] text-[#128C7E]"
         >
           <WhatsappConnect />
+        </DashboardSection>
+
+        <DashboardSection
+          title="Attribution"
+          description="Tracked WhatsApp links for ads, QR codes, and campaigns."
+          icon={Link2}
+        >
+          <DashboardPanel delay={0.105}>
+            <TrackingLinksCard />
+          </DashboardPanel>
         </DashboardSection>
 
         <DashboardSection title="Account" description="Profile and data controls." icon={User}>
@@ -163,6 +177,9 @@ export default function SettingsPage() {
         >
           <DashboardPanel delay={0.11}>
             <ApiKeysSettingsCard />
+            <div className="mt-6 border-t border-[#dce9ff] pt-5">
+              <WebhooksSettingsCard />
+            </div>
           </DashboardPanel>
         </DashboardSection>
       </div>

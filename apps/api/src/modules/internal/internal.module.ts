@@ -1,11 +1,13 @@
 import { Module } from "@nestjs/common";
 import { CronSecretGuard } from "../../common/guards/cron-secret.guard";
 import { AutomationsModule } from "../automations/automations.module";
+import { CampaignsModule } from "../campaigns/campaigns.module";
+import { DigestModule } from "../digest/digest.module";
 import { WhatsappAccountsModule } from "../whatsapp-accounts/whatsapp-accounts.module";
 import { InternalCronController } from "./internal-cron.controller";
 
 @Module({
-  imports: [WhatsappAccountsModule, AutomationsModule],
+  imports: [WhatsappAccountsModule, AutomationsModule, DigestModule, CampaignsModule],
   controllers: [InternalCronController],
   providers: [CronSecretGuard],
 })

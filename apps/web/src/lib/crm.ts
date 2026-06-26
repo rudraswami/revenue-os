@@ -59,6 +59,15 @@ export const CAMPAIGN_STATUS_BADGE: Record<CampaignStatus, string> = {
   FAILED: "bg-rose-100 text-rose-700",
 };
 
+export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
+  DRAFT: "Draft",
+  SCHEDULED: "Scheduled",
+  RUNNING: "Sending",
+  COMPLETED: "Completed",
+  PAUSED: "Paused",
+  FAILED: "Failed",
+};
+
 export interface CrmTag {
   id: string;
   name: string;
@@ -99,6 +108,20 @@ export function formatDate(date?: string | Date | null): string {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+export function formatDateTimeIst(date?: string | Date | null): string {
+  if (!date) return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 /** Pick readable text color for a hex background. */

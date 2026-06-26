@@ -1,13 +1,17 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { JwtPayload } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { KnowledgeEmbedService } from "./knowledge-embed.service";
 
 @Injectable()
 export class KnowledgeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly embed: KnowledgeEmbedService,
+  ) {}
 
   async list(user: JwtPayload) {
-    return this.prisma.knowledgeDocument.findMany({
+    const docs = await this.prisma.knowledgeDocument.findMany({
       where: { organizationId: user.organizationId },
       orderBy: { updatedAt: "desc" },
       select: {
@@ -18,18 +22,30 @@ export class KnowledgeService {
         createdAt: true,
         updatedAt: true,
         rawContent: true,
+        _count: { select: { chunks: true } },
       },
     });
+
+    return docs.map((d) => ({
+      id: d.id,
+      title: d.title,
+      sourceType: d.sourceType,
+      status: d.status,
+      createdAt: d.createdAt,
+      updatedAt: d.updatedAt,
+      rawContent: d.rawContent,
+      chunkCount: d._count.chunks,
+    }));
   }
 
   async create(user: JwtPayload, title: string, content: string) {
-    return this.prisma.knowledgeDocument.create({
+    const doc = await this.prisma.knowledgeDocument.create({
       data: {
         organizationId: user.organizationId,
         title: title.trim(),
         rawContent: content.trim(),
         sourceType: "manual",
-        status: "active",
+        status: "pending",
       },
       select: {
         id: true,
@@ -41,6 +57,9 @@ export class KnowledgeService {
         rawContent: true,
       },
     });
+
+    const { chunks } = await this.embed.embedDocument(doc.id, user.organizationId);
+    return { ...doc, status: chunks > 0 ? "indexed" : "active", chunkCount: chunks };
   }
 
   async update(
@@ -53,12 +72,12 @@ export class KnowledgeService {
     });
     if (!existing) throw new NotFoundException("Document not found");
 
-    return this.prisma.knowledgeDocument.update({
+    const doc = await this.prisma.knowledgeDocument.update({
       where: { id },
       data: {
         title: patch.title?.trim() ?? undefined,
         rawContent: patch.content?.trim() ?? undefined,
-        status: "active",
+        status: "pending",
       },
       select: {
         id: true,
@@ -70,6 +89,19 @@ export class KnowledgeService {
         rawContent: true,
       },
     });
+
+    const { chunks } = await this.embed.embedDocument(doc.id, user.organizationId);
+    return { ...doc, status: chunks > 0 ? "indexed" : "active", chunkCount: chunks };
+  }
+
+  async reindex(user: JwtPayload, id: string) {
+    const existing = await this.prisma.knowledgeDocument.findFirst({
+      where: { id, organizationId: user.organizationId },
+    });
+    if (!existing) throw new NotFoundException("Document not found");
+
+    const { chunks } = await this.embed.embedDocument(id, user.organizationId);
+    return { ok: true, chunkCount: chunks };
   }
 
   async remove(user: JwtPayload, id: string) {

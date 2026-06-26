@@ -20,6 +20,9 @@ import { AutomationsModule } from "./modules/automations/automations.module";
 import { BillingModule } from "./modules/billing/billing.module";
 import { KnowledgeModule } from "./modules/knowledge/knowledge.module";
 import { ApiKeysModule } from "./modules/api-keys/api-keys.module";
+import { ExternalModule } from "./modules/external/external.module";
+import { WebhooksModule } from "./modules/webhooks/webhooks.module";
+import { TrackingModule } from "./modules/tracking/tracking.module";
 import { TagsModule } from "./modules/tags/tags.module";
 import { TasksModule } from "./modules/tasks/tasks.module";
 import { CampaignsModule } from "./modules/campaigns/campaigns.module";
@@ -61,6 +64,9 @@ import { QUEUES } from "@growvisi/shared";
     BillingModule,
     KnowledgeModule,
     ApiKeysModule,
+    ExternalModule,
+    WebhooksModule,
+    TrackingModule,
     TagsModule,
     TasksModule,
     CampaignsModule,

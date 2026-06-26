@@ -3,18 +3,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import { SlaMetricsPanel } from "@/components/dashboard/sla-metrics-panel";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
 import { CTA } from "@/lib/brand-copy";
-import { CHART_ACCENT, STAGE_CHART_COLORS, chartTooltipStyle } from "@/lib/chart-theme";
+import { formatInr } from "@/lib/crm";
+import { CHART_ACCENT, chartTooltipStyle } from "@/lib/chart-theme";
 import { METRICS_PERIOD_OPTIONS, type MetricsPeriod } from "@/lib/metrics-period";
 import { useAuthStore } from "@/stores/auth-store";
-import { BarChart3, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
+import { BarChart3, IndianRupee, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
 import { useState } from "react";
-import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { cn } from "@/lib/utils";
 
 export default function AnalyticsPage() {
@@ -46,6 +48,19 @@ export default function AnalyticsPage() {
     enabled: !!token,
   });
 
+  const { data: revenue, isLoading: revenueLoading } = useQuery({
+    queryKey: ["revenue-metrics", period],
+    queryFn: () =>
+      apiFetch<{
+        pipelineValueCents: number;
+        wonValueCents: number;
+        pipelineDealsWithValue: number;
+        wonDealsWithValue: number;
+        byStage: Array<{ stage: string; count: number; valueCents: number }>;
+      }>(`/leads/metrics/revenue?period=${period}`, { token: token ?? undefined }),
+    enabled: !!token,
+  });
+
   const { data: whatsappAccounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
     queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
@@ -55,14 +70,8 @@ export default function AnalyticsPage() {
   });
 
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
-  const isLoading = funnelLoading || convLoading;
+  const isLoading = funnelLoading || convLoading || revenueLoading;
   const hasError = funnelError || convError;
-
-  const chartData =
-    funnel?.byStage.map((s) => ({
-      name: s.stage.replace("_", " "),
-      value: s.count,
-    })) ?? [];
 
   const barData =
     funnel?.byStage.map((s) => ({
@@ -70,12 +79,20 @@ export default function AnalyticsPage() {
       count: s.count,
     })) ?? [];
 
+  const valueBarData =
+    revenue?.byStage
+      .filter((s) => s.valueCents > 0)
+      .map((s) => ({
+        stage: s.stage.replace("_", " "),
+        value: s.valueCents / 100,
+      })) ?? [];
+
   return (
     <div className="dashboard-page">
       <PageHeader
         eyebrow="Performance"
         title="Analytics"
-        description="Revenue metrics from your WhatsApp sales pipeline — filter by time range."
+        description="Revenue and response metrics from your WhatsApp sales pipeline."
         action={
           <div className="flex flex-wrap gap-1 rounded-xl border border-border/80 bg-white p-1">
             {METRICS_PERIOD_OPTIONS.map((opt) => (
@@ -118,19 +135,29 @@ export default function AnalyticsPage() {
       ) : !hasError ? (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              title="Open pipeline"
+              value={formatInr(revenue?.pipelineValueCents)}
+              delta={`${revenue?.pipelineDealsWithValue ?? 0} deals with value`}
+              icon={<IndianRupee className="h-4 w-4" />}
+              highlight
+            />
+            <MetricCard
+              title="Won revenue"
+              value={formatInr(revenue?.wonValueCents)}
+              delta={`${revenue?.wonDealsWithValue ?? 0} won in period`}
+              icon={<TrendingUp className="h-4 w-4" />}
+            />
             <MetricCard title="Total leads" value={funnel?.total ?? 0} icon={<Users className="h-4 w-4" />} />
-            <MetricCard title="Won deals" value={funnel?.won ?? 0} icon={<TrendingUp className="h-4 w-4" />} highlight />
             <MetricCard
               title="Win rate"
               value={funnel && funnel.total > 0 ? `${(funnel.conversionRate * 100).toFixed(0)}%` : "—"}
               icon={<Zap className="h-4 w-4" />}
             />
-            <MetricCard
-              title="Conversations"
-              value={convStats?.totalConversations ?? 0}
-              delta={`${convStats?.inboundMessages ?? 0} inbound`}
-              icon={<MessageSquare className="h-4 w-4" />}
-            />
+          </div>
+
+          <div className="mt-8">
+            <SlaMetricsPanel period={period} />
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -161,41 +188,47 @@ export default function AnalyticsPage() {
               )}
             </DashboardPanel>
 
-            <DashboardPanel title="Pipeline distribution" contentClassName="h-72" delay={0.15}>
-              {chartData.some((d) => d.value > 0) ? (
+            <DashboardPanel title="Pipeline value by stage (₹)" contentClassName="h-72" delay={0.15}>
+              {valueBarData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                  <PieChart>
-                    <Pie
-                      data={chartData.filter((d) => d.value > 0)}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={64}
-                      outerRadius={96}
-                      paddingAngle={3}
-                    >
-                      {chartData
-                        .filter((d) => d.value > 0)
-                        .map((_, i) => (
-                          <Cell key={i} fill={STAGE_CHART_COLORS[i % STAGE_CHART_COLORS.length]} />
-                        ))}
-                    </Pie>
-                    <Tooltip contentStyle={chartTooltipStyle} />
-                  </PieChart>
+                  <BarChart data={valueBarData}>
+                    <XAxis dataKey="stage" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={chartTooltipStyle}
+                      formatter={(v: number) => [
+                        new Intl.NumberFormat("en-IN", {
+                          style: "currency",
+                          currency: "INR",
+                          maximumFractionDigits: 0,
+                        }).format(v),
+                        "Value",
+                      ]}
+                    />
+                    <Bar dataKey="value" fill="#006c49" radius={[8, 8, 0, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <EmptyState
                   compact
                   className="h-full py-8"
-                  icon={<TrendingUp className="h-6 w-6" />}
-                  title="No pipeline data"
-                  description="Stage breakdown appears once leads are created from conversations."
+                  icon={<IndianRupee className="h-6 w-6" />}
+                  title="No deal values yet"
+                  description="Add ₹ values on Pipeline or Contacts to see revenue by stage."
                   actionHref="/dashboard/pipeline"
                   actionLabel="View Pipeline"
                 />
               )}
             </DashboardPanel>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <MetricCard
+              title="Conversations"
+              value={convStats?.totalConversations ?? 0}
+              delta={`${convStats?.inboundMessages ?? 0} inbound in period`}
+              icon={<MessageSquare className="h-4 w-4" />}
+            />
           </div>
         </>
       ) : null}

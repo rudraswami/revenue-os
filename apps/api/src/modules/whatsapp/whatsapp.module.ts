@@ -2,6 +2,9 @@ import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { QUEUES } from "@growvisi/shared";
 import { AiModule } from "../ai/ai.module";
+import { AssignmentModule } from "../assignments/assignment.module";
+import { TrackingModule } from "../tracking/tracking.module";
+import { WebhooksModule } from "../webhooks/webhooks.module";
 import { BillingModule } from "../billing/billing.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { WhatsappWebhookController } from "./whatsapp-webhook.controller";
@@ -17,6 +20,9 @@ const isVercel = process.env.VERCEL === "1";
     RealtimeModule,
     AiModule,
     BillingModule,
+    AssignmentModule,
+    TrackingModule,
+    WebhooksModule,
   ],
   controllers: [WhatsappWebhookController],
   providers: [

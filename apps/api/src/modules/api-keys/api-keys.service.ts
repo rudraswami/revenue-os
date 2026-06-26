@@ -1,6 +1,7 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { createHash, randomBytes } from "crypto";
 import type { JwtPayload } from "@growvisi/shared";
+import type { ApiKeyAuthContext } from "../../common/decorators/api-key-auth.decorator";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 
@@ -44,7 +45,7 @@ export class ApiKeysService {
         name: name.trim() || "API key",
         keyPrefix,
         keyHash,
-        scopes: ["read"],
+        scopes: ["read:leads", "read:conversations"],
       },
       select: {
         id: true,
@@ -74,6 +75,45 @@ export class ApiKeysService {
       data: { revokedAt: new Date() },
     });
     return { ok: true };
+  }
+
+  async authenticate(rawKey: string): Promise<ApiKeyAuthContext> {
+    if (!rawKey.startsWith("gv_")) {
+      throw new UnauthorizedException("Invalid API key format.");
+    }
+
+    const keyHash = createHash("sha256").update(rawKey).digest("hex");
+    const record = await this.prisma.apiKey.findFirst({
+      where: { keyHash, revokedAt: null },
+      select: {
+        id: true,
+        organizationId: true,
+        scopes: true,
+        expiresAt: true,
+      },
+    });
+
+    if (!record) {
+      throw new UnauthorizedException("Invalid or revoked API key.");
+    }
+    if (record.expiresAt && record.expiresAt.getTime() < Date.now()) {
+      throw new UnauthorizedException("API key has expired.");
+    }
+
+    await this.assertProPlan(record.organizationId);
+
+    void this.prisma.apiKey
+      .update({
+        where: { id: record.id },
+        data: { lastUsedAt: new Date() },
+      })
+      .catch(() => undefined);
+
+    return {
+      organizationId: record.organizationId,
+      apiKeyId: record.id,
+      scopes: record.scopes,
+    };
   }
 
   private async assertProPlan(organizationId: string) {

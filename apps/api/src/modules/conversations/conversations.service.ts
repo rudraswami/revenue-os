@@ -2,7 +2,12 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
+import {
+  formatDurationMs,
+  normalizeWorkspaceOpsSettings,
+} from "../organizations/workspace-settings";
 import { EntitlementsService } from "../billing/entitlements.service";
+import { KnowledgeEmbedService } from "../knowledge/knowledge-embed.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
@@ -15,6 +20,7 @@ export class ConversationsService {
     private readonly config: ConfigService,
     private readonly realtime: RealtimeGateway,
     private readonly entitlements: EntitlementsService,
+    private readonly knowledgeEmbed: KnowledgeEmbedService,
   ) {}
 
   getCapabilities() {
@@ -104,11 +110,14 @@ export class ConversationsService {
     };
   }
 
-  async list(user: JwtPayload, page = 1, pageSize = 20, q?: string) {
+  async list(user: JwtPayload, page = 1, pageSize = 20, q?: string, filter?: string) {
     const skip = (page - 1) * pageSize;
     const query = q?.trim();
     const where = {
       organizationId: user.organizationId,
+      ...(filter === "handoff"
+        ? { metadata: { path: ["requiresHuman"], equals: true } }
+        : {}),
       ...(query
         ? {
             OR: [
@@ -145,7 +154,13 @@ export class ConversationsService {
     ]);
 
     return {
-      data,
+      data: data.map((row) => {
+        const meta = (row.metadata ?? {}) as Record<string, unknown>;
+        return {
+          ...row,
+          requiresHuman: meta.requiresHuman === true,
+        };
+      }),
       total,
       page,
       pageSize,
@@ -167,7 +182,101 @@ export class ConversationsService {
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
 
-    return conversation;
+    const meta = (conversation.metadata ?? {}) as Record<string, unknown>;
+    const profile = (conversation.lead?.profile ?? {}) as Record<string, unknown>;
+
+    const lastAiRun = await this.prisma.aiRun.findFirst({
+      where: {
+        organizationId: user.organizationId,
+        conversationId: id,
+        type: "classify",
+        status: "COMPLETED",
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        output: true,
+        createdAt: true,
+        latencyMs: true,
+      },
+    });
+
+    const runOutput = (lastAiRun?.output ?? {}) as Record<string, unknown>;
+
+    const aiContext = conversation.lead?.lastClassifiedAt
+      ? {
+          intent: String(profile.lastIntent ?? runOutput.intent ?? ""),
+          sentiment: String(profile.lastSentiment ?? runOutput.sentiment ?? ""),
+          confidence:
+            conversation.lead.aiConfidence ??
+            (typeof runOutput.confidence === "number" ? runOutput.confidence : null),
+          summary: String(profile.summary ?? runOutput.summary ?? ""),
+          nextAction: String(profile.nextAction ?? ""),
+          suggestedActions: Array.isArray(profile.suggestedActions)
+            ? profile.suggestedActions.map(String)
+            : Array.isArray(runOutput.suggestedActions)
+              ? runOutput.suggestedActions.map(String)
+              : [],
+          tags: Array.isArray(profile.aiTags) ? profile.aiTags.map(String) : [],
+          classifiedAt: conversation.lead.lastClassifiedAt.toISOString(),
+          runId: lastAiRun?.id ?? null,
+        }
+      : null;
+
+    return {
+      ...conversation,
+      requiresHuman: meta.requiresHuman === true,
+      handoffReason: typeof meta.handoffReason === "string" ? meta.handoffReason : null,
+      handoffAt: typeof meta.handoffAt === "string" ? meta.handoffAt : null,
+      aiContext,
+    };
+  }
+
+  async resolveHandoff(user: JwtPayload, id: string) {
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id, organizationId: user.organizationId },
+      select: { metadata: true },
+    });
+    if (!conversation) throw new NotFoundException("Conversation not found");
+
+    const meta = (conversation.metadata ?? {}) as Record<string, unknown>;
+    await this.prisma.conversation.update({
+      where: { id },
+      data: {
+        metadata: {
+          ...meta,
+          requiresHuman: false,
+          handoffResolvedAt: new Date().toISOString(),
+          handoffResolvedBy: user.sub,
+        },
+      },
+    });
+
+    this.realtime.emitInboxUpdated(user.organizationId);
+    return { ok: true };
+  }
+
+  private async clearHandoffIfNeeded(conversationId: string, userId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { metadata: true, organizationId: true },
+    });
+    if (!conversation) return;
+    const meta = (conversation.metadata ?? {}) as Record<string, unknown>;
+    if (meta.requiresHuman !== true) return;
+
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        metadata: {
+          ...meta,
+          requiresHuman: false,
+          handoffResolvedAt: new Date().toISOString(),
+          handoffResolvedBy: userId,
+        },
+      },
+    });
+    this.realtime.emitInboxUpdated(conversation.organizationId);
   }
 
   async markRead(user: JwtPayload, id: string) {
@@ -217,6 +326,9 @@ export class ConversationsService {
       data: { lastMessageAt: new Date() },
     });
 
+    await this.clearHandoffIfNeeded(conversationId, user.sub);
+    await this.recordFirstResponse(conversationId, user.organizationId);
+
     this.realtime.emitMessageNew(user.organizationId, { conversationId });
     this.realtime.emitInboxUpdated(user.organizationId);
 
@@ -239,21 +351,33 @@ export class ConversationsService {
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
 
-    const knowledgeDocs = await this.prisma.knowledgeDocument.findMany({
-      where: { organizationId: user.organizationId },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-      select: { title: true, rawContent: true },
-    });
+    const ordered = [...conversation.messages].reverse();
+    const transcriptSnippet = ordered
+      .slice(-4)
+      .map((m) => m.content)
+      .filter(Boolean)
+      .join(" ");
+
+    const ragChunks = await this.knowledgeEmbed.search(
+      user.organizationId,
+      transcriptSnippet || ordered.at(-1)?.content || "customer inquiry",
+      5,
+    );
 
     const knowledgeBlock =
-      knowledgeDocs.length > 0
-        ? knowledgeDocs
-            .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 1200)}`)
-            .join("\n\n")
-        : "";
+      ragChunks.length > 0
+        ? ragChunks.map((c) => `### ${c.title}\n${c.content}`).join("\n\n")
+        : (
+            await this.prisma.knowledgeDocument.findMany({
+              where: { organizationId: user.organizationId },
+              orderBy: { updatedAt: "desc" },
+              take: 3,
+              select: { title: true, rawContent: true },
+            })
+          )
+            .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 800)}`)
+            .join("\n\n");
 
-    const ordered = [...conversation.messages].reverse();
     const transcript = ordered
       .map((m) => {
         const who = m.direction === "INBOUND" ? "Customer" : "Business";
@@ -306,7 +430,11 @@ export class ConversationsService {
       throw new BadRequestException("No suggestion returned.");
     }
 
-    return { suggestion };
+    return {
+      suggestion,
+      sources: ragChunks.map((c) => ({ title: c.title, similarity: c.similarity })),
+      usedRag: ragChunks.length > 0,
+    };
   }
 
   async assign(user: JwtPayload, id: string, assignToUserId: string | null) {
@@ -496,9 +624,136 @@ export class ConversationsService {
       data: { lastMessageAt: new Date(), contactName: conversation.contactName ?? input.displayName ?? undefined },
     });
 
+    await this.recordFirstResponse(conversation.id, user.organizationId);
+
     this.realtime.emitMessageNew(user.organizationId, { conversationId: conversation.id });
     this.realtime.emitInboxUpdated(user.organizationId);
 
     return { conversation: await this.getById(user, conversation.id), message };
+  }
+
+  private async getSlaTargetHours(organizationId: string): Promise<number> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true },
+    });
+    const settings = (org?.settings ?? {}) as Record<string, unknown>;
+    return normalizeWorkspaceOpsSettings(settings.ops).sla.targetHours;
+  }
+
+  async recordFirstResponse(conversationId: string, organizationId: string) {
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId },
+      select: { id: true, firstResponseAt: true },
+    });
+    if (!conversation || conversation.firstResponseAt) return;
+
+    const firstInbound = await this.prisma.message.findFirst({
+      where: { conversationId, direction: "INBOUND" },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    });
+    if (!firstInbound) return;
+
+    const now = new Date();
+    const responseMs = now.getTime() - firstInbound.createdAt.getTime();
+    const targetHours = await this.getSlaTargetHours(organizationId);
+    const slaBreached = responseMs > targetHours * 3_600_000;
+
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { firstResponseAt: now, slaBreached },
+    });
+  }
+
+  async getSlaMetrics(user: JwtPayload, period?: MetricsPeriod) {
+    const parsedPeriod = parseMetricsPeriod(period);
+    const range = createdAtFilter(parsedPeriod);
+    const orgId = user.organizationId;
+    const targetHours = await this.getSlaTargetHours(orgId);
+
+    const responded = await this.prisma.conversation.findMany({
+      where: {
+        organizationId: orgId,
+        firstResponseAt: {
+          not: null,
+          ...(range.gte ? { gte: range.gte } : {}),
+        },
+      },
+      select: {
+        id: true,
+        contactName: true,
+        contactPhone: true,
+        firstResponseAt: true,
+        slaBreached: true,
+      },
+      orderBy: { firstResponseAt: "desc" },
+      take: 500,
+    });
+
+    const responseTimesMs: number[] = [];
+    const slowest: Array<{
+      id: string;
+      label: string;
+      responseMs: number;
+      responseLabel: string;
+      breached: boolean;
+    }> = [];
+
+    for (const conv of responded) {
+      const firstInbound = await this.prisma.message.findFirst({
+        where: { conversationId: conv.id, direction: "INBOUND" },
+        orderBy: { createdAt: "asc" },
+        select: { createdAt: true },
+      });
+      if (!firstInbound || !conv.firstResponseAt) continue;
+      const ms = conv.firstResponseAt.getTime() - firstInbound.createdAt.getTime();
+      responseTimesMs.push(ms);
+      slowest.push({
+        id: conv.id,
+        label: conv.contactName ?? conv.contactPhone,
+        responseMs: ms,
+        responseLabel: formatDurationMs(ms),
+        breached: conv.slaBreached,
+      });
+    }
+
+    slowest.sort((a, b) => b.responseMs - a.responseMs);
+
+    const medianMs =
+      responseTimesMs.length > 0
+        ? [...responseTimesMs].sort((a, b) => a - b)[Math.floor(responseTimesMs.length / 2)]
+        : null;
+
+    const withinSla = responseTimesMs.filter(
+      (ms) => ms <= targetHours * 3_600_000,
+    ).length;
+    const breachCount = responded.filter((c) => c.slaBreached).length;
+
+    const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const unanswered = await this.prisma.conversation.count({
+      where: {
+        organizationId: orgId,
+        status: "OPEN",
+        lastInboundAt: { lt: cutoff24h },
+        OR: [{ firstResponseAt: null }, { unreadCount: { gt: 0 } }],
+      },
+    });
+
+    return {
+      period: parsedPeriod,
+      targetHours,
+      sampleSize: responseTimesMs.length,
+      medianMs,
+      medianLabel: medianMs != null ? formatDurationMs(medianMs) : null,
+      withinSlaPercent:
+        responseTimesMs.length > 0
+          ? Math.round((withinSla / responseTimesMs.length) * 100)
+          : null,
+      breachCount,
+      unansweredOver24h: unanswered,
+      slowest: slowest.slice(0, 8),
+      note: "Measures first team reply sent from Growvisi. Meta Business Agent replies in WhatsApp are not included.",
+    };
   }
 }

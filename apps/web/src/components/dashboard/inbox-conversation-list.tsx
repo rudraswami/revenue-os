@@ -17,6 +17,7 @@ export interface InboxConversationRow {
   contactPhone: string;
   unreadCount: number;
   lastMessageAt: string | null;
+  requiresHuman?: boolean;
   lead: { id: string; stage: string } | null;
   messages: Array<{ content: string | null }>;
 }
@@ -47,6 +48,9 @@ export function InboxConversationList({
   onRetry,
   onSelect,
   onNewMessage,
+  listFilter,
+  onListFilterChange,
+  handoffCount,
 }: {
   conversations: InboxConversationRow[];
   selectedId: string | null;
@@ -59,6 +63,9 @@ export function InboxConversationList({
   onRetry: () => void;
   onSelect: (id: string) => void;
   onNewMessage?: () => void;
+  listFilter?: "all" | "handoff";
+  onListFilterChange?: (f: "all" | "handoff") => void;
+  handoffCount?: number;
 }) {
   return (
     <aside className="flex h-full w-full shrink-0 flex-col border-r border-border/80 bg-[#f8f9ff] md:w-[min(100%,300px)] lg:w-[320px]">
@@ -105,6 +112,35 @@ export function InboxConversationList({
               placeholder="Search name or message…"
               className="h-8 rounded-lg border-border/80 bg-[#f8f9ff] pl-9 text-xs"
             />
+          </div>
+        )}
+        {onListFilterChange && (
+          <div className="mt-2 flex gap-1">
+            <button
+              type="button"
+              onClick={() => onListFilterChange("all")}
+              className={cn(
+                "rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition",
+                listFilter !== "handoff"
+                  ? "bg-accent text-white"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => onListFilterChange("handoff")}
+              className={cn(
+                "rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition",
+                listFilter === "handoff"
+                  ? "bg-amber-600 text-white"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              Handoff
+              {(handoffCount ?? 0) > 0 && ` (${handoffCount})`}
+            </button>
           </div>
         )}
       </div>
@@ -186,6 +222,11 @@ export function InboxConversationList({
                           )}
                         >
                           {formatStage(c.lead.stage)}
+                        </span>
+                      )}
+                      {c.requiresHuman && (
+                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">
+                          Handoff
                         </span>
                       )}
                       {c.unreadCount > 0 && (

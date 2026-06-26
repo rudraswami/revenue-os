@@ -1,14 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import { InsightActionButtons, type InsightAction } from "@/components/dashboard/insight-action-buttons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { canWrite } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   AlertCircle,
@@ -52,6 +54,9 @@ function InsightCardSkeleton() {
 
 export default function InsightsPage() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const canEdit = canWrite(role);
+  const qc = useQueryClient();
   const [period, setPeriod] = useState<MetricsPeriod>("30d");
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -60,14 +65,17 @@ export default function InsightsPage() {
       apiFetch<{
         period: MetricsPeriod;
         items: Array<{
+          id: string;
           type: string;
           title: string;
           body: string;
           href: string;
           actionLabel: string;
+          actions: InsightAction[];
         }>;
         actionLeads: Array<{
           id: string;
+          conversationId: string | null;
           name: string;
           score: number;
           stage: string;
@@ -79,6 +87,15 @@ export default function InsightsPage() {
         }>;
       }>(`/leads/metrics/insights?period=${period}`, { token: token ?? undefined }),
     enabled: !!token,
+  });
+
+  const createLeadTask = useMutation({
+    mutationFn: (leadId: string) =>
+      apiFetch(`/leads/metrics/insights/actions/lead-task/${leadId}`, {
+        method: "POST",
+        token: token ?? undefined,
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["tasks"] }),
   });
 
   const insights = data?.items ?? [];
@@ -170,12 +187,10 @@ export default function InsightsPage() {
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{item.type}</p>
                       <h3 className="mt-1 text-base font-bold">{item.title}</h3>
                       <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
-                      <Button asChild size="sm" variant="link" className="mt-3 h-auto p-0 text-accent">
-                        <Link href={item.href} className="inline-flex items-center gap-1">
-                          {item.actionLabel}
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
+                      <InsightActionButtons
+                        insightId={item.id}
+                        actions={item.actions}
+                      />
                     </div>
                   </div>
                 </DashboardPanel>
@@ -212,7 +227,11 @@ export default function InsightsPage() {
                         transition={{ delay: 0.25 + i * 0.06 }}
                       >
                         <Link
-                          href={`/dashboard/contacts`}
+                          href={
+                            lead.conversationId
+                              ? `/dashboard/inbox?c=${lead.conversationId}`
+                              : `/dashboard/contacts`
+                          }
                           className="block rounded-xl border border-border p-3.5 transition-all hover:border-accent/25 hover:shadow-sm"
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -260,6 +279,21 @@ export default function InsightsPage() {
                                 </span>
                               ))}
                             </div>
+                          )}
+                          {canEdit && lead.nextAction && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 h-7 w-full text-[10px]"
+                              disabled={createLeadTask.isPending}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                createLeadTask.mutate(lead.id);
+                              }}
+                            >
+                              Create task
+                            </Button>
                           )}
                         </Link>
                       </motion.div>
