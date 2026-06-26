@@ -49,7 +49,6 @@ export function InsightActionButtons({
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["insights"] });
-      void qc.invalidateQueries({ queryKey: ["home-insights"] });
       void qc.invalidateQueries({ queryKey: ["tasks"] });
       void qc.invalidateQueries({ queryKey: ["conversations"] });
       onActionDone?.();
@@ -65,7 +64,6 @@ export function InsightActionButtons({
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["insights"] });
-      void qc.invalidateQueries({ queryKey: ["home-insights"] });
       onActionDone?.();
     },
   });

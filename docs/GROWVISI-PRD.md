@@ -144,27 +144,35 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 
 | Group | Routes | Purpose |
 |-------|--------|---------|
-| **Overview** | `/dashboard` | Health, getting started, key metrics |
-| **Engage** | `/dashboard/inbox`, `/dashboard/pipeline` | Day-to-day sales work |
-| **Intelligence** | `/dashboard/analytics`, `/dashboard/ai`, `/dashboard/insights` | Performance + AI transparency |
-| **Automate** | `/dashboard/automations` | Server-side workflows (email, stage rules) |
+| **Overview** | `/dashboard` | Health, priorities, recommendations, key metrics |
+| **Engage** | `/dashboard/inbox`, `/dashboard/contacts`, `/dashboard/pipeline`, `/dashboard/tasks` | Day-to-day sales work |
+| **Intelligence** | `/dashboard/analytics`, `/dashboard/ai` | Performance + AI transparency |
+| **Automate** | `/dashboard/campaigns`, `/dashboard/automations` | Outbound + server-side workflows |
 | **Account** | Settings, Pricing (user menu) | Workspace, billing, WhatsApp, profile |
+
+**Enterprise IA rule:** No separate **Insights** nav page. Actionable recommendations (handoffs, unread, hot leads) live on **Home** (`#recommendations`). `/dashboard/insights` redirects to Home for legacy links and digest emails.
 
 ### 6.2 Page responsibilities
 
 | Page | User job | Must show | Must NOT |
 |------|----------|-----------|----------|
-| **Home** | "Is everything working?" | Setup progress, WhatsApp status, quick metrics | Long marketing copy |
+| **Home** | "What needs attention today?" | Setup progress, today's priorities, recommendations, hot leads, quick metrics | Duplicate Intel pages or long marketing copy |
 | **Conversations** | "What did customers say?" | Thread, timeline, assign, AI toggle | Promise Growvisi auto-replies |
 | **Pipeline** | "Where are deals?" | Kanban, score, deal value, hot badges | Email-style CRM fields |
 | **Analytics** | "How are we performing?" | Funnel, period filters | Vanity charts without actions |
-| **Intelligence** | "What does AI do?" | Capabilities, classification explainers | Black-box AI claims |
-| **Insights** | "What should I do?" | Stalled leads, handoffs, recommendations | Generic AI essays |
+| **Intelligence** | "What does AI do?" | Capabilities, classification explainers, recent activity | Black-box AI claims |
 | **Automations** | "What runs automatically?" | Honest server-side toggles | Fake toggles for Meta-owned behavior |
 | **Settings** | "Configure workspace" | WhatsApp, team, billing, context, API keys | Legal walls in nav |
 | **Pricing** | "Upgrade plan" | INR plans, trial status, Razorpay checkout | Stripe / USD |
 
-### 6.3 Onboarding flow
+### 6.3 Client loading & cache (web)
+
+- **Route `loading.tsx`** on dashboard routes — skeleton matches final layout (no full-page spinners).
+- **React Query** defaults: 60s stale, 5min GC; live data (inbox) 30s; metrics 120s (`apps/web/src/lib/query-config.ts`).
+- **`placeholderData: (prev) => prev`** on dashboard queries — tab/nav switches show cached data while revalidating.
+- **No duplicate Intel routes** — one insights API, consumed on Home only.
+
+### 6.4 Onboarding flow
 
 1. Register → workspace created (trial starts)
 2. **Soft gate:** explore dashboard OR connect WhatsApp (`onboardingDismissed` skip)

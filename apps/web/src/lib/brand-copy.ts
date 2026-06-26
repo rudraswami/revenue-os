@@ -25,7 +25,6 @@ export const NAV = {
   analytics: "Analytics",
   intelligence: "Intelligence",
   automations: "Automations",
-  insights: "Insights",
   settings: "Settings",
 } as const;
 

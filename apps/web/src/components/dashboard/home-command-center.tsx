@@ -215,8 +215,8 @@ export function HomeCommandCenter({
               delta={`${agentStatus?.classificationsToday ?? 0} today · ${convStats?.classifiedLeads ?? 0} leads scored`}
               icon={<Sparkles className="h-5 w-5" />}
               variant="violet"
-              href="/dashboard/insights"
-              actionLabel="View intelligence"
+              href="/dashboard/ai"
+              actionLabel="How Intelligence works"
               delay={0.18}
             />
           </div>

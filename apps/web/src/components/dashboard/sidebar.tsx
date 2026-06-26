@@ -17,7 +17,6 @@ import {
   Inbox,
   Kanban,
   LayoutDashboard,
-  Lightbulb,
   LogOut,
   MessageCircle,
   Megaphone,
@@ -72,7 +71,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
       { href: "/dashboard/ai", label: "Intelligence", icon: Bot },
-      { href: "/dashboard/insights", label: "Insights", icon: Lightbulb },
     ],
   },
   {

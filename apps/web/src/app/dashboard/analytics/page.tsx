@@ -13,6 +13,7 @@ import { CTA } from "@/lib/brand-copy";
 import { formatInr } from "@/lib/crm";
 import { CHART_ACCENT, chartTooltipStyle } from "@/lib/chart-theme";
 import { METRICS_PERIOD_OPTIONS, type MetricsPeriod } from "@/lib/metrics-period";
+import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { useAuthStore } from "@/stores/auth-store";
 import { BarChart3, IndianRupee, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
 import { useState } from "react";
@@ -24,7 +25,7 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<MetricsPeriod>("30d");
 
   const { data: funnel, isLoading: funnelLoading, isError: funnelError, refetch: refetchFunnel } = useQuery({
-    queryKey: ["funnel-metrics", period],
+    queryKey: QUERY_KEYS.funnel(period),
     queryFn: () =>
       apiFetch<{
         total: number;
@@ -34,10 +35,12 @@ export default function AnalyticsPage() {
         byStage: { stage: string; count: number }[];
       }>(`/leads/metrics/funnel?period=${period}`, { token: token ?? undefined }),
     enabled: !!token,
+    staleTime: STALE.metrics,
+    placeholderData: (prev) => prev,
   });
 
   const { data: convStats, isLoading: convLoading, isError: convError, refetch: refetchConv } = useQuery({
-    queryKey: ["conversation-stats", period],
+    queryKey: QUERY_KEYS.conversationStats(period),
     queryFn: () =>
       apiFetch<{
         totalConversations: number;
@@ -46,10 +49,12 @@ export default function AnalyticsPage() {
         period: MetricsPeriod;
       }>(`/conversations/stats?period=${period}`, { token: token ?? undefined }),
     enabled: !!token,
+    staleTime: STALE.metrics,
+    placeholderData: (prev) => prev,
   });
 
   const { data: revenue, isLoading: revenueLoading } = useQuery({
-    queryKey: ["revenue-metrics", period],
+    queryKey: QUERY_KEYS.revenue(period),
     queryFn: () =>
       apiFetch<{
         pipelineValueCents: number;
@@ -59,14 +64,18 @@ export default function AnalyticsPage() {
         byStage: Array<{ stage: string; count: number; valueCents: number }>;
       }>(`/leads/metrics/revenue?period=${period}`, { token: token ?? undefined }),
     enabled: !!token,
+    staleTime: STALE.metrics,
+    placeholderData: (prev) => prev,
   });
 
   const { data: whatsappAccounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
+    queryKey: QUERY_KEYS.whatsappAccounts,
     queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
       token: token ?? undefined,
     }),
     enabled: !!token,
+    staleTime: STALE.config,
+    placeholderData: (prev) => prev,
   });
 
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;

@@ -32,6 +32,7 @@ import { TrackingLinksCard } from "@/components/settings/tracking-links-card";
 import { WebhooksSettingsCard } from "@/components/settings/webhooks-settings-card";
 import WhatsappConnect from "@/components/settings/whatsapp-connect";
 import { WorkspaceOverview, WorkspaceOverviewLinks } from "@/components/settings/workspace-overview";
+import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { apiFetch } from "@/lib/api-client";
 import { logout } from "@/lib/auth-session";
 import { canManageTeam } from "@/lib/permissions";
@@ -350,10 +351,11 @@ export function SettingsShell() {
   const roleReady = !!role;
 
   const { data: billing, isLoading: billingLoading } = useQuery({
-    queryKey: ["billing-status"],
+    queryKey: QUERY_KEYS.billing,
     queryFn: () => apiFetch<{ planId: string }>("/billing", { token: token ?? undefined }),
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: STALE.config,
+    placeholderData: (prev) => prev,
   });
 
   const accessCtx = useMemo<SettingsAccessContext>(

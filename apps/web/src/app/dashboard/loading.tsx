@@ -1,0 +1,5 @@
+import { DashboardHomeSkeleton } from "@/components/ui/page-loading";
+
+export default function DashboardLoading() {
+  return <DashboardHomeSkeleton />;
+}

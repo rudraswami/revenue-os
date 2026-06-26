@@ -50,10 +50,10 @@ When evaluating any feature, score it:
 ## Dashboard IA (do not reorganize without PRD update)
 
 ```
-Overview  → Home
-Engage    → Conversations, Pipeline
-Intel     → Analytics, Intelligence, Insights
-Automate  → Automations
+Overview  → Home (includes recommendations / next-best-actions)
+Engage    → Conversations, Contacts, Pipeline, Tasks
+Intel     → Analytics, Intelligence
+Automate  → Campaigns, Automations
 Account   → Settings, Pricing (user menu)
 ```
 

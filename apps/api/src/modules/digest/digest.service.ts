@@ -110,7 +110,7 @@ export class DigestService {
           organizationName: org.name,
           dashboardUrl: `${appUrl}/dashboard`,
           inboxUrl: `${appUrl}/dashboard/inbox`,
-          insightsUrl: `${appUrl}/dashboard/insights`,
+          insightsUrl: `${appUrl}/dashboard#recommendations`,
           ...snapshot,
         });
 

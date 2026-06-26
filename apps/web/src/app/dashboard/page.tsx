@@ -19,15 +19,16 @@ import {
   Zap,
 } from "lucide-react";
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
+import { HomeRecommendationsPanel } from "@/components/dashboard/home-recommendations-panel";
 import { AiCapabilitiesBanner, OnboardingBanner } from "@/components/dashboard/status-banners";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
-import { InsightActionButtons, type InsightAction } from "@/components/dashboard/insight-action-buttons";
 import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
 import { TeamWorkloadPanel } from "@/components/dashboard/team-workload-panel";
 import { Button } from "@/components/ui/button";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch } from "@/lib/api-client";
 import { CTA, EYEBROW, NAV } from "@/lib/brand-copy";
+import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -79,17 +80,19 @@ export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
 
   const { data: funnel, isLoading: funnelLoading, isError: funnelError, refetch: refetchFunnel } = useQuery({
-    queryKey: ["funnel-metrics"],
+    queryKey: QUERY_KEYS.funnel("30d"),
     queryFn: () =>
       apiFetch<{ total: number; won: number; conversionRate: number; byStage: { stage: string; count: number }[] }>(
         "/leads/metrics/funnel?period=30d",
         { token: token ?? undefined },
       ),
     enabled: !!token,
+    staleTime: STALE.metrics,
+    placeholderData: (prev) => prev,
   });
 
   const { data: convStats, isLoading: convLoading, isError: convError, refetch: refetchConv } = useQuery({
-    queryKey: ["conversation-stats"],
+    queryKey: QUERY_KEYS.conversationStats(),
     queryFn: () =>
       apiFetch<{
         totalConversations: number;
@@ -100,10 +103,12 @@ export default function DashboardPage() {
         humanHandoffRecommended: number;
       }>("/conversations/stats", { token: token ?? undefined }),
     enabled: !!token,
+    staleTime: STALE.live,
+    placeholderData: (prev) => prev,
   });
 
   const { data: agentStatus } = useQuery({
-    queryKey: ["agent-status"],
+    queryKey: QUERY_KEYS.agentStatus,
     queryFn: () =>
       apiFetch<{
         classificationsToday: number;
@@ -114,38 +119,26 @@ export default function DashboardPage() {
         tasks: { open: number; inProgress: number; done: number };
       }>("/leads/agent-status", { token: token ?? undefined }),
     enabled: !!token,
+    staleTime: STALE.live,
     refetchInterval: 30_000,
+    placeholderData: (prev) => prev,
   });
 
   const { data: activityFeed } = useQuery({
-    queryKey: ["activity-feed"],
+    queryKey: QUERY_KEYS.activityFeed,
     queryFn: () =>
       apiFetch<Array<{ type: string; time: string; data: Record<string, unknown> }>>(
         "/leads/activity",
         { token: token ?? undefined },
       ),
     enabled: !!token,
+    staleTime: STALE.live,
     refetchInterval: 15_000,
-  });
-
-  const { data: homeInsights } = useQuery({
-    queryKey: ["home-insights"],
-    queryFn: () =>
-      apiFetch<{
-        items: Array<{
-          id: string;
-          type: string;
-          title: string;
-          body: string;
-          actions: InsightAction[];
-        }>;
-      }>("/leads/metrics/insights?period=30d", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: 60_000,
+    placeholderData: (prev) => prev,
   });
 
   const { data: slaSnapshot } = useQuery({
-    queryKey: ["sla-metrics", "30d"],
+    queryKey: QUERY_KEYS.sla("30d"),
     queryFn: () =>
       apiFetch<{
         medianLabel: string | null;
@@ -154,36 +147,41 @@ export default function DashboardPage() {
         targetHours: number;
       }>("/conversations/metrics/sla?period=30d", { token: token ?? undefined }),
     enabled: !!token,
-    staleTime: 120_000,
+    staleTime: STALE.metrics,
+    placeholderData: (prev) => prev,
   });
 
   const { data: revenueSnapshot } = useQuery({
-    queryKey: ["revenue-metrics", "30d"],
+    queryKey: QUERY_KEYS.revenue("30d"),
     queryFn: () =>
       apiFetch<{ pipelineValueCents: number }>("/leads/metrics/revenue?period=30d", {
         token: token ?? undefined,
       }),
     enabled: !!token,
-    staleTime: 120_000,
+    staleTime: STALE.metrics,
+    placeholderData: (prev) => prev,
   });
 
   const { data: teamWorkload } = useQuery({
-    queryKey: ["team-workload"],
+    queryKey: QUERY_KEYS.teamWorkload,
     queryFn: () =>
       apiFetch<{
         unassignedConversations: number;
         members: Array<{ name: string | null; email: string }>;
       }>("/organizations/team-workload", { token: token ?? undefined }),
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: STALE.dashboard,
+    placeholderData: (prev) => prev,
   });
 
   const { data: whatsappAccounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
+    queryKey: QUERY_KEYS.whatsappAccounts,
     queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
       token: token ?? undefined,
     }),
     enabled: !!token,
+    staleTime: STALE.config,
+    placeholderData: (prev) => prev,
   });
 
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
@@ -263,33 +261,7 @@ export default function DashboardPage() {
         <TeamWorkloadPanel compact />
       </div>
 
-      {(homeInsights?.items.length ?? 0) > 0 && (
-        <div className="mb-8">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Action needed</p>
-              <h2 className="text-lg font-bold">Top insights</h2>
-            </div>
-            <Button asChild variant="link" size="sm" className="h-auto p-0 text-accent">
-              <Link href="/dashboard/insights">View all</Link>
-            </Button>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {homeInsights!.items.slice(0, 3).map((item) => (
-              <DashboardPanel key={item.id} noPadding className="border-[#dce9ff]">
-                <div className="p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {item.type}
-                  </p>
-                  <h3 className="mt-1 text-sm font-bold leading-snug">{item.title}</h3>
-                  <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">{item.body}</p>
-                  <InsightActionButtons insightId={item.id} actions={item.actions} compact />
-                </div>
-              </DashboardPanel>
-            ))}
-          </div>
-        </div>
-      )}
+      <HomeRecommendationsPanel />
 
       {/* Two-column: AI Agent Status + Activity Feed */}
       <div className="mt-8 grid gap-6 lg:grid-cols-5">

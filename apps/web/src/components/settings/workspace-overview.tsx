@@ -5,6 +5,7 @@ import { Building2, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 import { ROLE_LABELS } from "@/lib/permissions";
+import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { useAuthStore } from "@/stores/auth-store";
 import type { MembershipRole } from "@growvisi/shared";
 import { cn } from "@/lib/utils";
@@ -25,13 +26,14 @@ export function WorkspaceOverview() {
   });
 
   const { data: billing } = useQuery({
-    queryKey: ["billing-status"],
+    queryKey: QUERY_KEYS.billing,
     queryFn: () =>
       apiFetch<{ planId: string; entitlements?: { hasAccess: boolean } }>("/billing", {
         token: token ?? undefined,
       }),
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: STALE.config,
+    placeholderData: (prev) => prev,
   });
 
   const planLabel =

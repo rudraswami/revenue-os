@@ -49,7 +49,7 @@ const features = [
     icon: UserRound,
     title: "Human handoff flags",
     description: "Complex deals flagged for your team — Meta may still reply in-chat.",
-    href: "/dashboard/insights",
+    href: "/dashboard/inbox?filter=handoff",
     stat: "Team alerts",
   },
   {

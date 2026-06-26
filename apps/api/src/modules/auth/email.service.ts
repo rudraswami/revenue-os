@@ -202,7 +202,7 @@ export class EmailService {
             &nbsp;
             <a href="${opts.inboxUrl}" style="font-size:13px;color:#006c49">Conversations</a>
             &nbsp;
-            <a href="${opts.insightsUrl}" style="font-size:13px;color:#006c49">Insights</a>
+            <a href="${opts.insightsUrl}" style="font-size:13px;color:#006c49">Recommendations</a>
           </p>
           <p style="font-size:11px;color:#888">Customer replies happen in WhatsApp via Meta Business Agent. Growvisi tracks pipeline and team actions. Turn off this email in Automations → Daily digest.</p>
         </div>
