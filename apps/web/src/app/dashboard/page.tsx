@@ -22,14 +22,12 @@ import { GettingStartedCard } from "@/components/dashboard/getting-started-card"
 import { AiCapabilitiesBanner, OnboardingBanner } from "@/components/dashboard/status-banners";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { InsightActionButtons, type InsightAction } from "@/components/dashboard/insight-action-buttons";
-import { MetricCard } from "@/components/dashboard/metric-card";
+import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
 import { TeamWorkloadPanel } from "@/components/dashboard/team-workload-panel";
-import { QueryErrorState } from "@/components/ui/query-state";
-import { MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch } from "@/lib/api-client";
 import { CTA, EYEBROW, NAV } from "@/lib/brand-copy";
-import { formatInr } from "@/lib/crm";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -169,6 +167,17 @@ export default function DashboardPage() {
     staleTime: 120_000,
   });
 
+  const { data: teamWorkload } = useQuery({
+    queryKey: ["team-workload"],
+    queryFn: () =>
+      apiFetch<{
+        unassignedConversations: number;
+        members: Array<{ name: string | null; email: string }>;
+      }>("/organizations/team-workload", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: 60_000,
+  });
+
   const { data: whatsappAccounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
     queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
@@ -178,7 +187,6 @@ export default function DashboardPage() {
   });
 
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
-  const unread = convStats?.unreadMessages ?? 0;
   const isLoading = funnelLoading || convLoading;
 
   return (
@@ -192,19 +200,6 @@ export default function DashboardPage() {
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
               Your WhatsApp revenue command center — AI is working behind the scenes.
             </p>
-            {unread > 0 && (
-              <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
-                {unread} unread — customers waiting
-              </p>
-            )}
-            {(slaSnapshot?.unansweredOver24h ?? 0) > 0 && (
-              <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-                <Clock className="h-3.5 w-3.5" />
-                {slaSnapshot!.unansweredOver24h} conversation
-                {slaSnapshot!.unansweredOver24h === 1 ? "" : "s"} waiting 24h+ for a reply
-              </p>
-            )}
           </div>
           <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5 rounded-xl border-[#dce9ff] bg-white">
             <Link href="/dashboard/inbox">
@@ -252,61 +247,19 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Metrics */}
-      {isLoading ? (
-        <MetricCardsSkeleton />
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <MetricCard
-            title="Conversations"
-            value={convStats?.totalConversations ?? 0}
-            delta={`${convStats?.inboundMessages ?? 0} customer messages`}
-            icon={<Inbox className="h-4 w-4" />}
-            delay={0}
-          />
-          <MetricCard
-            title="AI classifications"
-            value={convStats?.aiClassifications ?? 0}
-            delta={`${convStats?.classifiedLeads ?? 0} leads scored`}
-            icon={<Sparkles className="h-4 w-4" />}
-            delay={0.05}
-            highlight
-          />
-          <MetricCard
-            title="Pipeline leads"
-            value={funnel?.total ?? 0}
-            delta={funnel?.won ? `${funnel.won} won` : "Across all stages"}
-            trend={funnel?.won ? "up" : "neutral"}
-            icon={<Users className="h-4 w-4" />}
-            delay={0.1}
-          />
-          <MetricCard
-            title="Open pipeline"
-            value={formatInr(revenueSnapshot?.pipelineValueCents)}
-            delta="Deal value on open leads"
-            icon={<TrendingUp className="h-4 w-4" />}
-            delay={0.12}
-          />
-          <MetricCard
-            title="Needs your team"
-            value={convStats?.humanHandoffRecommended ?? 0}
-            delta={hasWhatsapp ? "Human handoff flagged" : "Connect WhatsApp first"}
-            icon={<Users className="h-4 w-4" />}
-            delay={0.15}
-          />
-          {slaSnapshot?.medianLabel && (
-            <MetricCard
-              title="Median reply time"
-              value={slaSnapshot.medianLabel}
-              delta={`Target ${slaSnapshot.targetHours}h · from Growvisi`}
-              icon={<Clock className="h-4 w-4" />}
-              delay={0.18}
-            />
-          )}
-        </div>
-      )}
+      {/* Command center metrics */}
+      <HomeCommandCenter
+        isLoading={isLoading}
+        convStats={convStats}
+        funnel={funnel}
+        revenueSnapshot={revenueSnapshot}
+        slaSnapshot={slaSnapshot}
+        agentStatus={agentStatus}
+        teamWorkload={teamWorkload}
+        hasWhatsapp={hasWhatsapp}
+      />
 
-      <div className="mb-8 rounded-2xl border border-[#dce9ff] bg-white px-4 py-3">
+      <div className="mb-8 mt-6">
         <TeamWorkloadPanel compact />
       </div>
 
