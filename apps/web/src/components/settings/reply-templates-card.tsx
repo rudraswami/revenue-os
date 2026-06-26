@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api-client";
+import { canManageTeam } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface ReplyTemplate {
@@ -16,6 +17,8 @@ interface ReplyTemplate {
 
 export function ReplyTemplatesCard() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const canEdit = canManageTeam(role);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<ReplyTemplate[] | null>(null);
 
@@ -81,47 +84,59 @@ export function ReplyTemplatesCard() {
                   onChange={(e) => updateTemplate(t.id, { title: e.target.value })}
                   placeholder="Template name"
                   className="h-8 text-sm"
+                  readOnly={!canEdit}
+                  disabled={!canEdit}
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => removeTemplate(t.id)}
-                  aria-label="Remove template"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeTemplate(t.id)}
+                    aria-label="Remove template"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <textarea
                 value={t.body}
                 onChange={(e) => updateTemplate(t.id, { body: e.target.value })}
                 placeholder="Message text…"
                 rows={2}
-                className="w-full resize-none rounded-lg border border-input bg-white px-3 py-2 text-sm"
+                readOnly={!canEdit}
+                disabled={!canEdit}
+                className="w-full resize-none rounded-lg border border-input bg-white px-3 py-2 text-sm disabled:opacity-80"
               />
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addTemplate}>
-          <Plus className="h-3.5 w-3.5" />
-          Add template
-        </Button>
-        {editing && (
-          <Button
-            type="button"
-            size="sm"
-            className="rounded-xl"
-            disabled={saveMutation.isPending}
-            onClick={() => saveMutation.mutate(templates)}
-          >
-            {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save templates"}
+      {canEdit ? (
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addTemplate}>
+            <Plus className="h-3.5 w-3.5" />
+            Add template
           </Button>
-        )}
-      </div>
+          {editing && (
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-xl"
+              disabled={saveMutation.isPending}
+              onClick={() => saveMutation.mutate(templates)}
+            >
+              {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save templates"}
+            </Button>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Only workspace admins can edit quick reply templates.
+        </p>
+      )}
     </div>
   );
 }

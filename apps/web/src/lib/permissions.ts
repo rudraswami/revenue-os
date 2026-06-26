@@ -16,6 +16,14 @@ export function canManageCampaigns(role: MembershipRole | null | undefined): boo
   return !!role && MANAGE_ROLES.includes(role);
 }
 
+export function canManageBilling(role: MembershipRole | null | undefined): boolean {
+  return canManageTeam(role);
+}
+
+export function canConnectWhatsapp(role: MembershipRole | null | undefined): boolean {
+  return canManageTeam(role);
+}
+
 export const ROLE_LABELS: Record<MembershipRole, string> = {
   OWNER: "Owner",
   ADMIN: "Admin",

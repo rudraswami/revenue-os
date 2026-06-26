@@ -52,6 +52,7 @@ export class WebhooksController {
   constructor(private readonly webhooks: WebhookDispatchService) {}
 
   @Get()
+  @Roles(...ADMIN_ROLES)
   list(@CurrentUser() user: JwtPayload) {
     return this.webhooks.list(user);
   }

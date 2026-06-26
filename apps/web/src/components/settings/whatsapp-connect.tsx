@@ -14,6 +14,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
+import { canConnectWhatsapp } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
@@ -52,6 +53,8 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 export default function WhatsappConnect() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const canConnect = canConnectWhatsapp(role);
   const onboarding = useAuthStore((s) => s.onboarding);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const queryClient = useQueryClient();
@@ -242,19 +245,25 @@ export default function WhatsappConnect() {
 
         <WhatsappConnectionHealth />
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-xl text-muted-foreground"
-          disabled={disconnectMutation.isPending}
-          onClick={() => {
-            if (confirm(`Disconnect ${displayAccount.displayPhoneNumber}?`)) {
-              disconnectMutation.mutate(displayAccount.id);
-            }
-          }}
-        >
-          Disconnect number
-        </Button>
+        {canConnect ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl text-muted-foreground"
+            disabled={disconnectMutation.isPending}
+            onClick={() => {
+              if (confirm(`Disconnect ${displayAccount.displayPhoneNumber}?`)) {
+                disconnectMutation.mutate(displayAccount.id);
+              }
+            }}
+          >
+            Disconnect number
+          </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Only workspace admins can connect or disconnect WhatsApp numbers.
+          </p>
+        )}
       </div>
     );
   }
@@ -269,7 +278,14 @@ export default function WhatsappConnect() {
             tracks pipeline.
           </p>
         </div>
-        <WhatsappConnectWizard />
+        {canConnect ? (
+          <WhatsappConnectWizard />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Only workspace admins can connect WhatsApp. You can view connection status once a number
+            is linked.
+          </p>
+        )}
         <WhatsappOnboardingHelp />
       </div>
     );
@@ -287,6 +303,7 @@ export default function WhatsappConnect() {
 
       {embeddedLive ? (
         <>
+        {canConnect ? (
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-6">
             <div className="flex items-start gap-4">
@@ -357,7 +374,14 @@ export default function WhatsappConnect() {
             <WhatsappEmbeddedSignupDiagnostics />
           </div>
         </div>
+        ) : (
+          <p className="rounded-xl border border-border/80 bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
+            Only workspace admins can connect WhatsApp. Ask an owner or admin to link your business
+            line.
+          </p>
+        )}
 
+        {canConnect && (
         <details className="rounded-2xl border border-border/80 bg-white">
           <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-muted-foreground hover:text-foreground">
             Alternative: connect with Meta API Setup token
@@ -366,10 +390,17 @@ export default function WhatsappConnect() {
             <WhatsappConnectWizard />
           </div>
         </details>
+        )}
         </>
       ) : (
         <>
-          <WhatsappConnectWizard />
+          {canConnect ? (
+            <WhatsappConnectWizard />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Only workspace admins can connect WhatsApp numbers.
+            </p>
+          )}
 
           <WhatsappOnboardingHelp />
         </>

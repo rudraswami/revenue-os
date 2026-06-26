@@ -195,6 +195,7 @@ export class OrganizationsController {
   }
 
   @Get("assignment-rules")
+  @Roles(...ADMIN_ROLES)
   getAssignmentRules(@CurrentUser() user: JwtPayload) {
     return this.assignments.getRules(user.organizationId);
   }
