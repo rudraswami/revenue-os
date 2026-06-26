@@ -1,27 +1,22 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen,
-  Building2,
   CreditCard,
   Key,
   Link2,
-  Loader2,
   Lock,
   LogOut,
-  Mail,
   MessageCircle,
   Sparkles,
   User,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { ApiKeysSettingsCard } from "@/components/settings/api-keys-settings-card";
@@ -31,9 +26,12 @@ import { BusinessContextCard } from "@/components/settings/business-context-card
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
+import { SettingsSection, SettingsTabLoader } from "@/components/settings/settings-section";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
 import { TrackingLinksCard } from "@/components/settings/tracking-links-card";
 import { WebhooksSettingsCard } from "@/components/settings/webhooks-settings-card";
+import WhatsappConnect from "@/components/settings/whatsapp-connect";
+import { WorkspaceOverview, WorkspaceOverviewLinks } from "@/components/settings/workspace-overview";
 import { apiFetch } from "@/lib/api-client";
 import { logout } from "@/lib/auth-session";
 import { canManageTeam } from "@/lib/permissions";
@@ -42,7 +40,7 @@ import {
   canAccessSettingsTabRole,
   getDefaultSettingsTab,
   getVisibleSettingsTabs,
-  parseSettingsTab,
+  normalizeSettingsTab,
   settingsTabPlanRequirement,
   SETTINGS_HASH_TO_TAB,
   type SettingsAccessContext,
@@ -50,16 +48,6 @@ import {
 } from "@/lib/settings-access";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
-
-const WhatsappConnect = dynamic(() => import("@/components/settings/whatsapp-connect"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center gap-2 rounded-2xl border border-[#dce9ff] bg-[#f8f9ff] p-8 text-sm text-muted-foreground">
-      <Loader2 className="h-4 w-4 animate-spin text-accent" />
-      Loading WhatsApp settings…
-    </div>
-  ),
-});
 
 interface SettingsTab {
   id: SettingsTabId;
@@ -70,16 +58,10 @@ interface SettingsTab {
 }
 
 const TAB_META: Record<SettingsTabId, SettingsTab> = {
-  workspace: {
-    id: "workspace",
-    label: "Workspace",
-    description: "Organization identity on Growvisi.",
-    icon: Building2,
-  },
   team: {
     id: "team",
-    label: "Team",
-    description: "Members, invites, and auto-assignment rules.",
+    label: "Team & workspace",
+    description: "Workspace identity, members, invites, and assignment rules.",
     icon: Users,
   },
   whatsapp: {
@@ -98,7 +80,7 @@ const TAB_META: Record<SettingsTabId, SettingsTab> = {
   intelligence: {
     id: "intelligence",
     label: "AI & replies",
-    description: "Business context for RAG and inbox quick replies.",
+    description: "Business context for Intelligence and inbox quick replies.",
     icon: BookOpen,
   },
   growth: {
@@ -124,7 +106,7 @@ const TAB_META: Record<SettingsTabId, SettingsTab> = {
 function resolveTabFromLocation(search: string, hash: string): SettingsTabId | null {
   const hashKey = hash.replace("#", "");
   if (hashKey && SETTINGS_HASH_TO_TAB[hashKey]) return SETTINGS_HASH_TO_TAB[hashKey];
-  return parseSettingsTab(new URLSearchParams(search).get("tab"));
+  return normalizeSettingsTab(new URLSearchParams(search).get("tab"));
 }
 
 function settingsTabRoleHint(tab: SettingsTabId): string {
@@ -133,7 +115,7 @@ function settingsTabRoleHint(tab: SettingsTabId): string {
     case "developers":
       return "owners and admins";
     case "whatsapp":
-      return "agents and above (connect/disconnect is admin-only)";
+      return "agents and above";
     case "intelligence":
     case "growth":
       return "managers and above";
@@ -154,7 +136,8 @@ function SettingsAccessPanel({
 
   if (!roleOk) {
     return (
-      <DashboardPanel className="text-center">
+      <SettingsSection>
+        <div className="text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
           <Lock className="h-5 w-5 text-muted-foreground" />
         </div>
@@ -166,21 +149,22 @@ function SettingsAccessPanel({
         <Button variant="outline" size="sm" className="mt-5 rounded-xl" asChild>
           <Link href="/dashboard/settings">Back to settings</Link>
         </Button>
-      </DashboardPanel>
+        </div>
+      </SettingsSection>
     );
   }
 
   if (planReq) {
     const planName = planReq === "growth" ? "Growth" : "Pro";
     return (
-      <DashboardPanel className="text-center">
+      <SettingsSection>
+        <div className="text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10">
           <Sparkles className="h-5 w-5 text-accent" />
         </div>
         <p className="mt-4 text-base font-semibold">{planName} plan required</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          {TAB_META[tab].label} is included on the {planName} plan and above. Upgrade to unlock
-          attribution links, API access, and more.
+          {TAB_META[tab].label} is included on the {planName} plan and above.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <Button size="sm" className="rounded-xl" asChild>
@@ -192,25 +176,184 @@ function SettingsAccessPanel({
             </Button>
           )}
         </div>
-      </DashboardPanel>
+        </div>
+      </SettingsSection>
     );
   }
 
   return null;
 }
 
+function SettingsTabContent({
+  tab,
+  isAdmin,
+  onLogout,
+}: {
+  tab: SettingsTabId;
+  isAdmin: boolean;
+  onLogout: () => void;
+}) {
+  switch (tab) {
+    case "team":
+      return (
+        <div className="space-y-5">
+          <SettingsSection
+            title="Workspace"
+            description="Organization on Growvisi — plan, seats, and your role."
+          >
+            <WorkspaceOverview />
+            <div className="mt-4">
+              <WorkspaceOverviewLinks />
+            </div>
+          </SettingsSection>
+          <SettingsSection
+            title="Team members"
+            description="People with access to this workspace and their roles."
+          >
+            <TeamMembersCard />
+          </SettingsSection>
+          {isAdmin ? (
+            <SettingsSection
+              title="Assignment rules"
+              description="Auto-route new conversations and handoffs to the right teammate."
+            >
+              <AssignmentRulesCard embedded />
+            </SettingsSection>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Assignment rules are managed by workspace admins.
+            </p>
+          )}
+        </div>
+      );
+    case "whatsapp":
+      return <WhatsappConnect />;
+    case "billing":
+      return (
+        <SettingsSection
+          title="Subscription & usage"
+          description="Your plan, seat limits, and Razorpay billing."
+          action={
+            <Button variant="outline" size="sm" className="rounded-xl" asChild>
+              <Link href="/dashboard/pricing">View all plans</Link>
+            </Button>
+          }
+        >
+          <BillingSettingsCard />
+        </SettingsSection>
+      );
+    case "intelligence":
+      return (
+        <div className="space-y-5">
+          <SettingsSection
+            title="Business context"
+            description="Pricing, policies, and FAQs — indexed for AI-assisted reply drafts in Conversations."
+          >
+            <BusinessContextCard embedded />
+          </SettingsSection>
+          <SettingsSection
+            title="Quick replies"
+            description="Saved templates your team picks when replying in Conversations."
+          >
+            <ReplyTemplatesCard embedded />
+          </SettingsSection>
+        </div>
+      );
+    case "growth":
+      return (
+        <SettingsSection
+          title="Attribution links"
+          description="Track which ads and campaigns drive WhatsApp conversations."
+        >
+          <TrackingLinksCard />
+        </SettingsSection>
+      );
+    case "developers":
+      return (
+        <SettingsSection
+          title="Developer access"
+          description="API keys and outbound webhooks for Pro workspaces."
+        >
+          <ApiKeysSettingsCard />
+          <div className="mt-6 border-t border-border/60 pt-5">
+            <WebhooksSettingsCard />
+          </div>
+        </SettingsSection>
+      );
+    case "account":
+      return (
+        <div className="space-y-5">
+          <SettingsSection
+            title="Profile"
+            description="Your name and identity across this workspace."
+          >
+            <ProfileSettingsCard />
+          </SettingsSection>
+          <SettingsSection title="Session" description="Sign out of Growvisi on this device.">
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" size="sm" asChild className="rounded-xl">
+                <Link href="/onboarding">Guided WhatsApp setup</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-xl text-muted-foreground"
+                onClick={onLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </Button>
+            </div>
+          </SettingsSection>
+          <SettingsSection title="Legal & help" description="Policies and how Growvisi works.">
+            <p className="text-sm text-muted-foreground">
+              <Link href="/privacy" className="font-medium text-accent underline hover:text-foreground">
+                Privacy
+              </Link>
+              {" · "}
+              <Link href="/terms" className="font-medium text-accent underline hover:text-foreground">
+                Terms
+              </Link>
+              {" · "}
+              <Link href="/data-deletion" className="font-medium text-accent underline hover:text-foreground">
+                Data deletion
+              </Link>
+              {" · "}
+              <Link href="/about" className="font-medium text-accent underline hover:text-foreground">
+                How Growvisi works
+              </Link>
+            </p>
+          </SettingsSection>
+          <SettingsSection
+            title="Danger zone"
+            description="Permanently delete your account and sole-owner workspace data."
+            contentClassName="p-0"
+            noPadding
+          >
+            <div className="p-5">
+              <DeleteAccountCard />
+            </div>
+          </SettingsSection>
+        </div>
+      );
+    default:
+      return <SettingsTabLoader />;
+  }
+}
+
 export function SettingsShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useAuthStore((s) => s.accessToken);
-  const organization = useAuthStore((s) => s.organization);
   const role = useAuthStore((s) => s.role);
   const isAdmin = canManageTeam(role);
+  const roleReady = !!role;
 
-  const { data: billing } = useQuery({
+  const { data: billing, isLoading: billingLoading } = useQuery({
     queryKey: ["billing-status"],
     queryFn: () => apiFetch<{ planId: string }>("/billing", { token: token ?? undefined }),
     enabled: !!token,
+    staleTime: 60_000,
   });
 
   const accessCtx = useMemo<SettingsAccessContext>(
@@ -227,8 +370,9 @@ export function SettingsShell() {
     [visibleTabIds],
   );
 
-  const tabFromUrl = parseSettingsTab(searchParams.get("tab")) ?? "workspace";
+  const tabFromUrl = normalizeSettingsTab(searchParams.get("tab")) ?? getDefaultSettingsTab(accessCtx);
   const [activeTab, setActiveTab] = useState<SettingsTabId>(tabFromUrl);
+  const [tabSwitching, setTabSwitching] = useState(false);
 
   const syncFromLocation = useCallback(() => {
     const resolved = resolveTabFromLocation(
@@ -245,22 +389,26 @@ export function SettingsShell() {
   }, [syncFromLocation]);
 
   useEffect(() => {
-    const resolved = parseSettingsTab(searchParams.get("tab")) ?? "workspace";
+    const resolved = normalizeSettingsTab(searchParams.get("tab")) ?? getDefaultSettingsTab(accessCtx);
     setActiveTab(resolved);
-  }, [searchParams]);
+    setTabSwitching(false);
+  }, [searchParams, accessCtx]);
 
-  const current = TAB_META[activeTab];
+  const current = TAB_META[activeTab] ?? TAB_META.team;
   const tabAllowed = canAccessSettingsTab(activeTab, accessCtx);
-  const showAccessPanel = !tabAllowed && !!role;
+  const showAccessPanel = !tabAllowed && roleReady;
+  const shellReady = roleReady && !billingLoading;
 
   function selectTab(id: SettingsTabId) {
-    if (!canAccessSettingsTab(id, accessCtx)) return;
+    if (!canAccessSettingsTab(id, accessCtx) || id === activeTab) return;
+    setTabSwitching(true);
     setActiveTab(id);
     const params = new URLSearchParams(window.location.search);
-    if (id === "workspace") params.delete("tab");
+    if (id === "team") params.delete("tab");
     else params.set("tab", id);
     const qs = params.toString();
     router.replace(qs ? `/dashboard/settings?${qs}` : "/dashboard/settings", { scroll: false });
+    requestAnimationFrame(() => setTabSwitching(false));
   }
 
   async function handleLogout() {
@@ -282,18 +430,20 @@ export function SettingsShell() {
           aria-label="Settings sections"
         >
           <ul className="sticky top-6 space-y-0.5 rounded-2xl border border-border/80 bg-white p-2 shadow-[0_4px_20px_rgb(11_28_48/0.04)]">
-            {visibleTabs.map((tab) => {
+            {(shellReady ? visibleTabs : visibleTabs.length > 0 ? visibleTabs : Object.values(TAB_META).slice(0, 6)).map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <li key={tab.id}>
                   <button
                     type="button"
                     onClick={() => selectTab(tab.id)}
+                    disabled={!shellReady}
                     className={cn(
                       "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition",
                       active
                         ? "bg-accent/10 text-accent shadow-sm"
                         : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                      !shellReady && "pointer-events-none opacity-60",
                     )}
                   >
                     <tab.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.25 : 2} />
@@ -345,124 +495,26 @@ export function SettingsShell() {
             </div>
           </div>
 
-          {showAccessPanel ? (
-            <SettingsAccessPanel tab={activeTab} ctx={accessCtx} />
-          ) : (
-            <>
-              {activeTab === "workspace" && tabAllowed && (
-                <DashboardPanel>
-                  <p className="text-base font-bold">{organization?.name ?? "Your workspace"}</p>
-                  <p className="mt-1 font-mono text-xs text-muted-foreground">{organization?.slug}</p>
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Switch workspaces from the sidebar when you belong to multiple organizations.
-                  </p>
-                </DashboardPanel>
-              )}
-
-              {activeTab === "team" && tabAllowed && (
-                <div className="space-y-6">
-                  <DashboardPanel>
-                    <TeamMembersCard />
-                  </DashboardPanel>
-                  {isAdmin && (
-                    <DashboardPanel>
-                      <AssignmentRulesCard />
-                    </DashboardPanel>
-                  )}
-                  {!isAdmin && (
-                    <p className="text-sm text-muted-foreground">
-                      Assignment rules are managed by workspace admins.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {activeTab === "whatsapp" && tabAllowed && <WhatsappConnect />}
-
-              {activeTab === "billing" && tabAllowed && (
-                <DashboardPanel>
-                  <BillingSettingsCard />
-                  <Button variant="outline" size="sm" asChild className="mt-4 rounded-xl">
-                    <Link href="/dashboard/pricing">View all plans</Link>
-                  </Button>
-                </DashboardPanel>
-              )}
-
-              {activeTab === "intelligence" && tabAllowed && (
-                <div className="space-y-6">
-                  <DashboardPanel>
-                    <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-                      <BookOpen className="h-4 w-4 text-accent" />
-                      Business context
-                    </div>
-                    <BusinessContextCard />
-                  </DashboardPanel>
-                  <DashboardPanel>
-                    <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-                      <Mail className="h-4 w-4 text-accent" />
-                      Quick replies
-                    </div>
-                    <ReplyTemplatesCard />
-                  </DashboardPanel>
-                </div>
-              )}
-
-              {activeTab === "growth" && tabAllowed && (
-                <DashboardPanel>
-                  <TrackingLinksCard />
-                </DashboardPanel>
-              )}
-
-              {activeTab === "developers" && tabAllowed && (
-                <DashboardPanel>
-                  <ApiKeysSettingsCard />
-                  <div className="mt-6 border-t border-[#dce9ff] pt-5">
-                    <WebhooksSettingsCard />
-                  </div>
-                </DashboardPanel>
-              )}
-
-              {activeTab === "account" && tabAllowed && (
-                <DashboardPanel>
-                  <ProfileSettingsCard />
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    <Button variant="outline" size="sm" asChild className="rounded-xl">
-                      <Link href="/onboarding">Guided WhatsApp setup</Link>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-xl text-muted-foreground"
-                      onClick={() => void handleLogout()}
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Sign out
-                    </Button>
-                  </div>
-                  <div className="mt-6 border-t border-[#dce9ff] pt-5">
-                    <p className="mb-3 text-xs text-muted-foreground">
-                      <Link href="/privacy" className="underline hover:text-foreground">
-                        Privacy
-                      </Link>
-                      {" · "}
-                      <Link href="/terms" className="underline hover:text-foreground">
-                        Terms
-                      </Link>
-                      {" · "}
-                      <Link href="/data-deletion" className="underline hover:text-foreground">
-                        Data deletion
-                      </Link>
-                      {" · "}
-                      <Link href="/about" className="underline hover:text-foreground">
-                        How Growvisi works
-                      </Link>
-                    </p>
-                    <DeleteAccountCard />
-                  </div>
-                </DashboardPanel>
-              )}
-            </>
-          )}
+          <div className="min-h-[480px]">
+            {!shellReady ? (
+              <SettingsTabLoader rows={5} />
+            ) : showAccessPanel ? (
+              <SettingsAccessPanel tab={activeTab} ctx={accessCtx} />
+            ) : (
+              <div
+                className={cn(
+                  "transition-opacity duration-150",
+                  tabSwitching && "opacity-60",
+                )}
+              >
+                <SettingsTabContent
+                  tab={activeTab}
+                  isAdmin={isAdmin}
+                  onLogout={() => void handleLogout()}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

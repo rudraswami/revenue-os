@@ -19,7 +19,7 @@ interface KnowledgeDoc {
   chunkCount?: number;
 }
 
-export function BusinessContextCard() {
+export function BusinessContextCard({ embedded = false }: { embedded?: boolean }) {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canManage = canManageCampaigns(role);
@@ -91,23 +91,34 @@ export function BusinessContextCard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
-          <BookOpen className="h-5 w-5" />
+      {!embedded && (
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+            <BookOpen className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Business context</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Pricing, policies, and FAQs — indexed for semantic search in smart reply drafts.
+              {indexedTotal > 0 && (
+                <span className="ml-1 inline-flex items-center gap-1 font-medium text-accent">
+                  <Sparkles className="h-3 w-3" />
+                  {indexedTotal} chunks indexed
+                </span>
+              )}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-semibold">Business context</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Pricing, policies, and FAQs — indexed for semantic search in smart reply drafts.
-            {indexedTotal > 0 && (
-              <span className="ml-1 inline-flex items-center gap-1 font-medium text-accent">
-                <Sparkles className="h-3 w-3" />
-                {indexedTotal} chunks indexed
-              </span>
-            )}
-          </p>
-        </div>
-      </div>
+      )}
+
+      {embedded && indexedTotal > 0 && (
+        <p className="text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1 font-medium text-accent">
+            <Sparkles className="h-3 w-3" />
+            {indexedTotal} chunks indexed for AI reply drafts
+          </span>
+        </p>
+      )}
 
       {canManage && (
         <div className="space-y-2 rounded-xl border border-border/80 bg-[#f8f9ff]/40 p-3">

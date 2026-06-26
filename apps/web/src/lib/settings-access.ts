@@ -2,7 +2,6 @@ import type { GrowvisiPlanId, MembershipRole } from "@growvisi/shared";
 import { canManageCampaigns, canManageTeam } from "@/lib/permissions";
 
 export type SettingsTabId =
-  | "workspace"
   | "team"
   | "whatsapp"
   | "billing"
@@ -11,8 +10,10 @@ export type SettingsTabId =
   | "developers"
   | "account";
 
+/** @deprecated Workspace tab merged into Team — kept for URL redirects */
+export type LegacySettingsTabId = SettingsTabId | "workspace";
+
 export const SETTINGS_TAB_ORDER: SettingsTabId[] = [
-  "workspace",
   "team",
   "whatsapp",
   "billing",
@@ -65,7 +66,6 @@ export function canAccessSettingsTabRole(
   role: MembershipRole | null | undefined,
 ): boolean {
   switch (tab) {
-    case "workspace":
     case "team":
     case "account":
       return !!role;
@@ -109,21 +109,26 @@ export function getVisibleSettingsTabs(ctx: SettingsAccessContext): SettingsTabI
 
 export function getDefaultSettingsTab(ctx: SettingsAccessContext): SettingsTabId {
   const visible = getVisibleSettingsTabs(ctx);
-  if (visible.includes("workspace")) return "workspace";
   return visible[0] ?? "account";
 }
 
-export function parseSettingsTab(raw: string | null): SettingsTabId | null {
-  if (!raw) return null;
+export function normalizeSettingsTab(raw: string | null): SettingsTabId | null {
+  if (!raw || raw === "workspace") return raw === "workspace" ? "team" : null;
   return SETTINGS_TAB_ORDER.includes(raw as SettingsTabId) ? (raw as SettingsTabId) : null;
 }
 
+export function parseSettingsTab(raw: string | null): SettingsTabId | null {
+  return normalizeSettingsTab(raw);
+}
+
 export const SETTINGS_HASH_TO_TAB: Record<string, SettingsTabId> = {
+  workspace: "team",
+  team: "team",
   whatsapp: "whatsapp",
   billing: "billing",
-  team: "team",
   developers: "developers",
   developer: "developers",
   growth: "growth",
   intelligence: "intelligence",
+  account: "account",
 };

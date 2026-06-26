@@ -40,7 +40,7 @@ interface MemberRow {
   role: string;
 }
 
-export function AssignmentRulesCard() {
+export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }) {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const isAdmin = canManageTeam(role);
@@ -109,25 +109,11 @@ export function AssignmentRulesCard() {
   }
 
   if (isLoading || !config) {
-    return <div className="mt-4 h-24 animate-pulse rounded-xl bg-muted" />;
+    return <div className="h-24 animate-pulse rounded-xl bg-muted" />;
   }
 
-  return (
-    <div className="mt-6 border-t border-[#dce9ff] pt-5">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bento-blue text-blue-700">
-          <GitBranch className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h4 className="text-sm font-bold">Assignment rules</h4>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Auto-assign new conversations and AI handoffs to agents using round-robin or fixed
-            owners. Unassigned threads stay in the inbox queue.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 space-y-4">
+  const body = (
+    <div className="space-y-4">
         <div className="flex flex-wrap gap-4">
           <label className="flex items-center gap-2 text-xs">
             <Switch
@@ -321,7 +307,26 @@ export function AssignmentRulesCard() {
         {!isAdmin && (
           <p className="text-[11px] text-muted-foreground">Ask an admin to change assignment rules.</p>
         )}
+    </div>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <div className="mt-6 border-t border-[#dce9ff] pt-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bento-blue text-blue-700">
+          <GitBranch className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h4 className="text-sm font-bold">Assignment rules</h4>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Auto-assign new conversations and AI handoffs to agents using round-robin or fixed
+            owners. Unassigned threads stay in the inbox queue.
+          </p>
+        </div>
       </div>
+      <div className="mt-4">{body}</div>
     </div>
   );
 }

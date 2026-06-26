@@ -15,7 +15,7 @@ interface ReplyTemplate {
   body: string;
 }
 
-export function ReplyTemplatesCard() {
+export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean }) {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canEdit = canManageTeam(role);
@@ -65,12 +65,14 @@ export function ReplyTemplatesCard() {
 
   return (
     <div className="space-y-3">
-      <div>
-        <p className="text-sm font-semibold">Quick reply templates</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Saved per workspace — pick them in Conversations when replying.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <p className="text-sm font-semibold">Quick reply templates</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Saved per workspace — pick them in Conversations when replying.
+          </p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="h-24 animate-pulse rounded-xl bg-muted" />

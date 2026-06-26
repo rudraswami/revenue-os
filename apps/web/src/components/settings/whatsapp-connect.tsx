@@ -185,9 +185,9 @@ export default function WhatsappConnect() {
 
   if (accountsLoading || configLoading) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-        Loading WhatsApp settings…
+      <div className="space-y-4" aria-busy="true">
+        <div className="h-[200px] animate-pulse rounded-2xl border border-border/80 bg-muted/40" />
+        <div className="h-24 animate-pulse rounded-2xl border border-border/80 bg-muted/30" />
       </div>
     );
   }
