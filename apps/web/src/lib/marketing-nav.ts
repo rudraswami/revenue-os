@@ -4,15 +4,12 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
-  Building2,
-  GraduationCap,
-  HeartPulse,
   MessageSquare,
-  ShoppingBag,
   Sparkles,
   Users,
 } from "lucide-react";
 import { PRODUCT_PAGES, type ProductPageSlug } from "./product-pages";
+import { SOLUTION_PAGES, type SolutionPageSlug } from "./solution-pages";
 
 export type NavLinkItem = {
   href: string;
@@ -22,6 +19,8 @@ export type NavLinkItem = {
   external?: boolean;
   /** Product preview slug for mega menu hover panel */
   productSlug?: ProductPageSlug;
+  /** Solution preview slug for mega menu hover panel */
+  solutionSlug?: SolutionPageSlug;
 };
 
 export type NavDropdown = {
@@ -29,8 +28,8 @@ export type NavDropdown = {
   label: string;
   items: NavLinkItem[];
   featured?: { href: string; label: string; description: string };
-  /** Wider panel with live preview (product menu) */
-  variant?: "default" | "product";
+  /** Wider panel with live preview (product / solutions menus) */
+  variant?: "default" | "product" | "solution";
 };
 
 export type NavEntry =
@@ -47,6 +46,19 @@ const productNavItems: NavLinkItem[] = (
     description: p.navDescription,
     icon: p.icon,
     productSlug: slug,
+  };
+});
+
+const solutionNavItems: NavLinkItem[] = (
+  ["real-estate", "education", "healthcare", "d2c"] as SolutionPageSlug[]
+).map((slug) => {
+  const s = SOLUTION_PAGES[slug];
+  return {
+    href: `/solutions/${slug}`,
+    label: s.navLabel,
+    description: s.navDescription,
+    icon: s.icon,
+    solutionSlug: slug,
   };
 });
 
@@ -103,31 +115,9 @@ export const MARKETING_NAV: NavEntry[] = [
     dropdown: {
       id: "solutions",
       label: "Solutions",
+      variant: "solution",
       items: [
-        {
-          href: "/#industries",
-          label: "Real estate",
-          description: "Plot visits & site-tour leads from WA",
-          icon: Building2,
-        },
-        {
-          href: "/#industries",
-          label: "Education",
-          description: "Admission leads scored by intent",
-          icon: GraduationCap,
-        },
-        {
-          href: "/#industries",
-          label: "Healthcare",
-          description: "Appointment requests prioritized",
-          icon: HeartPulse,
-        },
-        {
-          href: "/#industries",
-          label: "D2C & retail",
-          description: "Campaign click-to-WA → won orders",
-          icon: ShoppingBag,
-        },
+        ...solutionNavItems,
         {
           href: "/agencies",
           label: "Agencies & partners",
@@ -135,6 +125,11 @@ export const MARKETING_NAV: NavEntry[] = [
           icon: Users,
         },
       ],
+      featured: {
+        href: "/#industries",
+        label: "See all industries on homepage",
+        description: "Real estate, education, healthcare, D2C & more",
+      },
     },
   },
   { type: "link", href: "/#pricing", label: "Pricing" },

@@ -6,6 +6,7 @@ import { ArrowRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavDropdown, NavLinkItem } from "@/lib/marketing-nav";
 import { PRODUCT_PAGES, type ProductPageSlug } from "@/lib/product-pages";
+import { SOLUTION_PAGES, type SolutionPageSlug } from "@/lib/solution-pages";
 import {
   AnalyticsPreview,
   AutomationsPreview,
@@ -13,6 +14,7 @@ import {
   PipelinePreview,
   ScoringPreview,
 } from "./dashboard-previews";
+import { SolutionHeroVisual } from "./solution-visuals";
 
 const PRODUCT_PREVIEWS: Record<ProductPageSlug, React.ComponentType> = {
   conversations: InboxPreview,
@@ -20,6 +22,13 @@ const PRODUCT_PREVIEWS: Record<ProductPageSlug, React.ComponentType> = {
   pipeline: PipelinePreview,
   analytics: AnalyticsPreview,
   automations: AutomationsPreview,
+};
+
+const SOLUTION_PREVIEWS: Record<SolutionPageSlug, React.ComponentType<{ slug: SolutionPageSlug }>> = {
+  "real-estate": SolutionHeroVisual,
+  education: SolutionHeroVisual,
+  healthcare: SolutionHeroVisual,
+  d2c: SolutionHeroVisual,
 };
 
 const CLOSE_DELAY_MS = 180;
@@ -103,8 +112,10 @@ export function NavMegaMenu({
   onClose: () => void;
 }) {
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const firstSlug = menu.items.find((i) => i.productSlug)?.productSlug ?? null;
-  const [hoverSlug, setHoverSlug] = useState<ProductPageSlug | null>(firstSlug);
+  const firstProductSlug = menu.items.find((i) => i.productSlug)?.productSlug ?? null;
+  const firstSolutionSlug = menu.items.find((i) => i.solutionSlug)?.solutionSlug ?? null;
+  const [hoverProductSlug, setHoverProductSlug] = useState<ProductPageSlug | null>(firstProductSlug);
+  const [hoverSolutionSlug, setHoverSolutionSlug] = useState<SolutionPageSlug | null>(firstSolutionSlug);
 
   const scheduleClose = useCallback(() => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -118,9 +129,13 @@ export function NavMegaMenu({
   }, [onOpen]);
 
   const isProduct = menu.variant === "product";
-  const previewSlug = hoverSlug ?? firstSlug;
-  const previewProduct = previewSlug ? PRODUCT_PAGES[previewSlug] : null;
-  const PreviewComponent = previewSlug ? PRODUCT_PREVIEWS[previewSlug] : null;
+  const isSolution = menu.variant === "solution";
+  const previewProductSlug = hoverProductSlug ?? firstProductSlug;
+  const previewSolutionSlug = hoverSolutionSlug ?? firstSolutionSlug;
+  const previewProduct = previewProductSlug ? PRODUCT_PAGES[previewProductSlug] : null;
+  const previewSolution = previewSolutionSlug ? SOLUTION_PAGES[previewSolutionSlug] : null;
+  const ProductPreviewComponent = previewProductSlug ? PRODUCT_PREVIEWS[previewProductSlug] : null;
+  const SolutionPreviewComponent = previewSolutionSlug ? SOLUTION_PREVIEWS[previewSolutionSlug] : null;
 
   return (
     <div className="relative" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
@@ -143,21 +158,21 @@ export function NavMegaMenu({
         <div
           className={cn(
             "absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3",
-            isProduct ? "w-[min(100vw-2rem,720px)]" : "w-[min(100vw-2rem,480px)]",
+            isProduct ? "w-[min(100vw-2rem,720px)]" : isSolution ? "w-[min(100vw-2rem,720px)]" : "w-[min(100vw-2rem,480px)]",
           )}
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
         >
           <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_24px_80px_rgb(11_28_48/0.14)]">
-            {isProduct && previewProduct && PreviewComponent ? (
+            {isProduct && previewProduct && ProductPreviewComponent ? (
               <div className="grid lg:grid-cols-[1fr_280px]">
                 <div className="space-y-0.5 p-2">
                   {menu.items.map((item) => (
                     <NavItemLink
                       key={item.href}
                       item={item}
-                      active={item.productSlug === previewSlug}
-                      onHover={() => item.productSlug && setHoverSlug(item.productSlug)}
+                      active={item.productSlug === previewProductSlug}
+                      onHover={() => item.productSlug && setHoverProductSlug(item.productSlug)}
                       onClose={onClose}
                     />
                   ))}
@@ -168,7 +183,7 @@ export function NavMegaMenu({
                   </p>
                   <p className="mt-2 text-sm font-bold leading-snug">{previewProduct.headline}</p>
                   <div className="mt-4 rounded-xl border border-border/80 bg-white p-3 shadow-sm">
-                    <PreviewComponent />
+                    <ProductPreviewComponent />
                   </div>
                   <Link
                     href={`/product/${previewProduct.slug}`}
@@ -176,6 +191,45 @@ export function NavMegaMenu({
                     onClick={onClose}
                   >
                     Explore {previewProduct.navLabel}
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+            ) : isSolution && previewSolution && SolutionPreviewComponent && previewSolutionSlug ? (
+              <div className="grid lg:grid-cols-[1fr_280px]">
+                <div className="space-y-0.5 p-2">
+                  {menu.items.map((item) => (
+                    <NavItemLink
+                      key={item.href}
+                      item={item}
+                      active={item.solutionSlug === previewSolutionSlug}
+                      onHover={() => item.solutionSlug && setHoverSolutionSlug(item.solutionSlug)}
+                      onClose={onClose}
+                    />
+                  ))}
+                </div>
+                <div
+                  className="hidden border-l border-border p-4 lg:block"
+                  style={{
+                    background: `linear-gradient(135deg, ${previewSolution.accentColor}12, #f8f9ff)`,
+                  }}
+                >
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: previewSolution.accentColor }}
+                  >
+                    {previewSolution.navLabel}
+                  </p>
+                  <p className="mt-2 text-sm font-bold leading-snug line-clamp-3">{previewSolution.headline}</p>
+                  <div className="mt-4 rounded-xl border border-white/20 bg-gradient-to-br from-[#0b1c30] to-[#132a45] p-3 shadow-sm">
+                    <SolutionPreviewComponent slug={previewSolutionSlug} />
+                  </div>
+                  <Link
+                    href={`/solutions/${previewSolution.slug}`}
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                    onClick={onClose}
+                  >
+                    Explore {previewSolution.navLabel}
                     <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
