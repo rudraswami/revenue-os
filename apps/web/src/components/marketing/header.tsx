@@ -12,7 +12,7 @@ const navLinks = [
   { href: "#engine", label: "How it works" },
   { href: "#industries", label: "Solutions" },
   { href: "#pricing", label: "Pricing" },
-  { href: "#case-study", label: "Customers" },
+  { href: "/agencies", label: "Agencies", external: true },
 ];
 
 export function MarketingHeader() {
@@ -35,7 +35,7 @@ export function MarketingHeader() {
       >
         <Sparkles className="h-3.5 w-3.5 text-[#6cf8bb]" />
         <span>
-          New: AI lead scoring, contacts CRM &amp; WhatsApp campaigns — all in one revenue OS
+          Meta replies in chat · Growvisi tracks pipeline ₹ — 14-day trial, 500 leads
         </span>
         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
       </Link>
@@ -52,15 +52,25 @@ export function MarketingHeader() {
           <Logo />
 
           <nav className="hidden items-center gap-8 md:flex">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="relative text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground after:absolute after:-bottom-1.5 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-accent after:transition-all hover:after:w-full"
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) =>
+              "external" in link && link.external ? (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="relative text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground after:absolute after:-bottom-1.5 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-accent after:transition-all hover:after:w-full"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="relative text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground after:absolute after:-bottom-1.5 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-accent after:transition-all hover:after:w-full"
+                >
+                  {link.label}
+                </a>
+              ),
+            )}
           </nav>
 
           <div className="hidden items-center gap-5 md:flex">
@@ -96,16 +106,27 @@ export function MarketingHeader() {
           )}
         >
           <nav className="flex flex-col gap-4">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-[15px] font-medium"
-                onClick={() => setOpen(false)}
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) =>
+              "external" in link && link.external ? (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-[15px] font-medium"
+                  onClick={() => setOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-[15px] font-medium"
+                  onClick={() => setOpen(false)}
+                >
+                  {link.label}
+                </a>
+              ),
+            )}
             <div className="flex flex-col gap-3 border-t border-border pt-4">
               <Link href="/login" onClick={() => setOpen(false)}>
                 {CTA.signIn}

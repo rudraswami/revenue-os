@@ -19,6 +19,8 @@ import {
   Zap,
 } from "lucide-react";
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
+import { RevenueSetupStrip } from "@/components/dashboard/revenue-setup-strip";
+import { UsageMeterCard } from "@/components/dashboard/usage-meter-card";
 import { HomeRecommendationsPanel } from "@/components/dashboard/home-recommendations-panel";
 import { HomeConnectionHealthBanner } from "@/components/dashboard/home-connection-health-banner";
 import { AiCapabilitiesBanner, OnboardingBanner } from "@/components/dashboard/status-banners";
@@ -29,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch } from "@/lib/api-client";
 import { CTA, EYEBROW, NAV } from "@/lib/brand-copy";
+import { POSITIONING } from "@/lib/gtm-copy";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
@@ -201,7 +204,7 @@ export default function DashboardPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-accent">{EYEBROW.overview}</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">{timeGreeting(user?.name)}</h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Your WhatsApp revenue command center — AI is working behind the scenes.
+              {POSITIONING.oneLiner} — classify, assign, and measure pipeline ₹.
             </p>
           </div>
           <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5 rounded-xl border-[#dce9ff] bg-white">
@@ -215,8 +218,12 @@ export default function DashboardPage() {
 
       <OnboardingBanner />
       <AiCapabilitiesBanner />
-      <HomeConnectionHealthBanner />
+      <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_280px]">
+        <HomeConnectionHealthBanner />
+        <UsageMeterCard />
+      </div>
       <GettingStartedCard />
+      <RevenueSetupStrip hasWhatsapp={hasWhatsapp} />
 
       {(funnelError || convError) && !isLoading && (
         <div className="mb-8">

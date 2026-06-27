@@ -1,0 +1,121 @@
+"use client";
+
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight } from "lucide-react";
+import { apiFetch } from "@/lib/api-client";
+import { useAuthStore } from "@/stores/auth-store";
+import { cn } from "@/lib/utils";
+
+interface BillingUsage {
+  planId: string;
+  planName: string;
+  usage: { whatsappNumbers: number; teamMembers: number; monthlyLeads: number };
+  limits: { whatsappNumbers: number; teamMembers: number; monthlyLeads: number; agencyClients: number };
+  entitlements?: { trialEndsAt: string | null; trialExpired: boolean };
+}
+
+function MeterBar({ used, limit, label }: { used: number; limit: number; label: string }) {
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const hot = pct >= 85;
+
+  return (
+    <div>
+      <div className="mb-1 flex justify-between text-xs">
+        <span className="font-medium text-muted-foreground">{label}</span>
+        <span className={cn("font-semibold", hot && "text-amber-800")}>
+          {used.toLocaleString("en-IN")} / {limit.toLocaleString("en-IN")}
+        </span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn("h-full rounded-full transition-all", hot ? "bg-amber-500" : "bg-accent")}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function UsageMeterCard({ compact }: { compact?: boolean }) {
+  const token = useAuthStore((s) => s.accessToken);
+
+  const { data } = useQuery({
+    queryKey: ["billing-status"],
+    queryFn: () => apiFetch<BillingUsage>("/billing", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: 120_000,
+  });
+
+  if (!data) return null;
+
+  const planLabel =
+    data.planId === "starter"
+      ? "Solo"
+      : data.planId === "growth"
+        ? "Team"
+        : data.planId === "pro"
+          ? "Operator"
+          : data.planName;
+
+  if (compact) {
+    const leadPct =
+      data.limits.monthlyLeads > 0
+        ? Math.round((data.usage.monthlyLeads / data.limits.monthlyLeads) * 100)
+        : 0;
+    return (
+      <Link
+        href="/dashboard/pricing"
+        className="flex items-center justify-between gap-2 rounded-xl border border-[#dce9ff] bg-white px-3 py-2 text-xs hover:bg-[#f8f9ff]"
+      >
+        <span className="text-muted-foreground">
+          {planLabel} · {data.usage.monthlyLeads}/{data.limits.monthlyLeads} leads this month
+        </span>
+        <span className={cn("font-semibold", leadPct >= 85 ? "text-amber-800" : "text-accent")}>
+          {leadPct}%
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-[#dce9ff] bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent">Plan usage</p>
+          <p className="text-sm font-bold">{planLabel}</p>
+        </div>
+        <Link
+          href="/dashboard/pricing"
+          className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+        >
+          Plans
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className="space-y-3">
+        <MeterBar
+          used={data.usage.monthlyLeads}
+          limit={data.limits.monthlyLeads}
+          label="Classified leads (this month)"
+        />
+        <MeterBar
+          used={data.usage.teamMembers}
+          limit={data.limits.teamMembers}
+          label="Team members"
+        />
+        <MeterBar
+          used={data.usage.whatsappNumbers}
+          limit={data.limits.whatsappNumbers}
+          label="WhatsApp numbers"
+        />
+      </div>
+      {data.entitlements?.trialEndsAt && data.planId === "trial" && (
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Trial ends {new Date(data.entitlements.trialEndsAt).toLocaleDateString("en-IN")} · 500 lead
+          cap applies during trial
+        </p>
+      )}
+    </div>
+  );
+}

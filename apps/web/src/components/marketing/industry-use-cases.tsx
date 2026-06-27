@@ -12,12 +12,12 @@ import {
 import { SectionHeader } from "./section-header";
 
 const industries = [
-  { icon: Building2, title: "Real Estate", example: "Plot visits booked from WhatsApp" },
-  { icon: GraduationCap, title: "Education", example: "Admission leads scored by intent" },
-  { icon: HeartPulse, title: "Healthcare", example: "Appointment requests prioritized" },
-  { icon: Car, title: "Automotive", example: "Test drives scheduled automatically" },
-  { icon: Paintbrush, title: "Interior Design", example: "Consultation pipeline tracked" },
-  { icon: ShoppingBag, title: "D2C", example: "Cart abandoners re-engaged on WA" },
+  { icon: Building2, title: "Real Estate", example: "Plot visits tracked from first WhatsApp ping" },
+  { icon: GraduationCap, title: "Education", example: "Admission leads scored by intent in Inbox" },
+  { icon: HeartPulse, title: "Healthcare", example: "Appointment requests prioritized on Pipeline" },
+  { icon: Car, title: "Automotive", example: "Test-drive inquiries assigned to sales reps" },
+  { icon: Paintbrush, title: "Interior Design", example: "Consultation pipeline with deal ₹ values" },
+  { icon: ShoppingBag, title: "D2C", example: "Campaign click-to-WA attributed to won orders" },
 ];
 
 export function IndustryUseCases() {

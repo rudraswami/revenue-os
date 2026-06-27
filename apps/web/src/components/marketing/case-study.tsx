@@ -6,13 +6,13 @@ import { AnimatedCounter } from "./animated-counter";
 import { SectionHeader } from "./section-header";
 
 const before = ["Leads trapped on personal phones", "No pipeline visibility", "Follow-ups missed daily"];
-const after = ["Shared team inbox", "AI qualifies every lead", "Pipeline updates automatically"];
+const after = ["Shared team inbox", "AI classifies every inbound", "Pipeline & tasks stay in sync"];
 
 const stats = [
-  { value: 35, suffix: "%", label: "Faster response" },
-  { value: 22, suffix: "%", label: "Higher conversion" },
-  { value: 90, suffix: "%", label: "Fewer missed follow-ups" },
-  { value: 40, suffix: "%", label: "Team productivity" },
+  { value: 35, suffix: "%", label: "Faster first response*", disclaimer: true },
+  { value: 22, suffix: "%", label: "Higher win rate*", disclaimer: true },
+  { value: 90, suffix: "%", label: "Fewer missed follow-ups*", disclaimer: true },
+  { value: 40, suffix: "%", label: "Less admin time*", disclaimer: true },
 ];
 
 export function CaseStudy() {
@@ -22,9 +22,9 @@ export function CaseStudy() {
 
       <div className="relative mx-auto max-w-[1100px] px-6 lg:px-8">
         <SectionHeader
-          label="Case study"
+          label="Illustrative pilot"
           title="GreenSpace Properties"
-          subtitle="A 12-agent real estate team in Bangalore — 200+ WhatsApp leads per week."
+          subtitle="Example workflow for a 12-agent real estate team in Bangalore — 200+ WhatsApp leads per week. Replace with your pilot metrics."
         />
 
         <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-stretch">
@@ -90,6 +90,11 @@ export function CaseStudy() {
             </motion.div>
           ))}
         </div>
+
+        <p className="mt-6 text-center text-[11px] text-muted-foreground">
+          * Illustrative outcomes from early pilot design — track your own before/after win rate and pipeline ₹
+          in Growvisi Analytics.
+        </p>
       </div>
     </section>
   );

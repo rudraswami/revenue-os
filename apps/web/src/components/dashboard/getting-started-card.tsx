@@ -51,7 +51,7 @@ export function GettingStartedCard() {
       title: "Connect WhatsApp",
       description: "Link your business number — takes about 2 minutes.",
       done: progress.whatsappConnected,
-      href: "/onboarding",
+      href: "/dashboard/connection",
       action: "Connect",
       icon: MessageSquare,
     },
@@ -67,10 +67,10 @@ export function GettingStartedCard() {
     {
       id: "ai",
       title: "See AI classify a lead",
-      description: "Growvisi scores intent and suggests a pipeline stage.",
+      description: "Open Inbox — intent score and suggested stage on the thread.",
       done: progress.aiClassified,
-      href: "/dashboard/ai",
-      action: "View Intelligence",
+      href: "/dashboard/inbox",
+      action: CTA.openConversations,
       icon: Bot,
     },
     {

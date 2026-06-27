@@ -3,8 +3,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { UsageMeterCard } from "@/components/dashboard/usage-meter-card";
+import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { PricingPlansGrid } from "@/components/pricing/pricing-plans-grid";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { PRICING_FOOTNOTES } from "@/lib/pricing-plans";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface BillingStatus {
@@ -72,7 +75,9 @@ export default function PricingPage() {
       )}
 
       {data && (
-        <div className="mb-8 rounded-2xl border border-border/80 bg-[#f8f9ff]/60 px-5 py-4 text-sm">
+        <div className="mb-8 space-y-4">
+          <UsageMeterCard />
+          <div className="rounded-2xl border border-border/80 bg-[#f8f9ff]/60 px-5 py-4 text-sm">
           <p>
             You&apos;re on <strong>{data.planName}</strong>
             <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
@@ -94,6 +99,7 @@ export default function PricingPage() {
               Your trial has ended — choose a plan below to restore access.
             </p>
           )}
+          </div>
         </div>
       )}
 
@@ -119,6 +125,15 @@ export default function PricingPage() {
             : "Checkout failed. Try again or contact support@growvisi.in."}
         </p>
       )}
+
+      <div className="mt-10">
+        <RoiCalculator />
+      </div>
+      <ul className="mt-6 space-y-2 text-[12px] text-muted-foreground">
+        {PRICING_FOOTNOTES.map((note) => (
+          <li key={note}>· {note}</li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -58,6 +58,12 @@ export function PricingPlansGrid({
               </span>
             )}
             <h3 className="text-lg font-bold">{plan.name}</h3>
+            {"tagline" in plan && plan.tagline && (
+              <p className="mt-1 text-[13px] font-medium text-accent">{plan.tagline}</p>
+            )}
+            {"forWho" in plan && plan.forWho && (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{plan.forWho}</p>
+            )}
             <p className="mt-3 text-3xl font-bold tracking-tight">
               {plan.custom ? (
                 "Custom"

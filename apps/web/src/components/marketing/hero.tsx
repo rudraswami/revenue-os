@@ -4,36 +4,36 @@ import Link from "next/link";
 import {
   ArrowRight,
   BarChart3,
-  Bot,
   CheckCircle2,
+  IndianRupee,
   MessageCircle,
   Shield,
   ShieldCheck,
   Sparkles,
-  Star,
   Tag,
   Users,
   Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { CTA } from "@/lib/brand-copy";
+import { POSITIONING } from "@/lib/gtm-copy";
 import { HeroIllustration } from "./illustrations/hero-illustration";
 
 const logos = ["Real Estate", "EdTech", "Healthcare", "D2C", "Automotive", "Consulting"];
 
 const capabilities = [
-  { icon: Bot, label: "AI lead scoring" },
   { icon: MessageCircle, label: "Shared WhatsApp inbox" },
-  { icon: BarChart3, label: "Revenue pipeline" },
-  { icon: Users, label: "Team & tasks" },
-  { icon: Tag, label: "CRM & contacts" },
-  { icon: Zap, label: "Smart automations" },
+  { icon: Sparkles, label: "AI intent & lead score" },
+  { icon: BarChart3, label: "Pipeline in ₹" },
+  { icon: Users, label: "Team assign & tasks" },
+  { icon: IndianRupee, label: "Razorpay → Won" },
+  { icon: Zap, label: "Morning digest on WA" },
 ];
 
 const stats = [
-  { value: "10x", label: "faster lead response" },
-  { value: "40%", label: "higher close rate" },
-  { value: "2min", label: "setup time" },
+  { value: "500", label: "leads on trial" },
+  { value: "14d", label: "free trial" },
+  { value: "<15m", label: "to first classified lead" },
 ];
 
 export function Hero() {
@@ -49,24 +49,27 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* Eyebrow badge */}
           <span className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-gradient-to-r from-bento-mint/60 to-white px-4 py-2 text-[13px] font-semibold text-foreground shadow-sm">
             <ShieldCheck className="h-4 w-4 text-accent" />
-            WhatsApp-native revenue OS · Official Meta APIs
-            <span className="ml-1 flex h-2 w-2">
-              <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-accent/40" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-            </span>
+            WhatsApp revenue layer · Official Meta APIs
           </span>
 
-          {/* Main headline */}
-          <h1 className="mx-auto max-w-[900px] text-foreground" style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.08, fontFamily: "var(--font-sans)" }}>
-            Your AI agent that turns
+          <h1
+            className="mx-auto max-w-[900px] text-foreground"
+            style={{
+              fontSize: "clamp(2.5rem, 5vw, 3.5rem)",
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
+              lineHeight: 1.08,
+              fontFamily: "var(--font-sans)",
+            }}
+          >
+            Meta replies in WhatsApp.
             <br />
-            WhatsApp chats into{" "}
+            Growvisi tracks every deal in{" "}
             <span className="relative">
               <span className="bg-gradient-to-r from-accent via-[#0aa06a] to-[#128C7E] bg-clip-text text-transparent">
-                closed deals
+                ₹
               </span>
               <motion.span
                 className="absolute -bottom-1 left-0 h-1 rounded-full bg-gradient-to-r from-accent to-[#128C7E]"
@@ -78,12 +81,9 @@ export function Hero() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-[680px] text-lg leading-relaxed text-muted-foreground md:text-xl">
-            Growvisi&apos;s AI agent classifies, scores, tags, and routes every WhatsApp lead into a shared
-            revenue pipeline — so your team closes{" "}
-            <span className="font-semibold text-foreground">10x faster</span>.
+            {POSITIONING.subhead}
           </p>
 
-          {/* CTA buttons */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/register"
@@ -98,27 +98,14 @@ export function Hero() {
             </Link>
           </div>
 
-          {/* Trust signals */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="flex">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                ))}
-              </span>
-              Loved by WhatsApp sellers
-            </span>
-            <span className="hidden h-3 w-px bg-border sm:block" />
             <span className="inline-flex items-center gap-1 font-medium text-foreground">
               <Shield className="h-3 w-3 text-accent" />
-              14-day free trial
+              {POSITIONING.trialNote}
             </span>
-            <span className="hidden h-3 w-px bg-border sm:block" />
-            <span>No credit card required</span>
           </div>
         </motion.div>
 
-        {/* Stats strip */}
         <motion.div
           className="mx-auto mt-10 flex max-w-lg justify-center gap-8 md:gap-12"
           initial={{ opacity: 0, y: 16 }}
@@ -139,7 +126,6 @@ export function Hero() {
           ))}
         </motion.div>
 
-        {/* Capability chips */}
         <motion.div
           className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
           initial={{ opacity: 0 }}
@@ -160,7 +146,6 @@ export function Hero() {
           ))}
         </motion.div>
 
-        {/* Product preview */}
         <motion.div
           className="mt-10 sm:mt-12 md:mt-14"
           initial={{ opacity: 0, y: 40 }}
@@ -172,7 +157,6 @@ export function Hero() {
             <div className="relative rounded-2xl border border-border bg-white p-1 shadow-[0_24px_80px_rgb(11_28_48/0.12)]">
               <HeroIllustration />
             </div>
-            {/* Floating badge */}
             <motion.div
               className="absolute -right-4 -top-4 rounded-xl border border-accent/20 bg-white px-3 py-2 shadow-lg md:-right-6 md:-top-6"
               initial={{ opacity: 0, scale: 0.8, rotate: -6 }}
@@ -182,12 +166,11 @@ export function Hero() {
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-accent" />
                 <div>
-                  <p className="text-xs font-bold">AI Agent Active</p>
-                  <p className="text-[10px] text-muted-foreground">Classifying leads now</p>
+                  <p className="text-xs font-bold">Lead classified</p>
+                  <p className="text-[10px] text-muted-foreground">High intent · Assigned to Priya</p>
                 </div>
               </div>
             </motion.div>
-            {/* Floating badge left */}
             <motion.div
               className="absolute -bottom-3 -left-3 rounded-xl border border-border bg-white px-3 py-2 shadow-lg md:-bottom-4 md:-left-5"
               initial={{ opacity: 0, scale: 0.8, rotate: 6 }}
@@ -197,24 +180,27 @@ export function Hero() {
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-accent" />
                 <div>
-                  <p className="text-xs font-bold">3 deals won today</p>
-                  <p className="text-[10px] text-muted-foreground">₹2.4L pipeline value</p>
+                  <p className="text-xs font-bold">Revenue pulse</p>
+                  <p className="text-[10px] text-muted-foreground">Pipeline ₹ · Won this month</p>
                 </div>
               </div>
             </motion.div>
           </div>
         </motion.div>
 
-        {/* Social proof strip */}
+        <p className="mx-auto mt-8 max-w-xl text-[12px] leading-relaxed text-muted-foreground">
+          {POSITIONING.metaNote}
+        </p>
+
         <motion.div
           className="mt-10 border-t border-border/60 pt-10 md:mt-14"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7, duration: 0.6 }}
         >
-          <p className="text-lg font-bold text-foreground">Sales teams across India trust Growvisi</p>
+          <p className="text-lg font-bold text-foreground">Built for Indian teams that sell on WhatsApp</p>
           <p className="mt-1.5 text-[14px] text-muted-foreground">
-            Built for teams that close deals on WhatsApp — not just send broadcasts
+            Real estate, education, healthcare, D2C — same pipeline engine, your industry workflow
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-70 grayscale">
             {logos.map((name) => (

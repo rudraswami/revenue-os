@@ -356,6 +356,8 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 
 ## 11. Competitive positioning
 
+**GTM framework:** See [`docs/GROWVISI-GTM.md`](./GROWVISI-GTM.md) — outcome tiers (Solo / Team / Operator), two-door GTM (SMB vs agency), activation north star, honest Meta boundary.
+
 | Alternative | Growvisi advantage |
 |-------------|------------------|
 | WATI / Interakt / AiSensy | Revenue layer on Meta replies — pipeline, AI classify, team assign, INR pricing |
@@ -393,6 +395,7 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 
 ### B. Related docs
 
+- [GTM framework (Solo / Team / Operator)](./GROWVISI-GTM.md)
 - [Product narrative](./GROWVISI-PRODUCT-NARRATIVE.md)
 - [System architecture](./architecture/01-system-overview.md)
 - [AI orchestration](./architecture/03-ai-orchestration.md)

@@ -13,7 +13,6 @@ import {
   ChevronUp,
   Contact,
   CreditCard,
-  Handshake,
   HelpCircle,
   Inbox,
   Kanban,
@@ -27,6 +26,7 @@ import {
 } from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { Logo } from "@/components/marketing/logo";
+import { UsageMeterCard } from "@/components/dashboard/usage-meter-card";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import {
   DropdownMenu,
@@ -60,7 +60,6 @@ function buildNavGroups(opts: { showAgency: boolean }): NavGroup[] {
     ...(opts.showAgency
       ? [{ href: "/dashboard/agency", labelKey: "nav.agency", icon: Building2 }]
       : []),
-    { href: "/dashboard/partner", labelKey: "nav.partner", icon: Handshake },
   ];
 
   return [
@@ -424,7 +423,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {user && (
-        <div className="border-t border-border/80 p-3">
+        <div className="border-t border-border/80 p-3 space-y-2">
+          <UsageMeterCard compact />
           <UserAccountMenu
             userName={displayName}
             userEmail={user.email}

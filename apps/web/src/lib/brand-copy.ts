@@ -2,7 +2,7 @@
 
 export const BRAND_NAME = "Growvisi";
 
-export const TAGLINE = "The AI Revenue Engine for WhatsApp sales teams";
+export const TAGLINE = "The revenue layer for WhatsApp sales teams";
 
 export const CTA = {
   startTrial: "Start 14-day free trial",
