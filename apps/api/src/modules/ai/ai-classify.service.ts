@@ -12,6 +12,7 @@ import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { KnowledgeEmbedService } from "../knowledge/knowledge-embed.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
+import { useBackgroundWorkers } from "../../config/workers";
 
 export interface ClassifyJobData {
   organizationId: string;
@@ -47,7 +48,7 @@ export class AiClassifyService {
   ) {}
 
   async enqueue(data: ClassifyJobData) {
-    if (process.env.VERCEL === "1") {
+    if (!useBackgroundWorkers()) {
       await this.process(data);
       return;
     }

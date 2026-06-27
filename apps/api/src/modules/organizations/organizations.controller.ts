@@ -210,4 +210,24 @@ export class OrganizationsController {
   teamWorkload(@CurrentUser() user: JwtPayload) {
     return this.assignments.getTeamWorkload(user.organizationId);
   }
+
+  @Get("onboarding-progress")
+  onboardingProgress(@CurrentUser() user: JwtPayload) {
+    return this.organizations.getOnboardingProgress(user.organizationId);
+  }
+
+  @Get("payment-integration")
+  @Roles(...ADMIN_ROLES)
+  paymentIntegration(@CurrentUser() user: JwtPayload) {
+    return this.organizations.getPaymentIntegration(user);
+  }
+
+  @Patch("payment-integration")
+  @Roles(...ADMIN_ROLES)
+  updatePaymentIntegration(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { razorpayWebhookSecret?: string | null; autoWinOnPayment?: boolean },
+  ) {
+    return this.organizations.updatePaymentIntegration(user, dto);
+  }
 }

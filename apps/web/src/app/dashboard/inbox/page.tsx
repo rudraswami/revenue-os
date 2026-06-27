@@ -283,6 +283,21 @@ export default function InboxPage() {
     },
   });
 
+  const takeoverMutation = useMutation({
+    mutationFn: (taskTitle?: string) =>
+      apiFetch<ConversationDetail>(`/conversations/${selectedId}/takeover`, {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({ taskTitle }),
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["conversation", selectedId], updated);
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+
   const sendMutation = useMutation({
     mutationFn: (content: string) =>
       apiFetch(`/conversations/${selectedId}/messages`, {
@@ -487,9 +502,17 @@ export default function InboxPage() {
                 requiresHuman={thread.requiresHuman}
                 handoffReason={thread.handoffReason}
                 canEdit={canSend}
+                takeoverPending={takeoverMutation.isPending}
                 taskPending={createTaskMutation.isPending}
                 assignPending={assignMutation.isPending}
                 resolvePending={resolveHandoffMutation.isPending}
+                onTakeover={(title) => {
+                  const t =
+                    title ||
+                    thread.aiContext?.nextAction ||
+                    `Follow up: ${thread.contactName ?? thread.contactPhone}`;
+                  takeoverMutation.mutate(t);
+                }}
                 onCreateTask={(title) => {
                   const t =
                     title ||
@@ -579,7 +602,7 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 lg:px-5">
+            <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-5">
               <div className="mx-auto max-w-xl">
                 {showComposer ? (
                 <form onSubmit={handleSend} className="space-y-2">
@@ -618,7 +641,7 @@ export default function InboxPage() {
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         disabled={sendMutation.isPending || !thread.whatsappAccount.isActive}
-                        className="border-0 bg-transparent text-sm shadow-none focus-visible:ring-0"
+                        className="border-0 bg-transparent text-base shadow-none focus-visible:ring-0 md:text-sm"
                       />
                     </div>
                     <div className="flex shrink-0 flex-col gap-1">

@@ -39,6 +39,13 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: ["/opengraph-image"],
   },
+  manifest: "/manifest.json",
+  themeColor: "#0b9e6d",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Growvisi",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

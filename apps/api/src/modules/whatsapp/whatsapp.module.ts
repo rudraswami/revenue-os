@@ -1,5 +1,6 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
+import { useBackgroundWorkers } from "../../config/workers";
 import { QUEUES } from "@growvisi/shared";
 import { AiModule } from "../ai/ai.module";
 import { AssignmentModule } from "../assignments/assignment.module";
@@ -12,7 +13,7 @@ import { WhatsappInboundProcessor } from "./processors/whatsapp-inbound.processo
 import { WhatsappMessagingService } from "./whatsapp-messaging.service";
 import { WhatsappService } from "./whatsapp.service";
 
-const isVercel = process.env.VERCEL === "1";
+const registerProcessors = useBackgroundWorkers();
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ const isVercel = process.env.VERCEL === "1";
   providers: [
     WhatsappService,
     WhatsappMessagingService,
-    ...(isVercel ? [] : [WhatsappInboundProcessor]),
+    ...(registerProcessors ? [WhatsappInboundProcessor] : []),
   ],
   exports: [WhatsappService, WhatsappMessagingService],
 })

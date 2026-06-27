@@ -26,4 +26,9 @@ export class BillingController {
   checkout(@CurrentUser() user: JwtPayload, @Body() dto: CheckoutDto) {
     return this.billing.createCheckout(user, dto.planId);
   }
+
+  @Post("cancel")
+  cancel(@CurrentUser() user: JwtPayload) {
+    return this.billing.cancelSubscription(user);
+  }
 }

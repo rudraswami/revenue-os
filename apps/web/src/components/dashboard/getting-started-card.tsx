@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Circle, X } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, Circle, Kanban, MessageSquare, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,16 @@ import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "growvisi-getting-started-dismissed";
 
+interface OnboardingProgress {
+  whatsappConnected: boolean;
+  firstInbound: boolean;
+  aiClassified: boolean;
+  pipelineMoved: boolean;
+  completedCount: number;
+  totalSteps: number;
+  allComplete: boolean;
+}
+
 export function GettingStartedCard() {
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
@@ -22,58 +32,59 @@ export function GettingStartedCard() {
     setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
   }, []);
 
-  const { data: accounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token,
-  });
-
-  const { data: convStats } = useQuery({
-    queryKey: ["conversation-stats"],
+  const { data: progress } = useQuery({
+    queryKey: ["onboarding-progress"],
     queryFn: () =>
-      apiFetch<{ inboundMessages: number }>("/conversations/stats", {
+      apiFetch<OnboardingProgress>("/organizations/onboarding-progress", {
         token: token ?? undefined,
       }),
     enabled: !!token,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
-  const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;
-  const firstMessage = (convStats?.inboundMessages ?? 0) > 0;
-  const allDone = whatsappConnected && firstMessage;
-
-  if (dismissed || allDone) return null;
+  if (dismissed || !progress || progress.allComplete) return null;
 
   const steps = [
     {
-      id: "explore",
-      title: "Explore your workspace",
-      description: `Browse ${NAV.conversations}, Pipeline, and Insights.`,
-      done: true,
-      href: "/dashboard/inbox",
-      action: CTA.openConversations,
-    },
-    {
       id: "whatsapp",
-      title: "Connect your WhatsApp number",
-      description: "Paste Meta token — auto-detect & connect in one click.",
-      done: whatsappConnected,
+      title: "Connect WhatsApp",
+      description: "Link your business number — takes about 2 minutes.",
+      done: progress.whatsappConnected,
       href: "/onboarding",
-      action: "Start wizard",
+      action: "Connect",
+      icon: MessageSquare,
     },
     {
       id: "message",
-      title: "Verify first inbound message",
-      description: "Send a test WhatsApp — we detect it automatically.",
-      done: firstMessage,
+      title: "Receive first customer message",
+      description: "Send a test WhatsApp from your phone to your business line.",
+      done: progress.firstInbound,
       href: "/dashboard/inbox",
       action: CTA.openConversations,
+      icon: MessageSquare,
+    },
+    {
+      id: "ai",
+      title: "See AI classify a lead",
+      description: "Growvisi scores intent and suggests a pipeline stage.",
+      done: progress.aiClassified,
+      href: "/dashboard/ai",
+      action: "View Intelligence",
+      icon: Bot,
+    },
+    {
+      id: "pipeline",
+      title: "Move a deal on Pipeline",
+      description: "Drag a card to Qualified or Won — your revenue board is live.",
+      done: progress.pipelineMoved,
+      href: "/dashboard/pipeline",
+      action: NAV.pipeline,
+      icon: Kanban,
     },
   ];
 
-  const doneCount = steps.filter((s) => s.done).length;
-  const progress = Math.round((doneCount / steps.length) * 100);
+  const progressPct = Math.round((progress.completedCount / progress.totalSteps) * 100);
 
   function dismiss() {
     localStorage.setItem(DISMISS_KEY, "1");
@@ -89,10 +100,10 @@ export function GettingStartedCard() {
       <div className="flex items-start justify-between gap-4 border-b border-border/80 bg-gradient-to-r from-bento-mint/60 to-white px-5 py-4">
         <div>
           <p className="text-[15px] font-bold">
-            Getting started{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+            First 15 minutes{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {doneCount} of {steps.length} complete
+            {progress.completedCount} of {progress.totalSteps} — connect → classify → close
           </p>
         </div>
         <button
@@ -108,40 +119,46 @@ export function GettingStartedCard() {
         <motion.div
           className="h-full bg-accent"
           initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
+          animate={{ width: `${progressPct}%` }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         />
       </div>
       <ul className="divide-y divide-[#dce9ff]/80">
-        {steps.map((step) => (
-          <li
-            key={step.id}
-            className={cn(
-              "flex items-center justify-between gap-4 px-5 py-4",
-              step.done && "bg-[#ecfdf5]/40",
-            )}
-          >
-            <div className="flex items-start gap-3">
-              {step.done ? (
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
-              ) : (
-                <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+        {steps.map((step) => {
+          const Icon = step.icon;
+          return (
+            <li
+              key={step.id}
+              className={cn(
+                "flex items-center justify-between gap-4 px-5 py-4",
+                step.done && "bg-[#ecfdf5]/40",
               )}
-              <div>
-                <p className="text-sm font-semibold">{step.title}</p>
-                <p className="text-xs text-muted-foreground">{step.description}</p>
+            >
+              <div className="flex items-start gap-3">
+                {step.done ? (
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+                ) : (
+                  <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                )}
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Icon className="h-3.5 w-3.5 text-accent" />
+                    {step.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{step.description}</p>
+                </div>
               </div>
-            </div>
-            {!step.done && step.href && (
-              <Button asChild variant="outline" size="sm" className="shrink-0 gap-1 rounded-xl">
-                <Link href={step.href}>
-                  {step.action}
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            )}
-          </li>
-        ))}
+              {!step.done && (
+                <Button asChild variant="outline" size="sm" className="shrink-0 gap-1 rounded-xl">
+                  <Link href={step.href}>
+                    {step.action}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </motion.div>
   );

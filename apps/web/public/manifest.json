@@ -1,0 +1,18 @@
+{
+  "name": "Growvisi",
+  "short_name": "Growvisi",
+  "description": "WhatsApp revenue OS for Indian SMB sales teams",
+  "start_url": "/dashboard/inbox",
+  "display": "standalone",
+  "background_color": "#f8f9ff",
+  "theme_color": "#0b9e6d",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/growvisi-app-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

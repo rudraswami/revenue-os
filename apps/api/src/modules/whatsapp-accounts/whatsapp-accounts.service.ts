@@ -13,6 +13,7 @@ import { sanitizeEnvValue } from "../../config/cors-origins";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { exchangeForLongLivedToken } from "./meta-token.util";
 import type { WhatsappWebhookPayload } from "../whatsapp/whatsapp.service";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import { ConnectWhatsappDto, CreateWhatsappAccountDto, UpdateWhatsappAccountDto } from "./dto/whatsapp-account.dto";
@@ -563,26 +564,115 @@ export class WhatsappAccountsService {
   /** Replace expired Meta temporary token without disconnecting the number. */
   async refreshAccessToken(user: JwtPayload, id: string, accessToken: string) {
     const account = await this.findOwned(user, id);
-    const token = accessToken.trim();
+    const rotated = await this.rotateAccountToken(account, accessToken.trim());
+    return {
+      account: this.toSafe(rotated),
+      tokenHealth: await this.debugInputToken(decryptSecret(rotated.accessTokenEnc)),
+    };
+  }
+
+  /**
+   * Cron: proactively exchange tokens before expiry (Meta fb_exchange_token).
+   * Runs when token expires within 7 days and is still valid.
+   */
+  async runTokenAutoRefreshJob() {
+    const accounts = await this.prisma.whatsappAccount.findMany({
+      where: { isActive: true },
+    });
+
+    let checked = 0;
+    let refreshed = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const account of accounts) {
+      checked++;
+      try {
+        const token = decryptSecret(account.accessTokenEnc);
+        const health = await this.debugInputToken(token);
+
+        if (!health.valid || health.hoursRemaining === null) {
+          skipped++;
+          continue;
+        }
+
+        const metadata = (account.metadata ?? {}) as Record<string, unknown>;
+        const lastAuto = metadata.lastAutoRefreshAt
+          ? new Date(String(metadata.lastAutoRefreshAt)).getTime()
+          : 0;
+        if (Date.now() - lastAuto < 6 * 60 * 60 * 1000) {
+          skipped++;
+          continue;
+        }
+
+        if (health.hoursRemaining > 168) {
+          skipped++;
+          continue;
+        }
+
+        const exchanged = await this.tryExchangeLongLived(token);
+        if (!exchanged || exchanged === token) {
+          skipped++;
+          continue;
+        }
+
+        await this.rotateAccountToken(account, exchanged, { autoRefresh: true });
+        refreshed++;
+      } catch (err) {
+        failed++;
+        this.logger.warn(
+          `Token auto-refresh failed for ${account.id}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+
+    return { checked, refreshed, skipped, failed };
+  }
+
+  private async tryExchangeLongLived(token: string): Promise<string | null> {
+    const appId = this.config.get<string>("META_APP_ID")?.trim();
+    const appSecret = this.appSecret();
+    if (!appId || !appSecret) return null;
+
+    const result = await exchangeForLongLivedToken(
+      token,
+      appId,
+      appSecret,
+      this.apiVersion(),
+    );
+    return result?.accessToken ?? null;
+  }
+
+  private async rotateAccountToken(
+    account: { id: string; phoneNumberId: string; wabaId: string; metadata: unknown },
+    rawToken: string,
+    opts?: { autoRefresh?: boolean },
+  ) {
+    let token = rawToken;
+    const exchanged = await this.tryExchangeLongLived(token);
+    if (exchanged) token = exchanged;
+
     await this.fetchPhoneDetails(account.phoneNumberId, token);
     await this.subscribeWabaWebhooks(account.wabaId, token);
 
-    const updated = await this.prisma.whatsappAccount.update({
-      where: { id },
+    const health = await this.debugInputToken(token);
+
+    return this.prisma.whatsappAccount.update({
+      where: { id: account.id },
       data: {
         accessTokenEnc: encryptSecret(token),
         metadata: {
           ...((account.metadata ?? {}) as Record<string, unknown>),
           tokenReminderSentAt: null,
+          tokenHeadsUpSentAt: null,
           tokenUpdatedAt: new Date().toISOString(),
+          tokenExpiresAt: health.expiresAt,
+          ...(opts?.autoRefresh
+            ? { lastAutoRefreshAt: new Date().toISOString() }
+            : {}),
         },
       },
     });
-
-    return {
-      account: this.toSafe(updated),
-      tokenHealth: await this.debugInputToken(token),
-    };
   }
 
   private async tokenHealthForOrg(

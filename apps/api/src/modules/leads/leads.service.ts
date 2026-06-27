@@ -124,8 +124,6 @@ export class LeadsService {
     });
 
     return updated;
-
-    return updated;
   }
 
   async updateLead(user: JwtPayload, id: string, data: { valueCents?: number | null }) {
@@ -283,6 +281,130 @@ export class LeadsService {
     };
   }
 
+  async lostDealMetrics(user: JwtPayload, period?: MetricsPeriod) {
+    const parsedPeriod = parseMetricsPeriod(period);
+    const range = createdAtFilter(parsedPeriod);
+    const where = {
+      organizationId: user.organizationId,
+      stage: "LOST" as const,
+      lostAt: {
+        not: null,
+        ...(range.gte ? { gte: range.gte } : {}),
+      },
+    };
+
+    const [grouped, totalLost, valueAgg] = await Promise.all([
+      this.prisma.lead.groupBy({
+        by: ["lostReason"],
+        where,
+        _count: { id: true },
+      }),
+      this.prisma.lead.count({ where }),
+      this.prisma.lead.aggregate({
+        where,
+        _sum: { valueCents: true },
+      }),
+    ]);
+
+    return {
+      period: parsedPeriod,
+      totalLost,
+      lostValueCents: valueAgg._sum.valueCents ?? 0,
+      byReason: grouped
+        .map((g) => ({
+          reason: g.lostReason?.trim() || "No reason given",
+          count: g._count.id,
+        }))
+        .sort((a, b) => b.count - a.count),
+    };
+  }
+
+  /**
+   * Razorpay payment.captured → move lead to Won when merchant webhook is configured.
+   */
+  async markWonFromRazorpayPayment(
+    organizationId: string,
+    opts: {
+      leadId?: string;
+      phone?: string;
+      paymentId: string;
+      amountCents?: number;
+    },
+  ) {
+    let lead = opts.leadId
+      ? await this.prisma.lead.findFirst({
+          where: { id: opts.leadId, organizationId },
+        })
+      : null;
+
+    if (!lead && opts.phone) {
+      const digits = opts.phone.replace(/\D/g, "");
+      if (digits.length >= 10) {
+        lead = await this.prisma.lead.findFirst({
+          where: { organizationId, phone: { endsWith: digits.slice(-10) } },
+        });
+      }
+    }
+
+    if (!lead) {
+      return { matched: false, reason: "lead_not_found" as const };
+    }
+
+    if (lead.stage === "WON") {
+      return { matched: true, leadId: lead.id, alreadyWon: true };
+    }
+
+    const reason = `Razorpay payment ${opts.paymentId}`;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.lead.update({
+        where: { id: lead!.id },
+        data: {
+          stage: "WON",
+          wonAt: new Date(),
+          ...(opts.amountCents && !lead!.valueCents
+            ? { valueCents: opts.amountCents }
+            : {}),
+        },
+      });
+      await tx.leadStageHistory.create({
+        data: {
+          leadId: lead!.id,
+          fromStage: lead!.stage,
+          toStage: "WON",
+          reason,
+        },
+      });
+      await tx.leadNote.create({
+        data: {
+          organizationId,
+          leadId: lead!.id,
+          body: `Deal won automatically — ${reason}${opts.amountCents ? ` (₹${(opts.amountCents / 100).toLocaleString("en-IN")})` : ""}.`,
+        },
+      });
+    });
+
+    void this.webhooks.emit(organizationId, "lead.stage.changed", {
+      leadId: lead.id,
+      fromStage: lead.stage,
+      toStage: "WON",
+      phone: lead.phone,
+      displayName: lead.displayName,
+      at: new Date().toISOString(),
+      source: "razorpay_payment",
+    });
+
+    this.audit.log({
+      organizationId,
+      action: "UPDATE",
+      resource: "lead",
+      resourceId: lead.id,
+      metadata: { fromStage: lead.stage, toStage: "WON", reason, paymentId: opts.paymentId },
+    });
+
+    return { matched: true, leadId: lead.id, alreadyWon: false };
+  }
+
   async getRevenueMetrics(user: JwtPayload, period?: MetricsPeriod) {
     const parsedPeriod = parseMetricsPeriod(period);
     const range = createdAtFilter(parsedPeriod);
@@ -322,12 +444,37 @@ export class LeadsService {
       pipelineDealsWithValue: openAgg._count.id,
       wonValueCents: wonAgg._sum.valueCents ?? 0,
       wonDealsWithValue: wonAgg._count.id,
+      avgDaysToClose: await this.avgDaysToClose(orgId, range),
       byStage: byStageRows.map((r) => ({
         stage: r.stage,
         count: r._count.id,
         valueCents: r._sum.valueCents ?? 0,
       })),
     };
+  }
+
+  private async avgDaysToClose(
+    organizationId: string,
+    range: { gte?: Date },
+  ): Promise<number | null> {
+    const wonLeads = await this.prisma.lead.findMany({
+      where: {
+        organizationId,
+        stage: "WON",
+        wonAt: { not: null, ...(range.gte ? { gte: range.gte } : {}) },
+      },
+      select: { createdAt: true, wonAt: true },
+      take: 500,
+    });
+
+    const days = wonLeads
+      .filter((l) => l.wonAt)
+      .map((l) => (l.wonAt!.getTime() - l.createdAt.getTime()) / 86_400_000)
+      .filter((d) => d >= 0);
+
+    if (days.length === 0) return null;
+    const avg = days.reduce((sum, d) => sum + d, 0) / days.length;
+    return Math.round(avg * 10) / 10;
   }
 
   async getInsights(user: JwtPayload, period?: MetricsPeriod) {

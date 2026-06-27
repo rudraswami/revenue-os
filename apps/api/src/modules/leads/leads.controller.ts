@@ -176,6 +176,11 @@ export class LeadsController {
     return this.leads.getRevenueMetrics(user, period);
   }
 
+  @Get("metrics/lost-deals")
+  lostDeals(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
+    return this.leads.lostDealMetrics(user, period);
+  }
+
   @Get("metrics/insights")
   insights(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
     return this.leads.getInsights(user, period);

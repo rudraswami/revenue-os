@@ -7,6 +7,7 @@ import {
 import type { JwtPayload } from "@growvisi/shared";
 import { GROWVISI_PLANS, type GrowvisiPlanId, PAID_PLAN_IDS } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { AuditService } from "../audit/audit.service";
 import { EntitlementsService } from "./entitlements.service";
 import { RazorpayService } from "./razorpay.service";
 
@@ -16,6 +17,7 @@ export class BillingService {
     private readonly prisma: PrismaService,
     private readonly razorpay: RazorpayService,
     private readonly entitlements: EntitlementsService,
+    private readonly audit: AuditService,
   ) {}
 
   async getStatus(user: JwtPayload) {
@@ -29,6 +31,7 @@ export class BillingService {
       planId: sub?.planId ?? "trial",
       planName: plan.name,
       status: sub?.status ?? "TRIALING",
+      cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
       currentPeriodEnd: sub?.currentPeriodEnd ?? null,
       razorpayConfigured: this.razorpay.isConfigured(),
       plans: this.razorpay.planCatalog(),
@@ -92,6 +95,48 @@ export class BillingService {
     };
   }
 
+  async cancelSubscription(user: JwtPayload) {
+    if (user.role !== "OWNER" && user.role !== "ADMIN") {
+      throw new ForbiddenException("Only workspace owners can manage billing.");
+    }
+
+    const sub = await this.prisma.subscription.findUnique({
+      where: { organizationId: user.organizationId },
+    });
+    if (!sub?.razorpaySubscriptionId) {
+      throw new BadRequestException("No active Razorpay subscription to cancel.");
+    }
+    if (sub.status === "CANCELED") {
+      return { ok: true, message: "Subscription already canceled." };
+    }
+    if (sub.cancelAtPeriodEnd) {
+      return {
+        ok: true,
+        message: "Cancellation already scheduled for the end of this billing period.",
+      };
+    }
+
+    await this.razorpay.cancelSubscription(sub.razorpaySubscriptionId);
+    await this.prisma.subscription.update({
+      where: { id: sub.id },
+      data: { cancelAtPeriodEnd: true },
+    });
+
+    this.audit.log({
+      organizationId: user.organizationId,
+      userId: user.sub,
+      action: "SETTINGS_CHANGE",
+      resource: "subscription",
+      resourceId: sub.id,
+      metadata: { action: "cancel_at_period_end" },
+    });
+
+    return {
+      ok: true,
+      message: "Subscription canceled. Access continues until the current billing period ends.",
+    };
+  }
+
   async handleWebhook(payload: {
     event: string;
     payload?: {
@@ -134,6 +179,8 @@ export class BillingService {
         currentPeriodEnd: entity.current_end
           ? new Date(entity.current_end * 1000)
           : sub.currentPeriodEnd,
+        cancelAtPeriodEnd:
+          status === "CANCELED" ? false : sub.cancelAtPeriodEnd,
       },
     });
 

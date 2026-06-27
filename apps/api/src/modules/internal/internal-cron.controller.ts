@@ -21,6 +21,13 @@ export class InternalCronController {
     return this.whatsappAccounts.runTokenReminderJob();
   }
 
+  /** Vercel Cron: exchange Meta tokens before they expire (fb_exchange_token). */
+  @Get("whatsapp-token-refresh")
+  @UseGuards(CronSecretGuard)
+  runWhatsappTokenAutoRefresh() {
+    return this.whatsappAccounts.runTokenAutoRefreshJob();
+  }
+
   /** Vercel Cron: email owners when conversations need follow-up after 24h. */
   @Get("followup-reminders")
   @UseGuards(CronSecretGuard)

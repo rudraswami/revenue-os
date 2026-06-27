@@ -21,9 +21,11 @@ export function InboxAiPanel({
   requiresHuman,
   handoffReason,
   canEdit,
+  onTakeover,
   onCreateTask,
   onAssignToMe,
   onResolveHandoff,
+  takeoverPending,
   taskPending,
   assignPending,
   resolvePending,
@@ -32,9 +34,11 @@ export function InboxAiPanel({
   requiresHuman?: boolean;
   handoffReason?: string | null;
   canEdit: boolean;
+  onTakeover: (taskTitle?: string) => void;
   onCreateTask: (title?: string) => void;
   onAssignToMe: () => void;
   onResolveHandoff: () => void;
+  takeoverPending?: boolean;
   taskPending?: boolean;
   assignPending?: boolean;
   resolvePending?: boolean;
@@ -46,24 +50,46 @@ export function InboxAiPanel({
   const confidencePct =
     aiContext?.confidence != null ? Math.round(aiContext.confidence * 100) : null;
 
+  const suggestedTitle =
+    aiContext?.nextAction || aiContext?.suggestedActions[0] || undefined;
+
   return (
     <div className="border-t border-border/50 bg-[#f8f9ff]/80 px-4 py-2.5 lg:px-5">
       {requiresHuman && (
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2">
-          <p className="text-xs font-semibold text-amber-900">
-            Handoff — {handoffReason || "needs a human on your team"}
-          </p>
+        <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2.5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className="text-xs font-semibold text-amber-900">
+              Handoff — {handoffReason || "needs a human on your team"}
+            </p>
+            {canEdit && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 gap-1.5 rounded-lg bg-accent text-[11px] hover:bg-accent-hover"
+                  disabled={takeoverPending}
+                  onClick={() => onTakeover(suggestedTitle)}
+                >
+                  <UserRound className="h-3.5 w-3.5" />
+                  Take over
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-[10px] text-amber-900"
+                  disabled={resolvePending}
+                  onClick={onResolveHandoff}
+                >
+                  Mark resolved only
+                </Button>
+              </div>
+            )}
+          </div>
           {canEdit && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 text-[10px]"
-              disabled={resolvePending}
-              onClick={onResolveHandoff}
-            >
-              Mark resolved
-            </Button>
+            <p className="mt-1.5 text-[10px] text-amber-800/80">
+              Take over assigns you, creates a high-priority task, and clears the handoff flag.
+            </p>
           )}
         </div>
       )}
@@ -145,7 +171,7 @@ export function InboxAiPanel({
             </div>
           )}
 
-          {canEdit && (
+          {canEdit && !requiresHuman && (
             <div className="mt-2 flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -153,9 +179,7 @@ export function InboxAiPanel({
                 variant="outline"
                 className="h-7 text-[10px]"
                 disabled={taskPending}
-                onClick={() =>
-                  onCreateTask(aiContext.nextAction || aiContext.suggestedActions[0])
-                }
+                onClick={() => onCreateTask(suggestedTitle)}
               >
                 Create task
               </Button>

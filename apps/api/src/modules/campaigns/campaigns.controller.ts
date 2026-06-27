@@ -89,6 +89,10 @@ class CreateCampaignDto {
   @IsOptional()
   @IsDateString()
   scheduledAt?: string | null;
+
+  @IsOptional()
+  @IsString()
+  whatsappAccountId?: string | null;
 }
 
 class ImportRecipientDto {
@@ -134,6 +138,10 @@ class ImportCampaignDto {
   @IsOptional()
   @IsDateString()
   scheduledAt?: string | null;
+
+  @IsOptional()
+  @IsString()
+  whatsappAccountId?: string | null;
 }
 
 class ScheduleCampaignDto {

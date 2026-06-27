@@ -18,6 +18,7 @@ export interface CreateCampaignInput {
   templateParams?: string[];
   audience: AudienceFilter;
   scheduledAt?: string | null;
+  whatsappAccountId?: string | null;
 }
 
 export interface ImportCampaignInput {
@@ -28,6 +29,7 @@ export interface ImportCampaignInput {
   templateParams?: string[];
   recipients: Array<{ phone: string; name?: string | null }>;
   scheduledAt?: string | null;
+  whatsappAccountId?: string | null;
 }
 
 const MIN_SCHEDULE_MS = 5 * 60_000;
@@ -124,6 +126,26 @@ export class CampaignsService {
     return campaign;
   }
 
+  private async resolveWhatsappAccount(organizationId: string, whatsappAccountId?: string | null) {
+    if (whatsappAccountId) {
+      const account = await this.prisma.whatsappAccount.findFirst({
+        where: { id: whatsappAccountId, organizationId, isActive: true },
+      });
+      if (!account) {
+        throw new BadRequestException("Selected WhatsApp number is not active.");
+      }
+      return account;
+    }
+    const account = await this.prisma.whatsappAccount.findFirst({
+      where: { organizationId, isActive: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!account) {
+      throw new BadRequestException("Connect an active WhatsApp number before sending campaigns.");
+    }
+    return account;
+  }
+
   async create(user: JwtPayload, input: CreateCampaignInput) {
     await this.assertCampaignsPlan(user.organizationId);
     const name = input.name.trim();
@@ -147,6 +169,7 @@ export class CampaignsService {
     return this.prisma.campaign.create({
       data: {
         organizationId: user.organizationId,
+        whatsappAccountId: input.whatsappAccountId ?? null,
         name: name.slice(0, 120),
         status: scheduledAt ? "SCHEDULED" : "DRAFT",
         templateName: input.templateName?.trim() || null,
@@ -227,6 +250,7 @@ export class CampaignsService {
     return this.prisma.campaign.create({
       data: {
         organizationId: user.organizationId,
+        whatsappAccountId: input.whatsappAccountId ?? null,
         name: name.slice(0, 120),
         status: scheduledAt ? "SCHEDULED" : "DRAFT",
         templateName,
@@ -358,13 +382,10 @@ export class CampaignsService {
       );
     }
 
-    const account = await this.prisma.whatsappAccount.findFirst({
-      where: { organizationId, isActive: true },
-      orderBy: { createdAt: "asc" },
-    });
-    if (!account) {
-      throw new BadRequestException("Connect an active WhatsApp number before sending campaigns.");
-    }
+    const account = await this.resolveWhatsappAccount(
+      organizationId,
+      campaign.whatsappAccountId,
+    );
 
     const claimed = await this.prisma.campaign.updateMany({
       where: {
@@ -399,7 +420,7 @@ export class CampaignsService {
 
     for (const recipient of recipients) {
       try {
-        await this.messaging.sendTemplate(
+        const waMessageId = await this.messaging.sendTemplate(
           account,
           recipient.phone,
           campaign.templateName,
@@ -408,7 +429,7 @@ export class CampaignsService {
         );
         await this.prisma.campaignRecipient.update({
           where: { id: recipient.id },
-          data: { status: "SENT", sentAt: new Date(), error: null },
+          data: { status: "SENT", sentAt: new Date(), error: null, waMessageId },
         });
         sent += 1;
       } catch (err) {

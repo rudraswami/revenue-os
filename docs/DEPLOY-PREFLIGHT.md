@@ -86,9 +86,13 @@ Local `apps/api/vercel.json` includes cron — **not live until code is deployed
 | Runtime | Behavior |
 |---------|----------|
 | **Local / Docker** | BullMQ + Redis (`REDIS_URL`) — `AI_CLASSIFY` and `WHATSAPP_INBOUND` jobs run in background workers. |
-| **Vercel serverless** | `VERCEL=1` — jobs run **inline** in the webhook/request handler (no Redis worker process). Acceptable for MVP volume; upgrade to a always-on API (Railway/Fly) or Vercel Pro + external worker when message volume grows. |
+| **Vercel + `REDIS_URL`** | `useBackgroundWorkers()` is true when `REDIS_URL` is set — same BullMQ queues as local (Upstash recommended). |
+| **Vercel without Redis** | `VERCEL=1` and no `REDIS_URL` — jobs run **inline** in the webhook/request handler. OK for low volume only. |
+| **Debug** | `USE_INLINE_WORKERS=1` forces inline processing even with Redis. |
 
-Ensure `REDIS_URL` stays set on Vercel if you later enable hybrid workers; it is safe to keep for future queue consumers.
+Ensure `REDIS_URL` is set on production API (Upstash `rediss://...`) for reliable classify + inbound at scale.
+
+Cron jobs in `apps/api/vercel.json` include `scheduled-campaigns` (hourly) — requires `CRON_SECRET` on all `/internal/cron/*` routes.
 
 ---
 

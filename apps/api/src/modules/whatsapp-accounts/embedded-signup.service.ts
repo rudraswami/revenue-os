@@ -6,6 +6,7 @@ import { sanitizeEnvValue } from "../../config/cors-origins";
 import { isProductionDeploy } from "../../config/production";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { exchangeForLongLivedToken } from "./meta-token.util";
 import { WhatsappAccountSafe } from "./whatsapp-accounts.service";
 
 @Injectable()
@@ -189,10 +190,12 @@ export class EmbeddedSignupService {
     }
 
     const businessToken = await this.exchangeCode(input.code.trim());
-    await this.subscribeWebhooks(wabaId, businessToken);
-    await this.tryRegisterPhone(phoneNumberId, businessToken);
+    const longLived = await this.tryLongLived(businessToken);
+    const tokenToStore = longLived ?? businessToken;
+    await this.subscribeWebhooks(wabaId, tokenToStore);
+    await this.tryRegisterPhone(phoneNumberId, tokenToStore);
 
-    const details = await this.fetchPhoneDetails(phoneNumberId, businessToken);
+    const details = await this.fetchPhoneDetails(phoneNumberId, tokenToStore);
 
     const account = await this.prisma.whatsappAccount.create({
       data: {
@@ -201,7 +204,8 @@ export class EmbeddedSignupService {
         wabaId,
         displayPhoneNumber: details.display_phone_number?.trim() || phoneNumberId,
         verifiedName: details.verified_name ?? null,
-        accessTokenEnc: encryptSecret(businessToken),
+        accessTokenEnc: encryptSecret(tokenToStore),
+        metadata: { tokenUpdatedAt: new Date().toISOString() },
       },
     });
 
@@ -314,5 +318,13 @@ export class EmbeddedSignupService {
       this.config.get<string>("META_APP_SECRET") ??
         this.config.get<string>("WHATSAPP_APP_SECRET"),
     );
+  }
+
+  private async tryLongLived(token: string): Promise<string | null> {
+    const appId = sanitizeEnvValue(this.config.get<string>("META_APP_ID"));
+    const appSecret = this.appSecret();
+    if (!appId || !appSecret) return null;
+    const result = await exchangeForLongLivedToken(token, appId, appSecret, this.apiVersion());
+    return result?.accessToken ?? null;
   }
 }

@@ -53,6 +53,13 @@ class SendMessageDto {
   content!: string;
 }
 
+class TakeoverDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  taskTitle?: string;
+}
+
 class StartOutboundDto {
   @IsString()
   @IsNotEmpty()
@@ -159,6 +166,16 @@ export class ConversationsController {
   @Roles(...WRITE_ROLES)
   resolveHandoff(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.conversations.resolveHandoff(user, id);
+  }
+
+  @Post(":id/takeover")
+  @Roles(...WRITE_ROLES)
+  takeover(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: TakeoverDto,
+  ) {
+    return this.conversations.takeover(user, id, dto.taskTitle);
   }
 
   @Patch(":id/assign")

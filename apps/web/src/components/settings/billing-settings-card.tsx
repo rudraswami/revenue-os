@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ interface BillingStatus {
   planId: string;
   planName: string;
   status: string;
+  cancelAtPeriodEnd?: boolean;
   currentPeriodEnd: string | null;
   razorpayConfigured: boolean;
   usage?: { whatsappNumbers: number; teamMembers: number; monthlyLeads: number };
@@ -32,7 +33,9 @@ interface BillingStatus {
 
 export function BillingSettingsCard() {
   const token = useAuthStore((s) => s.accessToken);
+  const qc = useQueryClient();
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
+  const [cancelMsg, setCancelMsg] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["billing-status"],
@@ -53,6 +56,24 @@ export function BillingSettingsCard() {
     },
     onSettled: () => setCheckoutPlan(null),
   });
+
+  const cancelMutation = useMutation({
+    mutationFn: () =>
+      apiFetch<{ ok: boolean; message: string }>("/billing/cancel", {
+        method: "POST",
+        token: token ?? undefined,
+      }),
+    onSuccess: (res) => {
+      setCancelMsg(res.message);
+      void qc.invalidateQueries({ queryKey: ["billing-status"] });
+    },
+  });
+
+  const canCancel =
+    data?.razorpayConfigured &&
+    data.status === "ACTIVE" &&
+    data.planId !== "trial" &&
+    !data.cancelAtPeriodEnd;
 
   const statusLabel =
     data?.status === "ACTIVE"
@@ -90,7 +111,13 @@ export function BillingSettingsCard() {
             </p>
             {data?.currentPeriodEnd && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Renews {new Date(data.currentPeriodEnd).toLocaleDateString()}
+                {data.cancelAtPeriodEnd ? "Access until" : "Renews"}{" "}
+                {new Date(data.currentPeriodEnd).toLocaleDateString()}
+              </p>
+            )}
+            {data?.cancelAtPeriodEnd && (
+              <p className="mt-1 text-xs text-amber-800">
+                Cancellation scheduled — you keep full access until the date above.
               </p>
             )}
             {data?.usage && data?.limits && (
@@ -158,6 +185,48 @@ export function BillingSettingsCard() {
               );
             })}
           </div>
+
+          {canCancel && (
+            <div className="rounded-xl border border-border/80 bg-white px-4 py-3">
+              <p className="text-sm font-semibold">Cancel subscription</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Cancels at end of the current billing period. You keep access until then.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-3 rounded-lg text-xs text-destructive hover:text-destructive"
+                disabled={cancelMutation.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Cancel your subscription at the end of this billing period?",
+                    )
+                  ) {
+                    setCancelMsg(null);
+                    cancelMutation.mutate();
+                  }
+                }}
+              >
+                {cancelMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Cancel subscription"
+                )}
+              </Button>
+              {cancelMsg && (
+                <p className="mt-2 text-xs text-muted-foreground">{cancelMsg}</p>
+              )}
+              {cancelMutation.isError && (
+                <p className="mt-2 text-xs text-destructive">
+                  {cancelMutation.error instanceof ApiError
+                    ? cancelMutation.error.message
+                    : "Could not cancel subscription."}
+                </p>
+              )}
+            </div>
+          )}
         </>
       )}
 

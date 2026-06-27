@@ -93,6 +93,15 @@ export class RazorpayService {
     };
   }
 
+  /** Cancel at end of current billing cycle. */
+  async cancelSubscription(razorpaySubscriptionId: string) {
+    return this.request<RazorpaySubscription>(
+      "POST",
+      `/subscriptions/${razorpaySubscriptionId}/cancel`,
+      { cancel_at_cycle_end: 1 },
+    );
+  }
+
   verifyWebhookSignature(body: string, signature: string | undefined): boolean {
     const secret = this.config.get<string>("RAZORPAY_WEBHOOK_SECRET")?.trim();
     if (!secret) {

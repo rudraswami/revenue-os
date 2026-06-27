@@ -35,7 +35,11 @@ interface HomeCommandCenterProps {
     humanHandoffRecommended: number;
   };
   funnel?: FunnelData;
-  revenueSnapshot?: { pipelineValueCents: number };
+  revenueSnapshot?: {
+    pipelineValueCents: number;
+    wonValueCents: number;
+    avgDaysToClose: number | null;
+  };
   slaSnapshot?: {
     medianLabel: string | null;
     unansweredOver24h: number;
@@ -87,6 +91,11 @@ export function HomeCommandCenter({
   const unassigned = teamWorkload?.unassignedConversations ?? 0;
   const openLeads = openLeadCount(funnel);
   const pipelineValue = formatInr(revenueSnapshot?.pipelineValueCents);
+  const wonRevenue = formatInr(revenueSnapshot?.wonValueCents);
+  const avgDays =
+    revenueSnapshot?.avgDaysToClose != null
+      ? `${revenueSnapshot.avgDaysToClose}d`
+      : "—";
   const openStages = (funnel?.byStage ?? []).filter(
     (s) => s.stage !== "WON" && s.stage !== "LOST" && s.count > 0,
   );
@@ -184,11 +193,11 @@ export function HomeCommandCenter({
           Revenue pulse
         </p>
         <div className="grid gap-3 lg:grid-cols-5">
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-2">
             <MetricCard
               title="Open pipeline value"
               value={pipelineValue}
-              delta={`${openLeads} open lead${openLeads === 1 ? "" : "s"}${funnel?.won ? ` · ${funnel.won} won` : ""}`}
+              delta={`${openLeads} open lead${openLeads === 1 ? "" : "s"}`}
               icon={<IndianRupee className="h-6 w-6" />}
               variant="emerald"
               size="large"
@@ -197,28 +206,65 @@ export function HomeCommandCenter({
               delay={0.14}
             />
           </div>
-          <div className="flex flex-col gap-3 lg:col-span-2">
-            <MetricCard
-              title="Open leads"
-              value={openLeads}
-              delta={`${funnel?.total ?? 0} total in CRM`}
-              trend={funnel?.won ? "up" : "neutral"}
-              icon={<Users className="h-5 w-5" />}
-              variant="blue"
-              href="/dashboard/contacts"
-              actionLabel="View contacts"
-              delay={0.16}
-            />
-            <MetricCard
-              title="AI classifications"
-              value={convStats?.aiClassifications ?? 0}
-              delta={`${agentStatus?.classificationsToday ?? 0} today · ${convStats?.classifiedLeads ?? 0} leads scored`}
-              icon={<Sparkles className="h-5 w-5" />}
-              variant="violet"
-              href="/dashboard/ai"
-              actionLabel="How Intelligence works"
-              delay={0.18}
-            />
+          <div className="flex flex-col gap-3 lg:col-span-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MetricCard
+                title="Won revenue (30d)"
+                value={wonRevenue}
+                delta={
+                  funnel?.won
+                    ? `${funnel.won} deal${funnel.won === 1 ? "" : "s"} closed`
+                    : "Closed in last 30 days"
+                }
+                trend={revenueSnapshot?.wonValueCents ? "up" : "neutral"}
+                icon={<TrendingUp className="h-5 w-5" />}
+                variant="mint"
+                href="/dashboard/pipeline"
+                actionLabel="View won deals"
+                delay={0.15}
+              />
+              <MetricCard
+                title="Avg days to close"
+                value={avgDays}
+                delta={
+                  revenueSnapshot?.avgDaysToClose != null
+                    ? "Won deals in last 30 days"
+                    : "Close a deal to see velocity"
+                }
+                icon={<Clock className="h-5 w-5" />}
+                variant="blue"
+                href="/dashboard/analytics"
+                actionLabel="View analytics"
+                delay={0.16}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MetricCard
+                title="Open leads"
+                value={openLeads}
+                delta={`${funnel?.total ?? 0} total in CRM`}
+                trend={funnel?.won ? "up" : "neutral"}
+                icon={<Users className="h-5 w-5" />}
+                variant="blue"
+                href="/dashboard/contacts"
+                actionLabel="View contacts"
+                delay={0.17}
+              />
+              <MetricCard
+                title="Win rate"
+                value={
+                  funnel?.conversionRate != null
+                    ? `${Math.round(funnel.conversionRate * 100)}%`
+                    : "—"
+                }
+                delta={`${funnel?.won ?? 0} won · ${funnel?.total ?? 0} total`}
+                icon={<Sparkles className="h-5 w-5" />}
+                variant="violet"
+                href="/dashboard/analytics"
+                actionLabel="Revenue analytics"
+                delay={0.18}
+              />
+            </div>
           </div>
         </div>
 
@@ -291,17 +337,12 @@ export function HomeCommandCenter({
             muted
           />
           <MetricCard
-            title="Won revenue"
-            value={funnel?.won ?? 0}
-            delta={
-              funnel?.conversionRate != null
-                ? `${Math.round(funnel.conversionRate * 100)}% win rate`
-                : "Closed deals"
-            }
-            trend={funnel?.won ? "up" : "neutral"}
-            icon={<IndianRupee className="h-4 w-4" />}
-            variant="mint"
-            href="/dashboard/pipeline"
+            title="AI classifications"
+            value={convStats?.aiClassifications ?? 0}
+            delta={`${agentStatus?.classificationsToday ?? 0} today · ${convStats?.classifiedLeads ?? 0} leads scored`}
+            icon={<Sparkles className="h-4 w-4" />}
+            variant="violet"
+            href="/dashboard/ai"
             delay={0.26}
             muted
           />

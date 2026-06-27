@@ -45,6 +45,7 @@ import {
   type CampaignSaveMode,
 } from "@/components/dashboard/campaign-schedule-picker";
 import { TemplatePreviewBubble } from "@/components/dashboard/template-preview-bubble";
+import { QUERY_KEYS, STALE } from "@/lib/query-config";
 
 interface CampaignRow {
   id: string;
@@ -70,6 +71,7 @@ interface PreviewSample {
 }
 
 interface CampaignDetail extends CampaignRow {
+  whatsappAccountId?: string | null;
   messageBody?: string | null;
   scheduledAt?: string | null;
   audienceFilter?: {
@@ -158,6 +160,20 @@ export default function CampaignsPage() {
   const [scheduledLocal, setScheduledLocal] = useState(defaultScheduleLocal);
   const [listFilter, setListFilter] = useState<ListFilter>("all");
   const [detailScheduleLocal, setDetailScheduleLocal] = useState(defaultScheduleLocal);
+  const [whatsappAccountId, setWhatsappAccountId] = useState<string>("");
+
+  const { data: whatsappAccounts } = useQuery({
+    queryKey: QUERY_KEYS.whatsappAccounts,
+    queryFn: () =>
+      apiFetch<Array<{ id: string; displayPhoneNumber: string; isActive: boolean }>>(
+        "/whatsapp-accounts",
+        { token: token ?? undefined },
+      ),
+    enabled: !!token,
+    staleTime: STALE.config,
+  });
+
+  const activeAccounts = (whatsappAccounts ?? []).filter((a) => a.isActive);
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns"],
@@ -214,6 +230,12 @@ export default function CampaignsPage() {
     setError(null);
     setSaveMode("draft");
     setScheduledLocal(defaultScheduleLocal());
+    setWhatsappAccountId("");
+  }
+
+  function accountPayload() {
+    if (!whatsappAccountId) return {};
+    return { whatsappAccountId };
   }
 
   const previewMut = useMutation({
@@ -239,6 +261,7 @@ export default function CampaignsPage() {
           audience: audience(),
           ...templatePayload(),
           ...schedulePayload(),
+          ...accountPayload(),
         }),
       }),
     onSuccess: () => {
@@ -259,6 +282,7 @@ export default function CampaignsPage() {
           recipients: importRecipients,
           ...templatePayload(),
           ...schedulePayload(),
+          ...accountPayload(),
         }),
       }),
     onSuccess: () => {
@@ -428,6 +452,28 @@ export default function CampaignsPage() {
                   className="h-10 text-sm"
                 />
               </Field>
+              {activeAccounts.length > 0 && (
+                <Field label="Send from">
+                  <select
+                    value={whatsappAccountId}
+                    onChange={(e) => setWhatsappAccountId(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                    disabled={!canManage}
+                  >
+                    <option value="">
+                      {activeAccounts.length === 1
+                        ? activeAccounts[0].displayPhoneNumber
+                        : "Default number (oldest active)"}
+                    </option>
+                    {activeAccounts.length > 1 &&
+                      activeAccounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.displayPhoneNumber}
+                        </option>
+                      ))}
+                  </select>
+                </Field>
+              )}
               <Field label="Approved template">
                 <WhatsappTemplatePicker
                   templateName={templateName}
@@ -693,6 +739,7 @@ export default function CampaignsPage() {
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {c.totalRecipients} recipients
                       {c.sentCount > 0 && ` · ${c.sentCount} sent`}
+                      {c.deliveredCount > 0 && ` · ${c.deliveredCount} delivered`}
                       {c.failedCount > 0 && ` · ${c.failedCount} failed`}
                       {c.templateName ? ` · ${c.templateName}` : " · no template"}
                       {` · ${formatDate(c.createdAt)}`}
@@ -756,7 +803,10 @@ export default function CampaignsPage() {
                       <div className="mb-1 flex justify-between text-xs text-muted-foreground">
                         <span>Delivery progress</span>
                         <span>
-                          {detail.sentCount} / {detail.totalRecipients}
+                          {detail.sentCount} sent
+                          {detail.deliveredCount > 0 && ` · ${detail.deliveredCount} delivered`}
+                          {" / "}
+                          {detail.totalRecipients}
                         </span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -767,12 +817,33 @@ export default function CampaignsPage() {
                           }}
                         />
                       </div>
+                      {detail.deliveredCount > 0 && (
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-[#128C7E] transition-all"
+                            style={{
+                              width: `${Math.min(100, (detail.deliveredCount / detail.totalRecipients) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
+                  )}
+
+                  {detail.whatsappAccountId && (
+                    <p className="mb-4 text-xs text-muted-foreground">
+                      Send from:{" "}
+                      <strong className="text-foreground">
+                        {activeAccounts.find((a) => a.id === detail.whatsappAccountId)
+                          ?.displayPhoneNumber ?? "Selected number"}
+                      </strong>
+                    </p>
                   )}
 
                   <div className="mb-4 grid grid-cols-2 gap-3 text-sm">
                     <Stat label="Recipients" value={String(detail.totalRecipients)} />
                     <Stat label="Sent" value={String(detail.sentCount)} />
+                    <Stat label="Delivered" value={String(detail.deliveredCount)} />
                     <Stat label="Failed" value={String(detail.failedCount)} />
                     <Stat
                       label="Created"

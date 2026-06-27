@@ -31,4 +31,26 @@ export class AuditService {
         this.logger.warn(`Audit log failed: ${err instanceof Error ? err.message : "unknown"}`);
       });
   }
+
+  async listForOrganization(organizationId: string, limit: number) {
+    const rows = await this.prisma.auditLog.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      action: row.action,
+      resource: row.resource,
+      resourceId: row.resourceId,
+      metadata: row.metadata,
+      createdAt: row.createdAt.toISOString(),
+      user: row.user
+        ? { id: row.user.id, name: row.user.name, email: row.user.email }
+        : null,
+    }));
+  }
 }

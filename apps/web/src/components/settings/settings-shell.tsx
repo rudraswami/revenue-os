@@ -28,7 +28,9 @@ import { ProfileSettingsCard } from "@/components/settings/profile-settings-card
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
 import { SettingsSection, SettingsTabLoader } from "@/components/settings/settings-section";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
+import { AuditActivityCard } from "@/components/settings/audit-activity-card";
 import { TrackingLinksCard } from "@/components/settings/tracking-links-card";
+import { PaymentIntegrationCard } from "@/components/settings/payment-integration-card";
 import { WebhooksSettingsCard } from "@/components/settings/webhooks-settings-card";
 import WhatsappConnect from "@/components/settings/whatsapp-connect";
 import { WorkspaceOverview, WorkspaceOverviewLinks } from "@/components/settings/workspace-overview";
@@ -225,6 +227,14 @@ function SettingsTabContent({
               Assignment rules are managed by workspace admins.
             </p>
           )}
+          {isAdmin ? (
+            <SettingsSection
+              title="Activity log"
+              description="Recent workspace actions — exports, settings, and team changes."
+            >
+              <AuditActivityCard />
+            </SettingsSection>
+          ) : null}
         </div>
       );
     case "whatsapp":
@@ -262,12 +272,20 @@ function SettingsTabContent({
       );
     case "growth":
       return (
-        <SettingsSection
-          title="Attribution links"
-          description="Track which ads and campaigns drive WhatsApp conversations."
-        >
-          <TrackingLinksCard />
-        </SettingsSection>
+        <div className="space-y-5">
+          <SettingsSection
+            title="Attribution links"
+            description="Track which ads and campaigns drive WhatsApp conversations."
+          >
+            <TrackingLinksCard />
+          </SettingsSection>
+          <SettingsSection
+            title="Payment → Won"
+            description="Connect your Razorpay store so paid customers move to Won automatically."
+          >
+            <PaymentIntegrationCard />
+          </SettingsSection>
+        </div>
       );
     case "developers":
       return (

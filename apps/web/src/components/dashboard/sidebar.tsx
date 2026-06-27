@@ -21,6 +21,7 @@ import {
   MessageCircle,
   Megaphone,
   Settings,
+  Wifi,
   Zap,
 } from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
@@ -55,7 +56,10 @@ type NavGroup = {
 const NAV_GROUPS: NavGroup[] = [
   {
     label: "Overview",
-    items: [{ href: "/dashboard", label: "Home", icon: LayoutDashboard, exact: true }],
+    items: [
+      { href: "/dashboard", label: "Home", icon: LayoutDashboard, exact: true },
+      { href: "/dashboard/connection", label: "Connection", icon: Wifi },
+    ],
   },
   {
     label: "Engage",

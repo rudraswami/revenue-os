@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
 import { HomeRecommendationsPanel } from "@/components/dashboard/home-recommendations-panel";
+import { HomeConnectionHealthBanner } from "@/components/dashboard/home-connection-health-banner";
 import { AiCapabilitiesBanner, OnboardingBanner } from "@/components/dashboard/status-banners";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
@@ -154,7 +155,11 @@ export default function DashboardPage() {
   const { data: revenueSnapshot } = useQuery({
     queryKey: QUERY_KEYS.revenue("30d"),
     queryFn: () =>
-      apiFetch<{ pipelineValueCents: number }>("/leads/metrics/revenue?period=30d", {
+      apiFetch<{
+        pipelineValueCents: number;
+        wonValueCents: number;
+        avgDaysToClose: number | null;
+      }>("/leads/metrics/revenue?period=30d", {
         token: token ?? undefined,
       }),
     enabled: !!token,
@@ -210,6 +215,7 @@ export default function DashboardPage() {
 
       <OnboardingBanner />
       <AiCapabilitiesBanner />
+      <HomeConnectionHealthBanner />
       <GettingStartedCard />
 
       {(funnelError || convError) && !isLoading && (

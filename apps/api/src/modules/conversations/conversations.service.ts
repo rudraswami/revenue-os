@@ -256,6 +256,58 @@ export class ConversationsService {
     return { ok: true };
   }
 
+  /**
+   * One-click handoff: assign to caller, disable AI, resolve handoff, create follow-up task.
+   */
+  async takeover(user: JwtPayload, id: string, taskTitle?: string) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id, organizationId: user.organizationId },
+      include: {
+        lead: { select: { id: true, displayName: true, phone: true } },
+      },
+    });
+    if (!conversation) throw new NotFoundException("Conversation not found");
+
+    const meta = (conversation.metadata ?? {}) as Record<string, unknown>;
+    const title =
+      taskTitle?.trim().slice(0, 120) ||
+      `Follow up: ${conversation.lead?.displayName ?? conversation.contactName ?? conversation.contactPhone}`;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.conversation.update({
+        where: { id },
+        data: {
+          assignedToId: user.sub,
+          aiEnabled: false,
+          metadata: {
+            ...meta,
+            requiresHuman: false,
+            handoffResolvedAt: new Date().toISOString(),
+            handoffResolvedBy: user.sub,
+          },
+        },
+      });
+
+      if (conversation.leadId) {
+        await tx.task.create({
+          data: {
+            organizationId: user.organizationId,
+            title,
+            priority: "HIGH",
+            leadId: conversation.leadId,
+            assignedToId: user.sub,
+            createdById: user.sub,
+          },
+        });
+      }
+    });
+
+    this.realtime.emitInboxUpdated(user.organizationId);
+    return this.getById(user, id);
+  }
+
   private async clearHandoffIfNeeded(conversationId: string, userId: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },

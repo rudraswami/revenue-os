@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { SlaMetricsPanel } from "@/components/dashboard/sla-metrics-panel";
+import { AttributionMetricsPanel } from "@/components/dashboard/attribution-metrics-panel";
+import { LostDealsPanel } from "@/components/dashboard/lost-deals-panel";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
@@ -229,6 +231,11 @@ export default function AnalyticsPage() {
                 />
               )}
             </DashboardPanel>
+          </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <AttributionMetricsPanel />
+            <LostDealsPanel period={period} />
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">

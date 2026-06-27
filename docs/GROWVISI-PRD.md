@@ -119,6 +119,44 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 
 **Goal:** Paid retention + expansion revenue without becoming a generic CRM.
 
+#### P0 — Ship first (reliability + campaigns)
+
+| ID | Requirement | Acceptance criteria |
+|----|-------------|---------------------|
+| B-P0-1 | Campaign delivery tracking | `waMessageId` stored on send; webhook updates recipient + `deliveredCount` / `failedCount` |
+| B-P0-2 | Multi-number campaigns | Campaign `whatsappAccountId`; UI picker when org has multiple active numbers |
+| B-P0-3 | Background workers on Vercel | `REDIS_URL` + BullMQ for classify/inbound when `useBackgroundWorkers()` true; inline fallback documented |
+| B-P0-4 | Settings RBAC | Tabs hidden by role/plan; direct URL shows access panel; API guards aligned |
+| B-P0-5 | Home recommendations | No separate Insights nav; `/dashboard/insights` → Home `#recommendations` |
+
+#### P1 — Retention + trust
+
+| ID | Requirement | Acceptance criteria |
+|----|-------------|---------------------|
+| B-P1-1 | Audit log (read) | `GET /audit/logs` admin+; Activity log in Settings → Team |
+| B-P1-2 | Billing cancel | `POST /billing/cancel` via Razorpay `cancel_at_cycle_end`; keeps `ACTIVE` until period end; UI shows scheduled cancellation |
+| B-P1-3 | Attribution on Analytics | `/tracking/metrics` panel on Analytics with link to Growth settings |
+| B-P1-4 | Connection health on Home | Compact banner when token/setup incomplete; full checklist in Settings |
+| B-P1-5 | pgvector RAG | Business context in classify + suggest-reply (shipped in classify path) |
+| B-P1-6 | Always-on workers | Redis required in prod; Sentry + job failure alerts |
+| B-P1-7 | Meta token auto-refresh | Cron `whatsapp-token-refresh` exchanges tokens within 7d of expiry via `fb_exchange_token` |
+| B-P1-8 | Lost-deal analytics | `GET /leads/metrics/lost-deals` + Analytics panel; lost reason on Pipeline |
+| B-P1-9 | Guided onboarding | `GET /organizations/onboarding-progress` + Home checklist until first classified lead |
+| B-P1-10 | Razorpay payment → Won | `POST /webhooks/payments/:orgId` + Settings → Growth configuration |
+| B-P1-11 | Connection Health page | `/dashboard/connection` + sidebar nav; Home banner links here |
+| B-P1-12 | Revenue pulse complete | `avgDaysToClose` + won ₹ on Home command center |
+| B-P1-13 | One-click Take over | `POST /conversations/:id/takeover` — assign + task + resolve handoff |
+| B-P1-14 | Mobile inbox + PWA | `manifest.json`, theme-color, safe-area composer on mobile |
+
+#### P2 — Expansion
+
+| Area | Requirements |
+|------|--------------|
+| Pipeline | Won/lost reasons, revenue forecasting, cohort views |
+| Automations | Outbound webhooks, richer audit filters |
+| Integrations | Shopify/Razorpay payment events |
+| Billing | Self-serve invoices, usage overage |
+
 | Area | Requirements | Priority |
 |------|--------------|----------|
 | WhatsApp | Embedded Signup live (post App Review), multi-number at scale | P0 |
@@ -276,9 +314,10 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 
 | Constraint | Product impact |
 |------------|----------------|
-| Vercel serverless API | AI/webhook jobs run inline at MVP volume; document scale path |
+| Vercel serverless API | Set `REDIS_URL` (Upstash/etc.) so BullMQ runs classify/inbound off-request; `USE_INLINE_WORKERS=1` forces inline for local debug |
 | PostgreSQL + Prisma | Relational integrity for leads, messages, billing |
-| Redis + BullMQ (local) | Background classify when not on Vercel |
+| Redis + BullMQ | Required for prod scale; optional locally (`redis://localhost:6379`) |
+| Meta token lifecycle | Manual refresh in Settings v1; Home + global banner when token urgent |
 | Meta App Review | Embedded Signup gated until approved |
 | OPENAI_API_KEY optional | Graceful degrade: ingest works; classify off |
 
@@ -317,7 +356,8 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 
 | Alternative | Growvisi advantage |
 |-------------|------------------|
-| Meta Business Agent alone | Pipeline, timeline, team, metrics |
+| WATI / Interakt / AiSensy | Revenue layer on Meta replies — pipeline, AI classify, team assign, INR pricing |
+| Meta Business Agent alone | Pipeline, timeline, team, metrics, attribution |
 | Intercom / Zendesk | WhatsApp-first, India pricing, no ticket bloat |
 | HubSpot / Zoho CRM | 10× faster setup; built for WhatsApp sellers |
 | spreadsheets | Real-time ingest, AI scoring, shared inbox |

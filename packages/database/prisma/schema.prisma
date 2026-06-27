@@ -581,6 +581,7 @@ model Subscription {
   razorpaySubscriptionId String?
   razorpayPlanId         String?
   currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
@@ -734,9 +735,10 @@ model Task {
 // ─── Campaigns / Broadcasts ──────────────────────────────────────────────────
 
 model Campaign {
-  id              String         @id @default(cuid())
-  organizationId  String
-  name            String
+  id                String         @id @default(cuid())
+  organizationId    String
+  whatsappAccountId String?
+  name              String
   status          CampaignStatus @default(DRAFT)
   templateName    String?
   messageBody     String?
@@ -760,19 +762,21 @@ model Campaign {
 }
 
 model CampaignRecipient {
-  id         String                  @id @default(cuid())
-  campaignId String
-  leadId     String?
-  phone      String
-  name       String?
-  status     CampaignRecipientStatus @default(PENDING)
-  error      String?
-  sentAt     DateTime?
-  createdAt  DateTime                @default(now())
+  id          String                  @id @default(cuid())
+  campaignId  String
+  leadId      String?
+  phone       String
+  name        String?
+  waMessageId String?
+  status      CampaignRecipientStatus @default(PENDING)
+  error       String?
+  sentAt      DateTime?
+  createdAt   DateTime                @default(now())
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, status])
+  @@index([waMessageId])
   @@map("campaign_recipients")
 }
 

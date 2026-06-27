@@ -6,6 +6,7 @@ import { Queue } from "bullmq";
 import { createHash } from "crypto";
 import { QUEUES } from "@growvisi/shared";
 import { isProductionDeploy } from "../../config/production";
+import { useBackgroundWorkers } from "../../config/workers";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface WhatsappWebhookPayload {
@@ -88,8 +89,8 @@ export class WhatsappService {
       },
     });
 
-    // Vercel serverless has no background workers — process inline.
-    if (process.env.VERCEL === "1") {
+    // Serverless without Redis — process inline; otherwise queue handles async work.
+    if (!useBackgroundWorkers()) {
       try {
         const events = await this.processInboundPayload(payload);
         await this.prisma.webhookEvent.update({
@@ -368,6 +369,63 @@ export class WhatsappService {
       await this.prisma.message.updateMany({
         where: { organizationId, waMessageId },
         data: { status: mapped as never },
+      });
+      await this.updateCampaignRecipientStatus(organizationId, waMessageId, mapped);
+    }
+  }
+
+  private static CAMPAIGN_STATUS_RANK: Record<string, number> = {
+    SENT: 1,
+    DELIVERED: 2,
+    READ: 3,
+    FAILED: -1,
+  };
+
+  /** Meta delivery webhooks → campaign recipient + aggregate counts. */
+  private async updateCampaignRecipientStatus(
+    organizationId: string,
+    waMessageId: string,
+    mapped: string,
+  ) {
+    const recipient = await this.prisma.campaignRecipient.findFirst({
+      where: {
+        waMessageId,
+        campaign: { organizationId },
+      },
+      select: { id: true, status: true, campaignId: true },
+    });
+    if (!recipient) return;
+
+    const campaignStatus =
+      mapped === "DELIVERED"
+        ? "DELIVERED"
+        : mapped === "READ"
+          ? "READ"
+          : mapped === "FAILED"
+            ? "FAILED"
+            : mapped === "SENT"
+              ? "SENT"
+              : null;
+    if (!campaignStatus) return;
+
+    const prevRank = WhatsappService.CAMPAIGN_STATUS_RANK[recipient.status] ?? 0;
+    const newRank = WhatsappService.CAMPAIGN_STATUS_RANK[campaignStatus] ?? 0;
+    if (campaignStatus !== "FAILED" && newRank <= prevRank) return;
+
+    await this.prisma.campaignRecipient.update({
+      where: { id: recipient.id },
+      data: { status: campaignStatus as never },
+    });
+
+    if (campaignStatus === "DELIVERED") {
+      await this.prisma.campaign.update({
+        where: { id: recipient.campaignId },
+        data: { deliveredCount: { increment: 1 } },
+      });
+    } else if (campaignStatus === "FAILED" && recipient.status !== "FAILED") {
+      await this.prisma.campaign.update({
+        where: { id: recipient.campaignId },
+        data: { failedCount: { increment: 1 } },
       });
     }
   }

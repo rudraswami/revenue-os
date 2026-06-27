@@ -12,6 +12,7 @@ import { AuthService } from "../auth/auth.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
+import { normalizePaymentIntegration } from "./payment-integration";
 
 export interface ReplyTemplate {
   id: string;
@@ -364,5 +365,102 @@ export class OrganizationsService {
 
     const session = await this.auth.switchOrganization(user.sub, invite.organizationId);
     return { ...session, alreadyMember: false };
+  }
+
+  async getPaymentIntegration(user: JwtPayload) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { settings: true },
+    });
+    if (!org) throw new NotFoundException("Organization not found");
+    const settings = (org.settings ?? {}) as Record<string, unknown>;
+    const integration = normalizePaymentIntegration(settings.paymentIntegration);
+    const apiBase = (
+      this.config.get<string>("WEBHOOK_PUBLIC_URL") ??
+      this.config.get<string>("API_URL") ??
+      "http://localhost:4000"
+    ).replace(/\/$/, "");
+    return {
+      ...integration,
+      webhookUrl: `${apiBase}/api/v1/webhooks/payments/${user.organizationId}`,
+      hasWebhookSecret: !!integration.razorpayWebhookSecret,
+    };
+  }
+
+  async updatePaymentIntegration(
+    user: JwtPayload,
+    input: { razorpayWebhookSecret?: string | null; autoWinOnPayment?: boolean },
+  ) {
+    this.assertAdmin(user);
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { settings: true },
+    });
+    if (!org) throw new NotFoundException("Organization not found");
+    const settings = (org.settings ?? {}) as Record<string, unknown>;
+    const current = normalizePaymentIntegration(settings.paymentIntegration);
+    const next = {
+      razorpayWebhookSecret:
+        input.razorpayWebhookSecret !== undefined
+          ? input.razorpayWebhookSecret?.trim() || null
+          : current.razorpayWebhookSecret,
+      autoWinOnPayment:
+        input.autoWinOnPayment !== undefined ? input.autoWinOnPayment : current.autoWinOnPayment,
+    };
+    await this.prisma.organization.update({
+      where: { id: user.organizationId },
+      data: {
+        settings: {
+          ...settings,
+          paymentIntegration: next,
+        },
+      },
+    });
+    return this.getPaymentIntegration(user);
+  }
+
+  async getOnboardingProgress(organizationId: string) {
+    const [
+      whatsappConnected,
+      inboundMessages,
+      classifiedLeads,
+      pipelineMoved,
+    ] = await Promise.all([
+      this.prisma.whatsappAccount.count({
+        where: { organizationId, isActive: true },
+      }),
+      this.prisma.message.count({
+        where: { organizationId, direction: "INBOUND" },
+      }),
+      this.prisma.lead.count({
+        where: { organizationId, lastClassifiedAt: { not: null } },
+      }),
+      this.prisma.lead.count({
+        where: {
+          organizationId,
+          OR: [
+            { stage: { not: "NEW" } },
+            { stageHistory: { some: { changedBy: { not: null } } } },
+          ],
+        },
+      }),
+    ]);
+
+    const steps = {
+      whatsappConnected: whatsappConnected > 0,
+      firstInbound: inboundMessages > 0,
+      aiClassified: classifiedLeads > 0,
+      pipelineMoved: pipelineMoved > 0,
+    };
+
+    const values = Object.values(steps);
+    const completedCount = values.filter(Boolean).length;
+
+    return {
+      ...steps,
+      completedCount,
+      totalSteps: values.length,
+      allComplete: completedCount === values.length,
+    };
   }
 }

@@ -9,8 +9,9 @@ import { KnowledgeModule } from "../knowledge/knowledge.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { AiClassifyService } from "./ai-classify.service";
 import { AiClassifyProcessor } from "./processors/ai-classify.processor";
+import { useBackgroundWorkers } from "../../config/workers";
 
-const isVercel = process.env.VERCEL === "1";
+const registerProcessors = useBackgroundWorkers();
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ const isVercel = process.env.VERCEL === "1";
     WebhooksModule,
     KnowledgeModule,
   ],
-  providers: [AiClassifyService, ...(isVercel ? [] : [AiClassifyProcessor])],
+  providers: [AiClassifyService, ...(registerProcessors ? [AiClassifyProcessor] : [])],
   exports: [AiClassifyService],
 })
 export class AiModule {}

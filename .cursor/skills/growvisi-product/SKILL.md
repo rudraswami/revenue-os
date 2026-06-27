@@ -43,7 +43,7 @@ When evaluating any feature, score it:
 
 **MVP (shipped):** connect WhatsApp, inbox, AI classify, pipeline, analytics, automations (email), team invites, Razorpay billing, trial enforcement.
 
-**Full app (same product, hardened):** embedded signup live, RAG knowledge, revenue forecasting, outbound webhooks, always-on workers, API platform, self-serve billing portal.
+**Full app (Phase B — in progress):** campaign delivery tracking, multi-number sends, audit log, billing cancel-at-period-end, attribution on Analytics, connection health on Home, Redis workers on Vercel when `REDIS_URL` set; upcoming: RAG knowledge, revenue forecasting, outbound webhooks.
 
 **Never v1:** email CRM, SSO, in-app notification center, Stripe, Growvisi auto-reply bot.
 
