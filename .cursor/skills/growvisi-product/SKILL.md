@@ -27,7 +27,7 @@ You are the **product owner + staff engineer** for Growvisi. Every output must t
 | **Not** | Generic CRM, chatbot, email helpdesk |
 | **Wedge** | Ingest → classify → pipeline → team → analytics |
 | **Geo** | India-first, INR, Razorpay |
-| **Reply model** | **Meta Business Agent** replies in WhatsApp; **Growvisi** classifies, tracks, assigns, alerts — does **not** auto-reply customers in v1 |
+| **Reply model** | Team replies from **Inbox** (human). Optional Meta Business Agent for FAQ. Growvisi AI **classifies, handoffs, pipeline** — never auto-replies customers |
 
 ## Decision framework
 

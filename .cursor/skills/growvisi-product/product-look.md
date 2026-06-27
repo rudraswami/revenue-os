@@ -23,14 +23,14 @@ Companion to [GROWVISI-PRD.md](../../../docs/GROWVISI-PRD.md). Use when designin
 ```
 [Nav: Home · Pricing · FAQ · Login]
 
-Hero: "The AI Revenue Engine for WhatsApp sales teams"
-      Meta replies fast → Growvisi tracks outcomes
+Hero: "WhatsApp conversations in. Pipeline ₹ out."
+      AI classifies → human reply from Inbox when needed
       [Start 14-day trial]
 
 Social proof → Product screenshots (inbox, pipeline, timeline)
 How it works: Connect → Classify → Pipeline → Close
 Pricing grid (shared with app via PricingPlansGrid)
-FAQ + Meta Business Agent disclosure
+FAQ + honest reply model (human Inbox, optional Meta BA, no AI auto-send)
 Footer: legal links
 ```
 

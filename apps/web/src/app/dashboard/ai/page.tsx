@@ -248,15 +248,18 @@ export default function AiStudioPage() {
 
       {/* Capabilities + RAG status */}
       <div className="mb-8 grid gap-4 lg:grid-cols-2">
-        <DashboardPanel title="What AI does" description="Honest boundaries — Meta replies in-chat; Growvisi classifies and routes.">
+        <DashboardPanel title="What AI does" description="Classifies and advises — your team sends human replies from Inbox. Growvisi never auto-messages customers.">
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>
               <strong className="text-foreground">Classification:</strong>{" "}
               {capabilities?.aiClassification ? "On — runs on every inbound message" : "Off — set OPENAI_API_KEY"}
             </li>
             <li>
+              <strong className="text-foreground">Human handoff:</strong> Flags threads that need your team; Take over in Inbox
+            </li>
+            <li>
               <strong className="text-foreground">Smart reply drafts:</strong>{" "}
-              {capabilities?.aiSuggestReply ? "On — human takeover suggestions" : "Off"}
+              {capabilities?.aiSuggestReply ? "On — suggestions for human takeover only" : "Off"}
             </li>
             <li>
               <strong className="text-foreground">Business context (RAG):</strong>{" "}

@@ -3,13 +3,14 @@ import Link from "next/link";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
 import { Button } from "@/components/ui/button";
-import { CTA } from "@/lib/brand-copy";
+import { CTA, TAGLINE } from "@/lib/brand-copy";
+import { POSITIONING } from "@/lib/gtm-copy";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 
 export const metadata: Metadata = {
   title: "About Growvisi",
   description:
-    "Growvisi is the AI Revenue Engine for WhatsApp sales teams — classify intent, score leads, and manage pipeline while Meta handles in-chat replies.",
+    "Growvisi is the revenue layer for WhatsApp sales teams — AI classifies leads, humans reply from Inbox, pipeline and revenue ₹ stay visible.",
 };
 
 export default function AboutPage() {
@@ -20,26 +21,22 @@ export default function AboutPage() {
         <div className="border-b border-border/60 bg-gradient-to-b from-primary-soft/30 to-transparent py-12 md:py-16">
           <div className="mx-auto max-w-[720px] px-6">
             <p className="section-label">About</p>
-            <h1 className="display-lg mt-3 text-foreground">
-              The AI Revenue Engine for WhatsApp sales teams
-            </h1>
+            <h1 className="display-lg mt-3 text-foreground">{TAGLINE}</h1>
           </div>
         </div>
         <div className="mx-auto max-w-[720px] px-6 py-10 md:py-12">
           <ScrollReveal>
-            <p className="body-lg text-muted-foreground">
-              Growvisi ingests customer WhatsApp threads, classifies intent, scores leads, and tracks your
-              pipeline end-to-end. We complement Meta Business Agent — Meta replies in WhatsApp; Growvisi
-              helps you operate growth.
-            </p>
+            <p className="body-lg text-muted-foreground">{POSITIONING.subhead}</p>
           </ScrollReveal>
 
           <ScrollReveal delay={0.05} className="mt-12 space-y-6 text-[15px] leading-relaxed text-muted-foreground">
             <p>
-              Built for Indian and global SMBs using the WhatsApp Business Platform, Growvisi connects via
-              Meta&apos;s official Cloud API. Your team gets a single place to see conversations, pipeline
-              stages, and AI-assisted classification — without replacing Meta&apos;s in-chat experience.
+              Built for Indian SMBs on the WhatsApp Business Platform, Growvisi connects via Meta&apos;s
+              official Cloud API. Your team gets one place for conversations, AI classification, handoffs,
+              pipeline stages, and revenue metrics — while sending human replies from Inbox when customers
+              need a person.
             </p>
+            <p>{POSITIONING.replyNote}</p>
             <p>
               <strong className="text-foreground">Contact:</strong>{" "}
               <a href="mailto:support@growvisi.in" className="text-primary hover:underline">
@@ -50,8 +47,8 @@ export default function AboutPage() {
               <Button asChild variant="accent">
                 <Link href="/register">{CTA.startTrial}</Link>
               </Button>
-              <Button variant="outline" asChild>
-                <Link href="/contact">Contact sales</Link>
+              <Button asChild variant="outline">
+                <Link href="/contact">{CTA.bookDemo}</Link>
               </Button>
             </div>
           </ScrollReveal>

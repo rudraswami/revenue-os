@@ -227,12 +227,12 @@ export default function AutomationsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-base font-bold">Welcome & first reply</h3>
                   <span className="rounded-full bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                    Meta Business Agent
+                    Meta or human
                   </span>
                 </div>
                 <p className="mt-1.5 text-sm text-muted-foreground">
-                  First replies happen inside WhatsApp via Meta — Growvisi classifies intent from the
-                  full thread. No toggle needed here.
+                  First replies can come from your team in Inbox, WhatsApp directly, or optional Meta
+                  Business Agent — Growvisi classifies intent from the full thread. No toggle needed here.
                 </p>
                 <p className="mt-2 text-xs font-medium text-accent">Always on via WhatsApp</p>
               </div>

@@ -2,7 +2,7 @@
 
 **Audience:** Meta Tech Providers, WhatsApp BSP partners, and Indian agencies installing Growvisi alongside Meta Business Agent.
 
-**Stack positioning:** Meta Business Agent replies in WhatsApp. Growvisi classifies, tracks pipeline, assigns team, and sends owner digests — it does **not** auto-reply customers in v1.
+**Stack positioning:** Your team replies from **Growvisi Inbox** (human messages). Growvisi AI classifies, tracks pipeline, assigns team, and sends owner digests — it **never auto-replies** customers. Optional **Meta Business Agent** can handle first-line FAQ in WhatsApp.
 
 ---
 
@@ -11,7 +11,7 @@
 | Item | Owner |
 |------|--------|
 | WhatsApp Business Account (WABA) | Client |
-| Meta Business Agent enabled for customer replies | Client / Partner |
+| Meta Business Agent (optional FAQ bot) | Client / Partner |
 | Growvisi workspace (trial or paid) | Client |
 | Meta Cloud API token or Embedded Signup (TP) | Partner |
 
@@ -19,10 +19,11 @@
 
 ## 2. Install sequence (45–60 min)
 
-### Step A — Meta Business Agent
+### Step A — Who replies to customers
 
-1. Confirm client uses Meta Business Agent for in-chat customer replies.
-2. Document that Growvisi is the **revenue layer**, not a chatbot replacement.
+1. Train client: **human replies** from Growvisi Inbox or WhatsApp directly.
+2. Optional: Meta Business Agent for automated first-line FAQ in WhatsApp.
+3. Growvisi is the **revenue layer** — classify, handoff, pipeline — not an AI chatbot.
 
 ### Step B — Growvisi WhatsApp connect
 
@@ -80,7 +81,7 @@ Template body params (if using template): `org name, pipeline ₹, won 24h, hand
 
 | Question | Answer |
 |----------|--------|
-| Who replies to customers? | Meta Business Agent in WhatsApp |
+| Who replies to customers? | Your team from Growvisi Inbox (human) · optional Meta Business Agent for FAQ |
 | Who moves pipeline? | Growvisi AI + team |
 | Can Growvisi send marketing blasts? | Campaigns module (Meta policy applies) |
 | Billing currency | INR via Razorpay only |

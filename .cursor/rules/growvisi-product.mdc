@@ -9,7 +9,7 @@ alwaysApply: true
 
 ## Non-negotiables
 
-1. **Meta replies in WhatsApp** via Business Agent. Growvisi **classifies, tracks, assigns, alerts** — does not auto-reply customers in v1.
+1. **Human replies from Growvisi Inbox** (or WhatsApp directly). Optional **Meta Business Agent** for first-line FAQ. Growvisi AI **classifies, tracks, assigns, alerts** — never auto-replies customers.
 2. **India-first:** INR pricing, Razorpay billing. No Stripe/USD in product UI.
 3. **Enforce limits server-side** (`EntitlementsService`, `PLAN_LIMITS`). UI mirrors API; never UI-only gates.
 4. **Honest automations:** no fake toggles for Meta-owned behavior (welcome = info card only).

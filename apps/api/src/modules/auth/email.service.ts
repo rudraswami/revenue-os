@@ -98,7 +98,7 @@ export class EmailService {
         <p>Hi,</p>
         <p>Growvisi flagged a conversation in <strong>${opts.organizationName}</strong> that needs a human.</p>
         <p><strong>${opts.leadLabel}</strong> — ${opts.reason}</p>
-        <p>A follow-up task was created in Growvisi. Customer replies still happen in WhatsApp via Meta Business Agent.</p>
+        <p>A follow-up task was created in Growvisi. Reply from Inbox when you take over, or continue in WhatsApp.</p>
         <p><a href="${opts.inboxUrl}">Open conversation</a></p>
       `,
       replyTo: "support@growvisi.in",
@@ -204,7 +204,7 @@ export class EmailService {
             &nbsp;
             <a href="${opts.insightsUrl}" style="font-size:13px;color:#006c49">Recommendations</a>
           </p>
-          <p style="font-size:11px;color:#888">Customer replies happen in WhatsApp via Meta Business Agent. Growvisi tracks pipeline and team actions. Turn off this email in Automations → Daily digest.</p>
+          <p style="font-size:11px;color:#888">Growvisi tracks pipeline and team actions. Your team replies from Inbox when customers need a human. Turn off this email in Automations → Daily digest.</p>
         </div>
       `,
       replyTo: "support@growvisi.in",
@@ -224,7 +224,7 @@ export class EmailService {
         <p>Hi,</p>
         <p>You've been invited to join <strong>${opts.organizationName}</strong> on Growvisi as <strong>${opts.role.toLowerCase()}</strong>.</p>
         <p><a href="${opts.inviteUrl}">Accept invite and create your account</a></p>
-        <p>This link expires in 7 days. Growvisi helps teams classify WhatsApp leads — Meta replies in-chat, we track the pipeline.</p>
+        <p>This link expires in 7 days. Growvisi classifies WhatsApp leads and tracks pipeline ₹ — your team replies from Inbox when it matters.</p>
       `,
       replyTo: "support@growvisi.in",
     });

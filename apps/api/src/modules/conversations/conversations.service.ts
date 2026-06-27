@@ -805,7 +805,7 @@ export class ConversationsService {
       breachCount,
       unansweredOver24h: unanswered,
       slowest: slowest.slice(0, 8),
-      note: "Measures first team reply sent from Growvisi. Meta Business Agent replies in WhatsApp are not included.",
+      note: "Measures first human reply sent from Growvisi Inbox. Replies sent only in WhatsApp (outside Growvisi) are not included.",
     };
   }
 }

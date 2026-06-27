@@ -393,8 +393,8 @@ export default function InboxPage() {
             <div className="max-w-sm space-y-1">
               <h2 className="text-lg font-bold tracking-tight">Select a conversation</h2>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Pick a contact on the left to view messages, AI classification, and pipeline
-                timeline. Customer replies happen in WhatsApp via Meta Business Agent.
+                Pick a contact on the left to view messages, AI classification, and pipeline timeline.
+                Reply as a human from Inbox when AI flags a handoff — or continue in WhatsApp.
               </p>
             </div>
             <div className="mt-2 grid max-w-md gap-2 text-left text-xs text-muted-foreground sm:grid-cols-3">
@@ -679,7 +679,7 @@ export default function InboxPage() {
                     </div>
                   </div>
                   <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-                    Meta Business Agent replies in WhatsApp · use this for human takeover only
+                    Human reply from Growvisi · optional Meta Business Agent can also reply in WhatsApp
                   </p>
                   <button
                     type="button"

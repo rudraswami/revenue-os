@@ -360,7 +360,7 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 
 | Alternative | Growvisi advantage |
 |-------------|------------------|
-| WATI / Interakt / AiSensy | Revenue layer on Meta replies — pipeline, AI classify, team assign, INR pricing |
+| WATI / Interakt / AiSensy | Revenue layer on WhatsApp — human Inbox, AI classify, pipeline ₹, team assign |
 | Meta Business Agent alone | Pipeline, timeline, team, metrics, attribution |
 | Intercom / Zendesk | WhatsApp-first, India pricing, no ticket bloat |
 | HubSpot / Zoho CRM | 10× faster setup; built for WhatsApp sellers |

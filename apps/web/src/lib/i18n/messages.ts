@@ -46,7 +46,7 @@ export const messages = {
     },
     partner: {
       title: "Partner install kit",
-      description: "Meta Business Agent + Growvisi — the stack Indian SMBs need for WhatsApp revenue.",
+      description: "Human Inbox + AI classification — the WhatsApp revenue stack for Indian SMBs.",
     },
   },
   hi: {
@@ -94,7 +94,7 @@ export const messages = {
     },
     partner: {
       title: "पार्टनर इंस्टॉल किट",
-      description: "Meta Business Agent + Growvisi — WhatsApp राजस्व के लिए भारतीय SMB स्टैक।",
+      description: "ह्यूमन Inbox + AI वर्गीकरण — भारतीय SMB के लिए WhatsApp राजस्व स्टैक।",
     },
   },
 } as const;

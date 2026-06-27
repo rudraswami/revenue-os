@@ -2,22 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, Menu, Sparkles, X } from "lucide-react";
+import { ArrowRight, ChevronDown, Menu, Sparkles, X } from "lucide-react";
 import { CTA } from "@/lib/brand-copy";
+import { MARKETING_NAV } from "@/lib/marketing-nav";
+import { NavMegaMenu } from "./nav-mega-menu";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
-
-const navLinks = [
-  { href: "#product", label: "Product" },
-  { href: "#engine", label: "How it works" },
-  { href: "#industries", label: "Solutions" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "/agencies", label: "Agencies", external: true },
-];
 
 export function MarketingHeader() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -28,15 +24,12 @@ export function MarketingHeader() {
 
   return (
     <div className="sticky top-0 z-50">
-      {/* Announcement bar */}
       <Link
         href="/register"
         className="group flex items-center justify-center gap-2 bg-[#0b1c30] px-4 py-2 text-center text-[13px] font-medium text-white/90 transition-colors hover:text-white"
       >
         <Sparkles className="h-3.5 w-3.5 text-[#6cf8bb]" />
-        <span>
-          Human inbox + pipeline ₹ — 14-day trial, 500 leads
-        </span>
+        <span>Human inbox + pipeline ₹ — 14-day trial, 500 leads</span>
         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
       </Link>
 
@@ -51,29 +44,37 @@ export function MarketingHeader() {
         <div className="mx-auto flex max-w-[1280px] items-center justify-between px-6 py-3.5 lg:px-8">
           <Logo />
 
-          <nav className="hidden items-center gap-8 md:flex">
-            {navLinks.map((link) =>
-              "external" in link && link.external ? (
+          <nav className="hidden items-center gap-6 lg:flex">
+            {MARKETING_NAV.map((entry) =>
+              entry.type === "dropdown" ? (
+                <NavMegaMenu
+                  key={entry.dropdown.id}
+                  menu={entry.dropdown}
+                  open={openMenu === entry.dropdown.id}
+                  onOpen={() => setOpenMenu(entry.dropdown.id)}
+                  onClose={() => setOpenMenu(null)}
+                />
+              ) : entry.external ? (
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  className="relative text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground after:absolute after:-bottom-1.5 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-accent after:transition-all hover:after:w-full"
+                  key={entry.href}
+                  href={entry.href}
+                  className="text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  {link.label}
+                  {entry.label}
                 </Link>
               ) : (
                 <a
-                  key={link.href}
-                  href={link.href}
-                  className="relative text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground after:absolute after:-bottom-1.5 after:left-0 after:h-0.5 after:w-0 after:rounded-full after:bg-accent after:transition-all hover:after:w-full"
+                  key={entry.href}
+                  href={entry.href}
+                  className="text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  {link.label}
+                  {entry.label}
                 </a>
               ),
             )}
           </nav>
 
-          <div className="hidden items-center gap-5 md:flex">
+          <div className="hidden items-center gap-5 lg:flex">
             <Link
               href="/login"
               className="text-[14px] font-semibold text-foreground transition-colors hover:text-accent"
@@ -91,7 +92,7 @@ export function MarketingHeader() {
 
           <button
             type="button"
-            className="rounded-lg p-2 text-muted-foreground hover:bg-muted md:hidden"
+            className="rounded-lg p-2 text-muted-foreground hover:bg-muted lg:hidden"
             onClick={() => setOpen(!open)}
             aria-label={open ? "Close menu" : "Open menu"}
           >
@@ -101,33 +102,78 @@ export function MarketingHeader() {
 
         <div
           className={cn(
-            "border-t border-border bg-white px-6 py-4 md:hidden",
+            "border-t border-border bg-white px-6 py-4 lg:hidden",
             open ? "block" : "hidden",
           )}
         >
-          <nav className="flex flex-col gap-4">
-            {navLinks.map((link) =>
-              "external" in link && link.external ? (
+          <nav className="flex flex-col gap-1">
+            {MARKETING_NAV.map((entry) =>
+              entry.type === "dropdown" ? (
+                <div key={entry.dropdown.id} className="border-b border-border/60 py-2">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between py-2 text-[15px] font-semibold"
+                    onClick={() =>
+                      setMobileExpanded((id) =>
+                        id === entry.dropdown.id ? null : entry.dropdown.id,
+                      )
+                    }
+                  >
+                    {entry.dropdown.label}
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 transition-transform",
+                        mobileExpanded === entry.dropdown.id && "rotate-180",
+                      )}
+                    />
+                  </button>
+                  {mobileExpanded === entry.dropdown.id && (
+                    <div className="pb-2 pl-2 space-y-1">
+                      {entry.dropdown.items.map((item) =>
+                        item.external ? (
+                          <Link
+                            key={item.label}
+                            href={item.href}
+                            className="block py-2 text-sm text-muted-foreground"
+                            onClick={() => setOpen(false)}
+                          >
+                            {item.label}
+                          </Link>
+                        ) : (
+                          <a
+                            key={item.label}
+                            href={item.href}
+                            className="block py-2 text-sm text-muted-foreground"
+                            onClick={() => setOpen(false)}
+                          >
+                            {item.label}
+                          </a>
+                        ),
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : entry.external ? (
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-[15px] font-medium"
+                  key={entry.href}
+                  href={entry.href}
+                  className="py-2 text-[15px] font-medium"
                   onClick={() => setOpen(false)}
                 >
-                  {link.label}
+                  {entry.label}
                 </Link>
               ) : (
                 <a
-                  key={link.href}
-                  href={link.href}
-                  className="text-[15px] font-medium"
+                  key={entry.href}
+                  href={entry.href}
+                  className="py-2 text-[15px] font-medium"
                   onClick={() => setOpen(false)}
                 >
-                  {link.label}
+                  {entry.label}
                 </a>
               ),
             )}
-            <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <div className="flex flex-col gap-3 border-t border-border pt-4 mt-2">
               <Link href="/login" onClick={() => setOpen(false)}>
                 {CTA.signIn}
               </Link>

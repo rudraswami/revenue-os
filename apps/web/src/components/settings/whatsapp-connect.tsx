@@ -274,8 +274,8 @@ export default function WhatsappConnect() {
         <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
           <p className="text-sm text-muted-foreground">
             Connect your <strong className="text-foreground">WhatsApp Business number</strong> with a
-            Meta API Setup token. Meta Business Agent replies in-chat — Growvisi classifies messages and
-            tracks pipeline.
+            Meta API Setup token. Growvisi ingests messages, classifies intent, and tracks pipeline — your
+            team replies from Inbox when customers need a human.
           </p>
         </div>
         {canConnect ? (
@@ -296,8 +296,8 @@ export default function WhatsappConnect() {
       <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
         <p className="text-sm text-muted-foreground">
           Connect the <strong className="text-foreground">WhatsApp Business number you already use</strong>{" "}
-          — the line your customers message. Growvisi ingests conversations for classification and
-          pipeline tracking. Meta Business Agent handles in-chat replies.
+          — the line your customers message. Growvisi ingests conversations for classification,
+          handoffs, and pipeline tracking. Your team sends human replies from Inbox.
         </p>
       </div>
 
