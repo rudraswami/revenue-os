@@ -1,9 +1,95 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { NavDropdown } from "@/lib/marketing-nav";
+import type { NavDropdown, NavLinkItem } from "@/lib/marketing-nav";
+import { PRODUCT_PAGES, type ProductPageSlug } from "@/lib/product-pages";
+import {
+  AnalyticsPreview,
+  AutomationsPreview,
+  InboxPreview,
+  PipelinePreview,
+  ScoringPreview,
+} from "./dashboard-previews";
+
+const PRODUCT_PREVIEWS: Record<ProductPageSlug, React.ComponentType> = {
+  conversations: InboxPreview,
+  intelligence: ScoringPreview,
+  pipeline: PipelinePreview,
+  analytics: AnalyticsPreview,
+  automations: AutomationsPreview,
+};
+
+const CLOSE_DELAY_MS = 180;
+
+function NavItemLink({
+  item,
+  active,
+  onHover,
+  onClose,
+}: {
+  item: NavLinkItem;
+  active?: boolean;
+  onHover?: () => void;
+  onClose: () => void;
+}) {
+  const Icon = item.icon;
+  const className = cn(
+    "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
+    active ? "bg-[#ecfdf5] ring-1 ring-accent/15" : "hover:bg-[#f8f9ff]",
+  );
+
+  const inner = (
+    <>
+      <div
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+          active ? "bg-accent text-white" : "bg-bento-mint text-accent group-hover:bg-accent/10",
+        )}
+      >
+        <Icon className="h-4 w-4" strokeWidth={1.75} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1 text-[13px] font-semibold text-foreground">
+          {item.label}
+          <ArrowRight className="h-3 w-3 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+        </p>
+        <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{item.description}</p>
+      </div>
+    </>
+  );
+
+  const isInternal = item.href.startsWith("/") && !item.external;
+
+  if (isInternal) {
+    return (
+      <Link
+        href={item.href}
+        className={className}
+        onMouseEnter={onHover}
+        onClick={onClose}
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  if (item.external) {
+    return (
+      <Link href={item.href} className={className} onMouseEnter={onHover} onClick={onClose}>
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <a href={item.href} className={className} onMouseEnter={onHover} onClick={onClose}>
+      {inner}
+    </a>
+  );
+}
 
 export function NavMegaMenu({
   menu,
@@ -16,12 +102,32 @@ export function NavMegaMenu({
   onOpen: () => void;
   onClose: () => void;
 }) {
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const firstSlug = menu.items.find((i) => i.productSlug)?.productSlug ?? null;
+  const [hoverSlug, setHoverSlug] = useState<ProductPageSlug | null>(firstSlug);
+
+  const scheduleClose = useCallback(() => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(onClose, CLOSE_DELAY_MS);
+  }, [onClose]);
+
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+    onOpen();
+  }, [onOpen]);
+
+  const isProduct = menu.variant === "product";
+  const previewSlug = hoverSlug ?? firstSlug;
+  const previewProduct = previewSlug ? PRODUCT_PAGES[previewSlug] : null;
+  const PreviewComponent = previewSlug ? PRODUCT_PREVIEWS[previewSlug] : null;
+
   return (
-    <div className="relative" onMouseEnter={onOpen} onMouseLeave={onClose}>
+    <div className="relative" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
       <button
         type="button"
         className={cn(
-          "inline-flex items-center gap-1 text-[14px] font-medium transition-colors",
+          "inline-flex items-center gap-1 rounded-lg px-1 py-1 text-[14px] font-medium transition-colors",
           open ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
         aria-expanded={open}
@@ -33,46 +139,64 @@ export function NavMegaMenu({
       </button>
 
       {open && (
-        <div className="absolute left-1/2 top-full z-50 mt-3 w-[min(100vw-2rem,520px)] -translate-x-1/2">
-          <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_20px_60px_rgb(11_28_48/0.12)]">
-            <div className="grid gap-0 sm:grid-cols-2">
-              {menu.items.map((item) => {
-                const Icon = item.icon;
-                const inner = (
-                  <>
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bento-mint text-accent">
-                      <Icon className="h-4 w-4" strokeWidth={1.75} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-semibold text-foreground">{item.label}</p>
-                      <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
-                        {item.description}
-                      </p>
-                    </div>
-                  </>
-                );
-                const className =
-                  "flex gap-3 px-4 py-3.5 transition-colors hover:bg-[#f8f9ff] sm:px-5";
-
-                return item.external ? (
-                  <Link key={item.label} href={item.href} className={className} onClick={onClose}>
-                    {inner}
+        /* pt-3 bridge keeps hover alive — no dead gap between trigger and panel */
+        <div
+          className={cn(
+            "absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3",
+            isProduct ? "w-[min(100vw-2rem,720px)]" : "w-[min(100vw-2rem,480px)]",
+          )}
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+        >
+          <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_24px_80px_rgb(11_28_48/0.14)]">
+            {isProduct && previewProduct && PreviewComponent ? (
+              <div className="grid lg:grid-cols-[1fr_280px]">
+                <div className="space-y-0.5 p-2">
+                  {menu.items.map((item) => (
+                    <NavItemLink
+                      key={item.href}
+                      item={item}
+                      active={item.productSlug === previewSlug}
+                      onHover={() => item.productSlug && setHoverSlug(item.productSlug)}
+                      onClose={onClose}
+                    />
+                  ))}
+                </div>
+                <div className="hidden border-l border-border bg-gradient-to-br from-[#f8f9ff] to-white p-4 lg:block">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                    {previewProduct.eyebrow}
+                  </p>
+                  <p className="mt-2 text-sm font-bold leading-snug">{previewProduct.headline}</p>
+                  <div className="mt-4 rounded-xl border border-border/80 bg-white p-3 shadow-sm">
+                    <PreviewComponent />
+                  </div>
+                  <Link
+                    href={`/product/${previewProduct.slug}`}
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                    onClick={onClose}
+                  >
+                    Explore {previewProduct.navLabel}
+                    <ArrowRight className="h-3 w-3" />
                   </Link>
-                ) : (
-                  <a key={item.label} href={item.href} className={className} onClick={onClose}>
-                    {inner}
-                  </a>
-                );
-              })}
-            </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-0.5 p-2">
+                {menu.items.map((item) => (
+                  <NavItemLink key={item.href} item={item} onClose={onClose} />
+                ))}
+              </div>
+            )}
+
             {menu.featured && (
               <div className="border-t border-border bg-gradient-to-r from-bento-mint/40 to-white px-5 py-3.5">
                 <Link
                   href={menu.featured.href}
-                  className="block text-[13px] font-semibold text-accent hover:underline"
+                  className="inline-flex items-center gap-1 text-[13px] font-semibold text-accent hover:underline"
                   onClick={onClose}
                 >
-                  {menu.featured.label} →
+                  {menu.featured.label}
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">{menu.featured.description}</p>
               </div>

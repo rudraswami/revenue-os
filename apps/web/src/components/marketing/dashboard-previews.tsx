@@ -145,3 +145,62 @@ export function AnalyticsPreview() {
     </div>
   );
 }
+
+export function InboxPreview() {
+  const messages = [
+    { from: "customer", text: "3BHK Whitefield budget 1.2Cr?", time: "10:02" },
+    { from: "team", text: "Hi Priya — sharing floor plans today.", time: "10:08" },
+    { from: "ai", text: "Intent: Buying · Score 91 · Handoff flagged", time: "" },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm">
+      <div className="border-b border-border bg-[#f8f9ff] px-3 py-2 text-[11px] font-semibold">
+        Priya Sharma · WhatsApp
+      </div>
+      <div className="space-y-2 p-3">
+        {messages.map((m, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 6 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.1 }}
+            className={
+              m.from === "customer"
+                ? "max-w-[85%] rounded-2xl rounded-tl-sm bg-muted px-3 py-2 text-[12px]"
+                : m.from === "team"
+                  ? "ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-accent px-3 py-2 text-[12px] text-white"
+                  : "rounded-lg border border-accent/20 bg-bento-mint/50 px-2.5 py-1.5 text-[10px] font-medium text-accent"
+            }
+          >
+            {m.text}
+            {m.time && <p className="mt-0.5 text-[9px] opacity-60">{m.time}</p>}
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function AutomationsPreview() {
+  return (
+    <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-accent">
+        <span className="h-2 w-2 rounded-full bg-accent" />
+        Morning digest · 7:00 IST
+      </div>
+      <div className="mt-3 space-y-1.5 text-[12px] text-muted-foreground">
+        <p>
+          Pipeline <strong className="text-foreground">₹18.4L</strong> · Won 24h{" "}
+          <strong className="text-accent">₹2.1L</strong>
+        </p>
+        <p>
+          Handoffs <strong className="text-amber-800">3</strong> · Unread{" "}
+          <strong className="text-foreground">12</strong>
+        </p>
+        <p className="text-[10px] text-muted-foreground">Hindi digest supported</p>
+      </div>
+    </div>
+  );
+}

@@ -1,22 +1,18 @@
 /**
  * Marketing header IA — founder-curated dropdowns.
- * Rule: every link maps to shipped product or homepage anchor. No vaporware.
  */
 
 import type { LucideIcon } from "lucide-react";
 import {
-  BarChart3,
   Building2,
   GraduationCap,
   HeartPulse,
-  Inbox,
-  Kanban,
   MessageSquare,
   ShoppingBag,
   Sparkles,
   Users,
-  Zap,
 } from "lucide-react";
+import { PRODUCT_PAGES, type ProductPageSlug } from "./product-pages";
 
 export type NavLinkItem = {
   href: string;
@@ -24,19 +20,35 @@ export type NavLinkItem = {
   description: string;
   icon: LucideIcon;
   external?: boolean;
+  /** Product preview slug for mega menu hover panel */
+  productSlug?: ProductPageSlug;
 };
 
 export type NavDropdown = {
   id: string;
   label: string;
   items: NavLinkItem[];
-  /** Optional featured card in panel footer */
   featured?: { href: string; label: string; description: string };
+  /** Wider panel with live preview (product menu) */
+  variant?: "default" | "product";
 };
 
 export type NavEntry =
   | { type: "link"; href: string; label: string; external?: boolean }
   | { type: "dropdown"; dropdown: NavDropdown };
+
+const productNavItems: NavLinkItem[] = (
+  ["conversations", "intelligence", "pipeline", "analytics", "automations"] as ProductPageSlug[]
+).map((slug) => {
+  const p = PRODUCT_PAGES[slug];
+  return {
+    href: `/product/${slug}`,
+    label: p.navLabel,
+    description: p.navDescription,
+    icon: p.icon,
+    productSlug: slug,
+  };
+});
 
 export const MARKETING_NAV: NavEntry[] = [
   {
@@ -44,38 +56,8 @@ export const MARKETING_NAV: NavEntry[] = [
     dropdown: {
       id: "product",
       label: "Product",
-      items: [
-        {
-          href: "/#product",
-          label: "Conversations",
-          description: "Shared inbox · human reply from Growvisi",
-          icon: Inbox,
-        },
-        {
-          href: "/#engine",
-          label: "AI classification",
-          description: "Intent, score, and handoff flags on every thread",
-          icon: Sparkles,
-        },
-        {
-          href: "/#product",
-          label: "Pipeline",
-          description: "Kanban in ₹ — drag deals, track won/lost",
-          icon: Kanban,
-        },
-        {
-          href: "/#compare",
-          label: "Revenue analytics",
-          description: "Funnel, attribution, Razorpay → Won",
-          icon: BarChart3,
-        },
-        {
-          href: "/#pricing",
-          label: "Automations & digest",
-          description: "Morning brief on email or WhatsApp (Hindi)",
-          icon: Zap,
-        },
-      ],
+      variant: "product",
+      items: productNavItems,
       featured: {
         href: "/register",
         label: "Start 14-day trial",
@@ -96,22 +78,22 @@ export const MARKETING_NAV: NavEntry[] = [
           icon: MessageSquare,
         },
         {
-          href: "/#engine",
+          href: "/product/intelligence",
           label: "AI classifies inbound",
           description: "Every message scored and staged",
           icon: Sparkles,
         },
         {
-          href: "/#engine",
+          href: "/product/conversations",
           label: "Take over & reply",
           description: "Human handoff → assign → Inbox reply",
           icon: Users,
         },
         {
-          href: "/#engine",
+          href: "/product/pipeline",
           label: "Close in pipeline",
           description: "Move to Won · track revenue ₹",
-          icon: Kanban,
+          icon: MessageSquare,
         },
       ],
     },
@@ -151,7 +133,6 @@ export const MARKETING_NAV: NavEntry[] = [
           label: "Agencies & partners",
           description: "Multi-client hub · Operator plan",
           icon: Users,
-          external: true,
         },
       ],
     },
@@ -160,7 +141,6 @@ export const MARKETING_NAV: NavEntry[] = [
   { type: "link", href: "/agencies", label: "Agencies", external: true },
 ];
 
-/** Metrics we commit to measure in a pilot — not marketing claims until filled */
 export const PILOT_METRICS_TEMPLATE = [
   {
     key: "win_rate",

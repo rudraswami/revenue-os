@@ -128,28 +128,32 @@ export function MarketingHeader() {
                     />
                   </button>
                   {mobileExpanded === entry.dropdown.id && (
-                    <div className="pb-2 pl-2 space-y-1">
-                      {entry.dropdown.items.map((item) =>
-                        item.external ? (
-                          <Link
-                            key={item.label}
-                            href={item.href}
-                            className="block py-2 text-sm text-muted-foreground"
-                            onClick={() => setOpen(false)}
-                          >
-                            {item.label}
-                          </Link>
-                        ) : (
+                    <div className="space-y-1 pb-2 pl-2">
+                      {entry.dropdown.items.map((item) => {
+                        const isInternal = item.href.startsWith("/") && !item.external;
+                        if (isInternal || item.external) {
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              className="block py-2 text-sm text-muted-foreground hover:text-foreground"
+                              onClick={() => setOpen(false)}
+                            >
+                              {item.label}
+                            </Link>
+                          );
+                        }
+                        return (
                           <a
-                            key={item.label}
+                            key={item.href}
                             href={item.href}
                             className="block py-2 text-sm text-muted-foreground"
                             onClick={() => setOpen(false)}
                           >
                             {item.label}
                           </a>
-                        ),
-                      )}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
