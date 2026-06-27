@@ -35,7 +35,7 @@ export function MarketingHeader() {
       >
         <Sparkles className="h-3.5 w-3.5 text-[#6cf8bb]" />
         <span>
-          Meta replies in chat · Growvisi tracks pipeline ₹ — 14-day trial, 500 leads
+          Human inbox + pipeline ₹ — 14-day trial, 500 leads
         </span>
         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
       </Link>

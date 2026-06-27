@@ -10,9 +10,7 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
-  Tag,
   Users,
-  Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { CTA } from "@/lib/brand-copy";
@@ -24,10 +22,10 @@ const logos = ["Real Estate", "EdTech", "Healthcare", "D2C", "Automotive", "Cons
 const capabilities = [
   { icon: MessageCircle, label: "Shared WhatsApp inbox" },
   { icon: Sparkles, label: "AI intent & lead score" },
+  { icon: MessageCircle, label: "Human reply from Inbox" },
   { icon: BarChart3, label: "Pipeline in ₹" },
-  { icon: Users, label: "Team assign & tasks" },
+  { icon: Users, label: "Handoff & Take over" },
   { icon: IndianRupee, label: "Razorpay → Won" },
-  { icon: Zap, label: "Morning digest on WA" },
 ];
 
 const stats = [
@@ -64,7 +62,7 @@ export function Hero() {
               fontFamily: "var(--font-sans)",
             }}
           >
-            Meta replies in WhatsApp.
+            WhatsApp conversations in.
             <br />
             Growvisi tracks every deal in{" "}
             <span className="relative">
@@ -167,7 +165,7 @@ export function Hero() {
                 <Sparkles className="h-4 w-4 text-accent" />
                 <div>
                   <p className="text-xs font-bold">Lead classified</p>
-                  <p className="text-[10px] text-muted-foreground">High intent · Assigned to Priya</p>
+                  <p className="text-[10px] text-muted-foreground">High intent · Handoff flagged</p>
                 </div>
               </div>
             </motion.div>
@@ -189,7 +187,7 @@ export function Hero() {
         </motion.div>
 
         <p className="mx-auto mt-8 max-w-xl text-[12px] leading-relaxed text-muted-foreground">
-          {POSITIONING.metaNote}
+          {POSITIONING.replyNote}
         </p>
 
         <motion.div

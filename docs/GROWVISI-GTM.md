@@ -1,83 +1,61 @@
 # Growvisi GTM — Founder North Star
 
 **Last updated:** June 2025  
-**Status:** Active merchandising framework (implementation in `apps/web/src/lib/gtm-copy.ts`)
+**Status:** Active merchandising framework (`apps/web/src/lib/gtm-copy.ts`)
 
 ---
 
 ## One sentence
 
-**Meta replies in WhatsApp. Growvisi tracks every deal in ₹.**
-
-Growvisi is the **revenue layer** for Indian SMBs selling on WhatsApp — not a chatbot, not a generic CRM.
+**WhatsApp conversations in. Pipeline ₹ out.**
 
 ---
 
-## Who we sell to (two doors)
+## How chat works (correct sales story)
 
-| Door | Buyer | Wedge | Plan |
-|------|--------|-------|------|
-| **SMB** | Owner + 1–5 sales reps | Connect → classify → pipeline | Solo / **Team** |
-| **Agency** | Meta partner, WA agency | Multi-client hub + install kit | **Operator** |
+| Who | What | Where |
+|-----|------|--------|
+| **Your sales team** | Human replies | Growvisi **Inbox** or WhatsApp app |
+| **Growvisi AI** | Classify, score, flag handoff | Never auto-sends customer replies |
+| **Meta Business Agent** (optional) | First-line FAQ bot | Configured in Meta — separate |
 
-Marketing: homepage + `/agencies`. Product: Agency hub (Pro), Partner kit (linked from agency page).
-
----
-
-## Outcome tiers (marketing names → billing SKUs)
-
-| Name | SKU | ₹/mo | Promise |
-|------|-----|------|---------|
-| Solo | starter | 999 | Never lose a WhatsApp lead |
-| **Team** | growth | 2,999 | Everyone knows who owns which deal |
-| Operator | pro | 5,999 | Run many WhatsApp businesses from one hub |
-
-**Team is default push** (“Most popular”). Trial: 14 days, 500 leads, 1 number, no card.
+**Human handoff:** AI marks “needs human” → Inbox filter + alerts → **Take over** → human reply.
 
 ---
 
-## Activation success (< 15 minutes)
+## Tiers (marketing → billing SKU)
 
-1. Connect WhatsApp (`/dashboard/connection`)
-2. First inbound → **Inbox** shows classified thread
-3. Move deal on **Pipeline**
-4. Optional: enable **morning digest** (Automations)
-5. Optional: Razorpay → Won, deal ₹ values (Growth+)
+| Name | SKU | ₹/mo |
+|------|-----|------|
+| Solo | starter | 999 |
+| **Team** | growth | 2,999 |
+| Operator | pro | 5,999 |
+| Enterprise | custom contract | Contact |
 
-**Do not** send users to Intelligence explainer for step 2 — Inbox is the proof moment.
-
----
-
-## Non-negotiable boundaries (say everywhere)
-
-- Customer **replies** = Meta Business Agent in WhatsApp
-- Growvisi = **classify, assign, alert, measure** — no fake auto-reply toggles
-- Limits enforced **server-side** (`EntitlementsService`); UI shows usage meter from `GET /billing`
+No separate Scale SKU — high-volume SMBs use **Team → Operator**, franchises use **Enterprise**.
 
 ---
 
-## Proof stack (honest)
+## Enterprise (honest — built on Operator)
 
-1. **No unattributed hero stats** — use trial limits, activation time, illustrative ROI calculator
-2. **One real pilot case study** — replace GreenSpace illustrative block when available
-3. **15-min demo script:** connect → send test WA → Inbox classification → pipeline drag → digest toggle
+Custom limits + rollout when Operator caps aren’t enough:
 
----
-
-## What not to build before GTM is fixed
-
-- New backend features for “AI agent” positioning
-- Email CRM, SSO, multi-channel inbox
-- Synthetic ROI claims without pilot data
+- 20+ client workspaces (Operator = 15)
+- Custom lead / WhatsApp number limits
+- Audit log export (`GET /audit`)
+- Dedicated Meta + Growvisi rollout per location
+- Priority support & SLA (contract)
 
 ---
 
-## Key files
+## Activation (< 15 min)
 
-| Area | Path |
-|------|------|
-| GTM copy | `apps/web/src/lib/gtm-copy.ts` |
-| Pricing merchandising | `apps/web/src/lib/pricing-plans.ts` |
-| Hero / pricing / agencies | `apps/web/src/components/marketing/` |
-| In-app meter | `apps/web/src/components/dashboard/usage-meter-card.tsx` |
-| Activation strip | `apps/web/src/components/dashboard/revenue-setup-strip.tsx` |
+Connect → Inbox classification → Pipeline move → optional digest / Razorpay→Won
+
+---
+
+## Pending
+
+- Real pilot case study
+- Demo script with Take over + human reply
+- Stale copy sweep (`about`, email templates)

@@ -17,7 +17,11 @@ const faqs = [
   },
   {
     q: "Does AI reply to customers automatically?",
-    a: "Meta Business Agent replies inside WhatsApp. Growvisi analyzes those conversations — classifies intent, scores leads, and updates your pipeline. Your team can optionally send manual replies from Growvisi; we do not auto-send customer messages.",
+    a: "No. Growvisi AI classifies and scores — it does not auto-send replies. Your team sends human messages from the Inbox (or replies in WhatsApp directly). If you use Meta Business Agent, that optional bot can handle first-line chat in the WhatsApp app.",
+  },
+  {
+    q: "What is a human handoff?",
+    a: "When AI decides a customer needs a person — complex question, high intent, or frustration — the thread is flagged “needs human.” Your team sees it in Inbox, gets alerts on Home/digest, and can Take over: assign the deal, create a task, and reply as a human.",
   },
   {
     q: "Can multiple agents use one WhatsApp number?",

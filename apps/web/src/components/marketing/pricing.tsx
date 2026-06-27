@@ -1,6 +1,7 @@
 "use client";
 
 import { PricingPlansGrid } from "@/components/pricing/pricing-plans-grid";
+import { EnterpriseCallout } from "@/components/marketing/enterprise-callout";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { SectionHeader } from "./section-header";
 import { OUTCOME_TIERS, POSITIONING } from "@/lib/gtm-copy";
@@ -18,6 +19,7 @@ export function Pricing() {
         <div className="mt-12">
           <PricingPlansGrid variant="marketing" />
         </div>
+        <EnterpriseCallout />
         <ul className="mt-8 space-y-2 text-[12px] leading-relaxed text-muted-foreground">
           {PRICING_FOOTNOTES.map((note) => (
             <li key={note}>· {note}</li>

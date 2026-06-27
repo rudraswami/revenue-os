@@ -204,7 +204,7 @@ export default function DashboardPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-accent">{EYEBROW.overview}</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">{timeGreeting(user?.name)}</h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              {POSITIONING.oneLiner} — classify, assign, and measure pipeline ₹.
+              {POSITIONING.dashboardSubhead}
             </p>
           </div>
           <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5 rounded-xl border-[#dce9ff] bg-white">

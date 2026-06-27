@@ -25,7 +25,7 @@ export const GROWVISI_PLANS = {
     id: "pro",
     name: "Pro",
     priceInr: 5999,
-    description: "Unlimited numbers, automations, API",
+    description: "Up to 50 numbers, agency hub, API",
     razorpayPlanEnvKey: "RAZORPAY_PLAN_PRO",
   },
 } as const;

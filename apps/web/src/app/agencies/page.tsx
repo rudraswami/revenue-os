@@ -77,13 +77,13 @@ export default function AgenciesPage() {
 
         <section className="py-16">
           <div className="mx-auto max-w-[700px] px-6 lg:px-8">
-            <h2 className="text-xl font-bold">Honest boundary with Meta</h2>
-            <p className="mt-3 text-muted-foreground">{POSITIONING.metaNote}</p>
+            <h2 className="text-xl font-bold">How chat works with Growvisi</h2>
+            <p className="mt-3 text-muted-foreground">{POSITIONING.replyNote}</p>
             <ul className="mt-6 space-y-3">
               {[
-                "You configure Meta Business Agent welcome & replies in WhatsApp.",
-                "Growvisi ingests messages, classifies intent, and updates pipeline.",
-                "Morning digest can land on owner WhatsApp — in Hindi if needed.",
+                "Optional Meta Business Agent for automated first-line replies in WhatsApp.",
+                "Your team replies from Growvisi Inbox — human messages, not AI auto-send.",
+                "When AI flags “needs human”, Take over assigns the deal and creates a task.",
               ].map((item) => (
                 <li key={item} className="flex gap-2 text-sm">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />

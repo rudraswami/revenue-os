@@ -103,12 +103,13 @@ When asked to spec a feature, use:
 
 ## Billing quick ref
 
-| Plan | ₹/mo | WA # | Team |
-|------|------|------|------|
-| Trial | 0 | 1 | 2 |
-| Starter | 999 | 1 | 2 |
-| Growth | 2999 | 3 | 5 |
-| Pro | 5999 | 50 | 50 |
+| Plan | ₹/mo | WA # | Team | Leads/mo |
+|------|------|------|------|----------|
+| Trial | 0 | 1 | 2 | 500 |
+| Starter (Solo) | 999 | 1 | 2 | 3,000 |
+| Growth (Team) | 2999 | 3 | 5 | 3,000 |
+| Pro (Operator) | 5999 | 50 | 50 | 100,000 |
+| Enterprise | Custom | Custom | Custom | Custom |
 
 Enforcement: `EntitlementsService` + `resolveSubscriptionAccess()` in `@growvisi/shared`.
 

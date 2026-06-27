@@ -5,12 +5,25 @@
 
 export const POSITIONING = {
   oneLiner: "The revenue layer for WhatsApp sales teams.",
-  headline: "Meta replies in WhatsApp. Growvisi tracks every deal in ₹.",
+  headline: "WhatsApp conversations in. Pipeline ₹ out.",
   subhead:
-    "Classify leads, move pipeline, alert your team, and report revenue — without replacing Meta Business Agent in chat.",
-  metaNote:
-    "Customer replies happen in WhatsApp via Meta Business Agent. Growvisi classifies, assigns, and measures outcomes.",
+    "AI classifies every lead and flags when a human should step in. Your team replies from Inbox — Growvisi tracks pipeline, handoffs, and revenue ₹.",
+  dashboardSubhead:
+    "AI classifies inbound WhatsApp — you reply from Inbox when customers need a person. Pipeline and revenue ₹ stay visible here.",
+  replyNote:
+    "Growvisi AI never auto-replies to customers. Your team sends human messages from Inbox (or WhatsApp directly). Optional Meta Business Agent can handle first-line FAQ in the WhatsApp app.",
   trialNote: "14-day trial · 500 leads · 1 WhatsApp number · No credit card",
+} as const;
+
+/** What “handoff” means in product — use in FAQ, onboarding, sales */
+export const HANDOFF_EXPLAINER = {
+  short: "When AI decides a customer needs a person, the thread is flagged for your team.",
+  steps: [
+    "AI classifies the message and may set “Needs human” on the thread.",
+    "Inbox shows a handoff filter; Home and digest alert your team.",
+    "Take over assigns the deal to you, creates a task, and clears the flag.",
+    "You reply from Inbox (human message) or in WhatsApp — not an AI bot.",
+  ],
 } as const;
 
 /** Outcome tier names (maps to starter / growth / pro in billing) */
@@ -36,6 +49,28 @@ export const OUTCOME_TIERS = {
     promise: "Run many WhatsApp businesses from one hub",
     forWho: "Agencies & multi-brand ops",
   },
+} as const;
+
+/**
+ * Enterprise — custom contract on top of Operator.
+ * Only list capabilities that exist in product today or are standard sales commitments.
+ */
+export const ENTERPRISE_OFFERING = {
+  tagline: "Franchise & large agency rollouts",
+  forWho: "15+ clients, franchise chains, or SLA needs",
+  features: [
+    "Custom lead volume & WhatsApp number limits (beyond Operator caps)",
+    "20+ client workspaces — franchise / multi-brand agency rollouts",
+    "Audit log export for billing & pipeline change reviews",
+    "Dedicated rollout: Meta + Growvisi partner install per location",
+    "Priority support, uptime SLA & Hindi digest at scale",
+  ],
+  contactReasons: [
+    "More than 15 agency clients on one hub",
+    "100k+ leads/month across many numbers",
+    "Franchise onboarding across 10+ cities",
+    "Compliance review of audit trail & DPA",
+  ],
 } as const;
 
 /** Activation milestones — north star for product UX */

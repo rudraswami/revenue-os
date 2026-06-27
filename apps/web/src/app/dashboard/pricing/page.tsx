@@ -7,6 +7,7 @@ import { UsageMeterCard } from "@/components/dashboard/usage-meter-card";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { PricingPlansGrid } from "@/components/pricing/pricing-plans-grid";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { EnterpriseCallout } from "@/components/marketing/enterprise-callout";
 import { PRICING_FOOTNOTES } from "@/lib/pricing-plans";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -117,6 +118,8 @@ export default function PricingPage() {
         checkoutPlanId={checkoutPlan}
         onUpgrade={(planId) => checkoutMutation.mutate(planId)}
       />
+
+      <EnterpriseCallout />
 
       {checkoutMutation.isError && (
         <p className="mt-4 text-sm text-destructive">

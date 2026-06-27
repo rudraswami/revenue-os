@@ -1,4 +1,4 @@
-import { OUTCOME_TIERS, POSITIONING } from "./gtm-copy";
+import { ENTERPRISE_OFFERING, OUTCOME_TIERS, POSITIONING } from "./gtm-copy";
 
 export type PricingPlan = {
   id: string;
@@ -67,10 +67,10 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "enterprise",
     name: "Enterprise",
-    tagline: "Franchise & large agency rollouts",
-    forWho: "15+ clients or SLA needs",
+    tagline: ENTERPRISE_OFFERING.tagline,
+    forWho: ENTERPRISE_OFFERING.forWho,
     price: null,
-    features: ["Custom lead volume", "Dedicated onboarding", "Priority support", "SLA"],
+    features: [...ENTERPRISE_OFFERING.features],
     popular: false,
     custom: true,
   },
@@ -78,6 +78,6 @@ export const PRICING_PLANS: PricingPlan[] = [
 
 export const PRICING_FOOTNOTES = [
   POSITIONING.trialNote,
-  POSITIONING.metaNote,
+  POSITIONING.replyNote,
   "* AI classification requires OpenAI on your Growvisi deployment.",
 ] as const;
