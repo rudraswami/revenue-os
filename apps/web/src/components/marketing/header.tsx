@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, ChevronDown, Menu, Sparkles, X } from "lucide-react";
 import { CTA } from "@/lib/brand-copy";
 import { MARKETING_NAV } from "@/lib/marketing-nav";
+import { MarketingIcon } from "@/lib/marketing-icons";
 import { NavMegaMenu } from "./nav-mega-menu";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
@@ -136,9 +137,10 @@ export function MarketingHeader() {
                             <Link
                               key={item.href}
                               href={item.href}
-                              className="block py-2 text-sm text-muted-foreground hover:text-foreground"
+                              className="flex items-center gap-2.5 py-2 text-sm text-muted-foreground hover:text-foreground"
                               onClick={() => setOpen(false)}
                             >
+                              <MarketingIcon name={item.icon} className="h-4 w-4 shrink-0 text-accent" strokeWidth={2} />
                               {item.label}
                             </Link>
                           );
