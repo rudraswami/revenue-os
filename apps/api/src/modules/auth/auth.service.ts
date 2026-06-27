@@ -27,8 +27,8 @@ export interface OnboardingStatusResponse {
 }
 
 export interface AuthSessionResponse {
-  user: { id: string; email: string; name: string | null };
-  organization: { id: string; name: string; slug: string };
+  user: { id: string; email: string; name: string | null; locale: string };
+  organization: { id: string; name: string; slug: string; kind: string };
   role: JwtPayload["role"];
   accessToken: string;
   refreshToken: string;
@@ -203,11 +203,11 @@ export class AuthService {
   async getMe(user: JwtPayload) {
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.sub },
-      select: { id: true, email: true, name: true },
+      select: { id: true, email: true, name: true, locale: true },
     });
     const org = await this.prisma.organization.findUnique({
       where: { id: user.organizationId },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true, slug: true, kind: true },
     });
     if (!dbUser || !org) {
       throw new UnauthorizedException();
@@ -243,13 +243,16 @@ export class AuthService {
 
     const dbUser = await this.prisma.user.update({
       where: { id: user.sub },
-      data: { name },
-      select: { id: true, email: true, name: true },
+      data: {
+        name,
+        ...(dto.locale ? { locale: dto.locale } : {}),
+      },
+      select: { id: true, email: true, name: true, locale: true },
     });
 
     const org = await this.prisma.organization.findUnique({
       where: { id: user.organizationId },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true, slug: true, kind: true },
     });
     if (!org) {
       throw new UnauthorizedException();
@@ -440,18 +443,24 @@ export class AuthService {
 
   private async buildSessionResponse(
     payload: JwtPayload,
-    user: { id: string; email: string; name: string | null },
-    organization: { id: string; name: string; slug: string },
+    user: { id: string; email: string; name: string | null; locale?: string },
+    organization: { id: string; name: string; slug: string; kind?: string },
   ): Promise<AuthSessionResponse> {
     const tokens = await this.issueTokens(payload);
     const onboarding = await this.getOnboardingStatus(organization.id);
 
     return {
-      user: { id: user.id, email: user.email, name: user.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        locale: user.locale ?? "en",
+      },
       organization: {
         id: organization.id,
         name: organization.name,
         slug: organization.slug,
+        kind: organization.kind ?? "STANDARD",
       },
       role: payload.role,
       onboarding,

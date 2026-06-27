@@ -13,6 +13,7 @@ import {
   ChevronUp,
   Contact,
   CreditCard,
+  Handshake,
   HelpCircle,
   Inbox,
   Kanban,
@@ -38,61 +39,72 @@ import { apiFetch } from "@/lib/api-client";
 import { applySession, logout } from "@/lib/auth-session";
 import type { AuthSession, MeResponse } from "@/lib/auth-types";
 import { useAuthStore } from "@/stores/auth-store";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  exact?: boolean;
-  badge?: "unread";
-};
-
 type NavGroup = {
-  label: string;
-  items: NavItem[];
+  labelKey: string;
+  items: Array<{
+    href: string;
+    labelKey: string;
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+    exact?: boolean;
+    badge?: "unread";
+  }>;
 };
 
-const NAV_GROUPS: NavGroup[] = [
-  {
-    label: "Overview",
-    items: [
-      { href: "/dashboard", label: "Home", icon: LayoutDashboard, exact: true },
-      { href: "/dashboard/connection", label: "Connection", icon: Wifi },
-    ],
-  },
-  {
-    label: "Engage",
-    items: [
-      { href: "/dashboard/inbox", label: "Conversations", icon: Inbox, badge: "unread" },
-      { href: "/dashboard/contacts", label: "Contacts", icon: Contact },
-      { href: "/dashboard/pipeline", label: "Pipeline", icon: Kanban },
-      { href: "/dashboard/tasks", label: "Tasks", icon: CheckSquare },
-    ],
-  },
-  {
-    label: "Intelligence",
-    items: [
-      { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-      { href: "/dashboard/ai", label: "Intelligence", icon: Bot },
-    ],
-  },
-  {
-    label: "Automate",
-    items: [
-      { href: "/dashboard/campaigns", label: "Campaigns", icon: Megaphone },
-      { href: "/dashboard/automations", label: "Automations", icon: Zap },
-    ],
-  },
-];
+function buildNavGroups(opts: { showAgency: boolean }): NavGroup[] {
+  const overviewItems = [
+    { href: "/dashboard", labelKey: "nav.home", icon: LayoutDashboard, exact: true },
+    { href: "/dashboard/connection", labelKey: "nav.connection", icon: Wifi },
+    ...(opts.showAgency
+      ? [{ href: "/dashboard/agency", labelKey: "nav.agency", icon: Building2 }]
+      : []),
+    { href: "/dashboard/partner", labelKey: "nav.partner", icon: Handshake },
+  ];
+
+  return [
+    { labelKey: "groups.overview", items: overviewItems },
+    {
+      labelKey: "groups.engage",
+      items: [
+        { href: "/dashboard/inbox", labelKey: "nav.conversations", icon: Inbox, badge: "unread" as const },
+        { href: "/dashboard/contacts", labelKey: "nav.contacts", icon: Contact },
+        { href: "/dashboard/pipeline", labelKey: "nav.pipeline", icon: Kanban },
+        { href: "/dashboard/tasks", labelKey: "nav.tasks", icon: CheckSquare },
+      ],
+    },
+    {
+      labelKey: "groups.intelligence",
+      items: [
+        { href: "/dashboard/analytics", labelKey: "nav.analytics", icon: BarChart3 },
+        { href: "/dashboard/ai", labelKey: "nav.intelligence", icon: Bot },
+      ],
+    },
+    {
+      labelKey: "groups.automate",
+      items: [
+        { href: "/dashboard/campaigns", labelKey: "nav.campaigns", icon: Megaphone },
+        { href: "/dashboard/automations", labelKey: "nav.automations", icon: Zap },
+      ],
+    },
+  ];
+}
 
 function NavLink({
   item,
+  label,
   active,
   unread,
   onNavigate,
 }: {
-  item: NavItem;
+  item: {
+    href: string;
+    exact?: boolean;
+    badge?: "unread";
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  };
+  label: string;
   active: boolean;
   unread: number;
   onNavigate?: () => void;
@@ -112,7 +124,7 @@ function NavLink({
     >
       <span className="flex items-center gap-2.5 pl-1">
         <item.icon className="h-[17px] w-[17px]" strokeWidth={active ? 2.25 : 2} />
-        {item.label}
+        {label}
       </span>
       {showUnread && (
         <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-white shadow-sm">
@@ -295,6 +307,7 @@ function UserAccountMenu({
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const organization = useAuthStore((s) => s.organization);
@@ -323,6 +336,20 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       apiFetch<{ unreadMessages: number }>("/conversations/stats", { token: token ?? undefined }),
     enabled: !!token,
     refetchInterval: live ? false : 30_000,
+  });
+
+  const { data: agencyStatus } = useQuery({
+    queryKey: ["agency-status"],
+    queryFn: () =>
+      apiFetch<{ isAgency: boolean; canEnableAgency: boolean }>("/agency/status", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+    staleTime: 120_000,
+  });
+
+  const navGroups = buildNavGroups({
+    showAgency: !!(agencyStatus?.isAgency || agencyStatus?.canEnableAgency),
   });
 
   const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;
@@ -370,10 +397,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       )}
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4 custom-scrollbar">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label}>
+        {navGroups.map((group) => (
+          <div key={group.labelKey}>
             <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-              {group.label}
+              {t(group.labelKey)}
             </p>
             <div className="space-y-0.5">
               {group.items.map((item) => {
@@ -384,6 +411,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   <NavLink
                     key={item.href}
                     item={item}
+                    label={t(item.labelKey)}
                     active={active}
                     unread={unread}
                     onNavigate={onNavigate}

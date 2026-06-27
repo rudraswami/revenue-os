@@ -147,32 +147,34 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 | B-P1-12 | Revenue pulse complete | `avgDaysToClose` + won ₹ on Home command center |
 | B-P1-13 | One-click Take over | `POST /conversations/:id/takeover` — assign + task + resolve handoff |
 | B-P1-14 | Mobile inbox + PWA | `manifest.json`, theme-color, safe-area composer on mobile |
+| B-P2-1 | Won/lost reasons complete | `wonReason` on leads + Analytics won/lost panels |
+| C-P0-1 | WhatsApp digest channel | Email, WhatsApp, or both; owner phone in Automations |
+| C-P0-2 | Agency workspace | Pro hub: enable agency mode, create up to 15 client orgs, `/dashboard/agency` |
+| C-P0-3 | Partner install kit | `/dashboard/partner` + `docs/PARTNER-INSTALL-KIT.md` |
+| C-P0-4 | Hindi UI | User `locale` en/hi; sidebar nav + settings; digest Hindi body |
+| C-P0-5 | Digest Meta template | Optional `whatsappTemplateName` for reliable outbound digest |
 
-#### P2 — Expansion
+### Phase C — Expansion (post-PMF)
 
 | Area | Requirements |
 |------|--------------|
-| Pipeline | Won/lost reasons, revenue forecasting, cohort views |
+| Pipeline | Revenue forecasting, cohort views |
 | Automations | Outbound webhooks, richer audit filters |
 | Integrations | Shopify/Razorpay payment events |
 | Billing | Self-serve invoices, usage overage |
+| Growth | Agency workspaces, partner kits, Hindi UI |
 
 | Area | Requirements | Priority |
 |------|--------------|----------|
 | WhatsApp | Embedded Signup live (post App Review), multi-number at scale | P0 |
 | Intelligence | pgvector RAG in classify + suggest; conversation summaries | P1 |
-| Pipeline | Won/lost reasons, revenue forecasting, cohort views | P1 |
+| Pipeline | Revenue forecasting, cohort views | P1 |
 | Automations | Outbound webhooks, richer audit log | P2 |
 | Integrations | API keys + read API; Shopify/Razorpay payment events | P2 |
 | Ops | Always-on workers (not Vercel inline), Sentry, usage dashboards | P1 |
 | Billing | Self-serve portal, invoices, usage overage | P2 |
 
-### Phase C — Expansion (post-PMF)
-
-- Multi-location / franchise workspaces
-- WhatsApp template campaigns (where Meta policy allows)
-- Partner/tech-provider tooling
-- Enterprise tier (SLA, dedicated support) — still no SSO unless demanded
+**Phase C themes (post-PMF):** multi-location workspaces, WhatsApp template campaigns, partner/tech-provider tooling, enterprise tier (SLA) — still no SSO unless demanded.
 
 ---
 
@@ -182,7 +184,7 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 
 | Group | Routes | Purpose |
 |-------|--------|---------|
-| **Overview** | `/dashboard` | Health, priorities, recommendations, key metrics |
+| **Overview** | `/dashboard`, `/dashboard/connection`, `/dashboard/agency`, `/dashboard/partner` | Health, clients, partner kit |
 | **Engage** | `/dashboard/inbox`, `/dashboard/contacts`, `/dashboard/pipeline`, `/dashboard/tasks` | Day-to-day sales work |
 | **Intelligence** | `/dashboard/analytics`, `/dashboard/ai` | Performance + AI transparency |
 | **Automate** | `/dashboard/campaigns`, `/dashboard/automations` | Outbound + server-side workflows |

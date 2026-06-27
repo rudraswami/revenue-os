@@ -29,6 +29,11 @@ enum MembershipRole {
   VIEWER
 }
 
+enum OrganizationKind {
+  STANDARD
+  AGENCY
+}
+
 enum LeadStage {
   NEW
   CONTACTED
@@ -145,6 +150,7 @@ model User {
   passwordHash  String?
   name          String?
   avatarUrl     String?
+  locale        String   @default("en")
   status        UserStatus @default(ACTIVE)
   emailVerified DateTime?
   lastLoginAt   DateTime?
@@ -202,6 +208,7 @@ model Organization {
   slug        String   @unique
   logoUrl     String?
   timezone    String   @default("UTC")
+  kind        OrganizationKind @default(STANDARD)
   settings    Json     @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -227,8 +234,25 @@ model Organization {
   campaigns          Campaign[]
   automationLogs     AutomationLog[]
   trackingLinks      TrackingLink[]
+  agencyClients      AgencyClient[] @relation("AgencyOrg")
+  clientOfAgency     AgencyClient?  @relation("ClientOrg")
 
   @@map("organizations")
+}
+
+model AgencyClient {
+  id                   String   @id @default(cuid())
+  agencyOrganizationId String
+  clientOrganizationId String   @unique
+  displayName          String
+  createdAt            DateTime @default(now())
+
+  agency Organization @relation("AgencyOrg", fields: [agencyOrganizationId], references: [id], onDelete: Cascade)
+  client Organization @relation("ClientOrg", fields: [clientOrganizationId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyOrganizationId, clientOrganizationId])
+  @@index([agencyOrganizationId])
+  @@map("agency_clients")
 }
 
 model OrganizationMember {
@@ -407,6 +431,7 @@ model Lead {
   wonAt          DateTime?
   lostAt         DateTime?
   lostReason     String?
+  wonReason      String?
   profile        Json      @default("{}")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

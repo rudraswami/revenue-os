@@ -6,6 +6,7 @@ import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { SlaMetricsPanel } from "@/components/dashboard/sla-metrics-panel";
 import { AttributionMetricsPanel } from "@/components/dashboard/attribution-metrics-panel";
 import { LostDealsPanel } from "@/components/dashboard/lost-deals-panel";
+import { WonDealsPanel } from "@/components/dashboard/won-deals-panel";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
@@ -234,8 +235,12 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <AttributionMetricsPanel />
+            <WonDealsPanel period={period} />
             <LostDealsPanel period={period} />
+          </div>
+
+          <div className="mt-8">
+            <AttributionMetricsPanel />
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">

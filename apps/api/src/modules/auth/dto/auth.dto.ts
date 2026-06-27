@@ -1,5 +1,5 @@
 import { Transform } from "class-transformer";
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
 export class RegisterDto {
   @IsEmail()
@@ -92,6 +92,10 @@ export class UpdateProfileDto {
   @IsNotEmpty()
   @Transform(({ value }) => (value as string)?.trim())
   name!: string;
+
+  @IsOptional()
+  @IsEnum(["en", "hi"])
+  locale?: "en" | "hi";
 }
 
 export class SwitchOrganizationDto {

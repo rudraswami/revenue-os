@@ -59,6 +59,7 @@ interface ContactDetail {
   company?: string | null;
   stage: LeadStage;
   lostReason?: string | null;
+  wonReason?: string | null;
   score: number;
   valueCents?: number | null;
   ownerId?: string | null;
@@ -293,6 +294,11 @@ export function ContactDetailDrawer({
                     {contact.stage === "LOST" && contact.lostReason && (
                       <p className="mt-1.5 text-[11px] text-muted-foreground">
                         Lost reason: <span className="font-medium text-foreground">{contact.lostReason}</span>
+                      </p>
+                    )}
+                    {contact.stage === "WON" && contact.wonReason && (
+                      <p className="mt-1.5 text-[11px] text-muted-foreground">
+                        Won reason: <span className="font-medium text-foreground">{contact.wonReason}</span>
                       </p>
                     )}
                   </div>

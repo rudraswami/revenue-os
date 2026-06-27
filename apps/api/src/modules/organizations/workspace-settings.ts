@@ -1,8 +1,20 @@
+export type DigestChannel = "email" | "whatsapp" | "both";
+
+export type DigestLocale = "en" | "hi";
+
 export interface DigestSettings {
   enabled: boolean;
-  /** Hour in IST (0–23) when the digest email is sent */
+  /** Hour in IST (0–23) when the digest is sent */
   hourIst: number;
   lastSentDate?: string | null;
+  /** Delivery channel — WhatsApp goes to digestWhatsappPhone (owner alert, not customer auto-reply) */
+  channel: DigestChannel;
+  /** E.164 or 10-digit Indian mobile for WhatsApp morning brief */
+  whatsappPhone?: string | null;
+  /** Meta-approved template for reliable outbound digest (optional) */
+  whatsappTemplateName?: string | null;
+  /** Language for digest WhatsApp body / template params */
+  digestLocale: DigestLocale;
 }
 
 export interface SlaSettings {
@@ -19,6 +31,10 @@ export const DEFAULT_DIGEST_SETTINGS: DigestSettings = {
   enabled: true,
   hourIst: 8,
   lastSentDate: null,
+  channel: "email",
+  whatsappPhone: null,
+  whatsappTemplateName: null,
+  digestLocale: "en",
 };
 
 export const DEFAULT_SLA_SETTINGS: SlaSettings = {
@@ -40,12 +56,32 @@ export function normalizeWorkspaceOpsSettings(raw: unknown): WorkspaceOpsSetting
       ? Math.floor(slaRaw.targetHours)
       : DEFAULT_SLA_SETTINGS.targetHours;
 
+  const channelRaw = digestRaw.channel;
+  const channel: DigestChannel =
+    channelRaw === "whatsapp" || channelRaw === "both" ? channelRaw : "email";
+
+  const whatsappPhone =
+    typeof digestRaw.whatsappPhone === "string" && digestRaw.whatsappPhone.trim()
+      ? digestRaw.whatsappPhone.trim().slice(0, 20)
+      : null;
+
+  const whatsappTemplateName =
+    typeof digestRaw.whatsappTemplateName === "string" && digestRaw.whatsappTemplateName.trim()
+      ? digestRaw.whatsappTemplateName.trim().slice(0, 64)
+      : null;
+
+  const digestLocale: DigestLocale = digestRaw.digestLocale === "hi" ? "hi" : "en";
+
   return {
     digest: {
       enabled: digestRaw.enabled ?? DEFAULT_DIGEST_SETTINGS.enabled,
       hourIst,
       lastSentDate:
         typeof digestRaw.lastSentDate === "string" ? digestRaw.lastSentDate : null,
+      channel,
+      whatsappPhone,
+      whatsappTemplateName,
+      digestLocale,
     },
     sla: { targetHours },
   };

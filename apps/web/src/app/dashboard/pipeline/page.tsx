@@ -16,6 +16,7 @@ import type { LeadStage } from "@growvisi/shared";
 import { Download } from "lucide-react";
 import { useState } from "react";
 import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
+import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
 
 const STAGES: LeadStage[] = [
   "NEW",
@@ -52,6 +53,9 @@ export default function PipelinePage() {
   const queryClient = useQueryClient();
   const [exporting, setExporting] = useState(false);
   const [lostPrompt, setLostPrompt] = useState<{ leadId: string; name?: string | null } | null>(
+    null,
+  );
+  const [wonPrompt, setWonPrompt] = useState<{ leadId: string; name?: string | null } | null>(
     null,
   );
 
@@ -146,9 +150,13 @@ export default function PipelinePage() {
   }
 
   function handleMoveLead(leadId: string, stage: LeadStage) {
+    const lead = STAGES.flatMap((s) => data?.[s] ?? []).find((l) => l.id === leadId);
     if (stage === "LOST") {
-      const lead = STAGES.flatMap((s) => data?.[s] ?? []).find((l) => l.id === leadId);
       setLostPrompt({ leadId, name: lead?.displayName });
+      return;
+    }
+    if (stage === "WON") {
+      setWonPrompt({ leadId, name: lead?.displayName });
       return;
     }
     stageMutation.mutate({ leadId, stage });
@@ -237,6 +245,19 @@ export default function PipelinePage() {
           stageMutation.mutate(
             { leadId: lostPrompt.leadId, stage: "LOST", reason },
             { onSuccess: () => setLostPrompt(null) },
+          );
+        }}
+      />
+      <WonReasonDialog
+        open={!!wonPrompt}
+        leadName={wonPrompt?.name}
+        loading={stageMutation.isPending}
+        onCancel={() => setWonPrompt(null)}
+        onConfirm={(reason) => {
+          if (!wonPrompt) return;
+          stageMutation.mutate(
+            { leadId: wonPrompt.leadId, stage: "WON", reason },
+            { onSuccess: () => setWonPrompt(null) },
           );
         }}
       />

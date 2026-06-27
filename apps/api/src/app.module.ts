@@ -27,6 +27,7 @@ import { TrackingModule } from "./modules/tracking/tracking.module";
 import { TagsModule } from "./modules/tags/tags.module";
 import { TasksModule } from "./modules/tasks/tasks.module";
 import { CampaignsModule } from "./modules/campaigns/campaigns.module";
+import { AgencyModule } from "./modules/agency/agency.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
 
@@ -72,6 +73,7 @@ import { QUEUES } from "@growvisi/shared";
     TagsModule,
     TasksModule,
     CampaignsModule,
+    AgencyModule,
   ],
 })
 export class AppModule {}

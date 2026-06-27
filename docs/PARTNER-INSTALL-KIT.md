@@ -1,0 +1,95 @@
+# Growvisi Partner Install Kit
+
+**Audience:** Meta Tech Providers, WhatsApp BSP partners, and Indian agencies installing Growvisi alongside Meta Business Agent.
+
+**Stack positioning:** Meta Business Agent replies in WhatsApp. Growvisi classifies, tracks pipeline, assigns team, and sends owner digests — it does **not** auto-reply customers in v1.
+
+---
+
+## 1. Prerequisites
+
+| Item | Owner |
+|------|--------|
+| WhatsApp Business Account (WABA) | Client |
+| Meta Business Agent enabled for customer replies | Client / Partner |
+| Growvisi workspace (trial or paid) | Client |
+| Meta Cloud API token or Embedded Signup (TP) | Partner |
+
+---
+
+## 2. Install sequence (45–60 min)
+
+### Step A — Meta Business Agent
+
+1. Confirm client uses Meta Business Agent for in-chat customer replies.
+2. Document that Growvisi is the **revenue layer**, not a chatbot replacement.
+
+### Step B — Growvisi WhatsApp connect
+
+1. Client opens **Settings → WhatsApp** or `/onboarding`.
+2. Paste Meta API Setup token **or** use Embedded Signup (requires Tech Provider approval).
+3. Verify **Connection** page shows webhooks + token healthy.
+
+### Step C — First value (< 15 min)
+
+1. Client sends test message to business number.
+2. Confirm message appears in **Conversations**.
+3. Confirm AI classification + pipeline stage update.
+4. Move lead on **Pipeline** board once.
+
+### Step D — Team & alerts
+
+1. Invite sales reps (Settings → Team).
+2. Enable **Daily digest** (email and/or WhatsApp) in Automations.
+3. Optional: Razorpay payment webhook → Won (Settings → Growth).
+
+---
+
+## 3. Agency mode (Pro)
+
+Agencies on **Pro** can enable **Agency mode** at `/dashboard/agency`:
+
+- Up to **15 client workspaces** per hub
+- Agency admins auto-added to each client org
+- Per-client health: WhatsApp, pipeline ₹, handoffs, unread
+
+Each client keeps isolated billing and data.
+
+---
+
+## 4. Hindi UI
+
+Users set **Language → Hindi** in Settings → Profile. Dashboard nav and key labels switch to Hindi. Digest WhatsApp body supports Hindi when digest locale is `hi`.
+
+---
+
+## 5. WhatsApp morning digest
+
+For owners who skip email:
+
+1. Automations → Daily digest → Channel: **WhatsApp** or **Both**
+2. Enter owner mobile (10-digit India)
+3. Optional: Meta-approved template name for reliable outbound
+4. Set digest language **English** or **Hindi**
+
+Template body params (if using template): `org name, pipeline ₹, won 24h, handoffs, unread, inbox URL`.
+
+---
+
+## 6. Support boundaries
+
+| Question | Answer |
+|----------|--------|
+| Who replies to customers? | Meta Business Agent in WhatsApp |
+| Who moves pipeline? | Growvisi AI + team |
+| Can Growvisi send marketing blasts? | Campaigns module (Meta policy applies) |
+| Billing currency | INR via Razorpay only |
+
+---
+
+## 7. Links
+
+- Product PRD: `docs/GROWVISI-PRD.md`
+- Meta embedded signup: `docs/META-EMBEDDED-SIGNUP.md`
+- Tech Provider: `docs/META-TECH-PROVIDER.md`
+- In-app kit: `/dashboard/partner`

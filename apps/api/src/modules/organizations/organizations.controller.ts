@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, UseGuards } from "@nestjs/common";
-import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
@@ -27,6 +27,23 @@ class DigestSettingsDto {
   @Min(0)
   @Max(23)
   hourIst?: number;
+
+  @IsOptional()
+  @IsEnum(["email", "whatsapp", "both"])
+  channel?: "email" | "whatsapp" | "both";
+
+  @IsOptional()
+  @IsString()
+  whatsappPhone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  whatsappTemplateName?: string | null;
+
+  @IsOptional()
+  @IsEnum(["en", "hi"])
+  digestLocale?: "en" | "hi";
 }
 
 class SlaSettingsDto {

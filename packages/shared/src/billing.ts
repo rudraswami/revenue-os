@@ -40,13 +40,14 @@ export interface PlanLimits {
   whatsappNumbers: number;
   teamMembers: number;
   monthlyLeads: number;
+  agencyClients: number;
 }
 
 export const PLAN_LIMITS: Record<GrowvisiPlanId, PlanLimits> = {
-  trial: { whatsappNumbers: 1, teamMembers: 2, monthlyLeads: 500 },
-  starter: { whatsappNumbers: 1, teamMembers: 2, monthlyLeads: 3_000 },
-  growth: { whatsappNumbers: 3, teamMembers: 5, monthlyLeads: 3_000 },
-  pro: { whatsappNumbers: 50, teamMembers: 50, monthlyLeads: 100_000 },
+  trial: { whatsappNumbers: 1, teamMembers: 2, monthlyLeads: 500, agencyClients: 0 },
+  starter: { whatsappNumbers: 1, teamMembers: 2, monthlyLeads: 3_000, agencyClients: 0 },
+  growth: { whatsappNumbers: 3, teamMembers: 5, monthlyLeads: 3_000, agencyClients: 0 },
+  pro: { whatsappNumbers: 50, teamMembers: 50, monthlyLeads: 100_000, agencyClients: 15 },
 };
 
 export interface SubscriptionAccessInput {

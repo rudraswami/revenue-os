@@ -4,12 +4,14 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string | null;
+  locale?: string;
 }
 
 export interface AuthOrganization {
   id: string;
   name: string;
   slug: string;
+  kind?: string;
 }
 
 export interface OnboardingStatus {

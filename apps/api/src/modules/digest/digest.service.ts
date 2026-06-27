@@ -4,6 +4,7 @@ import { GROWVISI_WEB_URL } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
+import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import {
   getIstNow,
   normalizeWorkspaceOpsSettings,
@@ -19,6 +20,7 @@ export class DigestService {
     private readonly email: EmailService,
     private readonly config: ConfigService,
     private readonly entitlements: EntitlementsService,
+    private readonly whatsapp: WhatsappMessagingService,
   ) {}
 
   async getOpsSettings(organizationId: string): Promise<WorkspaceOpsSettings> {
@@ -90,7 +92,16 @@ export class DigestService {
         }
 
         const recipients = await this.ownerEmails(org.id);
-        if (recipients.length === 0) {
+        const channel = ops.digest.channel;
+        const wantsEmail = channel === "email" || channel === "both";
+        const wantsWhatsapp =
+          (channel === "whatsapp" || channel === "both") && !!ops.digest.whatsappPhone;
+
+        if (!wantsEmail && !wantsWhatsapp) {
+          skipped++;
+          continue;
+        }
+        if (wantsEmail && recipients.length === 0 && !wantsWhatsapp) {
           skipped++;
           continue;
         }
@@ -105,14 +116,40 @@ export class DigestService {
           this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
         ).replace(/\/$/, "");
 
-        await this.email.sendDailyDigest({
-          to: recipients,
-          organizationName: org.name,
+        const urls = {
           dashboardUrl: `${appUrl}/dashboard`,
           inboxUrl: `${appUrl}/dashboard/inbox`,
           insightsUrl: `${appUrl}/dashboard#recommendations`,
-          ...snapshot,
-        });
+        };
+
+        let delivered = false;
+
+        if (wantsEmail && recipients.length > 0) {
+          await this.email.sendDailyDigest({
+            to: recipients,
+            organizationName: org.name,
+            ...urls,
+            ...snapshot,
+          });
+          delivered = true;
+        }
+
+        if (wantsWhatsapp && ops.digest.whatsappPhone) {
+          const ok = await this.sendWhatsappDigest(
+            org.id,
+            ops.digest.whatsappPhone,
+            org.name,
+            snapshot,
+            urls.inboxUrl,
+            ops.digest,
+          );
+          delivered = delivered || ok;
+        }
+
+        if (!delivered) {
+          skipped++;
+          continue;
+        }
 
         await this.updateOpsSettings(org.id, {
           digest: { ...ops.digest, lastSentDate: dateKey },
@@ -261,5 +298,89 @@ export class DigestService {
       include: { user: { select: { email: true } } },
     });
     return [...new Set(members.map((m) => m.user.email).filter(Boolean))];
+  }
+
+  private async sendWhatsappDigest(
+    organizationId: string,
+    toPhone: string,
+    organizationName: string,
+    snapshot: Awaited<ReturnType<DigestService["buildSnapshot"]>>,
+    inboxUrl: string,
+    digest: {
+      whatsappTemplateName?: string | null;
+      digestLocale: "en" | "hi";
+    },
+  ): Promise<boolean> {
+    const account = await this.prisma.whatsappAccount.findFirst({
+      where: { organizationId, isActive: true },
+      select: { phoneNumberId: true, accessTokenEnc: true, isActive: true },
+    });
+    if (!account) {
+      this.logger.warn(`WhatsApp digest skipped for ${organizationId}: no active number`);
+      return false;
+    }
+
+    const formatInr = (n: number) =>
+      new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0,
+      }).format(n);
+
+    const hi = digest.digestLocale === "hi";
+    const pipelineStr = formatInr(snapshot.pipelineInr);
+    const templateParams = [
+      organizationName,
+      pipelineStr,
+      String(snapshot.wonYesterday),
+      String(snapshot.handoffs),
+      String(snapshot.unread),
+      inboxUrl,
+    ];
+
+    if (digest.whatsappTemplateName?.trim()) {
+      try {
+        await this.whatsapp.sendTemplate(
+          account,
+          toPhone,
+          digest.whatsappTemplateName.trim(),
+          hi ? "hi" : "en",
+          templateParams,
+        );
+        return true;
+      } catch (err) {
+        this.logger.warn(
+          `WhatsApp template digest failed for ${organizationId}, falling back to text: ${err}`,
+        );
+      }
+    }
+
+    const lines = hi
+      ? [
+          `Growvisi — ${organizationName}`,
+          `पाइपलाइन: ${pipelineStr}`,
+          `कल जीते: ${snapshot.wonYesterday}`,
+          snapshot.handoffs > 0 ? `हैंडऑफ: ${snapshot.handoffs}` : null,
+          snapshot.unread > 0 ? `अपठित: ${snapshot.unread}` : null,
+          snapshot.overdueTasks > 0 ? `ओवरड्यू टास्क: ${snapshot.overdueTasks}` : null,
+          `इनबॉक्स: ${inboxUrl}`,
+        ]
+      : [
+          `Growvisi — ${organizationName}`,
+          `Pipeline: ${pipelineStr}`,
+          `Won (24h): ${snapshot.wonYesterday}`,
+          snapshot.handoffs > 0 ? `Handoffs: ${snapshot.handoffs}` : null,
+          snapshot.unread > 0 ? `Unread: ${snapshot.unread}` : null,
+          snapshot.overdueTasks > 0 ? `Overdue tasks: ${snapshot.overdueTasks}` : null,
+          `Open inbox: ${inboxUrl}`,
+        ];
+
+    try {
+      await this.whatsapp.sendText(account, toPhone, lines.filter(Boolean).join("\n").slice(0, 4096));
+      return true;
+    } catch (err) {
+      this.logger.warn(`WhatsApp digest failed for ${organizationId}: ${err}`);
+      return false;
+    }
   }
 }

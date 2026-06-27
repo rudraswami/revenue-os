@@ -13,13 +13,18 @@ import type { MeResponse } from "@/lib/auth-types";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import type { MembershipRole } from "@growvisi/shared";
+import { useI18n } from "@/lib/i18n/locale-provider";
+import type { Locale } from "@/lib/i18n/messages";
+import { Select } from "@/components/ui/select";
 
 export function ProfileSettingsCard() {
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   const organization = useAuthStore((s) => s.organization);
+  const { t } = useI18n();
   const [name, setName] = useState(user?.name ?? "");
+  const [locale, setLocale] = useState<Locale>((user?.locale as Locale) ?? "en");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -28,7 +33,7 @@ export function ProfileSettingsCard() {
       apiFetch<MeResponse>("/auth/me", {
         method: "PATCH",
         token: token ?? undefined,
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), locale }),
       }),
     onSuccess: (me) => {
       const current = useAuthStore.getState();
@@ -49,7 +54,9 @@ export function ProfileSettingsCard() {
     },
   });
 
-  const dirty = name.trim() !== (user?.name ?? "").trim();
+  const dirty =
+    name.trim() !== (user?.name ?? "").trim() ||
+    locale !== ((user?.locale as Locale) ?? "en");
 
   return (
     <div className="space-y-6">
@@ -87,6 +94,24 @@ export function ProfileSettingsCard() {
           />
           <p className="text-xs text-muted-foreground">
             Shown in the sidebar, assignments, and activity feed.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="profile-locale">
+            {t("common.language")}
+          </label>
+          <Select
+            id="profile-locale"
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+            className="h-10 rounded-xl text-sm"
+          >
+            <option value="en">{t("common.english")}</option>
+            <option value="hi">{t("common.hindi")}</option>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Dashboard navigation and key labels. Full Hindi coverage expands over time.
           </p>
         </div>
 

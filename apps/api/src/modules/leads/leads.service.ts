@@ -89,6 +89,7 @@ export class LeadsService {
           wonAt: stage === "WON" ? new Date() : null,
           lostAt: stage === "LOST" ? new Date() : null,
           lostReason: stage === ("LOST" as string) ? reason ?? lead.lostReason : lead.lostReason,
+          wonReason: stage === ("WON" as string) ? reason ?? lead.wonReason : lead.wonReason,
         },
       });
 
@@ -319,6 +320,44 @@ export class LeadsService {
     };
   }
 
+  async wonDealMetrics(user: JwtPayload, period?: MetricsPeriod) {
+    const parsedPeriod = parseMetricsPeriod(period);
+    const range = createdAtFilter(parsedPeriod);
+    const where = {
+      organizationId: user.organizationId,
+      stage: "WON" as const,
+      wonAt: {
+        not: null,
+        ...(range.gte ? { gte: range.gte } : {}),
+      },
+    };
+
+    const [grouped, totalWon, valueAgg] = await Promise.all([
+      this.prisma.lead.groupBy({
+        by: ["wonReason"],
+        where,
+        _count: { id: true },
+      }),
+      this.prisma.lead.count({ where }),
+      this.prisma.lead.aggregate({
+        where,
+        _sum: { valueCents: true },
+      }),
+    ]);
+
+    return {
+      period: parsedPeriod,
+      totalWon,
+      wonValueCents: valueAgg._sum.valueCents ?? 0,
+      byReason: grouped
+        .map((g) => ({
+          reason: g.wonReason?.trim() || "No reason given",
+          count: g._count.id,
+        }))
+        .sort((a, b) => b.count - a.count),
+    };
+  }
+
   /**
    * Razorpay payment.captured → move lead to Won when merchant webhook is configured.
    */
@@ -362,6 +401,7 @@ export class LeadsService {
         data: {
           stage: "WON",
           wonAt: new Date(),
+          wonReason: reason,
           ...(opts.amountCents && !lead!.valueCents
             ? { valueCents: opts.amountCents }
             : {}),
