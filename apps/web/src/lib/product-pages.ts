@@ -2,8 +2,7 @@
  * Product landing pages — founder IA for shipped modules.
  */
 
-import type { LucideIcon } from "lucide-react";
-import { BarChart3, Inbox, Kanban, Sparkles, Zap } from "lucide-react";
+import type { MarketingIconName } from "./marketing-icons";
 
 export type ProductPageSlug =
   | "conversations"
@@ -16,7 +15,7 @@ export type ProductPageData = {
   slug: ProductPageSlug;
   navLabel: string;
   navDescription: string;
-  icon: LucideIcon;
+  icon: MarketingIconName;
   eyebrow: string;
   headline: string;
   subhead: string;
@@ -30,7 +29,7 @@ export const PRODUCT_PAGES: Record<ProductPageSlug, ProductPageData> = {
     slug: "conversations",
     navLabel: "Conversations",
     navDescription: "Shared inbox · human reply from Growvisi",
-    icon: Inbox,
+    icon: "messages-square",
     eyebrow: "Conversations",
     headline: "One inbox for your whole WhatsApp sales team",
     subhead:
@@ -48,7 +47,7 @@ export const PRODUCT_PAGES: Record<ProductPageSlug, ProductPageData> = {
     slug: "intelligence",
     navLabel: "AI classification",
     navDescription: "Intent, score, and handoff on every thread",
-    icon: Sparkles,
+    icon: "brain-circuit",
     eyebrow: "Intelligence",
     headline: "Every WhatsApp message classified before your team opens it",
     subhead:
@@ -66,7 +65,7 @@ export const PRODUCT_PAGES: Record<ProductPageSlug, ProductPageData> = {
     slug: "pipeline",
     navLabel: "Pipeline",
     navDescription: "Kanban in ₹ — drag deals, track won/lost",
-    icon: Kanban,
+    icon: "columns-3",
     eyebrow: "Pipeline",
     headline: "Your WhatsApp revenue board in ₹",
     subhead:
@@ -84,7 +83,7 @@ export const PRODUCT_PAGES: Record<ProductPageSlug, ProductPageData> = {
     slug: "analytics",
     navLabel: "Revenue analytics",
     navDescription: "Funnel, attribution, Razorpay → Won",
-    icon: BarChart3,
+    icon: "chart-no-axes-combined",
     eyebrow: "Analytics",
     headline: "See conversion and pipeline ₹ — not just message counts",
     subhead:
@@ -102,7 +101,7 @@ export const PRODUCT_PAGES: Record<ProductPageSlug, ProductPageData> = {
     slug: "automations",
     navLabel: "Automations & digest",
     navDescription: "Morning brief on email or WhatsApp (Hindi)",
-    icon: Zap,
+    icon: "bell-ring",
     eyebrow: "Automations",
     headline: "Owners wake up to pipeline ₹ — on email or WhatsApp",
     subhead:

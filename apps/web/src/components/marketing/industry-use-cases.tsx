@@ -2,32 +2,39 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Building2, Car, GraduationCap, HeartPulse, Paintbrush, ShoppingBag } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import type { MarketingIconName } from "@/lib/marketing-icons";
+import { MarketingIcon } from "@/lib/marketing-icons";
 import { SectionHeader } from "./section-header";
 
-const industries = [
+const industries: Array<{
+  icon: MarketingIconName;
+  title: string;
+  example: string;
+  href?: string;
+}> = [
   {
-    icon: Building2,
+    icon: "landmark",
     title: "Real Estate",
     example: "Plot visits tracked from first WhatsApp ping",
     href: "/solutions/real-estate",
   },
   {
-    icon: GraduationCap,
+    icon: "graduation-cap",
     title: "Education",
     example: "Admission leads scored by intent in Inbox",
     href: "/solutions/education",
   },
   {
-    icon: HeartPulse,
+    icon: "stethoscope",
     title: "Healthcare",
     example: "Appointment requests prioritized on Pipeline",
     href: "/solutions/healthcare",
   },
-  { icon: Car, title: "Automotive", example: "Test-drive inquiries assigned to sales reps" },
-  { icon: Paintbrush, title: "Interior Design", example: "Consultation pipeline with deal ₹ values" },
+  { icon: "car", title: "Automotive", example: "Test-drive inquiries assigned to sales reps" },
+  { icon: "palette", title: "Interior Design", example: "Consultation pipeline with deal ₹ values" },
   {
-    icon: ShoppingBag,
+    icon: "store",
     title: "D2C",
     example: "Campaign click-to-WA attributed to won orders",
     href: "/solutions/d2c",
@@ -50,11 +57,10 @@ export function IndustryUseCases() {
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {industries.map((item, i) => {
-            const Icon = item.icon;
             const inner = (
               <>
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6cf8bb]/15">
-                  <Icon className="h-5 w-5 text-[#6cf8bb]" strokeWidth={1.75} />
+                  <MarketingIcon name={item.icon} className="h-5 w-5 text-[#6cf8bb]" strokeWidth={2} />
                 </div>
                 <p className="mt-4 flex items-center gap-1 text-[15px] font-bold text-white">
                   {item.title}

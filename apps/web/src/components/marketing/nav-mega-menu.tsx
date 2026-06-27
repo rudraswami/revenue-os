@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavDropdown, NavLinkItem } from "@/lib/marketing-nav";
+import { MarketingIcon } from "@/lib/marketing-icons";
 import { PRODUCT_PAGES, type ProductPageSlug } from "@/lib/product-pages";
 import { SOLUTION_PAGES, type SolutionPageSlug } from "@/lib/solution-pages";
 import {
@@ -44,7 +45,6 @@ function NavItemLink({
   onHover?: () => void;
   onClose: () => void;
 }) {
-  const Icon = item.icon;
   const className = cn(
     "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
     active ? "bg-[#ecfdf5] ring-1 ring-accent/15" : "hover:bg-[#f8f9ff]",
@@ -58,7 +58,7 @@ function NavItemLink({
           active ? "bg-accent text-white" : "bg-bento-mint text-accent group-hover:bg-accent/10",
         )}
       >
-        <Icon className="h-4 w-4" strokeWidth={1.75} />
+        <MarketingIcon name={item.icon} className="h-[18px] w-[18px]" strokeWidth={active ? 2.25 : 2} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1 text-[13px] font-semibold text-foreground">

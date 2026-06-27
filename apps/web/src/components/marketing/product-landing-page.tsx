@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
-import type { ProductPageData, ProductPageSlug } from "@/lib/product-pages";
+import type { ProductPageSlug } from "@/lib/product-pages";
+import { PRODUCT_PAGES, PRODUCT_SLUGS } from "@/lib/product-pages";
+import { MarketingIcon } from "@/lib/marketing-icons";
 import { CTA } from "@/lib/brand-copy";
 import { MarketingHeader } from "./header";
 import { MarketingFooter } from "./footer";
@@ -24,15 +26,10 @@ const PREVIEWS: Record<ProductPageSlug, React.ComponentType> = {
   automations: AutomationsPreview,
 };
 
-export function ProductLandingPage({
-  product,
-  siblings,
-}: {
-  product: ProductPageData;
-  siblings: ProductPageData[];
-}) {
+export function ProductLandingPage({ slug }: { slug: ProductPageSlug }) {
+  const product = PRODUCT_PAGES[slug];
+  const siblings = PRODUCT_SLUGS.filter((s) => s !== slug).map((s) => PRODUCT_PAGES[s]);
   const Preview = PREVIEWS[product.slug];
-  const Icon = product.icon;
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,7 +40,7 @@ export function ProductLandingPage({
           <div className="relative mx-auto grid max-w-[1100px] items-center gap-12 px-6 lg:grid-cols-2 lg:px-8">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <span className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-white/80 px-3 py-1 text-xs font-semibold text-accent">
-                <Icon className="h-3.5 w-3.5" />
+                <MarketingIcon name={product.icon} className="h-3.5 w-3.5" />
                 {product.eyebrow}
               </span>
               <h1

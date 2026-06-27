@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { GROWVISI_WEB_URL } from "@growvisi/shared";
 import "./globals.css";
@@ -40,12 +40,15 @@ export const metadata: Metadata = {
     images: ["/opengraph-image"],
   },
   manifest: "/manifest.json",
-  themeColor: "#0b9e6d",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Growvisi",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b9e6d",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

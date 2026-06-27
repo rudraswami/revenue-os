@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { ProductLandingPage } from "@/components/marketing/product-landing-page";
 import {
   getProductPage,
-  PRODUCT_PAGES,
   PRODUCT_SLUGS,
   type ProductPageSlug,
 } from "@/lib/product-pages";
@@ -29,7 +28,5 @@ export default async function ProductPage({ params }: Props) {
   const product = getProductPage(slug);
   if (!product) notFound();
 
-  const siblings = PRODUCT_SLUGS.map((s) => PRODUCT_PAGES[s as ProductPageSlug]);
-
-  return <ProductLandingPage product={product} siblings={siblings} />;
+  return <ProductLandingPage slug={slug as ProductPageSlug} />;
 }

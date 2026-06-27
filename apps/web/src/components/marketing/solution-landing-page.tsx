@@ -3,21 +3,18 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
-import type { SolutionPageData } from "@/lib/solution-pages";
+import type { SolutionPageSlug } from "@/lib/solution-pages";
+import { SOLUTION_PAGES, SOLUTION_SLUGS } from "@/lib/solution-pages";
+import { MarketingIcon } from "@/lib/marketing-icons";
 import { CTA } from "@/lib/brand-copy";
 import { HANDOFF_EXPLAINER } from "@/lib/gtm-copy";
 import { MarketingHeader } from "./header";
 import { MarketingFooter } from "./footer";
 import { SolutionHeroVisual, SolutionWorkflowDiagram } from "./solution-visuals";
 
-export function SolutionLandingPage({
-  solution,
-  siblings,
-}: {
-  solution: SolutionPageData;
-  siblings: SolutionPageData[];
-}) {
-  const Icon = solution.icon;
+export function SolutionLandingPage({ slug }: { slug: SolutionPageSlug }) {
+  const solution = SOLUTION_PAGES[slug];
+  const siblings = SOLUTION_SLUGS.filter((s) => s !== slug).map((s) => SOLUTION_PAGES[s]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,7 +36,7 @@ export function SolutionLandingPage({
                 className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold"
                 style={{ borderColor: `${solution.accentColor}55`, color: solution.accentColor }}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <MarketingIcon name={solution.icon} className="h-3.5 w-3.5" />
                 {solution.navLabel}
               </span>
               <h1

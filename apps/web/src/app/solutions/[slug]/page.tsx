@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { SolutionLandingPage } from "@/components/marketing/solution-landing-page";
 import {
   getSolutionPage,
-  SOLUTION_PAGES,
   SOLUTION_SLUGS,
   type SolutionPageSlug,
 } from "@/lib/solution-pages";
@@ -29,7 +28,5 @@ export default async function SolutionPage({ params }: Props) {
   const solution = getSolutionPage(slug);
   if (!solution) notFound();
 
-  const siblings = SOLUTION_SLUGS.map((s) => SOLUTION_PAGES[s as SolutionPageSlug]);
-
-  return <SolutionLandingPage solution={solution} siblings={siblings} />;
+  return <SolutionLandingPage slug={slug as SolutionPageSlug} />;
 }

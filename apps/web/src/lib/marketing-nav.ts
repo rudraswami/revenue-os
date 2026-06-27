@@ -2,20 +2,15 @@
  * Marketing header IA — founder-curated dropdowns.
  */
 
-import type { LucideIcon } from "lucide-react";
-import {
-  MessageSquare,
-  Sparkles,
-  Users,
-} from "lucide-react";
 import { PRODUCT_PAGES, type ProductPageSlug } from "./product-pages";
 import { SOLUTION_PAGES, type SolutionPageSlug } from "./solution-pages";
+import type { MarketingIconName } from "./marketing-icons";
 
 export type NavLinkItem = {
   href: string;
   label: string;
   description: string;
-  icon: LucideIcon;
+  icon: MarketingIconName;
   external?: boolean;
   /** Product preview slug for mega menu hover panel */
   productSlug?: ProductPageSlug;
@@ -87,25 +82,25 @@ export const MARKETING_NAV: NavEntry[] = [
           href: "/#engine",
           label: "Connect WhatsApp",
           description: "Meta Cloud API · ~15 min setup",
-          icon: MessageSquare,
+          icon: "plug-zap",
         },
         {
           href: "/product/intelligence",
           label: "AI classifies inbound",
           description: "Every message scored and staged",
-          icon: Sparkles,
+          icon: "brain-circuit",
         },
         {
           href: "/product/conversations",
           label: "Take over & reply",
           description: "Human handoff → assign → Inbox reply",
-          icon: Users,
+          icon: "hand-helping",
         },
         {
           href: "/product/pipeline",
           label: "Close in pipeline",
           description: "Move to Won · track revenue ₹",
-          icon: MessageSquare,
+          icon: "indian-rupee",
         },
       ],
     },
@@ -122,7 +117,7 @@ export const MARKETING_NAV: NavEntry[] = [
           href: "/agencies",
           label: "Agencies & partners",
           description: "Multi-client hub · Operator plan",
-          icon: Users,
+          icon: "network",
         },
       ],
       featured: {
