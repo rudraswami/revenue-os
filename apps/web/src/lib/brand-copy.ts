@@ -88,11 +88,14 @@ export const CONVERSATIONS = {
   draftWithAi: "Suggest reply",
   minimizeComposer: "Minimize",
   sendReply: "Send",
-  /** Timeline empty states */
+  /** Timeline */
+  timelineTitle: "Activity",
+  timelineSubtitle: "Recent changes on this deal",
+  timelineConfidence: "Classification confidence",
   timelineEmptyClassify:
-    "No AI insights yet — send or receive a message after WhatsApp is connected.",
+    "Nothing here yet. Activity appears after WhatsApp is connected and messages come in.",
   timelineEmptyEvents:
-    "Stage changes and automations will show up here as the deal moves.",
+    "No activity yet. Stage updates and AI reviews will show up here.",
   /** List filters */
   filterAll: "All",
   filterUnread: "Unread",

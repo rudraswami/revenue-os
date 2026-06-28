@@ -1,17 +1,8 @@
 "use client";
 
-import {
-  ArrowRight,
-  Bell,
-  GitBranch,
-  PanelRightClose,
-  PanelRightOpen,
-  ScanText,
-} from "lucide-react";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CONVERSATIONS } from "@/lib/brand-copy";
-import { STAGE_BADGE } from "@/lib/crm";
-import type { LeadStage } from "@growvisi/shared";
 import { formatStage } from "@/lib/stage-labels";
 import { cn } from "@/lib/utils";
 
@@ -23,27 +14,6 @@ export interface InboxTimelineEvent {
   detail?: string;
 }
 
-const TYPE_CONFIG = {
-  stage_change: {
-    label: "Pipeline",
-    icon: GitBranch,
-    dot: "bg-indigo-500",
-    chip: "bg-indigo-50 text-indigo-700",
-  },
-  ai_classify: {
-    label: "AI insight",
-    icon: ScanText,
-    dot: "bg-accent",
-    chip: "bg-[#ecfdf5] text-accent",
-  },
-  automation: {
-    label: "Automation",
-    icon: Bell,
-    dot: "bg-amber-500",
-    chip: "bg-amber-50 text-amber-800",
-  },
-} as const;
-
 function parseStageTitle(title: string): { from?: string; to?: string } {
   const arrow = title.match(/^(\w+)\s→\s(\w+)$/);
   if (arrow) return { from: arrow[1], to: arrow[2] };
@@ -54,19 +24,36 @@ function parseStageTitle(title: string): { from?: string; to?: string } {
   return {};
 }
 
-function StageChip({ stage, muted }: { stage: string; muted?: boolean }) {
-  const badge = STAGE_BADGE[stage as LeadStage] ?? "bg-slate-100 text-slate-700";
-  return (
-    <span
-      className={cn(
-        "inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-        badge,
-        muted && "opacity-70",
-      )}
-    >
-      {formatStage(stage)}
-    </span>
-  );
+function humanizeDetail(detail?: string): string | undefined {
+  if (!detail) return undefined;
+  const known: Record<string, string> = {
+    "Updated from Conversations": "Changed in Conversations",
+    "Updated from Pipeline": "Changed on Pipeline",
+    "Team notified about stale conversation": "Team notified — no reply in 24h",
+  };
+  return known[detail] ?? detail;
+}
+
+function eventHeadline(ev: InboxTimelineEvent): string {
+  const stages =
+    ev.type === "stage_change" || ev.type === "automation" ? parseStageTitle(ev.title) : {};
+
+  if (stages.to) {
+    const to = formatStage(stages.to);
+    if (stages.from) {
+      const from = formatStage(stages.from);
+      return `${from} → ${to}`;
+    }
+    return ev.type === "automation" ? `Auto-moved to ${to}` : `Set to ${to}`;
+  }
+
+  if (ev.type === "ai_classify") return "AI reviewed message";
+
+  const titles: Record<string, string> = {
+    "Hot lead alert emailed": "Hot lead alert sent",
+    "Follow-up reminder sent": "Follow-up reminder sent",
+  };
+  return titles[ev.title] ?? ev.title;
 }
 
 function formatTimelineDate(iso: string) {
@@ -93,6 +80,15 @@ function formatTimelineTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+/** Drop back-to-back identical entries (common with repeated saves). */
+function dedupeEvents(events: InboxTimelineEvent[]) {
+  return events.filter((ev, i) => {
+    if (i === 0) return true;
+    const prev = events[i - 1];
+    return prev.title !== ev.title || prev.detail !== ev.detail;
+  });
+}
+
 function groupEventsByDate(events: InboxTimelineEvent[]) {
   const groups: { date: string; events: InboxTimelineEvent[] }[] = [];
   for (const ev of events) {
@@ -104,44 +100,19 @@ function groupEventsByDate(events: InboxTimelineEvent[]) {
   return groups;
 }
 
-function TimelineEventCard({ ev }: { ev: InboxTimelineEvent }) {
-  const config = TYPE_CONFIG[ev.type];
-  const Icon = config.icon;
-  const stages = ev.type === "stage_change" || ev.type === "automation" ? parseStageTitle(ev.title) : {};
-  const showStageFlow = stages.from || stages.to;
+function TimelineRow({ ev }: { ev: InboxTimelineEvent }) {
+  const headline = eventHeadline(ev);
+  const detail = humanizeDetail(ev.detail);
 
   return (
-    <li className="relative pl-0">
-      <div className="rounded-xl border border-border/60 bg-white p-3 shadow-[0_1px_4px_rgb(11_28_48/0.04)] transition hover:border-border">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
-              config.chip,
-            )}
-          >
-            <Icon className="h-3 w-3" />
-            {config.label}
-          </span>
-          <time className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-            {formatTimelineTime(ev.at)}
-          </time>
-        </div>
-
-        {showStageFlow ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {stages.from && <StageChip stage={stages.from} muted />}
-            {stages.from && stages.to && (
-              <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground/60" aria-hidden />
-            )}
-            {stages.to && <StageChip stage={stages.to} />}
-          </div>
-        ) : (
-          <p className="text-xs font-semibold leading-snug text-foreground">{ev.title}</p>
-        )}
-
-        {ev.detail && (
-          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{ev.detail}</p>
+    <li className="grid grid-cols-[3.25rem_1fr] gap-x-2 gap-y-0.5 border-b border-border/50 py-2.5 last:border-0">
+      <time className="pt-0.5 text-[10px] tabular-nums leading-tight text-muted-foreground">
+        {formatTimelineTime(ev.at)}
+      </time>
+      <div className="min-w-0">
+        <p className="text-[13px] font-medium leading-snug text-foreground">{headline}</p>
+        {detail && (
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
         )}
       </div>
     </li>
@@ -163,33 +134,36 @@ export function InboxTimeline({
   className?: string;
   hasClassification?: boolean;
 }) {
-  const groups = groupEventsByDate(events);
+  const cleaned = dedupeEvents(events);
+  const groups = groupEventsByDate(cleaned);
   const confidencePct = aiConfidence != null ? Math.round(aiConfidence * 100) : null;
 
   return (
     <aside
       className={cn(
-        "flex shrink-0 flex-col border-l border-border/80 bg-[#f8f9ff]/50 transition-[width] duration-200",
-        open ? "w-[17.5rem] xl:w-80" : "w-11",
+        "flex shrink-0 flex-col border-l border-border/80 bg-white transition-[width] duration-200",
+        open ? "w-[15.5rem] xl:w-72" : "w-11",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-border/80 bg-white px-3 py-3">
+      <div className="flex items-center justify-between gap-2 border-b border-border/80 px-3 py-3">
         {open ? (
           <>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-bold tracking-tight">Deal timeline</h2>
+              <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                {CONVERSATIONS.timelineTitle}
+              </h2>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Pipeline moves & AI activity
+                {CONVERSATIONS.timelineSubtitle}
               </p>
             </div>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
               onClick={onToggle}
-              aria-label="Collapse timeline"
+              aria-label="Collapse activity"
             >
               <PanelRightClose className="h-4 w-4" />
             </Button>
@@ -199,12 +173,12 @@ export function InboxTimeline({
             type="button"
             variant="ghost"
             size="icon"
-            className="mx-auto h-8 w-8"
+            className="mx-auto h-8 w-8 text-muted-foreground"
             onClick={onToggle}
-            aria-label="Expand timeline"
-            title="Deal timeline"
+            aria-label="Expand activity"
+            title={CONVERSATIONS.timelineTitle}
           >
-            <PanelRightOpen className="h-4 w-4 text-accent" />
+            <PanelRightOpen className="h-4 w-4" />
           </Button>
         )}
       </div>
@@ -212,53 +186,38 @@ export function InboxTimeline({
       {open && (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 custom-scrollbar">
           {confidencePct != null && (
-            <div className="mb-3 rounded-xl border border-accent/15 bg-white p-3 shadow-sm">
-              <div className="mb-1.5 flex items-center justify-between text-[11px]">
-                <span className="font-semibold text-foreground">AI confidence</span>
-                <span className="font-bold tabular-nums text-accent">{confidencePct}%</span>
+            <div className="mb-3 border-b border-border/50 pb-3">
+              <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>{CONVERSATIONS.timelineConfidence}</span>
+                <span className="tabular-nums font-medium text-foreground">{confidencePct}%</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[#ecfdf5]">
+              <div className="h-1 overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-accent transition-all"
+                  className="h-full rounded-full bg-foreground/30"
                   style={{ width: `${confidencePct}%` }}
                 />
               </div>
             </div>
           )}
 
-          {!events.length && (
-            <p className="rounded-xl border border-dashed border-border/80 bg-white px-3 py-5 text-center text-xs leading-relaxed text-muted-foreground">
+          {!cleaned.length && (
+            <p className="px-1 py-6 text-center text-xs leading-relaxed text-muted-foreground">
               {hasClassification || aiConfidence != null
                 ? CONVERSATIONS.timelineEmptyEvents
                 : CONVERSATIONS.timelineEmptyClassify}
             </p>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {groups.map((group) => (
               <section key={group.date}>
-                <p className="sticky top-0 z-10 mb-2 bg-[#f8f9ff]/95 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground backdrop-blur-sm">
+                <p className="mb-1 px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
                   {group.date}
                 </p>
-                <ul className="relative space-y-2.5">
-                  <span
-                    className="absolute bottom-1 left-[7px] top-1 w-px bg-border/80"
-                    aria-hidden
-                  />
-                  {group.events.map((ev) => {
-                    const config = TYPE_CONFIG[ev.type];
-                    return (
-                      <div key={ev.id} className="relative pl-5">
-                        <span
-                          className={cn(
-                            "absolute left-0 top-4 z-[1] h-2.5 w-2.5 rounded-full ring-2 ring-[#f8f9ff]",
-                            config.dot,
-                          )}
-                        />
-                        <TimelineEventCard ev={ev} />
-                      </div>
-                    );
-                  })}
+                <ul>
+                  {group.events.map((ev) => (
+                    <TimelineRow key={ev.id} ev={ev} />
+                  ))}
                 </ul>
               </section>
             ))}
