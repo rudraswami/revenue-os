@@ -4,7 +4,11 @@ node_modules
 **/.git/**
 .turbo
 **/.turbo/**
+**/.next/**
 **/.next/cache/**
+apps/web
+docs
+.cursor
 *.log
 .env*
 **/.env.check
