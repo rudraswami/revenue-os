@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { IsNotEmpty, IsString, MaxLength } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
@@ -6,6 +6,7 @@ import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
+import { CompleteEmbeddedSignupDto } from "../whatsapp-accounts/dto/embedded-signup.dto";
 import { AgencyService } from "./agency.service";
 
 class CreateClientDto {
@@ -33,6 +34,24 @@ export class AgencyController {
   @Get("clients/health-summary")
   clientsHealthSummary(@CurrentUser() user: JwtPayload) {
     return this.agency.getClientsHealthSummary(user);
+  }
+
+  @Get("clients/:organizationId/whatsapp-summary")
+  clientWhatsAppSummary(
+    @CurrentUser() user: JwtPayload,
+    @Param("organizationId") organizationId: string,
+  ) {
+    return this.agency.getClientWhatsAppSummary(user, organizationId);
+  }
+
+  @Post("clients/:organizationId/embedded-signup/complete")
+  @Roles("OWNER", "ADMIN")
+  completeClientEmbeddedSignup(
+    @CurrentUser() user: JwtPayload,
+    @Param("organizationId") organizationId: string,
+    @Body() dto: CompleteEmbeddedSignupDto,
+  ) {
+    return this.agency.completeClientEmbeddedSignup(user, organizationId, dto);
   }
 
   @Post("enable")

@@ -158,6 +158,7 @@ export class EmbeddedSignupService {
       finishEvent?: string;
       connectMethod?: "embedded" | "embedded_coex";
     },
+    opts?: { targetOrganizationId?: string },
   ): Promise<WhatsappAccountSafe> {
     if (!this.getPublicConfig().enabled) {
       throw new BadRequestException(
@@ -165,6 +166,7 @@ export class EmbeddedSignupService {
       );
     }
 
+    const organizationId = opts?.targetOrganizationId ?? user.organizationId;
     const phoneNumberId = input.phoneNumberId.trim();
     const wabaId = input.wabaId.trim();
 
@@ -174,17 +176,17 @@ export class EmbeddedSignupService {
       );
     }
 
-    await this.entitlements.assertCanAddWhatsappNumber(user.organizationId);
+    await this.entitlements.assertCanAddWhatsappNumber(organizationId);
 
     const duplicate = await this.prisma.whatsappAccount.findFirst({
-      where: { organizationId: user.organizationId, phoneNumberId },
+      where: { organizationId, phoneNumberId },
     });
     if (duplicate) {
-      throw new BadRequestException("This WhatsApp number is already connected to your workspace.");
+      throw new BadRequestException("This WhatsApp number is already connected to this workspace.");
     }
 
     const conflict = await this.prisma.whatsappAccount.findFirst({
-      where: { phoneNumberId, NOT: { organizationId: user.organizationId } },
+      where: { phoneNumberId, NOT: { organizationId } },
       select: { id: true },
     });
     if (conflict) {
@@ -203,7 +205,7 @@ export class EmbeddedSignupService {
 
     const account = await this.prisma.whatsappAccount.create({
       data: {
-        organizationId: user.organizationId,
+        organizationId,
         phoneNumberId,
         wabaId,
         displayPhoneNumber: details.display_phone_number?.trim() || phoneNumberId,
@@ -213,6 +215,9 @@ export class EmbeddedSignupService {
           tokenUpdatedAt: new Date().toISOString(),
           connectMethod: input.connectMethod ?? "embedded",
           finishEvent: input.finishEvent ?? null,
+          ...(opts?.targetOrganizationId
+            ? { connectedByAgencyOrgId: user.organizationId, connectedByUserId: user.sub }
+            : {}),
         },
       },
     });
@@ -220,7 +225,7 @@ export class EmbeddedSignupService {
     await this.accounts.syncTemplatesAfterConnect(account.id);
 
     this.logger.log(
-      `Embedded signup complete org=${user.organizationId} phone=${account.displayPhoneNumber}`,
+      `Embedded signup complete org=${organizationId} phone=${account.displayPhoneNumber}`,
     );
 
     return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,16 +11,18 @@ import {
   IndianRupee,
   Loader2,
   MessageCircle,
+  RefreshCw,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
 
 type OnboardingProgress = {
   connected: boolean;
+  accountId: string | null;
   displayPhoneNumber: string | null;
   verifiedName: string | null;
   progressPct: number;
@@ -56,6 +58,7 @@ export function WhatsappGoLiveChecklist({
   showTestMessage?: boolean;
 }) {
   const token = useAuthStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["whatsapp-onboarding-progress"],
@@ -65,6 +68,17 @@ export function WhatsappGoLiveChecklist({
       }),
     enabled: !!token,
     refetchInterval: 4000,
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: (accountId: string) =>
+      apiFetch<{ templateCount: number; approvedTemplateCount: number }>(
+        `/whatsapp-accounts/${accountId}/sync-templates`,
+        { method: "POST", token: token ?? undefined },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["whatsapp-onboarding-progress"] });
+    },
   });
 
   if (isLoading || !data) {
@@ -158,6 +172,31 @@ export function WhatsappGoLiveChecklist({
 
         {showVerifier && data.displayPhoneNumber && (
           <WhatsappIngestionVerifier displayPhoneNumber={data.displayPhoneNumber} />
+        )}
+
+        {data.accountId && !data.steps.find((s) => s.id === "templates")?.done && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5 rounded-xl"
+            disabled={syncMutation.isPending}
+            onClick={() => data.accountId && syncMutation.mutate(data.accountId)}
+          >
+            {syncMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            Sync templates from Meta
+          </Button>
+        )}
+        {syncMutation.isError && (
+          <p className="text-xs text-destructive">
+            {syncMutation.error instanceof ApiError
+              ? syncMutation.error.message
+              : "Template sync failed."}
+          </p>
         )}
 
         <div className="flex flex-wrap gap-2 pt-1">

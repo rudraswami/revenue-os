@@ -56,7 +56,9 @@ Agencies on **Pro** can enable **Agency mode** at `/dashboard/agency`:
 
 Each client keeps isolated billing and data.
 
-**Per-client health:** Agency dashboard and Partner install kit show connection status (Live / Setup / Token / Not connected), go-live %, and phone number. Use **Connect WhatsApp** or **Continue setup** on a client card to switch workspaces and run onboarding (`/onboarding?from=agency`).
+**Per-client health:** Agency dashboard and Partner install kit show connection status (Live / Setup / Token / Not connected), go-live %, and phone number.
+
+**Connect without switching:** On `/dashboard/agency`, use **Connect here (Facebook)** to run Embedded Signup into the client workspace while staying in your agency hub (`POST /agency/clients/:organizationId/embedded-signup/complete`). Use **Switch & use token** during App Review.
 
 ---
 

@@ -601,7 +601,7 @@ export class WhatsappAccountsService {
     const health = await this.getConnectionHealth(user);
     const activeAccount = await this.prisma.whatsappAccount.findFirst({
       where: { organizationId: user.organizationId, isActive: true },
-      select: { displayPhoneNumber: true, verifiedName: true, metadata: true },
+      select: { id: true, displayPhoneNumber: true, verifiedName: true, metadata: true },
     });
 
     const accountMeta = (activeAccount?.metadata ?? {}) as Record<string, unknown>;
@@ -688,6 +688,7 @@ export class WhatsappAccountsService {
 
     return {
       connected,
+      accountId: activeAccount?.id ?? null,
       displayPhoneNumber: activeAccount?.displayPhoneNumber ?? null,
       verifiedName: activeAccount?.verifiedName ?? null,
       steps,

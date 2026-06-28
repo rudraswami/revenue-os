@@ -55,7 +55,10 @@ function buildNavGroups(opts: { showAgency: boolean }): NavGroup[] {
   const overviewItems = [
     { href: "/dashboard", labelKey: "nav.home", icon: LayoutDashboard, exact: true },
     ...(opts.showAgency
-      ? [{ href: "/dashboard/agency", labelKey: "nav.agency", icon: Building2 }]
+      ? [
+          { href: "/dashboard/agency", labelKey: "nav.agency", icon: Building2 },
+          { href: "/dashboard/partner", labelKey: "nav.partner", icon: HelpCircle },
+        ]
       : []),
   ];
 

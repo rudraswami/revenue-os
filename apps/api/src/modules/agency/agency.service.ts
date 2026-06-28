@@ -8,6 +8,7 @@ import type { JwtPayload } from "@growvisi/shared";
 import { DEFAULT_PIPELINE_STAGES } from "@growvisi/shared";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { EmbeddedSignupService } from "../whatsapp-accounts/embedded-signup.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 
 export interface AgencyClientRow {
@@ -33,6 +34,7 @@ export class AgencyService {
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementsService,
     private readonly whatsappAccounts: WhatsappAccountsService,
+    private readonly embeddedSignup: EmbeddedSignupService,
   ) {}
 
   async getStatus(user: JwtPayload) {
@@ -165,6 +167,28 @@ export class AgencyService {
     };
   }
 
+  async completeClientEmbeddedSignup(
+    user: JwtPayload,
+    clientOrganizationId: string,
+    input: {
+      code: string;
+      phoneNumberId: string;
+      wabaId: string;
+      finishEvent?: string;
+      connectMethod?: "embedded" | "embedded_coex";
+    },
+  ) {
+    await this.assertAgencyAccessToClient(user, clientOrganizationId);
+    return this.embeddedSignup.completeSignup(user, input, {
+      targetOrganizationId: clientOrganizationId,
+    });
+  }
+
+  async getClientWhatsAppSummary(user: JwtPayload, clientOrganizationId: string) {
+    await this.assertAgencyAccessToClient(user, clientOrganizationId);
+    return this.whatsappAccounts.getOrganizationWhatsAppSummary(clientOrganizationId);
+  }
+
   async createClient(user: JwtPayload, displayName: string) {
     if (!["OWNER", "ADMIN"].includes(user.role)) {
       throw new ForbiddenException("Only workspace admins can add client workspaces.");
@@ -273,6 +297,23 @@ export class AgencyService {
     });
     if (!org || org.kind !== "AGENCY") {
       throw new ForbiddenException("Enable agency mode on a Pro workspace to manage clients.");
+    }
+  }
+
+  private async assertAgencyAccessToClient(user: JwtPayload, clientOrganizationId: string) {
+    await this.assertAgencyHub(user);
+    if (!["OWNER", "ADMIN"].includes(user.role)) {
+      throw new ForbiddenException("Only workspace admins can connect WhatsApp for clients.");
+    }
+    const link = await this.prisma.agencyClient.findFirst({
+      where: {
+        agencyOrganizationId: user.organizationId,
+        clientOrganizationId,
+      },
+      select: { id: true },
+    });
+    if (!link) {
+      throw new ForbiddenException("This client is not in your agency portfolio.");
     }
   }
 

@@ -12,6 +12,9 @@ import {
   Zap,
 } from "lucide-react";
 import { HomeRecommendationsPanel } from "@/components/dashboard/home-recommendations-panel";
+import { HomeConnectionHealthBanner } from "@/components/dashboard/home-connection-health-banner";
+import { HomeGoLiveBanner } from "@/components/dashboard/home-go-live-banner";
+import { HomeAgencyPortfolioBanner } from "@/components/dashboard/home-agency-portfolio-banner";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
 import { Button } from "@/components/ui/button";
@@ -158,6 +161,10 @@ export default function DashboardPage() {
           />
         </div>
       )}
+
+      <HomeAgencyPortfolioBanner />
+      <HomeGoLiveBanner />
+      <HomeConnectionHealthBanner />
 
       <HomeCommandCenter
         isLoading={isLoading}

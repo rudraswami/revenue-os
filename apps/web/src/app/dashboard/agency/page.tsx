@@ -26,6 +26,7 @@ import {
   AgencyConnectionBadge,
   type AgencyConnectionStatus,
 } from "@/components/dashboard/agency-connection-badge";
+import { AgencyClientConnectDialog } from "@/components/dashboard/agency-client-connect-dialog";
 import { cn } from "@/lib/utils";
 
 interface AgencyStatus {
@@ -57,6 +58,7 @@ export default function AgencyPage() {
   const token = useAuthStore((s) => s.accessToken);
   const [clientName, setClientName] = useState("");
   const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const [connectClient, setConnectClient] = useState<AgencyClientRow | null>(null);
   const qc = useQueryClient();
 
   const { data: status, isLoading: statusLoading } = useQuery({
@@ -290,21 +292,27 @@ export default function AgencyPage() {
                       {t("common.switchClient")}
                     </Button>
                     {!c.whatsappConnected && (
-                      <Button
-                        size="sm"
-                        className="w-full gap-1.5 rounded-xl"
-                        disabled={switchingId === c.organizationId}
-                        onClick={() =>
-                          void switchToClient(c.organizationId, "/onboarding?from=agency")
-                        }
-                      >
-                        {switchingId === c.organizationId ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          className="w-full gap-1.5 rounded-xl"
+                          onClick={() => setConnectClient(c)}
+                        >
                           <Wifi className="h-3.5 w-3.5" />
-                        )}
-                        Connect WhatsApp
-                      </Button>
+                          Connect here (Facebook)
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full gap-1.5 rounded-xl"
+                          disabled={switchingId === c.organizationId}
+                          onClick={() =>
+                            void switchToClient(c.organizationId, "/onboarding?from=agency")
+                          }
+                        >
+                          Switch & use token
+                        </Button>
+                      </>
                     )}
                     {c.connectionStatus === "setup" && c.whatsappConnected && (
                       <Button
@@ -338,6 +346,17 @@ export default function AgencyPage() {
           View Pro plan →
         </Link>
       </p>
+
+      {connectClient && (
+        <AgencyClientConnectDialog
+          clientOrganizationId={connectClient.organizationId}
+          clientName={connectClient.displayName}
+          open={!!connectClient}
+          onOpenChange={(open) => {
+            if (!open) setConnectClient(null);
+          }}
+        />
+      )}
     </div>
   );
 }
