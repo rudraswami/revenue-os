@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
+import { WhatsappTokenExpiryBanner } from "@/components/dashboard/whatsapp-token-expiry-banner";
 import { FloatingSetupDock } from "@/components/dashboard/floating-setup-dock";
 import { Sidebar } from "./sidebar";
 import { cn } from "@/lib/utils";
@@ -63,6 +64,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             isInbox ? "overflow-hidden" : "overflow-y-auto overscroll-y-contain",
           )}
         >
+          <WhatsappTokenExpiryBanner />
           {children}
           <FloatingSetupDock />
         </main>
