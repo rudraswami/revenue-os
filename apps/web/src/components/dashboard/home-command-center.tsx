@@ -45,10 +45,6 @@ interface HomeCommandCenterProps {
     unansweredOver24h: number;
     targetHours: number;
   };
-  agentStatus?: {
-    classificationsToday: number;
-    automationsToday: number;
-  };
   teamWorkload?: {
     unassignedConversations: number;
     members: Array<{ name: string | null; email: string }>;
@@ -79,7 +75,6 @@ export function HomeCommandCenter({
   funnel,
   revenueSnapshot,
   slaSnapshot,
-  agentStatus,
   teamWorkload,
   hasWhatsapp,
 }: HomeCommandCenterProps) {
@@ -298,55 +293,6 @@ export function HomeCommandCenter({
             </div>
           </div>
         )}
-      </section>
-
-      {/* ── Workspace stats ── */}
-      <section>
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Workspace
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            title="Conversations"
-            value={convStats?.totalConversations ?? 0}
-            delta={`${convStats?.inboundMessages ?? 0} customer messages`}
-            icon={<Inbox className="h-4 w-4" />}
-            variant="blue"
-            href="/dashboard/inbox"
-            delay={0.2}
-            muted
-          />
-          <MetricCard
-            title="Median reply"
-            value={slaSnapshot?.medianLabel ?? "—"}
-            delta={`Target ${slaSnapshot?.targetHours ?? 4}h · Growvisi human replies`}
-            icon={<Clock className="h-4 w-4" />}
-            variant="slate"
-            href="/dashboard/analytics"
-            delay={0.22}
-            muted
-          />
-          <MetricCard
-            title="Automations today"
-            value={agentStatus?.automationsToday ?? 0}
-            delta="Emails & tasks fired"
-            icon={<TrendingUp className="h-4 w-4" />}
-            variant="mint"
-            href="/dashboard/automations"
-            delay={0.24}
-            muted
-          />
-          <MetricCard
-            title="AI classifications"
-            value={convStats?.aiClassifications ?? 0}
-            delta={`${agentStatus?.classificationsToday ?? 0} today · ${convStats?.classifiedLeads ?? 0} leads scored`}
-            icon={<Sparkles className="h-4 w-4" />}
-            variant="violet"
-            href="/dashboard/ai"
-            delay={0.26}
-            muted
-          />
-        </div>
       </section>
     </div>
   );

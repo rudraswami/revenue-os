@@ -21,7 +21,7 @@ const STEPS = [
     body: "Paste API Setup token or complete Embedded Signup (Tech Provider). Growvisi ingests messages, classifies intent, flags handoffs, and updates pipeline.",
     links: [
       { label: "Growvisi onboarding", href: "/onboarding" },
-      { label: "Connection health", href: "/dashboard/connection" },
+      { label: "WhatsApp settings", href: "/dashboard/settings?tab=whatsapp" },
     ],
   },
   {

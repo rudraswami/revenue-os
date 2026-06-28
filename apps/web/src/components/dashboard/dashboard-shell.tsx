@@ -4,7 +4,6 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
-import { WhatsappSetupBanner } from "@/components/dashboard/whatsapp-setup-banner";
 import { WhatsappTokenExpiryBanner } from "@/components/dashboard/whatsapp-token-expiry-banner";
 import { TrialExpiredBanner } from "@/components/dashboard/status-banners";
 import { Sidebar } from "./sidebar";
@@ -66,7 +65,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <TrialExpiredBanner />
-          <WhatsappSetupBanner />
           <WhatsappTokenExpiryBanner />
           {children}
         </main>

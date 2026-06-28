@@ -21,12 +21,10 @@ import {
   MessageCircle,
   Megaphone,
   Settings,
-  Wifi,
   Zap,
 } from "lucide-react";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { Logo } from "@/components/marketing/logo";
-import { UsageMeterCard } from "@/components/dashboard/usage-meter-card";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import {
   DropdownMenu,
@@ -56,7 +54,6 @@ type NavGroup = {
 function buildNavGroups(opts: { showAgency: boolean }): NavGroup[] {
   const overviewItems = [
     { href: "/dashboard", labelKey: "nav.home", icon: LayoutDashboard, exact: true },
-    { href: "/dashboard/connection", labelKey: "nav.connection", icon: Wifi },
     ...(opts.showAgency
       ? [{ href: "/dashboard/agency", labelKey: "nav.agency", icon: Building2 }]
       : []),
@@ -136,20 +133,14 @@ function NavLink({
 
 function WorkspaceCard({
   organizationName,
-  whatsappConnected,
-  live,
   workspaces,
   switchingId,
   onSwitch,
-  onNavigate,
 }: {
   organizationName: string;
-  whatsappConnected: boolean;
-  live: boolean;
   workspaces?: MeResponse["workspaces"];
   switchingId?: string | null;
   onSwitch?: (organizationId: string) => void;
-  onNavigate?: () => void;
 }) {
   const hasMultiple = (workspaces?.length ?? 0) > 1;
 
@@ -194,28 +185,6 @@ function WorkspaceCard({
             Workspace
           </p>
         </div>
-      </div>
-      <div className="mt-2.5 flex items-center gap-1.5">
-        {whatsappConnected ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
-            <span className="relative flex h-1.5 w-1.5">
-              {live && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
-              )}
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
-            </span>
-            WhatsApp live
-          </span>
-        ) : (
-          <Link
-            href="/onboarding"
-            onClick={onNavigate}
-            className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning transition-colors hover:bg-warning/15"
-          >
-            <MessageCircle className="h-3 w-3" />
-            Connect WhatsApp
-          </Link>
-        )}
       </div>
     </div>
   );
@@ -386,12 +355,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       {organization && (
         <WorkspaceCard
           organizationName={organization.name}
-          whatsappConnected={whatsappConnected}
-          live={live}
           workspaces={me?.workspaces}
           switchingId={switchingId}
           onSwitch={(id) => void switchWorkspace(id)}
-          onNavigate={onNavigate}
         />
       )}
 
@@ -423,8 +389,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {user && (
-        <div className="border-t border-border/80 p-3 space-y-2">
-          <UsageMeterCard compact />
+        <div className="border-t border-border/80 p-3">
           <UserAccountMenu
             userName={displayName}
             userEmail={user.email}

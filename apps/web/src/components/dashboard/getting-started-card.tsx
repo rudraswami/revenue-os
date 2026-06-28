@@ -51,7 +51,7 @@ export function GettingStartedCard() {
       title: "Connect WhatsApp",
       description: "Link your business number — takes about 2 minutes.",
       done: progress.whatsappConnected,
-      href: "/dashboard/connection",
+      href: "/dashboard/settings?tab=whatsapp",
       action: "Connect",
       icon: MessageSquare,
     },
