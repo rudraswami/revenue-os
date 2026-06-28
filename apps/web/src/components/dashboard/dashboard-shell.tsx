@@ -4,8 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
-import { TrialExpiredBanner } from "@/components/dashboard/status-banners";
-import { FloatingTasksDock } from "@/components/dashboard/floating-tasks-dock";
+import { FloatingSetupDock } from "@/components/dashboard/floating-setup-dock";
 import { Sidebar } from "./sidebar";
 import { cn } from "@/lib/utils";
 
@@ -64,9 +63,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             isInbox ? "overflow-hidden" : "overflow-y-auto overscroll-y-contain",
           )}
         >
-          <TrialExpiredBanner />
           {children}
-          <FloatingTasksDock />
+          <FloatingSetupDock />
         </main>
       </div>
     </div>

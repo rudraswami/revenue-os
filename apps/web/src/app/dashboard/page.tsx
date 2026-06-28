@@ -14,6 +14,7 @@ import {
 import { HomeRecommendationsPanel } from "@/components/dashboard/home-recommendations-panel";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
+import { SetupProgressStrip } from "@/components/dashboard/setup-progress-strip";
 import { Button } from "@/components/ui/button";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch } from "@/lib/api-client";
@@ -147,6 +148,8 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      <SetupProgressStrip />
 
       {(funnelError || convError) && !isLoading && (
         <div className="mb-8">
