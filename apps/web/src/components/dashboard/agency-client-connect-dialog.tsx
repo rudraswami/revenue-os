@@ -10,8 +10,10 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { formatMessage } from "@/lib/i18n/format-message";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { WhatsappConnectPathPicker } from "@/components/settings/whatsapp-connect-path-picker";
 import {
   connectMethodForPath,
+  DEFAULT_WHATSAPP_CONNECT_PATH,
   WHATSAPP_CONNECT_PATHS,
   type WhatsappConnectPath,
 } from "@/lib/whatsapp-connect-paths";
@@ -50,7 +52,7 @@ export function AgencyClientConnectDialog({
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
   const [connectMode, setConnectMode] = useState<ConnectMode>(initialMode);
-  const [connectPath, setConnectPath] = useState<WhatsappConnectPath>("cloud_api");
+  const [connectPath, setConnectPath] = useState<WhatsappConnectPath>(DEFAULT_WHATSAPP_CONNECT_PATH);
   const [phase, setPhase] = useState<ConnectPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState("");
@@ -238,8 +240,8 @@ export function AgencyClientConnectDialog({
                   className={cn(
                     "flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
                     connectMode === "facebook"
-                      ? "bg-white text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "bg-accent text-white shadow-sm"
+                      : "text-muted-foreground hover:bg-[#ecfdf5]/80",
                   )}
                   onClick={() => setConnectMode("facebook")}
                 >
@@ -250,8 +252,8 @@ export function AgencyClientConnectDialog({
                   className={cn(
                     "flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
                     connectMode === "token"
-                      ? "bg-white text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "bg-accent text-white shadow-sm"
+                      : "text-muted-foreground hover:bg-[#ecfdf5]/80",
                   )}
                   onClick={() => setConnectMode("token")}
                 >
@@ -270,28 +272,7 @@ export function AgencyClientConnectDialog({
                   <p className="text-sm text-muted-foreground">{t("agency.connect.embeddedNotLive")}</p>
                 ) : (
                   <>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {(Object.keys(WHATSAPP_CONNECT_PATHS) as WhatsappConnectPath[]).map((pathId) => {
-                        const path = WHATSAPP_CONNECT_PATHS[pathId];
-                        const selected = connectPath === pathId;
-                        return (
-                          <button
-                            key={pathId}
-                            type="button"
-                            onClick={() => setConnectPath(pathId)}
-                            className={cn(
-                              "rounded-xl border p-3 text-left text-xs transition-all",
-                              selected
-                                ? "border-[#1877F2]/40 bg-[#1877F2]/5"
-                                : "border-border/80 hover:border-primary/20",
-                            )}
-                          >
-                            <p className="font-semibold text-foreground">{path.title}</p>
-                            <p className="mt-1 text-muted-foreground">{path.description}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <WhatsappConnectPathPicker value={connectPath} onChange={setConnectPath} />
 
                     <Button
                       className="h-11 w-full gap-2 rounded-xl bg-[#1877F2] hover:bg-[#166FE0]"

@@ -30,7 +30,7 @@ export function OnboardingStepper({
               step.done
                 ? "text-[#128C7E]"
                 : step.current
-                  ? "bg-[#0b1c30] text-white shadow-sm"
+                  ? "bg-accent text-white shadow-sm"
                   : "text-muted-foreground",
             )}
           >

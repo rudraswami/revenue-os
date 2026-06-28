@@ -135,13 +135,19 @@ export function FloatingSetupDock() {
                 <SetupRow key={action.id} action={action} index={i} />
               ))}
             </ul>
-            <div className="border-t border-border/80 px-4 py-2.5">
+            <div className="border-t border-border/80 px-4 py-2.5 flex items-center justify-between gap-2">
               <Link
                 href="/dashboard/settings?tab=whatsapp"
                 className="text-xs font-semibold text-accent hover:underline"
               >
                 Open settings
               </Link>
+              <a
+                href="mailto:support@growvisi.in?subject=Growvisi%20setup%20help"
+                className="text-xs font-medium text-muted-foreground hover:text-accent"
+              >
+                Need help?
+              </a>
             </div>
           </motion.div>
         )}
@@ -162,7 +168,7 @@ export function FloatingSetupDock() {
         <span
           className={cn(
             "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white",
-            criticalCount > 0 ? "bg-amber-500" : "bg-[#0b1c30]",
+            criticalCount > 0 ? "bg-amber-500" : "bg-accent",
           )}
         >
           {totalCount > 99 ? "99+" : totalCount}

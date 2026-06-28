@@ -99,6 +99,156 @@ export const messages = {
       agencyAllHealthy: "All client WhatsApp lines are healthy.",
       agencyManage: "Manage clients",
     },
+    onboardingPage: {
+      step2: "Step 2 of 3",
+      almostThere: "Almost there",
+      connectHeadline: "{greeting} — connect WhatsApp",
+      goLiveHeadline: "Confirm your WhatsApp is live",
+      connectSub:
+        "Link the business number your customers already use. Growvisi classifies messages and tracks revenue — your team replies when it matters.",
+      goLiveSub:
+        "Send a test message, verify AI classification, and unlock Conversations + Pipeline.",
+      exploreFirst: "Explore dashboard first",
+      exploreHint: " — connect anytime from Connection settings.",
+      agencyBanner:
+        "Complete go-live here, then return to Agency clients to monitor portfolio health.",
+      trialBadge: "14-day free trial",
+      trialTitle: "No credit card required",
+      trialSub: "From ₹999/mo after trial · Cancel anytime",
+      unlockTitle: "What Growvisi does",
+      afterConnectTitle: "After you connect",
+      stepperWorkspace: "Workspace",
+      stepperConnect: "Connect",
+      stepperGoLive: "Go live",
+      valueProps: {
+        ai: {
+          title: "AI reads every message",
+          desc: "Intent, urgency, and pipeline stage — scored automatically.",
+        },
+        pipeline: {
+          title: "Pipeline that updates itself",
+          desc: "Deals move as conversations progress. No manual CRM entry.",
+        },
+        team: {
+          title: "Team-ready from day one",
+          desc: "Assign threads, add notes, and follow up without chaos.",
+        },
+        india: {
+          title: "Built for Indian SMBs",
+          desc: "INR billing, encrypted tokens, role-based access.",
+        },
+      },
+      afterConnect: {
+        step1: "Customer messages your WhatsApp number",
+        step2: "AI classifies intent and scores the lead",
+        step3: "Deal appears in Pipeline automatically",
+        step4: "Your team replies — Growvisi never auto-replies",
+      },
+      connectedBanner: "WhatsApp connected",
+    },
+    whatsappOnboardingFaq: {
+      title: "Common questions",
+      items: {
+        "which-option": {
+          q: "Phone or API — which should I pick?",
+          a: "Most businesses reply from the WhatsApp Business app on their phone — choose “I reply from my phone”. Choose API only if you already use Cloud API, WATI, Interakt, or similar.",
+        },
+        "before-connect": {
+          q: "What do I need before connecting?",
+          a: "Your WhatsApp Business number and access to Meta. With token connect, paste one access token — Growvisi finds your number automatically.",
+        },
+        "test-message": {
+          q: "My test message doesn't show in Conversations",
+          a: 'Meta\'s "Send test message" is outbound only. From your personal phone, send a WhatsApp to your business number. If you use a Meta test line, add your phone as a test recipient first.',
+        },
+        "token-expiry": {
+          q: "Do I need to reconnect every day?",
+          a: "Meta temporary tokens expire in about 24 hours. Go to Settings → Refresh access token and paste a new one — you don't need to disconnect your number.",
+        },
+        "multi-number": {
+          q: "I have more than one business number",
+          a: "After pasting your token, pick the correct line from the list, then click Connect my number.",
+        },
+        "facebook-vs-token": {
+          q: "One-click Facebook vs token paste?",
+          a: "Recommended: Continue with Facebook (Embedded Signup). If Meta shows an error, use the Meta API token tab and paste your temporary token from Meta API Setup.",
+        },
+      },
+    },
+    whatsappConnect: {
+      pathQuestion: "Where do you reply to customers today?",
+      pathHint: "Pick the option that matches how you use WhatsApp — we'll open the right Meta setup.",
+      facebookTab: "Facebook (recommended)",
+      tokenTab: "Meta API token",
+      tokenOnlyTitle: "Connect with Meta API token",
+      tokenOnlyHint:
+        "Facebook one-click unlocks after App Review. Use your Meta API Setup token for now.",
+      paths: {
+        business_app: {
+          title: "I reply from my phone",
+          subtitle: "WhatsApp Business app on Android or iPhone",
+          description:
+            "Most shops and clinics use this. Keep chatting from your phone — Growvisi classifies messages and tracks deals in Pipeline.",
+          badge: "Most common",
+        },
+        cloud_api: {
+          title: "I use WhatsApp API already",
+          subtitle: "Cloud API, WATI, Interakt, or another platform",
+          description:
+            "You already have a business line on Meta Cloud API — or you're migrating from another WhatsApp tool.",
+        },
+      },
+    },
+    setupHelp: {
+      eyebrow: "Setup assistant",
+      subtitle: "Quick answers — or talk to our team.",
+      onboardingTitle: "WhatsApp setup help",
+      connectionTitle: "Connection help",
+      generalTitle: "Growvisi help",
+      bookCall: "Book free setup call",
+      emailSupport: "Email support@growvisi.in",
+      openHelp: "Open setup help",
+      closeHelp: "Close setup help",
+      faqIds: {
+        onboarding: ["which-option", "facebook-vs-token", "test-message", "skip"],
+        connection: ["token-expiry", "no-number", "which-option", "facebook-vs-token"],
+        general: ["growvisi-replies", "pricing"],
+      },
+      faqs: {
+        "which-option": {
+          q: "Which option should I pick — phone or API?",
+          a: "Most Indian businesses reply from the WhatsApp Business app on their phone. Choose “I reply from my phone”. Pick “I use WhatsApp API already” only if you already use Cloud API, WATI, Interakt, or similar.",
+        },
+        "facebook-vs-token": {
+          q: "Facebook button vs Meta API token?",
+          a: "Facebook one-click is fastest when available. During Meta App Review, use the Meta API token tab — paste the temporary token from Meta API Setup in the Facebook Developer console.",
+        },
+        "test-message": {
+          q: "Why doesn't my test message show up?",
+          a: "Meta's test button sends outbound only. Message your business number from your personal WhatsApp. Inbound messages appear in Conversations within a few seconds.",
+        },
+        skip: {
+          q: "Can I skip and connect later?",
+          a: "Yes. Skip for now and explore the dashboard. Connect anytime from Connection in the sidebar — your trial keeps running.",
+        },
+        "token-expiry": {
+          q: "My token expired — what do I do?",
+          a: "Paste a fresh token from Meta API Setup under Refresh access token. You don't need to disconnect your number.",
+        },
+        "no-number": {
+          q: "No number found on my token",
+          a: "Regenerate the token while logged in as the Meta user who owns the WhatsApp Business Account. The token needs WhatsApp permissions for that business.",
+        },
+        "growvisi-replies": {
+          q: "Does Growvisi auto-reply to my customers?",
+          a: "No. Your team replies from Conversations or WhatsApp. Growvisi classifies intent, tracks pipeline, and alerts you when a customer needs a human.",
+        },
+        pricing: {
+          q: "What happens after the 14-day trial?",
+          a: "Plans start at ₹999/mo. Upgrade from Pricing anytime. Your WhatsApp connection stays — billing only gates team features and limits.",
+        },
+      },
+    },
     partner: {
       title: "Partner install kit",
       description: "Human Inbox + AI classification — the WhatsApp revenue stack for Indian SMBs.",
@@ -287,6 +437,127 @@ export const messages = {
       agencyNeedsAttention: "{count} क्लाइंट को सेटअप या टोकन ध्यान चाहिए।",
       agencyAllHealthy: "सभी क्लाइंट WhatsApp लाइन स्वस्थ हैं।",
       agencyManage: "क्लाइंट प्रबंधित करें",
+    },
+    onboardingPage: {
+      step2: "चरण 2 / 3",
+      almostThere: "लगभग हो गया",
+      connectHeadline: "{greeting} — WhatsApp कनेक्ट करें",
+      goLiveHeadline: "WhatsApp लाइव की पुष्टि करें",
+      connectSub:
+        "वही बिज़नेस नंबर लिंक करें जिस पर ग्राहक मैसेज करते हैं। Growvisi संदेश वर्गीकृत करता है और राजस्व ट्रैक करता है — जरूरत पर आपकी टीम जवाब देती है।",
+      goLiveSub:
+        "टेस्ट संदेश भेजें, AI वर्गीकरण जांचें, और Conversations + Pipeline खोलें।",
+      exploreFirst: "पहले डैशबोर्ड देखें",
+      exploreHint: " — Connection सेटिंग्स से कभी भी कनेक्ट करें।",
+      agencyBanner:
+        "गो-लाइव पूरा करें, फिर Agency clients पर पोर्टफोलियो स्वास्थ्य देखें।",
+      trialBadge: "14-दिन मुफ्त ट्रायल",
+      trialTitle: "क्रेडिट कार्ड की जरूरत नहीं",
+      trialSub: "ट्रायल के बाद ₹999/माह से · कभी भी रद्द करें",
+      unlockTitle: "Growvisi क्या करता है",
+      afterConnectTitle: "कनेक्ट के बाद",
+      stepperWorkspace: "वर्कस्पेस",
+      stepperConnect: "कनेक्ट",
+      stepperGoLive: "गो-लाइव",
+      valueProps: {
+        ai: {
+          title: "AI हर संदेश पढ़ता है",
+          desc: "इरादा, तात्कालिकता और पाइपलाइन स्टेज — अपने आप स्कोर।",
+        },
+        pipeline: {
+          title: "पाइपलाइन अपने आप अपडेट",
+          desc: "बातचीत बढ़ने पर डील आगे बढ़ती है। मैन्युअल CRM एंट्री नहीं।",
+        },
+        team: {
+          title: "पहले दिन से टीम-रेडी",
+          desc: "थ्रेड असाइन करें, नोट्स जोड़ें, बिना अव्यवस्था के फॉलो-अप।",
+        },
+        india: {
+          title: "भारतीय SMB के लिए",
+          desc: "INR बिलिंग, एन्क्रिप्टेड टोकन, रोल-आधारित एक्सेस।",
+        },
+      },
+      afterConnect: {
+        step1: "ग्राहक आपके WhatsApp नंबर पर मैसेज करता है",
+        step2: "AI इरादा वर्गीकृत करता है और लीड स्कोर करता है",
+        step3: "डील अपने आप Pipeline में दिखती है",
+        step4: "आपकी टीम जवाब देती है — Growvisi ऑटो-रिप्लाई नहीं करता",
+      },
+      connectedBanner: "WhatsApp कनेक्ट",
+    },
+    whatsappConnect: {
+      pathQuestion: "आप ग्राहकों को कहाँ जवाब देते हैं?",
+      pathHint: "अपने WhatsApp उपयोग के अनुसार विकल्प चुनें — हम सही Meta सेटअप खोलेंगे।",
+      facebookTab: "Facebook (सुझाया)",
+      tokenTab: "Meta API टोकन",
+      tokenOnlyTitle: "Meta API टोकन से कनेक्ट करें",
+      tokenOnlyHint:
+        "App Review के बाद Facebook one-click चालू होगा। अभी Meta API Setup टोकन उपयोग करें।",
+      paths: {
+        business_app: {
+          title: "मैं फोन से जवाब देता/देती हूँ",
+          subtitle: "Android या iPhone पर WhatsApp Business ऐप",
+          description:
+            "ज़्यादातर दुकानें और क्लिनिक यही उपयोग करते हैं। फोन से चैट जारी रखें — Growvisi Pipeline में डील ट्रैक करता है।",
+          badge: "सबसे आम",
+        },
+        cloud_api: {
+          title: "मैं पहले से WhatsApp API उपयोग करता/करती हूँ",
+          subtitle: "Cloud API, WATI, Interakt, या दूसरा प्लेटफॉर्म",
+          description:
+            "आपका नंबर पहले से Meta Cloud API पर है — या आप दूसरे WhatsApp टूल से आ रहे हैं।",
+        },
+      },
+    },
+    setupHelp: {
+      eyebrow: "सेटअप सहायक",
+      subtitle: "त्वरित जवाब — या हमारी टीम से बात करें।",
+      onboardingTitle: "WhatsApp सेटअप सहायता",
+      connectionTitle: "कनेक्शन सहायता",
+      generalTitle: "Growvisi सहायता",
+      bookCall: "मुफ्त सेटअप कॉल बुक करें",
+      emailSupport: "support@growvisi.in पर ईमेल",
+      openHelp: "सेटअप सहायता खोलें",
+      closeHelp: "सेटअप सहायता बंद करें",
+      faqIds: {
+        onboarding: ["which-option", "facebook-vs-token", "test-message", "skip"],
+        connection: ["token-expiry", "no-number", "which-option", "facebook-vs-token"],
+        general: ["growvisi-replies", "pricing"],
+      },
+      faqs: {
+        "which-option": {
+          q: "फोन या API — कौन सा विकल्प चुनूँ?",
+          a: "ज़्यादातर भारतीय व्यवसाय WhatsApp Business ऐप से फोन पर जवाब देते हैं — “मैं फोन से जवाब देता/देती हूँ” चुनें। Cloud API, WATI, Interakt आदि पहले से उपयोग करते हैं तो “WhatsApp API” विकल्प चुनें।",
+        },
+        "facebook-vs-token": {
+          q: "Facebook बटन या Meta API टोकन?",
+          a: "Facebook one-click सबसे तेज़ है जब उपलब्ध हो। App Review के दौरान Meta API token टैब उपयोग करें — Facebook Developer console के Meta API Setup से अस्थायी टोकन पेस्ट करें।",
+        },
+        "test-message": {
+          q: "मेरा टेस्ट संदेश क्यों नहीं दिखता?",
+          a: "Meta का टेस्ट बटन केवल आउटबाउंड भेजता है। अपने व्यक्तिगत WhatsApp से बिज़नेस नंबर पर मैसेज करें। इनबाउंड संदेश कुछ सेकंड में Conversations में दिखेंगे।",
+        },
+        skip: {
+          q: "क्या मैं बाद में कनेक्ट कर सकता/सकती हूँ?",
+          a: "हाँ। अभी Skip करें और डैशबोर्ड देखें। Sidebar में Connection से कभी भी कनेक्ट करें — ट्रायल चलता रहेगा।",
+        },
+        "token-expiry": {
+          q: "मेरा टोकन एक्सपायर हो गया — क्या करूँ?",
+          a: "Refresh access token के तहत Meta API Setup से नया टोकन पेस्ट करें। नंबर डिस्कनेक्ट करने की जरूरत नहीं।",
+        },
+        "no-number": {
+          q: "टोकन पर कोई नंबर नहीं मिला",
+          a: "उस Meta यूज़र से लॉग इन करके टोकन बनाएं जो WhatsApp Business Account का मालिक है। टोकन में उस बिज़नेस की WhatsApp अनुमति होनी चाहिए।",
+        },
+        "growvisi-replies": {
+          q: "क्या Growvisi ग्राहकों को ऑटो-रिप्लाई करता है?",
+          a: "नहीं। आपकी टीम Conversations या WhatsApp से जवाब देती है। Growvisi इरादा वर्गीकृत करता है, पाइपलाइन ट्रैक करता है, और जरूरत पर अलर्ट करता है।",
+        },
+        pricing: {
+          q: "14-दिन के ट्रायल के बाद क्या होगा?",
+          a: "प्लान ₹999/माह से शुरू। Pricing से कभी अपग्रेड करें। WhatsApp कनेक्शन रहेगा — बिलिंग केवल टीम फीचर्स और लिमिट गेट करती है।",
+        },
+      },
     },
     partner: {
       title: "पार्टनर इंस्टॉल किट",

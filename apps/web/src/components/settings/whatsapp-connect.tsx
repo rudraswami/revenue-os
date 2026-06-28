@@ -15,14 +15,17 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
+import { WhatsappConnectPathPicker } from "@/components/settings/whatsapp-connect-path-picker";
 import {
   connectMethodForPath,
+  DEFAULT_WHATSAPP_CONNECT_PATH,
   WHATSAPP_CONNECT_PATHS,
   type WhatsappConnectPath,
 } from "@/lib/whatsapp-connect-paths";
 import { canConnectWhatsapp } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 import { WhatsappGoLiveChecklist } from "@/components/settings/whatsapp-go-live-checklist";
@@ -69,10 +72,11 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
   const [phase, setPhase] = useState<ConnectPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [connectedAccount, setConnectedAccount] = useState<WhatsappAccount | null>(null);
-  const [connectPath, setConnectPath] = useState<WhatsappConnectPath>("cloud_api");
+  const [connectPath, setConnectPath] = useState<WhatsappConnectPath>(DEFAULT_WHATSAPP_CONNECT_PATH);
   const [addingAnother, setAddingAnother] = useState(false);
   const [connectMode, setConnectMode] = useState<"facebook" | "token">("facebook");
   const isOnboarding = variant === "onboarding";
+  const { t } = useI18n();
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -416,11 +420,11 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
               className={cn(
                 "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors",
                 connectMode === "facebook"
-                  ? "bg-[#0b1c30] text-white"
-                  : "text-muted-foreground hover:bg-muted/50",
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-[#ecfdf5]/80",
               )}
             >
-              Facebook (recommended)
+              {t("whatsappConnect.facebookTab")}
             </button>
             <button
               type="button"
@@ -428,19 +432,17 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
               className={cn(
                 "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors",
                 connectMode === "token"
-                  ? "bg-[#0b1c30] text-white"
-                  : "text-muted-foreground hover:bg-muted/50",
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-[#ecfdf5]/80",
               )}
             >
-              Meta API token
+              {t("whatsappConnect.tokenTab")}
             </button>
           </div>
         ) : (
           <div className="border-b border-border/60 px-5 py-4">
-            <p className="text-sm font-semibold text-[#0b1c30]">Connect with Meta API token</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Facebook one-click unlocks after App Review. Use your Meta API Setup token for now.
-            </p>
+            <p className="text-sm font-semibold text-foreground">{t("whatsappConnect.tokenOnlyTitle")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("whatsappConnect.tokenOnlyHint")}</p>
           </div>
         )
       ) : (
@@ -474,35 +476,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
 
         {(connectMode === "facebook" || !isOnboarding) && embeddedLive && (
           <>
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground">
-                {isOnboarding ? "Which setup matches you?" : "How do you use WhatsApp today?"}
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(Object.keys(WHATSAPP_CONNECT_PATHS) as WhatsappConnectPath[]).map((pathId) => {
-                  const path = WHATSAPP_CONNECT_PATHS[pathId];
-                  const selected = connectPath === pathId;
-                  return (
-                    <button
-                      key={pathId}
-                      type="button"
-                      onClick={() => setConnectPath(pathId)}
-                      className={cn(
-                        "rounded-xl border p-4 text-left transition-all",
-                        selected
-                          ? "border-[#0b1c30]/20 bg-[#f8fafc] ring-1 ring-[#0b1c30]/10"
-                          : "border-border/80 bg-white hover:border-primary/20",
-                      )}
-                    >
-                      <p className="text-sm font-semibold text-foreground">{path.title}</p>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        {path.description}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <WhatsappConnectPathPicker value={connectPath} onChange={setConnectPath} />
 
             {!isOnboarding && (
               <div className="grid gap-3 sm:grid-cols-3">

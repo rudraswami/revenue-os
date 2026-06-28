@@ -22,6 +22,9 @@ import WhatsappConnect from "@/components/settings/whatsapp-connect";
 import { WhatsappGoLiveChecklist } from "@/components/settings/whatsapp-go-live-checklist";
 import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
 import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
+import { GrowvisiHelpFab } from "@/components/support/growvisi-help-fab";
+import { formatMessage } from "@/lib/i18n/format-message";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { apiFetch } from "@/lib/api-client";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
@@ -50,6 +53,7 @@ const VALUE_PROPS = [
 ];
 
 function OnboardingPageContent() {
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromAgency = searchParams.get("from") === "agency";
@@ -100,11 +104,11 @@ function OnboardingPageContent() {
   }, [whatsappConnected, firstMessageReceived, patchOnboarding]);
 
   const stepperSteps = [
-    { id: "account", label: "Workspace", done: true, current: false },
-    { id: "whatsapp", label: "Connect", done: whatsappConnected, current: !whatsappConnected },
+    { id: "account", label: t("onboardingPage.stepperWorkspace"), done: true, current: false },
+    { id: "whatsapp", label: t("onboardingPage.stepperConnect"), done: whatsappConnected, current: !whatsappConnected },
     {
       id: "live",
-      label: "Go live",
+      label: t("onboardingPage.stepperGoLive"),
       done: firstMessageReceived,
       current: whatsappConnected && !firstMessageReceived,
     },
@@ -178,7 +182,7 @@ function OnboardingPageContent() {
             <p className="text-sm leading-relaxed text-muted-foreground">
               Setting up WhatsApp for{" "}
               <strong className="text-foreground">{organization?.name ?? "this client"}</strong>.
-              Complete go-live here, then return to Agency clients to monitor portfolio health.
+              {t("onboardingPage.agencyBanner")}
             </p>
           </div>
         )}
@@ -192,17 +196,17 @@ function OnboardingPageContent() {
               className="mb-8"
             >
               <p className="text-xs font-semibold uppercase tracking-widest text-accent">
-                {whatsappConnected ? "Almost there" : "Step 2 of 3"}
+                {whatsappConnected ? t("onboardingPage.almostThere") : t("onboardingPage.step2")}
               </p>
               <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#0b1c30] sm:text-3xl">
                 {whatsappConnected
-                  ? "Confirm your WhatsApp is live"
-                  : `${timeGreeting(user?.name).replace(/[!?.]+$/, "")} — connect WhatsApp`}
+                  ? t("onboardingPage.goLiveHeadline")
+                  : formatMessage(t("onboardingPage.connectHeadline"), {
+                      greeting: timeGreeting(user?.name).replace(/[!?.]+$/, ""),
+                    })}
               </h1>
               <p className="mt-2 max-w-xl text-base leading-relaxed text-muted-foreground">
-                {whatsappConnected
-                  ? "Send a test message, verify AI classification, and unlock Conversations + Pipeline."
-                  : "Link the business number your customers already use. Growvisi classifies messages and tracks revenue — your team replies when it matters."}
+                {whatsappConnected ? t("onboardingPage.goLiveSub") : t("onboardingPage.connectSub")}
               </p>
               <div className="mt-5 flex items-center gap-3">
                 <div className="h-1.5 flex-1 max-w-xs overflow-hidden rounded-full bg-border">
@@ -235,9 +239,9 @@ function OnboardingPageContent() {
                       className="font-medium text-accent hover:underline"
                       onClick={goToDashboard}
                     >
-                      Explore dashboard first
+                      {t("onboardingPage.exploreFirst")}
                     </button>
-                    <span className="hidden sm:inline"> — connect anytime from Connection settings.</span>
+                    <span className="hidden sm:inline">{t("onboardingPage.exploreHint")}</span>
                   </p>
                 </motion.div>
               ) : (
@@ -273,7 +277,7 @@ function OnboardingPageContent() {
           {/* Sidebar */}
           <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
             <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
-              <p className="text-sm font-bold text-[#0b1c30]">What Growvisi does</p>
+              <p className="text-sm font-bold text-[#0b1c30]">{t("onboardingPage.unlockTitle")}</p>
               <ul className="mt-4 space-y-4">
                 {VALUE_PROPS.map((vp) => (
                   <li key={vp.title} className="flex gap-3">
@@ -292,7 +296,7 @@ function OnboardingPageContent() {
             <div className="rounded-2xl border border-border/60 bg-white p-5">
               <div className="flex items-center gap-2">
                 <Inbox className="h-4 w-4 text-accent" />
-                <p className="text-sm font-bold text-[#0b1c30]">After you connect</p>
+                <p className="text-sm font-bold text-[#0b1c30]">{t("onboardingPage.afterConnectTitle")}</p>
               </div>
               <ol className="mt-4 space-y-3">
                 {[
@@ -311,18 +315,19 @@ function OnboardingPageContent() {
               </ol>
             </div>
 
-            <div className="overflow-hidden rounded-2xl bg-[#0b1c30] p-5 text-white">
+            <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-accent to-[#128C7E] p-5 text-white">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-white/60">
-                14-day free trial
+                {t("onboardingPage.trialBadge")}
               </p>
-              <p className="mt-2 text-lg font-bold">No credit card required</p>
-              <p className="mt-1 text-sm text-white/65">From ₹999/mo after trial · Cancel anytime</p>
+              <p className="mt-2 text-lg font-bold">{t("onboardingPage.trialTitle")}</p>
+              <p className="mt-1 text-sm text-white/65">{t("onboardingPage.trialSub")}</p>
             </div>
 
             <WhatsappOnboardingHelp compact />
           </aside>
         </div>
       </main>
+      <GrowvisiHelpFab context="onboarding" />
     </div>
   );
 }
