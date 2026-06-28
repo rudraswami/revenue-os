@@ -1,6 +1,8 @@
 # Shared ignores for Vercel Git/CLI deploys (monorepo root)
+# NOTE: do NOT add apps/web here — breaks revenue-os-web builds (Root Directory = apps/web).
 node_modules
 **/node_modules/**
+.git
 **/.git/**
 .turbo
 **/.turbo/**
@@ -8,9 +10,15 @@ node_modules
 **/.next/cache/**
 docs
 .cursor
+**/*.spec.ts
+**/*.test.ts
+**/*.tsbuildinfo
+coverage
+.husky
 *.log
 .env*
 **/.env.check
 **/.env.verify*
 **/.env.api.check
 .vercel.web.bak
+apps/web/.next
