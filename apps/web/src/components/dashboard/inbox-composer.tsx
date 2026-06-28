@@ -1,8 +1,7 @@
 "use client";
 
-import { ChevronDown, Loader2, Send, Sparkles } from "lucide-react";
+import { ChevronDown, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { CONVERSATIONS } from "@/lib/brand-copy";
 import { cn } from "@/lib/utils";
 
@@ -30,110 +29,114 @@ export function InboxComposer({
   suggestPending: boolean;
   onSuggest: () => void;
   templates?: Array<{ id: string; title: string; body: string }>;
-  composeRef?: React.RefObject<HTMLInputElement | null>;
+  composeRef?: React.RefObject<HTMLTextAreaElement | null>;
   onMinimize: () => void;
 }) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (draft.trim() && !sendPending && !sendDisabled) {
+        onSend(e as unknown as React.FormEvent);
+      }
+    }
+  }
+
   return (
-    <form onSubmit={onSend} className="overflow-hidden rounded-2xl border border-border/80 bg-white shadow-[0_2px_12px_rgb(11_28_48/0.06)]">
-      <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-gradient-to-r from-[#f8f9ff] to-white px-3 py-2">
-        <p className="text-xs font-semibold text-foreground">{CONVERSATIONS.composeTitle}</p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-          onClick={onMinimize}
-        >
-          <ChevronDown className="h-3.5 w-3.5" />
-          {CONVERSATIONS.minimizeComposer}
-        </Button>
-      </div>
+    <form onSubmit={onSend} className="w-full">
+      {sendError && (
+        <div className="mb-2 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          <p className="font-medium">{sendError}</p>
+          {(sendError.toLowerCase().includes("auth") ||
+            sendError.toLowerCase().includes("token")) && (
+            <a
+              href="/dashboard/settings?tab=whatsapp"
+              className="mt-1 inline-block font-semibold underline"
+            >
+              Refresh WhatsApp token →
+            </a>
+          )}
+        </div>
+      )}
 
-      <div className="space-y-2.5 p-3">
-        {sendError && (
-          <div className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <p className="font-medium">{sendError}</p>
-            {(sendError.toLowerCase().includes("auth") ||
-              sendError.toLowerCase().includes("token")) && (
-              <a
-                href="/dashboard/settings?tab=whatsapp"
-                className="mt-1 inline-block font-semibold underline"
-              >
-                Refresh WhatsApp token →
-              </a>
-            )}
-          </div>
-        )}
+      {(templates?.length ?? 0) > 0 && (
+        <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 custom-scrollbar">
+          {templates!.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className="shrink-0 rounded-lg border border-border/70 bg-white px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm transition hover:border-accent/30 hover:text-foreground"
+              onClick={() => onDraftChange(t.body)}
+            >
+              {t.title}
+            </button>
+          ))}
+        </div>
+      )}
 
-        {(templates?.length ?? 0) > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 custom-scrollbar">
-            {templates!.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className="shrink-0 rounded-full border border-border/80 bg-[#f8f9ff] px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-accent/40 hover:bg-white hover:text-accent"
-                onClick={() => onDraftChange(t.body)}
-              >
-                {t.title}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-white shadow-[0_1px_8px_rgb(11_28_48/0.05)]">
+        <textarea
+          ref={composeRef}
+          rows={2}
+          placeholder={CONVERSATIONS.composePlaceholder}
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={sendPending || sendDisabled}
+          className={cn(
+            "block w-full resize-none border-0 bg-transparent px-4 py-3 text-sm leading-relaxed text-foreground",
+            "placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0",
+            "min-h-[3.25rem] max-h-32 disabled:cursor-not-allowed disabled:opacity-60",
+          )}
+        />
 
-        <div className="flex items-end gap-2">
-          <div className="min-w-0 flex-1 rounded-xl border border-border/80 bg-[#f8f9ff]/80 px-3 py-2 focus-within:border-accent/40 focus-within:ring-2 focus-within:ring-accent/15">
-            <Input
-              ref={composeRef}
-              placeholder={CONVERSATIONS.composePlaceholder}
-              value={draft}
-              onChange={(e) => onDraftChange(e.target.value)}
-              disabled={sendPending || sendDisabled}
-              className="h-auto min-h-[2.25rem] border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0 md:text-sm"
-            />
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-[#fafbff]/80 px-3 py-2">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             {showAiSuggest && (
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "h-10 gap-1.5 rounded-xl border-accent/25 bg-[#ecfdf5]/60 px-2.5 text-accent hover:bg-[#ecfdf5] hover:text-accent",
-                  "max-sm:h-10 max-sm:w-10 max-sm:px-0",
-                )}
                 disabled={suggestPending}
                 onClick={onSuggest}
-                title={CONVERSATIONS.draftWithAi}
+                className="shrink-0 text-xs font-semibold text-accent underline-offset-2 transition hover:underline disabled:opacity-50"
               >
-                {suggestPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                <span className="hidden font-semibold sm:inline">{CONVERSATIONS.draftWithAi}</span>
-              </Button>
+                {suggestPending ? "Drafting…" : CONVERSATIONS.draftWithAi}
+              </button>
             )}
+            <p className="hidden truncate text-[10px] text-muted-foreground sm:block">
+              {CONVERSATIONS.composeFooter}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onMinimize}
+              className="flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground transition hover:text-foreground"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{CONVERSATIONS.minimizeComposer}</span>
+            </button>
             <Button
               type="submit"
               size="sm"
-              className="h-10 gap-1.5 rounded-xl bg-accent px-3.5 hover:bg-accent-hover"
+              className="h-9 min-w-[4.5rem] rounded-lg bg-accent px-4 font-semibold hover:bg-accent-hover"
               disabled={!draft.trim() || sendPending || sendDisabled}
             >
               {sendPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Send className="h-4 w-4" />
+                <>
+                  <Send className="mr-1.5 h-3.5 w-3.5 sm:hidden" />
+                  {CONVERSATIONS.sendReply}
+                </>
               )}
-              <span className="hidden font-semibold sm:inline">{CONVERSATIONS.sendReply}</span>
             </Button>
           </div>
         </div>
-
-        <p className="text-center text-[10px] leading-relaxed text-muted-foreground">
-          {CONVERSATIONS.composeFooter}
-        </p>
       </div>
+
+      <p className="mt-1.5 text-center text-[10px] text-muted-foreground sm:hidden">
+        {CONVERSATIONS.composeFooter}
+      </p>
     </form>
   );
 }

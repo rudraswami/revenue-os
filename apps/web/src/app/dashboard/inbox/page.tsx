@@ -99,7 +99,7 @@ export default function InboxPage() {
   const [showOutbound, setShowOutbound] = useState(false);
   const [listFilter, setListFilter] = useState<InboxListFilter>("all");
   const bottomRef = useRef<HTMLDivElement>(null);
-  const composeRef = useRef<HTMLInputElement>(null);
+  const composeRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
@@ -655,7 +655,7 @@ export default function InboxPage() {
             </div>
 
             <div className="conversation-thread-bg flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 custom-scrollbar lg:px-6">
-              <div className="mx-auto mt-auto flex w-full max-w-xl flex-col gap-2.5">
+              <div className="mx-auto mt-auto flex w-full max-w-3xl flex-col gap-2.5">
                 {thread.messages.map((m) => (
                   <div
                     key={m.id}
@@ -689,8 +689,8 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <div className="shrink-0 border-t border-border/80 bg-[#f8f9ff]/40 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-5">
-              <div className="mx-auto max-w-xl">
+            <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-6">
+              <div className="mx-auto w-full max-w-3xl">
                 {showComposer ? (
                   <InboxComposer
                     draft={draft}
@@ -709,20 +709,17 @@ export default function InboxPage() {
                 ) : (
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/80 bg-white px-4 py-3.5 text-left shadow-sm transition hover:border-accent/30 hover:bg-[#ecfdf5]/30"
+                    className="flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-[#fafbff] px-4 py-3.5 text-left transition hover:border-accent/25 hover:bg-[#ecfdf5]/40"
                     onClick={() => setShowComposer(true)}
                   >
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {CONVERSATIONS.composeTitle}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {CONVERSATIONS.composeFooter}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-muted-foreground">
+                        {CONVERSATIONS.composePlaceholder}
                       </p>
                     </div>
-                    <span className="flex shrink-0 items-center gap-1 rounded-lg bg-accent px-2.5 py-1.5 text-[11px] font-semibold text-white">
+                    <span className="flex shrink-0 items-center gap-1 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white">
                       <ChevronUp className="h-3.5 w-3.5" />
-                      Open
+                      Reply
                     </span>
                   </button>
                 )}

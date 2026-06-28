@@ -85,7 +85,7 @@ export const CONVERSATIONS = {
   addDealValue: "Set deal ₹ on pipeline",
   /** Composer chrome */
   composeTitle: "Reply on WhatsApp",
-  draftWithAi: "Draft with AI",
+  draftWithAi: "Suggest reply",
   minimizeComposer: "Minimize",
   sendReply: "Send",
   /** Timeline empty states */
