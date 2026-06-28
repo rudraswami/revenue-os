@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { formatMessage } from "@/lib/i18n/format-message";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { connectionSummary, type HealthCheck } from "@/lib/whatsapp-health-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -23,18 +25,20 @@ type ConnectionHealthData = {
 
 /** Compact Home alert when WhatsApp connection needs attention (not full settings panel). */
 export function HomeConnectionHealthBanner() {
+  const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
 
-  const { data: accounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
+  const { data: progress } = useQuery({
+    queryKey: ["onboarding-progress"],
+    queryFn: () =>
+      apiFetch<{ goLive: { connected: boolean } }>("/organizations/onboarding-progress", {
+        token: token ?? undefined,
+      }),
     enabled: !!token,
     staleTime: 60_000,
   });
 
-  const connected = accounts?.some((a) => a.isActive) ?? false;
+  const connected = progress?.goLive?.connected ?? false;
 
   const { data: health } = useQuery({
     queryKey: ["whatsapp-connection-health"],
@@ -83,14 +87,14 @@ export function HomeConnectionHealthBanner() {
         )}
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">
-            WhatsApp connection · {healthPct}% healthy
+            {formatMessage(t("homeBanners.connectionTitle"), { pct: healthPct })}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">{summary.subtitle}</p>
         </div>
       </div>
       <Button asChild size="sm" variant="outline" className="h-8 shrink-0 gap-1.5 rounded-xl">
         <Link href="/dashboard/connection">
-          Review connection
+          {t("homeBanners.connectionReview")}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </Button>

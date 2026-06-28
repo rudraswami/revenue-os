@@ -7,6 +7,10 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
+import {
+  computeGoLiveProgressPct,
+  deriveAgencyConnectionStatus,
+} from "@growvisi/shared";
 import { GROWVISI_API_URL, GROWVISI_WEB_URL } from "@growvisi/shared";
 import { decryptSecret, encryptSecret } from "../../common/crypto/token-cipher";
 import { sanitizeEnvValue } from "../../config/cors-origins";
@@ -283,16 +287,21 @@ export class WhatsappAccountsService {
   }
 
   async create(user: JwtPayload, dto: CreateWhatsappAccountDto) {
-    await this.entitlements.assertCanAddWhatsappNumber(user.organizationId);
+    return this.createAccountForOrganization(user.organizationId, dto);
+  }
+
+  async createAccountForOrganization(
+    organizationId: string,
+    dto: CreateWhatsappAccountDto,
+    extraMetadata?: Record<string, unknown>,
+  ) {
+    await this.entitlements.assertCanAddWhatsappNumber(organizationId);
 
     const accessToken = dto.accessToken.trim();
     const phoneNumberId = dto.phoneNumberId.trim();
 
-    // A WhatsApp phone_number_id maps to exactly one business line. Prevent the
-    // same number being connected to two workspaces, which would make inbound
-    // webhook routing ambiguous (cross-tenant message leakage).
     const conflict = await this.prisma.whatsappAccount.findFirst({
-      where: { phoneNumberId, NOT: { organizationId: user.organizationId } },
+      where: { phoneNumberId, NOT: { organizationId } },
       select: { id: true },
     });
     if (conflict) {
@@ -308,14 +317,16 @@ export class WhatsappAccountsService {
     }
 
     const tokenDebug = await this.debugInputToken(accessToken);
-    const metadata: Record<string, unknown> = {};
+    const metadata: Record<string, unknown> = { ...(extraMetadata ?? {}) };
     if (tokenDebug.metaFacebookUserId) {
       metadata.metaFacebookUserId = tokenDebug.metaFacebookUserId;
     }
+    metadata.connectMethod = metadata.connectMethod ?? "token";
+    metadata.tokenUpdatedAt = new Date().toISOString();
 
     const account = await this.prisma.whatsappAccount.create({
       data: {
-        organizationId: user.organizationId,
+        organizationId,
         phoneNumberId,
         wabaId,
         displayPhoneNumber:
@@ -379,16 +390,20 @@ export class WhatsappAccountsService {
 
   /** Debug why inbound messages may not appear in Conversations. */
   async getConnectionHealth(user: JwtPayload) {
+    return this.getConnectionHealthForOrganization(user.organizationId);
+  }
+
+  async getConnectionHealthForOrganization(organizationId: string) {
     const technical = this.getTechnicalSetup();
     const accounts = await this.prisma.whatsappAccount.findMany({
-      where: { organizationId: user.organizationId },
+      where: { organizationId },
       orderBy: { createdAt: "desc" },
     });
 
     const [conversationCount, inboundCount, recentWebhooks] = await Promise.all([
-      this.prisma.conversation.count({ where: { organizationId: user.organizationId } }),
+      this.prisma.conversation.count({ where: { organizationId } }),
       this.prisma.message.count({
-        where: { organizationId: user.organizationId, direction: "INBOUND" },
+        where: { organizationId, direction: "INBOUND" },
       }),
       this.prisma.webhookEvent.findMany({
         where: {
@@ -571,15 +586,14 @@ export class WhatsappAccountsService {
     const webhooksOk = firstMessage || templatesSynced;
 
     const stepFlags = [webhooksOk, firstMessage, classified, pipelineTracked, templatesSynced];
-    const doneCount = stepFlags.filter(Boolean).length + 1;
-    const goLiveProgressPct = Math.round((doneCount / 6) * 100);
-
-    let connectionStatus: "live" | "setup" | "token" | "disconnected" = "setup";
-    if (tokenNeedsRefresh) {
-      connectionStatus = "token";
-    } else if (goLiveProgressPct >= 83 && firstMessage && classified) {
-      connectionStatus = "live";
-    }
+    const goLiveProgressPct = computeGoLiveProgressPct(stepFlags, true);
+    const connectionStatus = deriveAgencyConnectionStatus({
+      connected: true,
+      tokenNeedsRefresh,
+      goLiveProgressPct,
+      firstMessage,
+      classified,
+    });
 
     return {
       connected: true,
@@ -597,10 +611,10 @@ export class WhatsappAccountsService {
   }
 
   /** Customer-facing go-live checklist after WhatsApp connect. */
-  async getOnboardingProgress(user: JwtPayload) {
-    const health = await this.getConnectionHealth(user);
+  async getGoLiveProgress(organizationId: string) {
+    const health = await this.getConnectionHealthForOrganization(organizationId);
     const activeAccount = await this.prisma.whatsappAccount.findFirst({
-      where: { organizationId: user.organizationId, isActive: true },
+      where: { organizationId, isActive: true },
       select: { id: true, displayPhoneNumber: true, verifiedName: true, metadata: true },
     });
 
@@ -612,13 +626,13 @@ export class WhatsappAccountsService {
     const [classifiedLeads, pipelineLeads] = await Promise.all([
       this.prisma.lead.count({
         where: {
-          organizationId: user.organizationId,
+          organizationId,
           lastClassifiedAt: { not: null },
         },
       }),
       this.prisma.lead.count({
         where: {
-          organizationId: user.organizationId,
+          organizationId,
           OR: [
             { valueCents: { gt: 0 } },
             { stage: { in: ["QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON"] } },
@@ -683,16 +697,16 @@ export class WhatsappAccountsService {
       },
     ] as const;
 
-    const doneCount = steps.filter((s) => s.done).length + (connected ? 1 : 0);
-    const totalCount = steps.length + 1;
-
     return {
       connected,
       accountId: activeAccount?.id ?? null,
       displayPhoneNumber: activeAccount?.displayPhoneNumber ?? null,
       verifiedName: activeAccount?.verifiedName ?? null,
       steps,
-      progressPct: Math.round((doneCount / totalCount) * 100),
+      progressPct: computeGoLiveProgressPct(
+        steps.map((s) => s.done),
+        connected,
+      ),
       stats: {
         inboundMessages: health.stats.inboundCount,
         classifiedLeads,
@@ -701,6 +715,124 @@ export class WhatsappAccountsService {
         approvedTemplateCount,
         templatesSynced,
       },
+    };
+  }
+
+  /** @deprecated Prefer GET /organizations/onboarding-progress (includes goLive). */
+  /** @deprecated Prefer GET /organizations/onboarding-progress (includes goLive). */
+  async getOnboardingProgress(user: JwtPayload) {
+    return this.getGoLiveProgress(user.organizationId);
+  }
+
+  async quickConnectForOrganization(
+    organizationId: string,
+    dto: { accessToken: string; phoneNumberId?: string; wabaId?: string },
+  ) {
+    const accessToken = dto.accessToken.trim();
+    const phones = await this.discoverPhones(accessToken);
+
+    let phoneNumberId = dto.phoneNumberId?.trim();
+    let wabaId = dto.wabaId?.trim();
+
+    if (!phoneNumberId) {
+      if (phones.length === 1) {
+        phoneNumberId = phones[0].phoneNumberId;
+        wabaId = wabaId || phones[0].wabaId;
+      } else {
+        throw new BadRequestException(
+          phones.length === 0
+            ? "No WhatsApp numbers on this token."
+            : "Multiple numbers found — select which business line to connect.",
+        );
+      }
+    } else {
+      const match = phones.find((p) => p.phoneNumberId === phoneNumberId);
+      if (match) {
+        wabaId = wabaId || match.wabaId;
+      }
+    }
+
+    const existing = await this.prisma.whatsappAccount.findFirst({
+      where: { organizationId, phoneNumberId },
+    });
+    if (existing) {
+      const refreshed = await this.refreshAccessTokenForOrganization(
+        organizationId,
+        existing.id,
+        accessToken,
+      );
+      return {
+        account: refreshed.account,
+        discovered: phones,
+        autoSelected: !dto.phoneNumberId?.trim() && phones.length === 1,
+      };
+    }
+
+    const account = await this.connectForOrganization(organizationId, {
+      accessToken,
+      phoneNumberId,
+      wabaId,
+    });
+
+    return {
+      account,
+      discovered: phones,
+      autoSelected: !dto.phoneNumberId?.trim() && phones.length === 1,
+    };
+  }
+
+  async connectForOrganization(organizationId: string, dto: ConnectWhatsappDto) {
+    const phoneNumberId = dto.phoneNumberId.trim();
+    const accessToken = dto.accessToken.trim();
+
+    const duplicate = await this.prisma.whatsappAccount.findFirst({
+      where: { organizationId, phoneNumberId },
+    });
+    if (duplicate) {
+      const refreshed = await this.refreshAccessTokenForOrganization(
+        organizationId,
+        duplicate.id,
+        accessToken,
+      );
+      return refreshed.account;
+    }
+
+    const details = await this.fetchPhoneDetails(phoneNumberId, accessToken);
+    const wabaId =
+      dto.wabaId?.trim() ||
+      (await this.resolveWabaForPhone(phoneNumberId, accessToken));
+    if (!wabaId) {
+      throw new BadRequestException(
+        "Could not determine WhatsApp Business Account ID. Copy WhatsApp Business Account ID from Meta API Setup and paste it in the WABA ID field.",
+      );
+    }
+
+    await this.subscribeWabaWebhooks(wabaId, accessToken);
+
+    return this.createAccountForOrganization(organizationId, {
+      phoneNumberId,
+      wabaId,
+      displayPhoneNumber: details.display_phone_number ?? phoneNumberId,
+      verifiedName: details.verified_name,
+      accessToken,
+    });
+  }
+
+  async refreshAccessTokenForOrganization(
+    organizationId: string,
+    id: string,
+    accessToken: string,
+  ) {
+    const account = await this.prisma.whatsappAccount.findFirst({
+      where: { id, organizationId },
+    });
+    if (!account) {
+      throw new NotFoundException("WhatsApp account not found.");
+    }
+    const rotated = await this.rotateAccountToken(account, accessToken.trim());
+    return {
+      account: this.toSafe(rotated),
+      tokenHealth: await this.debugInputToken(decryptSecret(rotated.accessTokenEnc)),
     };
   }
 
@@ -757,63 +889,12 @@ export class WhatsappAccountsService {
    * If phoneNumberId is omitted and exactly one number exists on the token, it is selected automatically.
    */
   async quickConnect(user: JwtPayload, dto: { accessToken: string; phoneNumberId?: string; wabaId?: string }) {
-    const accessToken = dto.accessToken.trim();
-    const phones = await this.discoverPhones(accessToken);
-
-    let phoneNumberId = dto.phoneNumberId?.trim();
-    let wabaId = dto.wabaId?.trim();
-
-    if (!phoneNumberId) {
-      if (phones.length === 1) {
-        phoneNumberId = phones[0].phoneNumberId;
-        wabaId = wabaId || phones[0].wabaId;
-      } else {
-        throw new BadRequestException(
-          phones.length === 0
-            ? "No WhatsApp numbers on this token."
-            : "Multiple numbers found — select which business line to connect.",
-        );
-      }
-    } else {
-      const match = phones.find((p) => p.phoneNumberId === phoneNumberId);
-      if (match) {
-        wabaId = wabaId || match.wabaId;
-      }
-    }
-
-    const existing = await this.prisma.whatsappAccount.findFirst({
-      where: { organizationId: user.organizationId, phoneNumberId },
-    });
-    if (existing) {
-      const refreshed = await this.refreshAccessToken(user, existing.id, accessToken);
-      return {
-        account: refreshed.account,
-        discovered: phones,
-        autoSelected: !dto.phoneNumberId?.trim() && phones.length === 1,
-      };
-    }
-
-    const account = await this.connect(user, {
-      accessToken,
-      phoneNumberId,
-      wabaId,
-    });
-
-    return {
-      account,
-      discovered: phones,
-      autoSelected: !dto.phoneNumberId?.trim() && phones.length === 1,
-    };
+    return this.quickConnectForOrganization(user.organizationId, dto);
   }
 
   /** Replace expired Meta temporary token without disconnecting the number. */
   async refreshAccessToken(user: JwtPayload, id: string, accessToken: string) {
-    const account = await this.findOwned(user, id);
-    const rotated = await this.rotateAccountToken(account, accessToken.trim());
-    return {
-      account: this.toSafe(rotated),
-      tokenHealth: await this.debugInputToken(decryptSecret(rotated.accessTokenEnc)),
-    };
+    return this.refreshAccessTokenForOrganization(user.organizationId, id, accessToken);
   }
 
   /**

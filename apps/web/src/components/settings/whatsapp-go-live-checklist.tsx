@@ -16,11 +16,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
 
-type OnboardingProgress = {
+type GoLiveProgress = {
   connected: boolean;
   accountId: string | null;
   displayPhoneNumber: string | null;
@@ -42,6 +43,10 @@ type OnboardingProgress = {
   };
 };
 
+type OnboardingProgressResponse = {
+  goLive: GoLiveProgress;
+};
+
 const STEP_ICONS: Record<string, typeof Zap> = {
   webhooks: Zap,
   first_message: MessageCircle,
@@ -57,18 +62,21 @@ export function WhatsappGoLiveChecklist({
   compact?: boolean;
   showTestMessage?: boolean;
 }) {
+  const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["whatsapp-onboarding-progress"],
+    queryKey: ["onboarding-progress"],
     queryFn: () =>
-      apiFetch<OnboardingProgress>("/whatsapp-accounts/onboarding-progress", {
+      apiFetch<OnboardingProgressResponse>("/organizations/onboarding-progress", {
         token: token ?? undefined,
       }),
     enabled: !!token,
     refetchInterval: 4000,
   });
+
+  const goLive = data?.goLive;
 
   const syncMutation = useMutation({
     mutationFn: (accountId: string) =>
@@ -77,27 +85,35 @@ export function WhatsappGoLiveChecklist({
         { method: "POST", token: token ?? undefined },
       ),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["whatsapp-onboarding-progress"] });
+      void queryClient.invalidateQueries({ queryKey: ["onboarding-progress"] });
     },
   });
 
-  if (isLoading || !data) {
+  if (isLoading || !goLive) {
     return (
       <div className="flex items-center gap-2 rounded-2xl border border-border/80 bg-muted/20 px-5 py-6 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Loading go-live checklist…
+        {t("whatsappGoLive.loading")}
       </div>
     );
   }
 
-  if (!data.connected) {
+  if (!goLive.connected) {
     return null;
   }
 
-  const allDone = data.steps.every((s) => s.done);
-  const nextStep = data.steps.find((s) => !s.done);
+  const allDone = goLive.steps.every((s) => s.done);
+  const nextStep = goLive.steps.find((s) => !s.done);
   const showVerifier =
-    showTestMessage && !data.steps.find((s) => s.id === "first_message")?.done && data.displayPhoneNumber;
+    showTestMessage &&
+    !goLive.steps.find((s) => s.id === "first_message")?.done &&
+    goLive.displayPhoneNumber;
+
+  function stepTitle(stepId: string, fallback: string) {
+    const key = `whatsappGoLive.stepTitles.${stepId}`;
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  }
 
   return (
     <div
@@ -109,18 +125,22 @@ export function WhatsappGoLiveChecklist({
       <div className="border-b border-border/80 px-5 py-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-accent">Go-live checklist</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+              {t("whatsappGoLive.title")}
+            </p>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {allDone
-                ? "Your WhatsApp revenue layer is fully live."
+                ? t("whatsappGoLive.allComplete")
                 : nextStep
-                  ? `Next: ${nextStep.title.toLowerCase()}`
-                  : "Confirm each step to finish setup"}
+                  ? `${t("whatsappGoLive.nextPrefix")} ${stepTitle(nextStep.id, nextStep.title).toLowerCase()}`
+                  : t("whatsappGoLive.confirmEach")}
             </p>
           </div>
           <div className="rounded-xl border border-border/80 bg-muted/30 px-3 py-2 text-center min-w-[72px]">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Progress</p>
-            <p className="text-lg font-bold text-foreground">{data.progressPct}%</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("whatsappGoLive.progress")}
+            </p>
+            <p className="text-lg font-bold text-foreground">{goLive.progressPct}%</p>
           </div>
         </div>
       </div>
@@ -132,14 +152,14 @@ export function WhatsappGoLiveChecklist({
               <CheckCircle2 className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">WhatsApp connected</p>
+              <p className="text-sm font-semibold text-foreground">{t("whatsappGoLive.connected")}</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {data.verifiedName ?? "Business line"} · {data.displayPhoneNumber}
+                {goLive.verifiedName ?? "Business line"} · {goLive.displayPhoneNumber}
               </p>
             </div>
           </li>
 
-          {data.steps.map((step) => {
+          {goLive.steps.map((step) => {
             const Icon = STEP_ICONS[step.id] ?? CircleDashed;
             return (
               <li
@@ -162,7 +182,9 @@ export function WhatsappGoLiveChecklist({
                   {step.done ? <CheckCircle2 className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground">{step.title}</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {stepTitle(step.id, step.title)}
+                  </p>
                   <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
                 </div>
               </li>
@@ -170,54 +192,54 @@ export function WhatsappGoLiveChecklist({
           })}
         </ul>
 
-        {showVerifier && data.displayPhoneNumber && (
-          <WhatsappIngestionVerifier displayPhoneNumber={data.displayPhoneNumber} />
+        {showVerifier && goLive.displayPhoneNumber && (
+          <WhatsappIngestionVerifier displayPhoneNumber={goLive.displayPhoneNumber} />
         )}
 
-        {data.accountId && !data.steps.find((s) => s.id === "templates")?.done && (
+        {goLive.accountId && !goLive.steps.find((s) => s.id === "templates")?.done && (
           <Button
             type="button"
             size="sm"
             variant="outline"
             className="gap-1.5 rounded-xl"
             disabled={syncMutation.isPending}
-            onClick={() => data.accountId && syncMutation.mutate(data.accountId)}
+            onClick={() => goLive.accountId && syncMutation.mutate(goLive.accountId)}
           >
             {syncMutation.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <RefreshCw className="h-3.5 w-3.5" />
             )}
-            Sync templates from Meta
+            {t("whatsappGoLive.syncTemplates")}
           </Button>
         )}
         {syncMutation.isError && (
           <p className="text-xs text-destructive">
             {syncMutation.error instanceof ApiError
               ? syncMutation.error.message
-              : "Template sync failed."}
+              : t("whatsappGoLive.syncFailed")}
           </p>
         )}
 
         <div className="flex flex-wrap gap-2 pt-1">
           <Button asChild size="sm" variant={allDone ? "accent" : "outline"} className="gap-1.5 rounded-xl">
             <Link href="/dashboard/inbox">
-              Open Conversations
+              {t("whatsappGoLive.openConversations")}
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
-          {data.stats.classifiedLeads > 0 && (
+          {goLive.stats.classifiedLeads > 0 && (
             <Button asChild size="sm" variant="outline" className="gap-1.5 rounded-xl">
               <Link href="/dashboard/pipeline">
-                View Pipeline
+                {t("whatsappGoLive.viewPipeline")}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
           )}
-          {data.stats.approvedTemplateCount > 0 && (
+          {goLive.stats.approvedTemplateCount > 0 && (
             <Button asChild size="sm" variant="outline" className="gap-1.5 rounded-xl">
               <Link href="/dashboard/campaigns">
-                View Campaigns
+                {t("whatsappGoLive.viewCampaigns")}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Button>

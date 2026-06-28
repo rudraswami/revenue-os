@@ -7,6 +7,7 @@ import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { CompleteEmbeddedSignupDto } from "../whatsapp-accounts/dto/embedded-signup.dto";
+import { QuickConnectWhatsappDto } from "../whatsapp-accounts/dto/whatsapp-account.dto";
 import { AgencyService } from "./agency.service";
 
 class CreateClientDto {
@@ -52,6 +53,16 @@ export class AgencyController {
     @Body() dto: CompleteEmbeddedSignupDto,
   ) {
     return this.agency.completeClientEmbeddedSignup(user, organizationId, dto);
+  }
+
+  @Post("clients/:organizationId/quick-connect")
+  @Roles("OWNER", "ADMIN")
+  quickConnectClient(
+    @CurrentUser() user: JwtPayload,
+    @Param("organizationId") organizationId: string,
+    @Body() dto: QuickConnectWhatsappDto,
+  ) {
+    return this.agency.quickConnectClient(user, organizationId, dto);
   }
 
   @Post("enable")

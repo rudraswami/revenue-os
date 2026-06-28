@@ -189,6 +189,15 @@ export class AgencyService {
     return this.whatsappAccounts.getOrganizationWhatsAppSummary(clientOrganizationId);
   }
 
+  async quickConnectClient(
+    user: JwtPayload,
+    clientOrganizationId: string,
+    dto: { accessToken: string; phoneNumberId?: string; wabaId?: string },
+  ) {
+    await this.assertAgencyAccessToClient(user, clientOrganizationId);
+    return this.whatsappAccounts.quickConnectForOrganization(clientOrganizationId, dto);
+  }
+
   async createClient(user: JwtPayload, displayName: string) {
     if (!["OWNER", "ADMIN"].includes(user.role)) {
       throw new ForbiddenException("Only workspace admins can add client workspaces.");

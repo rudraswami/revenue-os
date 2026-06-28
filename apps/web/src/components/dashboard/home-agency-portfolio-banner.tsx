@@ -5,11 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { formatMessage } from "@/lib/i18n/format-message";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { AgencyConnectionBadge, type AgencyConnectionStatus } from "@/components/dashboard/agency-connection-badge";
 
 /** Agency hub: portfolio WhatsApp health at a glance on Home. */
 export function HomeAgencyPortfolioBanner() {
+  const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
 
   const { data: agencyStatus } = useQuery({
@@ -44,12 +47,15 @@ export function HomeAgencyPortfolioBanner() {
           <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
           <div>
             <p className="text-sm font-semibold text-foreground">
-              Agency portfolio · {summary.live}/{summary.total} clients live
+              {formatMessage(t("homeBanners.agencyTitle"), {
+                live: summary.live,
+                total: summary.total,
+              })}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {needsAttention > 0
-                ? `${needsAttention} client${needsAttention === 1 ? "" : "s"} need setup or token attention.`
-                : "All client WhatsApp lines are healthy."}
+                ? formatMessage(t("homeBanners.agencyNeedsAttention"), { count: needsAttention })
+                : t("homeBanners.agencyAllHealthy")}
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {(
@@ -72,7 +78,7 @@ export function HomeAgencyPortfolioBanner() {
         </div>
         <Button asChild size="sm" variant="outline" className="h-8 shrink-0 gap-1.5 rounded-xl">
           <Link href="/dashboard/agency">
-            Manage clients
+            {t("homeBanners.agencyManage")}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </Button>

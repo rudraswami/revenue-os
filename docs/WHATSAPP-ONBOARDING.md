@@ -63,10 +63,12 @@ Growvisi ingests messages from **your existing** WhatsApp Business number on Met
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/whatsapp-accounts/onboarding-readiness` | Webhook URL, verify token, Meta deep link |
-| `GET` | `/whatsapp-accounts/onboarding-progress` | Go-live checklist (webhooks, message, classification, pipeline) |
+| `GET` | `/organizations/onboarding-progress` | Activation steps + nested `goLive` checklist (preferred) |
+| `GET` | `/whatsapp-accounts/onboarding-progress` | Go-live checklist only (deprecated — use org endpoint) |
 | `GET` | `/whatsapp-accounts/embedded-signup/config` | Facebook SDK config for one-click connect |
 | `POST` | `/whatsapp-accounts/embedded-signup/complete` | Finish Embedded Signup after Meta popup |
 | `POST` | `/whatsapp-accounts/quick-connect` | Discover + verify + subscribe + save (token path) |
+| `POST` | `/agency/clients/:organizationId/quick-connect` | Agency hub: token connect for a client workspace in-place |
 | `POST` | `/whatsapp-accounts/:id/refresh-token` | Replace access token |
 | `GET` | `/whatsapp-accounts/connection-health` | Diagnostics + `tokenHealth` |
 | `GET` | `/internal/cron/whatsapp-token-reminders` | Cron: email owners (auth required) |

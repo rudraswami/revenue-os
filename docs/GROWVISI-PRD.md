@@ -141,7 +141,7 @@ Analytics & insights ──► funnel · hot leads · stalled conversations
 | B-P1-6 | Always-on workers | Redis required in prod; Sentry + job failure alerts |
 | B-P1-7 | Meta token auto-refresh | Cron `whatsapp-token-refresh` exchanges tokens within 7d of expiry via `fb_exchange_token` |
 | B-P1-8 | Lost-deal analytics | `GET /leads/metrics/lost-deals` + Analytics panel; lost reason on Pipeline |
-| B-P1-9 | Guided onboarding | `GET /organizations/onboarding-progress` + Home checklist until first classified lead |
+| B-P1-9 | Guided onboarding | `GET /organizations/onboarding-progress` returns activation steps + nested `goLive` checklist; Home getting-started until first classified lead |
 | B-P1-10 | Razorpay payment → Won | `POST /webhooks/payments/:orgId` + Settings → Growth configuration |
 | B-P1-11 | Connection Health page | `/dashboard/connection` + sidebar nav; Home banner links here |
 | B-P1-12 | Revenue pulse complete | `avgDaysToClose` + won ₹ on Home command center |

@@ -4,17 +4,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
+import { formatMessage } from "@/lib/i18n/format-message";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import {
   connectMethodForPath,
   WHATSAPP_CONNECT_PATHS,
   type WhatsappConnectPath,
 } from "@/lib/whatsapp-connect-paths";
+import { type DiscoveredPhone } from "@/lib/whatsapp-onboarding";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
 type ConnectPhase = "idle" | "waiting_meta" | "saving" | "done" | "error";
+type ConnectMode = "facebook" | "token";
 
 interface EmbeddedConfig {
   enabled: boolean;
@@ -31,18 +37,26 @@ export function AgencyClientConnectDialog({
   clientOrganizationId,
   clientName,
   open,
+  initialMode = "facebook",
   onOpenChange,
 }: {
   clientOrganizationId: string;
   clientName: string;
   open: boolean;
+  initialMode?: ConnectMode;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
+  const [connectMode, setConnectMode] = useState<ConnectMode>(initialMode);
   const [connectPath, setConnectPath] = useState<WhatsappConnectPath>("cloud_api");
   const [phase, setPhase] = useState<ConnectPhase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState("");
+  const [phoneNumberId, setPhoneNumberId] = useState("");
+  const [wabaId, setWabaId] = useState("");
+  const [discovered, setDiscovered] = useState<DiscoveredPhone[]>([]);
 
   const { data: config } = useQuery({
     queryKey: ["embedded-signup-config"],
@@ -75,11 +89,58 @@ export function AgencyClientConnectDialog({
     },
     onError: (e) => {
       setPhase("error");
-      setError(e instanceof ApiError ? e.message : "Connection failed.");
+      setError(e instanceof ApiError ? e.message : t("agency.connect.tokenError"));
     },
   });
 
-  async function handleConnect() {
+  const discoverMutation = useMutation({
+    mutationFn: () =>
+      apiFetch<DiscoveredPhone[]>("/whatsapp-accounts/discover-phones", {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({ accessToken: accessToken.trim() }),
+      }),
+    onSuccess: (phones) => {
+      setDiscovered(phones);
+      setError(null);
+      if (phones.length === 1) {
+        setPhoneNumberId(phones[0].phoneNumberId);
+        setWabaId(phones[0].wabaId);
+      } else if (phones.length > 1 && !phones.some((p) => p.phoneNumberId === phoneNumberId)) {
+        setPhoneNumberId(phones[0].phoneNumberId);
+        setWabaId(phones[0].wabaId);
+      }
+    },
+    onError: (e) => {
+      setDiscovered([]);
+      setError(e instanceof ApiError ? e.message : t("agency.connect.discoverError"));
+    },
+  });
+
+  const tokenConnectMutation = useMutation({
+    mutationFn: () =>
+      apiFetch(`/agency/clients/${clientOrganizationId}/quick-connect`, {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({
+          accessToken: accessToken.trim(),
+          phoneNumberId: phoneNumberId.trim() || undefined,
+          wabaId: wabaId.trim() || undefined,
+        }),
+      }),
+    onSuccess: () => {
+      setPhase("done");
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: ["agency-clients"] });
+      void queryClient.invalidateQueries({ queryKey: ["agency-clients-health"] });
+    },
+    onError: (e) => {
+      setPhase("error");
+      setError(e instanceof ApiError ? e.message : t("agency.connect.tokenError"));
+    },
+  });
+
+  async function handleFacebookConnect() {
     if (!config?.enabled || !config.embeddedSignupLive) return;
     setError(null);
     setPhase("waiting_meta");
@@ -120,11 +181,20 @@ export function AgencyClientConnectDialog({
     onOpenChange(false);
     setPhase("idle");
     setError(null);
+    setAccessToken("");
+    setPhoneNumberId("");
+    setWabaId("");
+    setDiscovered([]);
   }
 
   if (!open) return null;
 
   const embeddedLive = config?.embeddedSignupLive ?? false;
+  const busy =
+    phase === "waiting_meta" ||
+    phase === "saving" ||
+    discoverMutation.isPending ||
+    tokenConnectMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -136,11 +206,9 @@ export function AgencyClientConnectDialog({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="agency-connect-title" className="text-base font-bold">
-              Connect WhatsApp for {clientName}
+              {formatMessage(t("agency.connect.title"), { name: clientName })}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Stay in your agency hub — links the client number without switching workspaces.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("agency.connect.subtitle")}</p>
           </div>
           <button
             type="button"
@@ -156,62 +224,133 @@ export function AgencyClientConnectDialog({
           {phase === "done" ? (
             <div className="space-y-4">
               <p className="text-sm font-medium text-[#128C7E]">
-                WhatsApp connected for {clientName}.
+                {formatMessage(t("agency.connect.done"), { name: clientName })}
               </p>
               <Button className="rounded-xl" onClick={handleClose}>
-                Done
+                {t("agency.connect.doneBtn")}
               </Button>
             </div>
-          ) : !embeddedLive || !config?.enabled ? (
-            <p className="text-sm text-muted-foreground">
-              Embedded Signup is not live yet. Switch into the client workspace and use the Meta API
-              Setup token during App Review.
-            </p>
           ) : (
             <div className="space-y-4">
+              <div className="flex gap-2 rounded-xl border border-border/80 bg-muted/20 p-1">
+                <button
+                  type="button"
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
+                    connectMode === "facebook"
+                      ? "bg-white text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => setConnectMode("facebook")}
+                >
+                  {t("agency.connect.facebookTab")}
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
+                    connectMode === "token"
+                      ? "bg-white text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => setConnectMode("token")}
+                >
+                  {t("agency.connect.tokenTab")}
+                </button>
+              </div>
+
               {error && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {error}
                 </div>
               )}
 
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(Object.keys(WHATSAPP_CONNECT_PATHS) as WhatsappConnectPath[]).map((pathId) => {
-                  const path = WHATSAPP_CONNECT_PATHS[pathId];
-                  const selected = connectPath === pathId;
-                  return (
-                    <button
-                      key={pathId}
-                      type="button"
-                      onClick={() => setConnectPath(pathId)}
-                      className={cn(
-                        "rounded-xl border p-3 text-left text-xs transition-all",
-                        selected
-                          ? "border-[#1877F2]/40 bg-[#1877F2]/5"
-                          : "border-border/80 hover:border-primary/20",
-                      )}
-                    >
-                      <p className="font-semibold text-foreground">{path.title}</p>
-                      <p className="mt-1 text-muted-foreground">{path.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
+              {connectMode === "facebook" ? (
+                !embeddedLive || !config?.enabled ? (
+                  <p className="text-sm text-muted-foreground">{t("agency.connect.embeddedNotLive")}</p>
+                ) : (
+                  <>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(Object.keys(WHATSAPP_CONNECT_PATHS) as WhatsappConnectPath[]).map((pathId) => {
+                        const path = WHATSAPP_CONNECT_PATHS[pathId];
+                        const selected = connectPath === pathId;
+                        return (
+                          <button
+                            key={pathId}
+                            type="button"
+                            onClick={() => setConnectPath(pathId)}
+                            className={cn(
+                              "rounded-xl border p-3 text-left text-xs transition-all",
+                              selected
+                                ? "border-[#1877F2]/40 bg-[#1877F2]/5"
+                                : "border-border/80 hover:border-primary/20",
+                            )}
+                          >
+                            <p className="font-semibold text-foreground">{path.title}</p>
+                            <p className="mt-1 text-muted-foreground">{path.description}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-              <Button
-                className="h-11 w-full gap-2 rounded-xl bg-[#1877F2] hover:bg-[#166FE0]"
-                disabled={phase === "waiting_meta" || phase === "saving"}
-                onClick={() => void handleConnect()}
-              >
-                {(phase === "waiting_meta" || phase === "saving") && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
-                {phase === "waiting_meta"
-                  ? "Complete setup in Facebook…"
-                  : phase === "saving"
-                    ? "Saving to client workspace…"
-                    : "Continue with Facebook"}
-              </Button>
+                    <Button
+                      className="h-11 w-full gap-2 rounded-xl bg-[#1877F2] hover:bg-[#166FE0]"
+                      disabled={busy}
+                      onClick={() => void handleFacebookConnect()}
+                    >
+                      {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {phase === "waiting_meta"
+                        ? t("agency.connect.waitingMeta")
+                        : phase === "saving"
+                          ? t("agency.connect.saving")
+                          : t("agency.connect.continueFacebook")}
+                    </Button>
+                  </>
+                )
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">{t("agency.connect.tokenHint")}</p>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground">
+                      {t("agency.connect.tokenLabel")}
+                    </label>
+                    <Input
+                      value={accessToken}
+                      onChange={(e) => setAccessToken(e.target.value)}
+                      onBlur={() => {
+                        if (accessToken.trim().length > 40) {
+                          discoverMutation.mutate();
+                        }
+                      }}
+                      placeholder="EAAG…"
+                      className="rounded-xl font-mono text-xs"
+                    />
+                  </div>
+
+                  {discovered.length > 1 && (
+                    <WhatsappPhonePicker
+                      phones={discovered}
+                      selectedId={phoneNumberId}
+                      onSelect={(phone) => {
+                        setPhoneNumberId(phone.phoneNumberId);
+                        setWabaId(phone.wabaId);
+                      }}
+                    />
+                  )}
+
+                  <Button
+                    className="h-11 w-full gap-2 rounded-xl"
+                    disabled={busy || accessToken.trim().length < 20}
+                    onClick={() => {
+                      setPhase("saving");
+                      tokenConnectMutation.mutate();
+                    }}
+                  >
+                    {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {phase === "saving" ? t("agency.connect.saving") : t("agency.connect.connectToken")}
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </div>

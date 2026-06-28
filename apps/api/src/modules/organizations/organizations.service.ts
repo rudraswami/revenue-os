@@ -12,6 +12,7 @@ import { AuthService } from "../auth/auth.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
+import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 import { normalizePaymentIntegration } from "./payment-integration";
 
 export interface ReplyTemplate {
@@ -62,6 +63,7 @@ export class OrganizationsService {
     private readonly config: ConfigService,
     private readonly entitlements: EntitlementsService,
     private readonly auth: AuthService,
+    private readonly whatsappAccounts: WhatsappAccountsService,
   ) {}
 
   async getCurrent(user: JwtPayload) {
@@ -425,6 +427,7 @@ export class OrganizationsService {
       inboundMessages,
       classifiedLeads,
       pipelineMoved,
+      goLive,
     ] = await Promise.all([
       this.prisma.whatsappAccount.count({
         where: { organizationId, isActive: true },
@@ -444,6 +447,7 @@ export class OrganizationsService {
           ],
         },
       }),
+      this.whatsappAccounts.getGoLiveProgress(organizationId),
     ]);
 
     const steps = {
@@ -461,6 +465,7 @@ export class OrganizationsService {
       completedCount,
       totalSteps: values.length,
       allComplete: completedCount === values.length,
+      goLive,
     };
   }
 }
