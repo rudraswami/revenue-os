@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -36,8 +36,10 @@ const VALUE_PROPS = [
   { icon: Shield, title: "Enterprise security", desc: "Role-based access, encrypted tokens, audit trail." },
 ];
 
-export default function OnboardingPage() {
+function OnboardingPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromAgency = searchParams.get("from") === "agency";
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const organization = useAuthStore((s) => s.organization);
@@ -47,7 +49,7 @@ export default function OnboardingPage() {
 
   function goToDashboard() {
     dismissOnboarding();
-    router.push("/dashboard");
+    router.push(fromAgency ? "/dashboard/agency" : "/dashboard");
   }
 
   const { data: accounts } = useQuery({
@@ -122,20 +124,37 @@ export default function OnboardingPage() {
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
           <Logo href="/dashboard" />
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/dashboard">
-                <ArrowLeft className="h-4 w-4" />
-                Dashboard
-              </Link>
-            </Button>
-            {whatsappConnected ? (
-              <Button size="sm" onClick={() => router.push("/dashboard/inbox")}>
-                Open conversations
-                <ArrowRight className="h-4 w-4" />
+            {fromAgency && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/dashboard/agency">
+                  <ArrowLeft className="h-4 w-4" />
+                  Agency clients
+                </Link>
               </Button>
+            )}
+            {!fromAgency && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/dashboard">
+                  <ArrowLeft className="h-4 w-4" />
+                  Dashboard
+                </Link>
+              </Button>
+            )}
+            {whatsappConnected ? (
+              fromAgency ? (
+                <Button size="sm" onClick={goToDashboard}>
+                  Back to agency
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => router.push("/dashboard/inbox")}>
+                  Open conversations
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )
             ) : (
               <Button variant="outline" size="sm" onClick={goToDashboard}>
-                Skip for now
+                {fromAgency ? "Back to agency" : "Skip for now"}
               </Button>
             )}
           </div>
@@ -143,6 +162,13 @@ export default function OnboardingPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-8">
+        {fromAgency && (
+          <div className="mb-6 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-muted-foreground">
+            Setting up WhatsApp for{" "}
+            <strong className="text-foreground">{organization?.name ?? "this client"}</strong>.
+            When go-live is complete, return to Agency clients to monitor health across your portfolio.
+          </div>
+        )}
         <div className="grid gap-8 lg:grid-cols-5">
           {/* Left: Main content */}
           <div className="lg:col-span-3">
@@ -352,5 +378,13 @@ export default function OnboardingPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen animate-pulse bg-muted/30" aria-busy="true" />}>
+      <OnboardingPageContent />
+    </Suspense>
   );
 }

@@ -8,6 +8,7 @@ import type { JwtPayload } from "@growvisi/shared";
 import { DEFAULT_PIPELINE_STAGES } from "@growvisi/shared";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 
 export interface AgencyClientRow {
   id: string;
@@ -20,6 +21,10 @@ export interface AgencyClientRow {
   handoffs: number;
   openPipelineInr: number;
   openLeads: number;
+  connectionStatus: "live" | "setup" | "token" | "disconnected";
+  goLiveProgressPct: number;
+  displayPhoneNumber: string | null;
+  tokenNeedsRefresh: boolean;
 }
 
 @Injectable()
@@ -27,6 +32,7 @@ export class AgencyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementsService,
+    private readonly whatsappAccounts: WhatsappAccountsService,
   ) {}
 
   async getStatus(user: JwtPayload) {
@@ -90,7 +96,8 @@ export class AgencyService {
     const rows = await Promise.all(
       links.map(async (link) => {
         const orgId = link.clientOrganizationId;
-        const [waActive, unreadAgg, handoffs, pipelineAgg, openLeads] = await Promise.all([
+        const [waActive, unreadAgg, handoffs, pipelineAgg, openLeads, waSummary] =
+          await Promise.all([
           this.prisma.whatsappAccount.count({ where: { organizationId: orgId, isActive: true } }),
           this.prisma.conversation.aggregate({
             where: { organizationId: orgId },
@@ -116,6 +123,7 @@ export class AgencyService {
               stage: { notIn: ["WON", "LOST"] },
             },
           }),
+          this.whatsappAccounts.getOrganizationWhatsAppSummary(orgId),
         ]);
 
         return {
@@ -129,11 +137,32 @@ export class AgencyService {
           handoffs,
           openPipelineInr: (pipelineAgg._sum.valueCents ?? 0) / 100,
           openLeads,
+          connectionStatus: waSummary.connectionStatus,
+          goLiveProgressPct: waSummary.goLiveProgressPct,
+          displayPhoneNumber: waSummary.displayPhoneNumber,
+          tokenNeedsRefresh: waSummary.tokenNeedsRefresh,
         };
       }),
     );
 
     return rows;
+  }
+
+  async getClientsHealthSummary(user: JwtPayload) {
+    const clients = await this.listClients(user);
+    const live = clients.filter((c) => c.connectionStatus === "live").length;
+    const setup = clients.filter((c) => c.connectionStatus === "setup").length;
+    const token = clients.filter((c) => c.connectionStatus === "token").length;
+    const disconnected = clients.filter((c) => c.connectionStatus === "disconnected").length;
+
+    return {
+      total: clients.length,
+      live,
+      setup,
+      token,
+      disconnected,
+      clients,
+    };
   }
 
   async createClient(user: JwtPayload, displayName: string) {

@@ -30,6 +30,11 @@ export class AgencyController {
     return this.agency.listClients(user);
   }
 
+  @Get("clients/health-summary")
+  clientsHealthSummary(@CurrentUser() user: JwtPayload) {
+    return this.agency.getClientsHealthSummary(user);
+  }
+
   @Post("enable")
   @Roles("OWNER", "ADMIN")
   enable(@CurrentUser() user: JwtPayload) {

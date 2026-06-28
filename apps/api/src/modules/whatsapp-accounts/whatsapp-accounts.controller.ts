@@ -152,6 +152,13 @@ export class WhatsappAccountsController {
     return this.accounts.verifyConnection(user, id);
   }
 
+  @Post(":id/sync-templates")
+  @UseGuards(MembershipRoleGuard)
+  @Roles("OWNER", "ADMIN", "MANAGER")
+  syncTemplates(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.accounts.syncTemplatesForAccount(user, id);
+  }
+
   @Delete(":id")
   @UseGuards(MembershipRoleGuard)
   @Roles("OWNER", "ADMIN")

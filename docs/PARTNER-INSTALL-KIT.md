@@ -56,6 +56,8 @@ Agencies on **Pro** can enable **Agency mode** at `/dashboard/agency`:
 
 Each client keeps isolated billing and data.
 
+**Per-client health:** Agency dashboard and Partner install kit show connection status (Live / Setup / Token / Not connected), go-live %, and phone number. Use **Connect WhatsApp** or **Continue setup** on a client card to switch workspaces and run onboarding (`/onboarding?from=agency`).
+
 ---
 
 ## 4. Hindi UI
@@ -77,7 +79,19 @@ Template body params (if using template): `org name, pipeline ₹, won 24h, hand
 
 ---
 
-## 6. Support boundaries
+## 6. Meta billing boundaries (Solution Partner)
+
+| Item | Who bills |
+|------|-----------|
+| Growvisi subscription (INR) | Growvisi / Razorpay |
+| WhatsApp conversation fees | Meta → client WABA or partner credit line |
+| Growvisi reselling Meta credits | **Not in v1** |
+
+Tech Providers: set `META_PARTNER_SOLUTION_ID` on the Growvisi API so Embedded Signup flows attach to your Meta partner solution.
+
+---
+
+## 7. Support boundaries
 
 | Question | Answer |
 |----------|--------|
@@ -88,7 +102,7 @@ Template body params (if using template): `org name, pipeline ₹, won 24h, hand
 
 ---
 
-## 7. Links
+## 8. Links
 
 - Product PRD: `docs/GROWVISI-PRD.md`
 - Meta embedded signup: `docs/META-EMBEDDED-SIGNUP.md`

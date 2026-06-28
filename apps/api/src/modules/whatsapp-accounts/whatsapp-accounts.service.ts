@@ -143,6 +143,21 @@ export class WhatsappAccountsService {
     }
   }
 
+  async syncTemplatesForAccount(user: JwtPayload, accountId: string) {
+    const account = await this.findOwned(user, accountId);
+    const result = await this.syncTemplatesAfterConnect(account.id);
+    if (!result) {
+      throw new BadRequestException(
+        "Could not sync templates from Meta. Check your access token and WABA permissions.",
+      );
+    }
+    return {
+      ok: true,
+      ...result,
+      syncedAt: new Date().toISOString(),
+    };
+  }
+
   async discoverPhones(accessToken: string): Promise<DiscoveredPhone[]> {
     const token = accessToken.trim();
     const version = this.apiVersion();
@@ -493,6 +508,91 @@ export class WhatsappAccountsService {
         testTip:
           "Meta's \"Send test message\" in API Setup sends from your business to your phone — it won't appear in Conversations. Message your business number from your personal phone instead.",
       },
+    };
+  }
+
+  /** Lightweight WhatsApp summary for agency / partner dashboards (no webhook event scan). */
+  async getOrganizationWhatsAppSummary(organizationId: string) {
+    const activeAccount = await this.prisma.whatsappAccount.findFirst({
+      where: { organizationId, isActive: true },
+      select: {
+        id: true,
+        displayPhoneNumber: true,
+        verifiedName: true,
+        metadata: true,
+        accessTokenEnc: true,
+      },
+    });
+
+    if (!activeAccount) {
+      return {
+        connected: false,
+        connectionStatus: "disconnected" as const,
+        displayPhoneNumber: null,
+        verifiedName: null,
+        goLiveProgressPct: 0,
+        tokenNeedsRefresh: false,
+        firstMessage: false,
+        classified: false,
+        templatesSynced: false,
+        templateCount: 0,
+        approvedTemplateCount: 0,
+      };
+    }
+
+    const accountMeta = (activeAccount.metadata ?? {}) as Record<string, unknown>;
+    const templatesSynced = !!accountMeta.templatesSyncedAt;
+    const templateCount = Number(accountMeta.templateCount ?? 0);
+    const approvedTemplateCount = Number(accountMeta.approvedTemplateCount ?? 0);
+
+    const [inboundCount, classifiedLeads, pipelineLeads] = await Promise.all([
+      this.prisma.message.count({
+        where: { organizationId, direction: "INBOUND" },
+      }),
+      this.prisma.lead.count({
+        where: { organizationId, lastClassifiedAt: { not: null } },
+      }),
+      this.prisma.lead.count({
+        where: {
+          organizationId,
+          OR: [
+            { valueCents: { gt: 0 } },
+            { stage: { in: ["QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON"] } },
+          ],
+        },
+      }),
+    ]);
+
+    const tokenHealth = await this.debugInputToken(decryptSecret(activeAccount.accessTokenEnc));
+    const tokenNeedsRefresh = tokenHealth.needsRefresh || tokenHealth.level === "urgent";
+    const firstMessage = inboundCount > 0;
+    const classified = classifiedLeads > 0;
+    const pipelineTracked = pipelineLeads > 0;
+    const webhooksOk = firstMessage || templatesSynced;
+
+    const stepFlags = [webhooksOk, firstMessage, classified, pipelineTracked, templatesSynced];
+    const doneCount = stepFlags.filter(Boolean).length + 1;
+    const goLiveProgressPct = Math.round((doneCount / 6) * 100);
+
+    let connectionStatus: "live" | "setup" | "token" | "disconnected" = "setup";
+    if (tokenNeedsRefresh) {
+      connectionStatus = "token";
+    } else if (goLiveProgressPct >= 83 && firstMessage && classified) {
+      connectionStatus = "live";
+    }
+
+    return {
+      connected: true,
+      connectionStatus,
+      displayPhoneNumber: activeAccount.displayPhoneNumber,
+      verifiedName: activeAccount.verifiedName,
+      goLiveProgressPct,
+      tokenNeedsRefresh,
+      firstMessage,
+      classified,
+      templatesSynced,
+      templateCount,
+      approvedTemplateCount,
     };
   }
 

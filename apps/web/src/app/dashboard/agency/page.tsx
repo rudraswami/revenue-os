@@ -10,7 +10,6 @@ import {
   Plus,
   RefreshCw,
   Wifi,
-  WifiOff,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
@@ -23,6 +22,11 @@ import type { AuthSession } from "@/lib/auth-types";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { formatInr } from "@/lib/crm";
 import { useAuthStore } from "@/stores/auth-store";
+import {
+  AgencyConnectionBadge,
+  type AgencyConnectionStatus,
+} from "@/components/dashboard/agency-connection-badge";
+import { cn } from "@/lib/utils";
 
 interface AgencyStatus {
   kind: string;
@@ -42,6 +46,10 @@ interface AgencyClientRow {
   handoffs: number;
   openPipelineInr: number;
   openLeads: number;
+  connectionStatus: AgencyConnectionStatus;
+  goLiveProgressPct: number;
+  displayPhoneNumber: string | null;
+  tokenNeedsRefresh: boolean;
 }
 
 export default function AgencyPage() {
@@ -100,6 +108,14 @@ export default function AgencyPage() {
   }
 
   const loading = statusLoading || (status?.isAgency && clientsLoading);
+
+  const healthCounts = clients?.reduce(
+    (acc, c) => {
+      acc[c.connectionStatus] += 1;
+      return acc;
+    },
+    { live: 0, setup: 0, token: 0, disconnected: 0 } as Record<AgencyConnectionStatus, number>,
+  );
 
   return (
     <div className="dashboard-page">
@@ -160,6 +176,30 @@ export default function AgencyPage() {
             </div>
           </div>
 
+          {clients && clients.length > 0 && healthCounts && (
+            <div className="mb-6 grid gap-3 sm:grid-cols-4">
+              {(
+                [
+                  ["live", "Live clients", healthCounts.live],
+                  ["setup", "In setup", healthCounts.setup],
+                  ["token", "Token action", healthCounts.token],
+                  ["disconnected", "Not connected", healthCounts.disconnected],
+                ] as const
+              ).map(([status, label, count]) => (
+                <div
+                  key={status}
+                  className="rounded-xl border border-[#dce9ff] bg-white px-4 py-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <AgencyConnectionBadge status={status} />
+                  </div>
+                  <p className="mt-1 text-2xl font-bold">{count}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {!clients?.length ? (
             <DashboardPanel>
               <EmptyState
@@ -176,16 +216,46 @@ export default function AgencyPage() {
                   className="rounded-2xl border border-[#dce9ff] bg-white p-4 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-bold text-foreground">{c.displayName}</p>
                       <p className="text-xs text-muted-foreground">{c.slug}</p>
+                      {c.displayPhoneNumber && (
+                        <p className="mt-1 truncate text-xs font-medium text-foreground/80">
+                          {c.displayPhoneNumber}
+                        </p>
+                      )}
                     </div>
-                    {c.whatsappConnected ? (
-                      <Wifi className="h-4 w-4 text-accent" aria-label="WhatsApp connected" />
-                    ) : (
-                      <WifiOff className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    <AgencyConnectionBadge status={c.connectionStatus} />
                   </div>
+
+                  {c.whatsappConnected && (
+                    <div className="mt-3">
+                      <div className="mb-1 flex justify-between text-[10px] font-medium text-muted-foreground">
+                        <span>Go-live</span>
+                        <span>{c.goLiveProgressPct}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            c.connectionStatus === "live"
+                              ? "bg-[#25D366]"
+                              : c.connectionStatus === "token"
+                                ? "bg-red-500"
+                                : "bg-amber-500",
+                          )}
+                          style={{ width: `${c.goLiveProgressPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {c.tokenNeedsRefresh && (
+                    <p className="mt-2 text-xs font-medium text-red-700">
+                      Meta token needs refresh in client workspace.
+                    </p>
+                  )}
+
                   <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded-lg bg-[#f8f9ff] px-2.5 py-2">
                       <dt className="text-muted-foreground">Pipeline</dt>
@@ -224,7 +294,9 @@ export default function AgencyPage() {
                         size="sm"
                         className="w-full gap-1.5 rounded-xl"
                         disabled={switchingId === c.organizationId}
-                        onClick={() => void switchToClient(c.organizationId, "/onboarding")}
+                        onClick={() =>
+                          void switchToClient(c.organizationId, "/onboarding?from=agency")
+                        }
                       >
                         {switchingId === c.organizationId ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -232,6 +304,19 @@ export default function AgencyPage() {
                           <Wifi className="h-3.5 w-3.5" />
                         )}
                         Connect WhatsApp
+                      </Button>
+                    )}
+                    {c.connectionStatus === "setup" && c.whatsappConnected && (
+                      <Button
+                        size="sm"
+                        variant="accent"
+                        className="w-full gap-1.5 rounded-xl"
+                        disabled={switchingId === c.organizationId}
+                        onClick={() =>
+                          void switchToClient(c.organizationId, "/onboarding?from=agency")
+                        }
+                      >
+                        Continue setup
                       </Button>
                     )}
                   </div>
@@ -245,6 +330,10 @@ export default function AgencyPage() {
       <p className="mt-8 text-xs text-muted-foreground">
         Each client gets an isolated workspace with its own trial/billing. Your agency team is
         added as admin on new clients automatically.{" "}
+        <Link href="/dashboard/partner" className="font-semibold text-accent hover:underline">
+          Partner install kit →
+        </Link>{" "}
+        ·{" "}
         <Link href="/dashboard/pricing" className="font-semibold text-accent hover:underline">
           View Pro plan →
         </Link>
