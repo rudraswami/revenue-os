@@ -110,9 +110,12 @@ export class ConversationsService {
     };
   }
 
-  async list(user: JwtPayload, page = 1, pageSize = 20, q?: string, filter?: string) {
+  async list(user: JwtPayload, page = 1, pageSize = 20, q?: string, filter?: string, scope?: string) {
     const skip = (page - 1) * pageSize;
     const query = q?.trim();
+    const closedStages = ["WON", "LOST"] as const;
+    const listScope = scope === "closed" ? "closed" : "active";
+
     const where = {
       organizationId: user.organizationId,
       ...(filter === "handoff"
@@ -121,6 +124,11 @@ export class ConversationsService {
       ...(filter === "unread" ? { unreadCount: { gt: 0 } } : {}),
       ...(filter === "unassigned" ? { assignedToId: null } : {}),
       ...(filter === "mine" ? { assignedToId: user.sub } : {}),
+      ...(listScope === "closed"
+        ? { lead: { stage: { in: [...closedStages] } } }
+        : {
+            OR: [{ leadId: null }, { lead: { stage: { notIn: [...closedStages] } } }],
+          }),
       ...(query
         ? {
             OR: [

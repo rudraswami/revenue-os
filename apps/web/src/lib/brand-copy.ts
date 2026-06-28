@@ -100,6 +100,11 @@ export const CONVERSATIONS = {
   filterAll: "All",
   filterUnread: "Unread",
   filterUnassigned: "Unassigned",
+  /** Outbound — start a new WhatsApp thread */
+  newMessage: "New message",
+  newOutboundTitle: "Message a customer",
+  newOutboundHint:
+    "Use a Meta-approved template for new numbers. Free text works if they messaged you in the last 24 hours.",
 } as const;
 
-export type InboxListFilter = "all" | "handoff" | "unread" | "unassigned";
+export type { InboxListFilter, InboxListScope } from "./i18n/conversations-copy";

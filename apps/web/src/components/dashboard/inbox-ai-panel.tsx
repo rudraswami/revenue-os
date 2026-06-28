@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Sparkles, Target, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CONVERSATIONS } from "@/lib/brand-copy";
+import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { cn } from "@/lib/utils";
 
 export interface InboxAiContext {
@@ -44,6 +44,7 @@ export function InboxAiPanel({
   assignPending?: boolean;
   resolvePending?: boolean;
 }) {
+  const copy = useConversationsCopy();
   const [expanded, setExpanded] = useState(!!requiresHuman);
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export function InboxAiPanel({
         <div className="mb-2 rounded-xl border border-amber-200/90 bg-gradient-to-r from-amber-50 to-orange-50/80 px-3 py-3 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <p className="text-xs font-semibold leading-snug text-amber-950">
-              {CONVERSATIONS.needsYouTitle(handoffReason)}
+              {copy.needsYouTitle(handoffReason)}
             </p>
             {canEdit && (
               <div className="flex flex-wrap items-center gap-2">
@@ -76,7 +77,7 @@ export function InboxAiPanel({
                   onClick={() => onTakeover(suggestedTitle)}
                 >
                   <UserRound className="h-3.5 w-3.5" />
-                  {CONVERSATIONS.replyNow}
+                  {copy.replyNow}
                 </Button>
                 <Button
                   type="button"
@@ -86,14 +87,14 @@ export function InboxAiPanel({
                   disabled={resolvePending}
                   onClick={onResolveHandoff}
                 >
-                  {CONVERSATIONS.alreadyHandled}
+                  {copy.alreadyHandled}
                 </Button>
               </div>
             )}
           </div>
           {canEdit && (
             <p className="mt-1.5 text-[10px] leading-relaxed text-amber-800/85">
-              {CONVERSATIONS.replyNowHint}
+              {copy.replyNowHint}
             </p>
           )}
         </div>
@@ -128,7 +129,7 @@ export function InboxAiPanel({
                 )}
                 {confidencePct != null && (
                   <span className="text-[10px] font-semibold text-muted-foreground">
-                    {confidencePct}% confident
+                    {confidencePct}%
                   </span>
                 )}
               </div>

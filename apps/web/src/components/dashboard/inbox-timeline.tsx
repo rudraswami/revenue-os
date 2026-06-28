@@ -2,8 +2,7 @@
 
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CONVERSATIONS } from "@/lib/brand-copy";
-import { formatStage } from "@/lib/stage-labels";
+import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { cn } from "@/lib/utils";
 
 export interface InboxTimelineEvent {
@@ -24,46 +23,14 @@ function parseStageTitle(title: string): { from?: string; to?: string } {
   return {};
 }
 
-function humanizeDetail(detail?: string): string | undefined {
-  if (!detail) return undefined;
-  const known: Record<string, string> = {
-    "Updated from Conversations": "Changed in Conversations",
-    "Updated from Pipeline": "Changed on Pipeline",
-    "Team notified about stale conversation": "Team notified — no reply in 24h",
-  };
-  return known[detail] ?? detail;
-}
-
-function eventHeadline(ev: InboxTimelineEvent): string {
-  const stages =
-    ev.type === "stage_change" || ev.type === "automation" ? parseStageTitle(ev.title) : {};
-
-  if (stages.to) {
-    const to = formatStage(stages.to);
-    if (stages.from) {
-      const from = formatStage(stages.from);
-      return `${from} → ${to}`;
-    }
-    return ev.type === "automation" ? `Auto-moved to ${to}` : `Set to ${to}`;
-  }
-
-  if (ev.type === "ai_classify") return "AI reviewed message";
-
-  const titles: Record<string, string> = {
-    "Hot lead alert emailed": "Hot lead alert sent",
-    "Follow-up reminder sent": "Follow-up reminder sent",
-  };
-  return titles[ev.title] ?? ev.title;
-}
-
-function formatTimelineDate(iso: string) {
+function formatTimelineDate(iso: string, locale: string) {
   const d = new Date(iso);
   const now = new Date();
   const sameDay =
     d.getDate() === now.getDate() &&
     d.getMonth() === now.getMonth() &&
     d.getFullYear() === now.getFullYear();
-  if (sameDay) return "Today";
+  if (sameDay) return locale === "hi" ? "आज" : "Today";
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
   if (
@@ -71,16 +38,22 @@ function formatTimelineDate(iso: string) {
     d.getMonth() === yesterday.getMonth() &&
     d.getFullYear() === yesterday.getFullYear()
   ) {
-    return "Yesterday";
+    return locale === "hi" ? "कल" : "Yesterday";
   }
-  return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  return d.toLocaleDateString(locale === "hi" ? "hi-IN" : "en-IN", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
-function formatTimelineTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function formatTimelineTime(iso: string, locale: string) {
+  return new Date(iso).toLocaleTimeString(locale === "hi" ? "hi-IN" : "en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-/** Drop back-to-back identical entries (common with repeated saves). */
 function dedupeEvents(events: InboxTimelineEvent[]) {
   return events.filter((ev, i) => {
     if (i === 0) return true;
@@ -89,10 +62,10 @@ function dedupeEvents(events: InboxTimelineEvent[]) {
   });
 }
 
-function groupEventsByDate(events: InboxTimelineEvent[]) {
+function groupEventsByDate(events: InboxTimelineEvent[], locale: string) {
   const groups: { date: string; events: InboxTimelineEvent[] }[] = [];
   for (const ev of events) {
-    const date = formatTimelineDate(ev.at);
+    const date = formatTimelineDate(ev.at, locale);
     const last = groups[groups.length - 1];
     if (last?.date === date) last.events.push(ev);
     else groups.push({ date, events: [ev] });
@@ -100,14 +73,21 @@ function groupEventsByDate(events: InboxTimelineEvent[]) {
   return groups;
 }
 
-function TimelineRow({ ev }: { ev: InboxTimelineEvent }) {
-  const headline = eventHeadline(ev);
-  const detail = humanizeDetail(ev.detail);
-
+function TimelineRow({
+  ev,
+  headline,
+  detail,
+  locale,
+}: {
+  ev: InboxTimelineEvent;
+  headline: string;
+  detail?: string;
+  locale: string;
+}) {
   return (
     <li className="grid grid-cols-[3.25rem_1fr] gap-x-2 gap-y-0.5 border-b border-border/50 py-2.5 last:border-0">
       <time className="pt-0.5 text-[10px] tabular-nums leading-tight text-muted-foreground">
-        {formatTimelineTime(ev.at)}
+        {formatTimelineTime(ev.at, locale)}
       </time>
       <div className="min-w-0">
         <p className="text-[13px] font-medium leading-snug text-foreground">{headline}</p>
@@ -134,9 +114,34 @@ export function InboxTimeline({
   className?: string;
   hasClassification?: boolean;
 }) {
+  const copy = useConversationsCopy();
   const cleaned = dedupeEvents(events);
-  const groups = groupEventsByDate(cleaned);
+  const groups = groupEventsByDate(cleaned, copy.locale);
   const confidencePct = aiConfidence != null ? Math.round(aiConfidence * 100) : null;
+
+  function eventHeadline(ev: InboxTimelineEvent): string {
+    const stages =
+      ev.type === "stage_change" || ev.type === "automation" ? parseStageTitle(ev.title) : {};
+
+    if (stages.to) {
+      const to = copy.stageLabel(stages.to);
+      if (stages.from) {
+        const from = copy.stageLabel(stages.from);
+        return copy.timelineHeadline.moved(from, to);
+      }
+      return ev.type === "automation"
+        ? copy.timelineHeadline.autoMovedTo(to)
+        : copy.timelineHeadline.setTo(to);
+    }
+
+    if (ev.type === "ai_classify") return copy.timelineHeadline.aiReviewed;
+
+    const titles: Record<string, string> = {
+      "Hot lead alert emailed": copy.timelineHeadline.hotLeadAlert,
+      "Follow-up reminder sent": copy.timelineHeadline.followupReminder,
+    };
+    return titles[ev.title] ?? ev.title;
+  }
 
   return (
     <aside
@@ -151,11 +156,9 @@ export function InboxTimeline({
           <>
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                {CONVERSATIONS.timelineTitle}
+                {copy.timelineTitle}
               </h2>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {CONVERSATIONS.timelineSubtitle}
-              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{copy.timelineSubtitle}</p>
             </div>
             <Button
               type="button"
@@ -176,7 +179,7 @@ export function InboxTimeline({
             className="mx-auto h-8 w-8 text-muted-foreground"
             onClick={onToggle}
             aria-label="Expand activity"
-            title={CONVERSATIONS.timelineTitle}
+            title={copy.timelineTitle}
           >
             <PanelRightOpen className="h-4 w-4" />
           </Button>
@@ -188,7 +191,7 @@ export function InboxTimeline({
           {confidencePct != null && (
             <div className="mb-3 border-b border-border/50 pb-3">
               <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                <span>{CONVERSATIONS.timelineConfidence}</span>
+                <span>{copy.timelineConfidence}</span>
                 <span className="tabular-nums font-medium text-foreground">{confidencePct}%</span>
               </div>
               <div className="h-1 overflow-hidden rounded-full bg-muted">
@@ -203,8 +206,8 @@ export function InboxTimeline({
           {!cleaned.length && (
             <p className="px-1 py-6 text-center text-xs leading-relaxed text-muted-foreground">
               {hasClassification || aiConfidence != null
-                ? CONVERSATIONS.timelineEmptyEvents
-                : CONVERSATIONS.timelineEmptyClassify}
+                ? copy.timelineEmptyEvents
+                : copy.timelineEmptyClassify}
             </p>
           )}
 
@@ -216,7 +219,13 @@ export function InboxTimeline({
                 </p>
                 <ul>
                   {group.events.map((ev) => (
-                    <TimelineRow key={ev.id} ev={ev} />
+                    <TimelineRow
+                      key={ev.id}
+                      ev={ev}
+                      headline={eventHeadline(ev)}
+                      detail={copy.humanizeDetail(ev.detail)}
+                      locale={copy.locale}
+                    />
                   ))}
                 </ul>
               </section>

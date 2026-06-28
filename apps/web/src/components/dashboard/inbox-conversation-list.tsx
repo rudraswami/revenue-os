@@ -1,15 +1,18 @@
 "use client";
 
-import { Inbox, MessageSquare, MessageSquarePlus, Search } from "lucide-react";
+import { Inbox, MessageSquare, Plus, Search } from "lucide-react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { InboxListSkeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-state";
-import { CONVERSATIONS, EYEBROW, NAV, type InboxListFilter } from "@/lib/brand-copy";
-import { STAGE_BADGE } from "@/lib/crm";
-import { formatStage } from "@/lib/stage-labels";
+import {
+  useConversationsCopy,
+  type InboxListFilter,
+  type InboxListScope,
+} from "@/lib/i18n/conversations-copy";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 
 export interface InboxConversationRow {
@@ -23,11 +26,12 @@ export interface InboxConversationRow {
   messages: Array<{ content: string | null }>;
 }
 
-const LIST_FILTERS: { id: InboxListFilter; label: string }[] = [
-  { id: "all", label: CONVERSATIONS.filterAll },
-  { id: "handoff", label: CONVERSATIONS.yourTurn },
-  { id: "unread", label: CONVERSATIONS.filterUnread },
-  { id: "unassigned", label: CONVERSATIONS.filterUnassigned },
+const QUEUE_FILTERS: InboxListFilter[] = [
+  "all",
+  "handoff",
+  "unread",
+  "unassigned",
+  "mine",
 ];
 
 function formatListTime(iso: string | null) {
@@ -44,10 +48,6 @@ function formatListTime(iso: string | null) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function isClosedStage(stage: string) {
-  return stage === "WON" || stage === "LOST";
-}
-
 export function InboxConversationList({
   conversations,
   selectedId,
@@ -61,7 +61,9 @@ export function InboxConversationList({
   onSelect,
   onNewMessage,
   listFilter = "all",
+  listScope = "active",
   onListFilterChange,
+  onListScopeChange,
   yourTurnCount,
 }: {
   conversations: InboxConversationRow[];
@@ -76,35 +78,57 @@ export function InboxConversationList({
   onSelect: (id: string) => void;
   onNewMessage?: () => void;
   listFilter?: InboxListFilter;
+  listScope?: InboxListScope;
   onListFilterChange?: (f: InboxListFilter) => void;
+  onListScopeChange?: (s: InboxListScope) => void;
   yourTurnCount?: number;
 }) {
+  const { t } = useI18n();
+  const copy = useConversationsCopy();
+
+  const filterLabel: Record<InboxListFilter, string> = {
+    all: copy.filterAll,
+    handoff: copy.yourTurn,
+    unread: copy.filterUnread,
+    unassigned: copy.filterUnassigned,
+    mine: copy.filterMine,
+  };
+
+  function emptyState() {
+    if (listScope === "closed") {
+      return { title: copy.emptyClosed, description: copy.emptyFilterHint };
+    }
+    if (listFilter === "handoff") {
+      return { title: copy.emptyCaughtUp, description: copy.emptyFilterHint };
+    }
+    if (listFilter === "unread") {
+      return { title: copy.emptyUnread, description: copy.emptyFilterHint };
+    }
+    if (listFilter === "unassigned") {
+      return { title: copy.emptyUnassigned, description: copy.emptyFilterHint };
+    }
+    if (listFilter === "mine") {
+      return { title: copy.emptyMine, description: copy.emptyFilterHint };
+    }
+    return { title: copy.emptyActive, description: copy.emptyStartHint };
+  }
+
+  const empty = emptyState();
+
   return (
-    <aside className="flex h-full w-full shrink-0 flex-col border-r border-border/80 bg-[#f8f9ff] md:w-[min(100%,320px)] lg:w-[360px]">
+    <aside className="relative flex h-full w-full shrink-0 flex-col border-r border-border/80 bg-[#f8f9ff] md:w-[min(100%,320px)] lg:w-[360px]">
       <div className="shrink-0 border-b border-border/80 bg-white px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
-              {EYEBROW.messaging}
+              {copy.messagingEyebrow}
             </p>
-            <h1 className="text-base font-bold tracking-tight">{NAV.conversations}</h1>
+            <h1 className="text-base font-bold tracking-tight">{t("nav.conversations")}</h1>
           </div>
           <div className="flex items-center gap-1.5">
-            {onNewMessage && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 gap-1 px-2 text-[10px]"
-                onClick={onNewMessage}
-              >
-                <MessageSquarePlus className="h-3.5 w-3.5" />
-                New
-              </Button>
-            )}
             {hasWhatsapp && (
               <span className="rounded-full bg-bento-mint px-2 py-0.5 text-[9px] font-bold uppercase text-accent">
-                Live
+                {copy.live}
               </span>
             )}
             {live && (
@@ -113,22 +137,47 @@ export function InboxConversationList({
           </div>
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          {conversations.length} conversation{conversations.length === 1 ? "" : "s"}
+          {copy.conversationCount(conversations.length)}
         </p>
-        {(conversations.length > 0 || search) && (
+
+        {hasWhatsapp && onListScopeChange && (
+          <div className="mt-2.5 flex rounded-lg bg-muted/60 p-0.5">
+            {(["active", "closed"] as const).map((scope) => (
+              <button
+                key={scope}
+                type="button"
+                onClick={() => onListScopeChange(scope)}
+                className={cn(
+                  "flex-1 rounded-md py-1.5 text-[11px] font-semibold transition",
+                  listScope === scope
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {scope === "active" ? copy.scopeActive : copy.scopeClosed}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {hasWhatsapp && (
           <div className="relative mt-2.5">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search name or message…"
+              placeholder={copy.searchPlaceholder}
               className="h-8 rounded-lg border-border/80 bg-[#f8f9ff] pl-9 text-xs"
             />
           </div>
         )}
-        {onListFilterChange && (
+
+        {onListFilterChange && hasWhatsapp && (
           <div className="mt-2.5 flex gap-1 overflow-x-auto pb-0.5 custom-scrollbar">
-            {LIST_FILTERS.map(({ id, label }) => {
+            {(listScope === "closed"
+              ? QUEUE_FILTERS.filter((id) => id !== "handoff")
+              : QUEUE_FILTERS
+            ).map((id) => {
               const active = listFilter === id;
               const count = id === "handoff" ? yourTurnCount : undefined;
               return (
@@ -145,7 +194,7 @@ export function InboxConversationList({
                       : "bg-muted/80 text-muted-foreground hover:bg-muted",
                   )}
                 >
-                  {label}
+                  {filterLabel[id]}
                   {count != null && count > 0 ? ` · ${count}` : ""}
                 </button>
               );
@@ -172,10 +221,10 @@ export function InboxConversationList({
             <EmptyState
               compact
               icon={<MessageSquare className="h-6 w-6" />}
-              title="WhatsApp not connected"
-              description="Connect your business number to see customer messages here."
+              title={copy.whatsappNotConnected}
+              description={copy.whatsappNotConnectedHint}
               actionHref="/dashboard/settings?tab=whatsapp"
-              actionLabel="Connect WhatsApp"
+              actionLabel={copy.connectWhatsapp}
             />
           </div>
         )}
@@ -185,22 +234,21 @@ export function InboxConversationList({
             <EmptyState
               compact
               icon={<Inbox className="h-6 w-6" />}
-              title={
-                listFilter === "handoff"
-                  ? "You're all caught up"
-                  : listFilter === "unread"
-                    ? "No unread messages"
-                    : listFilter === "unassigned"
-                      ? "Everyone has an owner"
-                      : "No messages yet"
+              title={empty.title}
+              description={empty.description}
+              action={
+                listFilter === "all" && listScope === "active" && onNewMessage ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-1.5 rounded-lg bg-accent hover:bg-accent-hover"
+                    onClick={onNewMessage}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {copy.newMessage}
+                  </Button>
+                ) : undefined
               }
-              description={
-                listFilter === "all"
-                  ? "Message your business number from your phone to start."
-                  : "Try another filter or check back when new messages arrive."
-              }
-              actionHref={listFilter === "all" ? "/dashboard/settings?tab=whatsapp" : undefined}
-              actionLabel={listFilter === "all" ? "WhatsApp settings" : undefined}
             />
           </div>
         )}
@@ -209,7 +257,7 @@ export function InboxConversationList({
           {conversations.map((c) => {
             const displayName = c.contactName ?? c.contactPhone;
             const active = selectedId === c.id;
-            const closed = c.lead ? isClosedStage(c.lead.stage) : false;
+            const closed = listScope === "closed";
             return (
               <li key={c.id}>
                 <button
@@ -220,7 +268,7 @@ export function InboxConversationList({
                     active
                       ? "border-l-[3px] border-l-accent bg-white"
                       : "border-l-[3px] border-l-transparent hover:bg-white/70",
-                    closed && !active && "opacity-75",
+                    closed && !active && "opacity-80",
                   )}
                 >
                   <AvatarInitials name={displayName} size="sm" />
@@ -234,24 +282,17 @@ export function InboxConversationList({
                       </span>
                     </div>
                     <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
-                      {c.messages[0]?.content ?? "No messages"}
+                      {c.messages[0]?.content ?? "—"}
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      {c.requiresHuman && (
-                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">
-                          {CONVERSATIONS.waitingOnYou}
+                      {c.requiresHuman && listScope === "active" && (
+                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                          {copy.waitingOnYou}
                         </span>
                       )}
                       {c.lead && (
-                        <span
-                          className={cn(
-                            "rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
-                            STAGE_BADGE[c.lead.stage as keyof typeof STAGE_BADGE] ??
-                              "bg-primary-soft text-muted-foreground",
-                            closed && "opacity-80",
-                          )}
-                        >
-                          {formatStage(c.lead.stage)}
+                        <span className="text-[10px] font-medium text-muted-foreground">
+                          {copy.stageLabel(c.lead.stage)}
                         </span>
                       )}
                       {c.unreadCount > 0 && (
@@ -267,6 +308,21 @@ export function InboxConversationList({
           })}
         </ul>
       </div>
+
+      {onNewMessage && hasWhatsapp && listScope === "active" && (
+        <div className="shrink-0 border-t border-border/80 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Button
+            type="button"
+            className="h-10 w-full gap-2 rounded-xl bg-accent text-sm font-semibold shadow-sm hover:bg-accent-hover"
+            onClick={onNewMessage}
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/20">
+              <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </span>
+            {copy.newMessage}
+          </Button>
+        </div>
+      )}
     </aside>
   );
 }

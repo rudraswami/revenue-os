@@ -34,6 +34,10 @@ class ListQueryDto {
   @IsOptional()
   @IsString()
   filter?: string;
+
+  @IsOptional()
+  @IsString()
+  scope?: string;
 }
 
 class AssignDto {
@@ -114,7 +118,7 @@ export class ConversationsController {
 
   @Get()
   list(@CurrentUser() user: JwtPayload, @Query() query: ListQueryDto) {
-    return this.conversations.list(user, query.page, query.pageSize, query.q, query.filter);
+    return this.conversations.list(user, query.page, query.pageSize, query.q, query.filter, query.scope);
   }
 
   @Post("outbound")

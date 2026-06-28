@@ -8,10 +8,13 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
-import { formatStage } from "@/lib/stage-labels";
-import { LEAD_STAGES, STAGE_LABELS, STAGE_BADGE, formatInr } from "@/lib/crm";
+import { LEAD_STAGES, STAGE_BADGE, formatInr } from "@/lib/crm";
 import type { LeadStage } from "@growvisi/shared";
-import { CONVERSATIONS, type InboxListFilter } from "@/lib/brand-copy";
+import {
+  useConversationsCopy,
+  type InboxListFilter,
+  type InboxListScope,
+} from "@/lib/i18n/conversations-copy";
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
 import { InboxAiPanel, type InboxAiContext } from "@/components/dashboard/inbox-ai-panel";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
@@ -83,6 +86,7 @@ interface LeadTimeline {
 }
 
 export default function InboxPage() {
+  const copy = useConversationsCopy();
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const myUserId = useAuthStore((s) => s.user?.id);
@@ -98,6 +102,7 @@ export default function InboxPage() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [showOutbound, setShowOutbound] = useState(false);
   const [listFilter, setListFilter] = useState<InboxListFilter>("all");
+  const [listScope, setListScope] = useState<InboxListScope>("active");
   const bottomRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
 
@@ -111,30 +116,37 @@ export default function InboxPage() {
     const c = params.get("c");
     if (c) setSelectedId(c);
     const f = params.get("filter");
-    if (f === "handoff" || f === "unread" || f === "unassigned") {
+    if (f === "handoff" || f === "unread" || f === "unassigned" || f === "mine") {
       setListFilter(f);
     }
+    const s = params.get("scope");
+    if (s === "closed") setListScope("closed");
 
     function onPopState() {
       const p = new URLSearchParams(window.location.search);
       setSelectedId(p.get("c"));
       const filter = p.get("filter");
       setListFilter(
-        filter === "handoff" || filter === "unread" || filter === "unassigned"
+        filter === "handoff" ||
+          filter === "unread" ||
+          filter === "unassigned" ||
+          filter === "mine"
           ? filter
           : "all",
       );
+      setListScope(p.get("scope") === "closed" ? "closed" : "active");
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   const { data: listData, isLoading: listLoading, isError: listError, refetch: refetchList } = useQuery({
-    queryKey: ["conversations", searchDebounced, listFilter],
+    queryKey: ["conversations", searchDebounced, listFilter, listScope],
     queryFn: () => {
       const params = new URLSearchParams({ pageSize: "50" });
       if (searchDebounced) params.set("q", searchDebounced);
       if (listFilter !== "all") params.set("filter", listFilter);
+      if (listScope === "closed") params.set("scope", "closed");
       return apiFetch<{ data: ConversationRow[] }>(`/conversations?${params}`, {
         token: token ?? undefined,
       });
@@ -349,13 +361,32 @@ export default function InboxPage() {
     }).catch(() => {});
   }
 
+  function replaceInboxUrl(params: URLSearchParams) {
+    const q = params.toString();
+    window.history.replaceState(null, "", q ? `/dashboard/inbox?${q}` : "/dashboard/inbox");
+  }
+
   function setInboxFilter(filter: InboxListFilter) {
     setListFilter(filter);
     const params = new URLSearchParams(window.location.search);
     if (filter !== "all") params.set("filter", filter);
     else params.delete("filter");
-    const q = params.toString();
-    window.history.replaceState(null, "", q ? `/dashboard/inbox?${q}` : "/dashboard/inbox");
+    replaceInboxUrl(params);
+  }
+
+  function setInboxScope(scope: InboxListScope) {
+    setListScope(scope);
+    const params = new URLSearchParams(window.location.search);
+    if (scope === "closed") {
+      params.set("scope", "closed");
+      if (listFilter === "handoff") {
+        setListFilter("all");
+        params.delete("filter");
+      }
+    } else {
+      params.delete("scope");
+    }
+    replaceInboxUrl(params);
   }
 
   function clearSelection() {
@@ -389,7 +420,9 @@ export default function InboxPage() {
           onSelect={selectConversation}
           onNewMessage={canSend && hasWhatsapp ? () => setShowOutbound(true) : undefined}
           listFilter={listFilter}
+          listScope={listScope}
           onListFilterChange={setInboxFilter}
+          onListScopeChange={setInboxScope}
           yourTurnCount={convStats?.humanHandoffRecommended}
         />
       </div>
@@ -408,10 +441,8 @@ export default function InboxPage() {
               <Inbox className="h-7 w-7 text-accent" />
             </div>
             <div className="max-w-sm space-y-1">
-              <h2 className="text-lg font-bold tracking-tight">{CONVERSATIONS.selectTitle}</h2>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {CONVERSATIONS.selectBody}
-              </p>
+              <h2 className="text-lg font-bold tracking-tight">{copy.selectTitle}</h2>
+              <p className="text-sm leading-relaxed text-muted-foreground">{copy.selectBody}</p>
             </div>
             <div className="mt-2 grid max-w-md gap-2 text-left text-xs text-muted-foreground sm:grid-cols-3">
               <div className="rounded-xl border border-border/80 bg-white px-3 py-2.5">
@@ -482,8 +513,8 @@ export default function InboxPage() {
                       if (hasValue) {
                         const label =
                           lead.stage === "WON"
-                            ? CONVERSATIONS.dealClosed(formatInr(lead.valueCents))
-                            : CONVERSATIONS.dealValue(formatInr(lead.valueCents));
+                            ? copy.dealClosed(formatInr(lead.valueCents))
+                            : copy.dealValue(formatInr(lead.valueCents));
                         return (
                           <>
                             <span aria-hidden className="text-border">·</span>
@@ -512,7 +543,7 @@ export default function InboxPage() {
                               href={pipelineHref}
                               className="font-medium text-muted-foreground hover:text-accent hover:underline"
                             >
-                              {CONVERSATIONS.addDealValue}
+                              {copy.addDealValue}
                             </Link>
                           </>
                         );
@@ -525,7 +556,7 @@ export default function InboxPage() {
                             href={pipelineHref}
                             className="inline-flex items-center gap-0.5 font-medium text-accent hover:underline"
                           >
-                            {CONVERSATIONS.viewOnPipeline}
+                            {copy.viewOnPipeline}
                             <ExternalLink className="h-3 w-3" />
                           </Link>
                         </>
@@ -545,8 +576,8 @@ export default function InboxPage() {
                       title="Lead score from AI"
                     >
                       {thread.lead.score >= 80
-                        ? CONVERSATIONS.scoreHot(thread.lead.score)
-                        : CONVERSATIONS.scoreWarm(thread.lead.score)}
+                        ? copy.scoreHot(thread.lead.score)
+                        : copy.scoreWarm(thread.lead.score)}
                     </span>
                   )}
                   {thread.lead && (
@@ -562,7 +593,7 @@ export default function InboxPage() {
                       >
                         {LEAD_STAGES.map((s) => (
                           <option key={s} value={s}>
-                            {STAGE_LABELS[s]}
+                            {copy.stageLabel(s)}
                           </option>
                         ))}
                       </select>
@@ -573,13 +604,13 @@ export default function InboxPage() {
                           STAGE_BADGE[thread.lead.stage as LeadStage],
                         )}
                       >
-                        {formatStage(thread.lead.stage)}
+                        {copy.stageLabel(thread.lead.stage)}
                       </span>
                     )
                   )}
                   {thread.requiresHuman && (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
-                      {CONVERSATIONS.waitingOnYou}
+                      {copy.waitingOnYou}
                     </span>
                   )}
                 </div>
@@ -615,20 +646,20 @@ export default function InboxPage() {
               <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-[#f8f9ff]/60 px-4 py-2 lg:px-5">
                 <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
                   <span className="text-[10px] font-medium text-muted-foreground">
-                    {CONVERSATIONS.autoClassify}
+                    {copy.autoClassify}
                   </span>
                   <span className="scale-90">
                     <Switch
                       checked={thread.aiEnabled}
                       disabled={aiToggleMutation.isPending}
                       onCheckedChange={(v) => aiToggleMutation.mutate(v)}
-                      aria-label={CONVERSATIONS.autoClassify}
+                      aria-label={copy.autoClassify}
                     />
                   </span>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
                   <label htmlFor="assign-agent" className="text-[10px] font-medium text-muted-foreground">
-                    {CONVERSATIONS.assignedTo}
+                    {copy.assignedTo}
                   </label>
                   <select
                     id="assign-agent"
@@ -640,7 +671,7 @@ export default function InboxPage() {
                       assignMutation.mutate(v ? v : null);
                     }}
                   >
-                    <option value="">{CONVERSATIONS.unassigned}</option>
+                    <option value="">{copy.unassigned}</option>
                     {(teamMembers ?? []).map((m) => (
                       <option key={m.user.id} value={m.user.id}>
                         {m.user.name ?? m.user.email}
@@ -714,7 +745,7 @@ export default function InboxPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-muted-foreground">
-                        {CONVERSATIONS.composePlaceholder}
+                        {copy.composePlaceholder}
                       </p>
                     </div>
                     <span className="flex shrink-0 items-center gap-1 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white">

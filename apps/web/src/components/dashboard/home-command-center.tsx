@@ -15,7 +15,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { formatInr, STAGE_LABELS } from "@/lib/crm";
-import { CONVERSATIONS } from "@/lib/brand-copy";
+import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { cn } from "@/lib/utils";
 
 interface FunnelData {
@@ -77,6 +77,7 @@ export function HomeCommandCenter({
   slaSnapshot,
   teamWorkload,
 }: HomeCommandCenterProps) {
+  const copy = useConversationsCopy();
   if (isLoading) return <MetricCardsSkeleton variant="home" />;
 
   const unread = convStats?.unreadMessages ?? 0;
@@ -131,13 +132,13 @@ export function HomeCommandCenter({
             urgent={unread > 0}
           />
           <MetricCard
-            title={CONVERSATIONS.yourTurn}
+            title={copy.yourTurn}
             value={handoffs}
-            delta={handoffs > 0 ? CONVERSATIONS.yourTurnHint : CONVERSATIONS.yourTurnClear}
+            delta={handoffs > 0 ? copy.yourTurnHint : copy.yourTurnClear}
             icon={<UserRound className="h-5 w-5" />}
             variant={handoffs > 0 ? "rose" : "slate"}
             href={handoffs > 0 ? "/dashboard/inbox?filter=handoff" : "/dashboard/inbox"}
-            actionLabel={handoffs > 0 ? CONVERSATIONS.seeWhoWaiting : "Open conversations"}
+            actionLabel={handoffs > 0 ? copy.seeWhoWaiting : copy.openConversations}
             urgent={handoffs > 0}
           />
           <MetricCard

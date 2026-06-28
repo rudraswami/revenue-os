@@ -2,7 +2,7 @@
 
 import { ChevronDown, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CONVERSATIONS } from "@/lib/brand-copy";
+import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { cn } from "@/lib/utils";
 
 export function InboxComposer({
@@ -32,6 +32,8 @@ export function InboxComposer({
   composeRef?: React.RefObject<HTMLTextAreaElement | null>;
   onMinimize: () => void;
 }) {
+  const copy = useConversationsCopy();
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -77,7 +79,7 @@ export function InboxComposer({
         <textarea
           ref={composeRef}
           rows={2}
-          placeholder={CONVERSATIONS.composePlaceholder}
+          placeholder={copy.composePlaceholder}
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -98,11 +100,11 @@ export function InboxComposer({
                 onClick={onSuggest}
                 className="shrink-0 text-xs font-semibold text-accent underline-offset-2 transition hover:underline disabled:opacity-50"
               >
-                {suggestPending ? "Drafting…" : CONVERSATIONS.draftWithAi}
+                {suggestPending ? copy.drafting : copy.draftWithAi}
               </button>
             )}
             <p className="hidden truncate text-[10px] text-muted-foreground sm:block">
-              {CONVERSATIONS.composeFooter}
+              {copy.composeFooter}
             </p>
           </div>
 
@@ -113,7 +115,7 @@ export function InboxComposer({
               className="flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground transition hover:text-foreground"
             >
               <ChevronDown className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{CONVERSATIONS.minimizeComposer}</span>
+              <span className="hidden sm:inline">{copy.minimizeComposer}</span>
             </button>
             <Button
               type="submit"
@@ -126,7 +128,7 @@ export function InboxComposer({
               ) : (
                 <>
                   <Send className="mr-1.5 h-3.5 w-3.5 sm:hidden" />
-                  {CONVERSATIONS.sendReply}
+                  {copy.sendReply}
                 </>
               )}
             </Button>
@@ -135,7 +137,7 @@ export function InboxComposer({
       </div>
 
       <p className="mt-1.5 text-center text-[10px] text-muted-foreground sm:hidden">
-        {CONVERSATIONS.composeFooter}
+        {copy.composeFooter}
       </p>
     </form>
   );

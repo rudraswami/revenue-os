@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MessageSquarePlus, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { WhatsappTemplatePicker } from "@/components/dashboard/whatsapp-template-picker";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -18,6 +19,7 @@ export function OutboundCompose({
   onClose: () => void;
   onSent: (conversationId: string) => void;
 }) {
+  const copy = useConversationsCopy();
   const token = useAuthStore((s) => s.accessToken);
   const qc = useQueryClient();
   const [phone, setPhone] = useState("");
@@ -69,17 +71,14 @@ export function OutboundCompose({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-2xl border border-border bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <MessageSquarePlus className="h-5 w-5 text-accent" />
-            <h3 className="text-lg font-bold">New outbound message</h3>
+          <div>
+            <h3 className="text-lg font-bold">{copy.newOutboundTitle}</h3>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-muted">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          New numbers require a Meta-approved template. Existing threads within 24h can use free text.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{copy.newOutboundHint}</p>
 
         <div className="mt-4 space-y-3">
           <Input
