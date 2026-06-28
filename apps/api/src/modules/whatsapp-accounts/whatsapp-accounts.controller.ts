@@ -76,6 +76,11 @@ export class WhatsappAccountsController {
     return this.accounts.getOnboardingReadiness();
   }
 
+  @Get("onboarding-progress")
+  onboardingProgress(@CurrentUser() user: JwtPayload) {
+    return this.accounts.getOnboardingProgress(user);
+  }
+
   @Get("technical")
   @UseGuards(MembershipRoleGuard)
   @Roles("OWNER", "ADMIN")

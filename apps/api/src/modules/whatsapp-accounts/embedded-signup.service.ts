@@ -7,7 +7,7 @@ import { isProductionDeploy } from "../../config/production";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { exchangeForLongLivedToken } from "./meta-token.util";
-import { WhatsappAccountSafe } from "./whatsapp-accounts.service";
+import { WhatsappAccountSafe, WhatsappAccountsService } from "./whatsapp-accounts.service";
 
 @Injectable()
 export class EmbeddedSignupService {
@@ -17,6 +17,7 @@ export class EmbeddedSignupService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly entitlements: EntitlementsService,
+    private readonly accounts: WhatsappAccountsService,
   ) {}
 
   getPublicConfig() {
@@ -42,6 +43,8 @@ export class EmbeddedSignupService {
       solutionId,
       /** Omit for standard v4 WhatsApp Embedded Signup config; set only for coex / waba-only flows. */
       featureType,
+      /** Client-side CoEx override when env featureType is unset. */
+      coexFeatureType: "whatsapp_business_app_onboarding",
     };
   }
 
@@ -153,6 +156,7 @@ export class EmbeddedSignupService {
       phoneNumberId: string;
       wabaId: string;
       finishEvent?: string;
+      connectMethod?: "embedded" | "embedded_coex";
     },
   ): Promise<WhatsappAccountSafe> {
     if (!this.getPublicConfig().enabled) {
@@ -205,9 +209,15 @@ export class EmbeddedSignupService {
         displayPhoneNumber: details.display_phone_number?.trim() || phoneNumberId,
         verifiedName: details.verified_name ?? null,
         accessTokenEnc: encryptSecret(tokenToStore),
-        metadata: { tokenUpdatedAt: new Date().toISOString() },
+        metadata: {
+          tokenUpdatedAt: new Date().toISOString(),
+          connectMethod: input.connectMethod ?? "embedded",
+          finishEvent: input.finishEvent ?? null,
+        },
       },
     });
+
+    await this.accounts.syncTemplatesAfterConnect(account.id);
 
     this.logger.log(
       `Embedded signup complete org=${user.organizationId} phone=${account.displayPhoneNumber}`,

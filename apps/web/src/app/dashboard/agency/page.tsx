@@ -83,7 +83,7 @@ export default function AgencyPage() {
     },
   });
 
-  async function switchToClient(organizationId: string) {
+  async function switchToClient(organizationId: string, redirectTo?: string) {
     if (!token || switchingId) return;
     setSwitchingId(organizationId);
     try {
@@ -93,7 +93,7 @@ export default function AgencyPage() {
         body: JSON.stringify({ organizationId }),
       });
       applySession(session);
-      window.location.href = "/dashboard";
+      window.location.href = redirectTo ?? "/dashboard";
     } finally {
       setSwitchingId(null);
     }
@@ -204,20 +204,37 @@ export default function AgencyPage() {
                       <dd className="font-bold">{c.unreadMessages}</dd>
                     </div>
                   </dl>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-4 w-full gap-1.5 rounded-xl"
-                    disabled={switchingId === c.organizationId}
-                    onClick={() => void switchToClient(c.organizationId)}
-                  >
-                    {switchingId === c.organizationId ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ArrowRight className="h-3.5 w-3.5" />
+                  <div className="mt-4 flex flex-col gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-1.5 rounded-xl"
+                      disabled={switchingId === c.organizationId}
+                      onClick={() => void switchToClient(c.organizationId)}
+                    >
+                      {switchingId === c.organizationId ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      )}
+                      {t("common.switchClient")}
+                    </Button>
+                    {!c.whatsappConnected && (
+                      <Button
+                        size="sm"
+                        className="w-full gap-1.5 rounded-xl"
+                        disabled={switchingId === c.organizationId}
+                        onClick={() => void switchToClient(c.organizationId, "/onboarding")}
+                      >
+                        {switchingId === c.organizationId ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Wifi className="h-3.5 w-3.5" />
+                        )}
+                        Connect WhatsApp
+                      </Button>
                     )}
-                    {t("common.switchClient")}
-                  </Button>
+                  </div>
                 </div>
               ))}
             </div>

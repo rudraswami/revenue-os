@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
-import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
+import { IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 import { Type } from "class-transformer";
 import type { Response } from "express";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
@@ -37,6 +37,7 @@ class ListQueryDto {
 
   @IsOptional()
   @IsString()
+  @IsIn(["active", "closed"])
   scope?: string;
 }
 

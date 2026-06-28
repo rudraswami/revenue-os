@@ -375,17 +375,16 @@ export default function InboxPage() {
   }
 
   function setInboxScope(scope: InboxListScope) {
+    const nextFilter =
+      scope === "closed" && listFilter === "handoff" ? "all" : listFilter;
+    if (nextFilter !== listFilter) setListFilter(nextFilter);
     setListScope(scope);
+
     const params = new URLSearchParams(window.location.search);
-    if (scope === "closed") {
-      params.set("scope", "closed");
-      if (listFilter === "handoff") {
-        setListFilter("all");
-        params.delete("filter");
-      }
-    } else {
-      params.delete("scope");
-    }
+    if (scope === "closed") params.set("scope", "closed");
+    else params.delete("scope");
+    if (nextFilter !== "all") params.set("filter", nextFilter);
+    else params.delete("filter");
     replaceInboxUrl(params);
   }
 

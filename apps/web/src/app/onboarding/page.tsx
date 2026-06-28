@@ -21,7 +21,7 @@ import {
 import { Logo } from "@/components/marketing/logo";
 import { Button } from "@/components/ui/button";
 import WhatsappConnect from "@/components/settings/whatsapp-connect";
-import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
+import { WhatsappGoLiveChecklist } from "@/components/settings/whatsapp-go-live-checklist";
 import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
 import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
 import { apiFetch } from "@/lib/api-client";
@@ -107,9 +107,9 @@ export default function OnboardingPage() {
     },
     {
       id: "inbox",
-      title: "Receive your first customer message",
+      title: "Go live on Conversations",
       done: firstMessageReceived,
-      description: "Send a WhatsApp message to your business number to verify ingestion.",
+      description: "Complete the go-live checklist: webhooks, test message, AI classification, pipeline.",
     },
   ];
 
@@ -273,7 +273,7 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                   {activeAccount?.displayPhoneNumber && (
-                    <WhatsappIngestionVerifier displayPhoneNumber={activeAccount.displayPhoneNumber} />
+                    <WhatsappGoLiveChecklist />
                   )}
                   <WhatsappOnboardingFaq />
                 </motion.div>

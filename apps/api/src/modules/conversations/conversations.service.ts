@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { LeadStage, type Prisma } from "@prisma/client";
 import type { JwtPayload } from "@growvisi/shared";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 import {
@@ -113,36 +114,52 @@ export class ConversationsService {
   async list(user: JwtPayload, page = 1, pageSize = 20, q?: string, filter?: string, scope?: string) {
     const skip = (page - 1) * pageSize;
     const query = q?.trim();
-    const closedStages = ["WON", "LOST"] as const;
+    const closedStages: LeadStage[] = [LeadStage.WON, LeadStage.LOST];
     const listScope = scope === "closed" ? "closed" : "active";
 
-    const where = {
-      organizationId: user.organizationId,
-      ...(filter === "handoff"
-        ? { metadata: { path: ["requiresHuman"], equals: true } }
-        : {}),
-      ...(filter === "unread" ? { unreadCount: { gt: 0 } } : {}),
-      ...(filter === "unassigned" ? { assignedToId: null } : {}),
-      ...(filter === "mine" ? { assignedToId: user.sub } : {}),
-      ...(listScope === "closed"
-        ? { lead: { stage: { in: [...closedStages] } } }
-        : {
-            OR: [{ leadId: null }, { lead: { stage: { notIn: [...closedStages] } } }],
-          }),
-      ...(query
-        ? {
-            OR: [
-              { contactName: { contains: query, mode: "insensitive" as const } },
-              { contactPhone: { contains: query } },
-              {
-                messages: {
-                  some: { content: { contains: query, mode: "insensitive" as const } },
-                },
-              },
-            ],
-          }
-        : {}),
-    };
+    const and: Prisma.ConversationWhereInput[] = [{ organizationId: user.organizationId }];
+
+    if (filter === "handoff") {
+      and.push({ metadata: { path: ["requiresHuman"], equals: true } });
+    }
+    if (filter === "unread") {
+      and.push({ unreadCount: { gt: 0 } });
+    }
+    if (filter === "unassigned") {
+      and.push({ assignedToId: null });
+    }
+    if (filter === "mine") {
+      and.push({ assignedToId: user.sub });
+    }
+
+    if (listScope === "closed") {
+      and.push({
+        lead: { is: { stage: { in: closedStages } } },
+      });
+    } else {
+      and.push({
+        OR: [
+          { leadId: null },
+          { lead: { is: { stage: { notIn: closedStages } } } },
+        ],
+      });
+    }
+
+    if (query) {
+      and.push({
+        OR: [
+          { contactName: { contains: query, mode: "insensitive" } },
+          { contactPhone: { contains: query } },
+          {
+            messages: {
+              some: { content: { contains: query, mode: "insensitive" } },
+            },
+          },
+        ],
+      });
+    }
+
+    const where: Prisma.ConversationWhereInput = { AND: and };
 
     const [data, total] = await Promise.all([
       this.prisma.conversation.findMany({

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Loader2,
   MessageCircle,
+  Plus,
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
@@ -14,12 +15,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
+import {
+  connectMethodForPath,
+  WHATSAPP_CONNECT_PATHS,
+  type WhatsappConnectPath,
+} from "@/lib/whatsapp-connect-paths";
 import { canConnectWhatsapp } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
-import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
+import { WhatsappGoLiveChecklist } from "@/components/settings/whatsapp-go-live-checklist";
 import { WhatsappEmbeddedSignupDiagnostics } from "@/components/settings/whatsapp-embedded-signup-diagnostics";
 import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
 import { WhatsappTokenRefresh } from "@/components/settings/whatsapp-token-refresh";
@@ -39,6 +45,7 @@ interface EmbeddedConfig {
   graphApiVersion: string;
   solutionId?: string;
   featureType?: string;
+  coexFeatureType?: string;
 }
 
 type ConnectPhase = "idle" | "waiting_meta" | "saving" | "done" | "error";
@@ -62,6 +69,8 @@ export default function WhatsappConnect() {
   const [phase, setPhase] = useState<ConnectPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [connectedAccount, setConnectedAccount] = useState<WhatsappAccount | null>(null);
+  const [connectPath, setConnectPath] = useState<WhatsappConnectPath>("cloud_api");
+  const [addingAnother, setAddingAnother] = useState(false);
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -105,12 +114,24 @@ export default function WhatsappConnect() {
     staleTime: 30_000,
   });
 
+  const { data: billing } = useQuery({
+    queryKey: ["billing-status"],
+    queryFn: () =>
+      apiFetch<{ usage: { whatsappNumbers: number }; limits: { whatsappNumbers: number } }>(
+        "/billing",
+        { token: token ?? undefined },
+      ),
+    enabled: !!token,
+    staleTime: 60_000,
+  });
+
   const completeMutation = useMutation({
     mutationFn: (payload: {
       code: string;
       phoneNumberId: string;
       wabaId: string;
       finishEvent: string;
+      connectMethod: "embedded" | "embedded_coex";
     }) =>
       apiFetch<WhatsappAccount>("/whatsapp-accounts/embedded-signup/complete", {
         method: "POST",
@@ -120,18 +141,22 @@ export default function WhatsappConnect() {
           phoneNumberId: payload.phoneNumberId,
           wabaId: payload.wabaId,
           finishEvent: payload.finishEvent,
+          connectMethod: payload.connectMethod,
         }),
       }),
     onSuccess: (account) => {
       setConnectedAccount(account);
       setPhase("done");
       setError(null);
+      setAddingAnother(false);
       patchOnboarding({
         whatsappConnected: true,
         firstMessageReceived: onboarding?.firstMessageReceived ?? false,
         complete: true,
       });
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
+      void queryClient.invalidateQueries({ queryKey: ["whatsapp-onboarding-progress"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing-status"] });
     },
     onError: (e) => {
       setPhase("error");
@@ -155,18 +180,28 @@ export default function WhatsappConnect() {
   const activeAccounts = accounts?.filter((a) => a.isActive) ?? [];
   const displayAccount = connectedAccount ?? activeAccounts[0] ?? null;
   const embeddedLive = config?.embeddedSignupLive ?? false;
+  const whatsappLimit = billing?.limits.whatsappNumbers ?? 1;
+  const whatsappUsed = billing?.usage.whatsappNumbers ?? activeAccounts.length;
+  const canAddNumber = canConnect && whatsappUsed < whatsappLimit;
 
   async function handleConnect() {
     if (!config?.enabled || !embeddedLive) return;
     setError(null);
     setPhase("waiting_meta");
 
+    const pathConfig = WHATSAPP_CONNECT_PATHS[connectPath];
+    const featureType =
+      config.featureType?.trim() ||
+      (connectPath === "business_app"
+        ? config.coexFeatureType ?? pathConfig.featureType
+        : pathConfig.featureType);
+
     try {
       const credentials = await runEmbeddedSignup(
         config.appId,
         config.configId,
         config.graphApiVersion,
-        { featureType: config.featureType, solutionId: config.solutionId },
+        { featureType, solutionId: config.solutionId },
       );
 
       if (!credentials) {
@@ -175,7 +210,10 @@ export default function WhatsappConnect() {
       }
 
       setPhase("saving");
-      completeMutation.mutate(credentials);
+      completeMutation.mutate({
+        ...credentials,
+        connectMethod: connectMethodForPath(connectPath),
+      });
     } catch (e) {
       setPhase("error");
       const msg = e instanceof Error ? e.message : "Could not open Facebook setup.";
@@ -192,43 +230,76 @@ export default function WhatsappConnect() {
     );
   }
 
-  if (displayAccount && phase !== "waiting_meta" && phase !== "saving") {
+  if (displayAccount && !addingAnother && phase !== "waiting_meta" && phase !== "saving") {
     return (
       <div className="space-y-6">
         <div className="overflow-hidden rounded-2xl border border-[#6cf8bb]/30 bg-gradient-to-br from-[#ecfdf5]/80 via-white to-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
           <div className="border-b border-[#6cf8bb]/20 bg-[#ecfdf5]/50 px-6 py-4">
-            <p className="flex items-center gap-2 text-sm font-semibold text-[#128C7E]">
-              <CheckCircle2 className="h-4 w-4" />
-              WhatsApp connected
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-sm font-semibold text-[#128C7E]">
+                <CheckCircle2 className="h-4 w-4" />
+                WhatsApp connected
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {whatsappUsed} / {whatsappLimit} number{whatsappLimit === 1 ? "" : "s"} on plan
+              </p>
+            </div>
           </div>
           <div className="p-6 md:p-8">
-            <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#25D366]/15 text-[#128C7E] shadow-sm">
-                <WhatsAppIcon className="h-8 w-8" />
+            {activeAccounts.length > 1 ? (
+              <ul className="mb-6 space-y-2">
+                {activeAccounts.map((account) => (
+                  <li
+                    key={account.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-[#dce9ff] bg-white px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold">
+                        {account.verifiedName ?? "Business line"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{account.displayPhoneNumber}</p>
+                    </div>
+                    {canConnect && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        disabled={disconnectMutation.isPending}
+                        onClick={() => {
+                          if (confirm(`Disconnect ${account.displayPhoneNumber}?`)) {
+                            disconnectMutation.mutate(account.id);
+                          }
+                        }}
+                      >
+                        Disconnect
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex items-start gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#25D366]/15 text-[#128C7E] shadow-sm">
+                  <WhatsAppIcon className="h-8 w-8" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold tracking-tight">
+                    {displayAccount.verifiedName ?? "Your business line"}
+                  </h2>
+                  <p className="mt-0.5 text-sm font-medium text-muted-foreground">
+                    {displayAccount.displayPhoneNumber}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Customers can keep messaging this number. Growvisi syncs every conversation for
+                    scoring, pipeline, and team replies from Conversations.
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold tracking-tight">
-                  {displayAccount.verifiedName ?? "Your business line"}
-                </h2>
-                <p className="mt-0.5 text-sm font-medium text-muted-foreground">
-                  {displayAccount.displayPhoneNumber}
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Customers can keep messaging this number. Growvisi syncs every conversation for
-                  scoring, pipeline, and AI-assisted replies.
-                </p>
-              </div>
-            </div>
+            )}
 
             <div className="mt-6 border-t border-[#dce9ff] pt-6">
-              <p className="text-sm font-semibold text-foreground">Verify message delivery</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                One quick test confirms your inbox is receiving customer messages.
-              </p>
-              <div className="mt-4">
-                <WhatsappIngestionVerifier displayPhoneNumber={displayAccount.displayPhoneNumber} />
-              </div>
+              <WhatsappGoLiveChecklist compact showTestMessage={false} />
             </div>
           </div>
         </div>
@@ -245,23 +316,51 @@ export default function WhatsappConnect() {
 
         <WhatsappConnectionHealth />
 
-        {canConnect ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl text-muted-foreground"
-            disabled={disconnectMutation.isPending}
-            onClick={() => {
-              if (confirm(`Disconnect ${displayAccount.displayPhoneNumber}?`)) {
-                disconnectMutation.mutate(displayAccount.id);
-              }
-            }}
-          >
-            Disconnect number
-          </Button>
-        ) : (
+        <div className="flex flex-wrap gap-2">
+          {canAddNumber && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-xl"
+              onClick={() => {
+                setConnectedAccount(null);
+                setAddingAnother(true);
+                setPhase("idle");
+                setError(null);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add another number
+            </Button>
+          )}
+          {canConnect && activeAccounts.length === 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl text-muted-foreground"
+              disabled={disconnectMutation.isPending}
+              onClick={() => {
+                if (confirm(`Disconnect ${displayAccount.displayPhoneNumber}?`)) {
+                  disconnectMutation.mutate(displayAccount.id);
+                }
+              }}
+            >
+              Disconnect number
+            </Button>
+          )}
+        </div>
+        {!canConnect && (
           <p className="text-sm text-muted-foreground">
             Only workspace admins can connect or disconnect WhatsApp numbers.
+          </p>
+        )}
+        {canConnect && !canAddNumber && whatsappUsed >= whatsappLimit && whatsappLimit === 1 && (
+          <p className="text-sm text-muted-foreground">
+            Your plan includes 1 WhatsApp number.{" "}
+            <Link href="/dashboard/pricing" className="font-medium text-accent hover:underline">
+              Upgrade to Growth
+            </Link>{" "}
+            for up to 3 lines.
           </p>
         )}
       </div>
@@ -293,11 +392,30 @@ export default function WhatsappConnect() {
 
   return (
     <div className="space-y-6">
+      {addingAnother && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3">
+          <p className="text-sm text-muted-foreground">
+            Adding another WhatsApp line ({whatsappUsed}/{whatsappLimit} used)
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setAddingAnother(false);
+              setPhase("idle");
+              setError(null);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
       <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
         <p className="text-sm text-muted-foreground">
           Connect the <strong className="text-foreground">WhatsApp Business number you already use</strong>{" "}
           — the line your customers message. Growvisi ingests conversations for classification,
-          handoffs, and pipeline tracking. Your team sends human replies from Inbox.
+          pipeline tracking, and team replies from Conversations.
         </p>
       </div>
 
@@ -331,6 +449,34 @@ export default function WhatsappConnect() {
                 {error}
               </div>
             )}
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">How do you use WhatsApp today?</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(Object.keys(WHATSAPP_CONNECT_PATHS) as WhatsappConnectPath[]).map((pathId) => {
+                  const path = WHATSAPP_CONNECT_PATHS[pathId];
+                  const selected = connectPath === pathId;
+                  return (
+                    <button
+                      key={pathId}
+                      type="button"
+                      onClick={() => setConnectPath(pathId)}
+                      className={cn(
+                        "rounded-xl border p-4 text-left transition-all",
+                        selected
+                          ? "border-[#1877F2]/40 bg-[#1877F2]/5 ring-1 ring-[#1877F2]/20"
+                          : "border-border/80 bg-white hover:border-primary/20",
+                      )}
+                    >
+                      <p className="text-sm font-semibold text-foreground">{path.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {path.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               {[
@@ -384,7 +530,7 @@ export default function WhatsappConnect() {
         {canConnect && (
         <details className="rounded-2xl border border-border/80 bg-white">
           <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-muted-foreground hover:text-foreground">
-            Alternative: connect with Meta API Setup token
+            During App Review: connect with Meta API Setup token
           </summary>
           <div className="border-t border-border/80 px-6 py-6">
             <WhatsappConnectWizard />

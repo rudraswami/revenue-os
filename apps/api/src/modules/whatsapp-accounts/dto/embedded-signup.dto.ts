@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsIn, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CompleteEmbeddedSignupDto {
   @IsString()
@@ -16,4 +16,9 @@ export class CompleteEmbeddedSignupDto {
   @IsString()
   @IsOptional()
   finishEvent?: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(["embedded", "embedded_coex"])
+  connectMethod?: "embedded" | "embedded_coex";
 }

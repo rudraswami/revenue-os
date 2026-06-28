@@ -20,6 +20,13 @@ export interface WhatsappWebhookPayload {
         contacts?: Array<{ profile: { name: string }; wa_id: string }>;
         messages?: Array<Record<string, unknown>>;
         statuses?: Array<Record<string, unknown>>;
+        event?: string;
+        phone_number?: string;
+        phone_number_id?: string;
+        display_phone_number?: string;
+        verified_name?: string;
+        ban_info?: { waba_ban_state?: string; waba_ban_date?: string };
+        violation_info?: { violation_type?: string };
       };
       field: string;
     }>;
@@ -92,7 +99,7 @@ export class WhatsappService {
     // Serverless without Redis — process inline; otherwise queue handles async work.
     if (!useBackgroundWorkers()) {
       try {
-        const events = await this.processInboundPayload(payload);
+        const events = await this.processWebhookPayload(payload);
         await this.prisma.webhookEvent.update({
           where: { id: event.id },
           data: {
@@ -135,6 +142,13 @@ export class WhatsappService {
     );
 
     return { received: true, eventId: event.id };
+  }
+
+  /** Process message + account_update webhook fields. */
+  async processWebhookPayload(payload: WhatsappWebhookPayload): Promise<InboundMessageEvent[]> {
+    const events = await this.processInboundPayload(payload);
+    await this.processAccountUpdates(payload);
+    return events;
   }
 
   async processInboundPayload(payload: WhatsappWebhookPayload): Promise<InboundMessageEvent[]> {
@@ -187,6 +201,86 @@ export class WhatsappService {
     }
 
     return events;
+  }
+
+  /** Meta account_update — phone verification, restrictions, async Embedded Signup completion. */
+  private async processAccountUpdates(payload: WhatsappWebhookPayload) {
+    for (const entry of payload.entry ?? []) {
+      const wabaId = entry.id;
+      if (!wabaId) continue;
+
+      for (const change of entry.changes ?? []) {
+        if (change.field !== "account_update") continue;
+
+        const value = change.value;
+        const event = value.event?.trim();
+        if (!event) continue;
+
+        const phoneNumberId = value.phone_number_id ?? value.metadata?.phone_number_id;
+        const accounts = await this.prisma.whatsappAccount.findMany({
+          where: { wabaId, isActive: true },
+        });
+
+        if (accounts.length === 0) {
+          this.logger.warn(
+            `account_update ${event} for WABA ${wabaId} — no active Growvisi account matched`,
+          );
+          continue;
+        }
+
+        for (const account of accounts) {
+          const metadata = {
+            ...((account.metadata ?? {}) as Record<string, unknown>),
+            lastAccountUpdate: {
+              event,
+              at: new Date().toISOString(),
+              phoneNumberId: phoneNumberId ?? null,
+              displayPhoneNumber: value.display_phone_number ?? value.phone_number ?? null,
+              verifiedName: value.verified_name ?? null,
+              banInfo: value.ban_info ?? null,
+              violationInfo: value.violation_info ?? null,
+            },
+          };
+
+          const data: {
+            metadata: object;
+            displayPhoneNumber?: string;
+            verifiedName?: string;
+          } = { metadata };
+
+          if (
+            phoneNumberId &&
+            (event === "PHONE_NUMBER_ADDED" || event === "VERIFIED_ACCOUNT") &&
+            account.phoneNumberId === phoneNumberId
+          ) {
+            if (value.display_phone_number) {
+              data.displayPhoneNumber = value.display_phone_number;
+            } else if (value.phone_number) {
+              data.displayPhoneNumber = value.phone_number;
+            }
+            if (value.verified_name) {
+              data.verifiedName = value.verified_name;
+            }
+          }
+
+          await this.prisma.whatsappAccount.update({
+            where: { id: account.id },
+            data,
+          });
+
+          this.realtime.emitWhatsappSetupUpdated(account.organizationId, {
+            event,
+            wabaId,
+            phoneNumberId: phoneNumberId ?? undefined,
+          });
+          this.realtime.emitInboxUpdated(account.organizationId);
+
+          this.logger.log(
+            `account_update ${event} applied for org=${account.organizationId} waba=${wabaId}`,
+          );
+        }
+      }
+    }
   }
 
   private async persistInboundMessage(

@@ -108,6 +108,41 @@ export class WhatsappAccountsService {
     };
   }
 
+  /** Pull Meta message templates into account metadata after connect. */
+  async syncTemplatesAfterConnect(accountId: string) {
+    const account = await this.prisma.whatsappAccount.findUnique({
+      where: { id: accountId },
+      select: { id: true, wabaId: true, accessTokenEnc: true, metadata: true },
+    });
+    if (!account?.accessTokenEnc) return null;
+
+    try {
+      const templates = await this.messaging.listMessageTemplates(
+        account.wabaId,
+        account.accessTokenEnc,
+      );
+      const approvedTemplateCount = templates.filter((t) => t.status === "APPROVED").length;
+      const metadata = {
+        ...((account.metadata ?? {}) as Record<string, unknown>),
+        templatesSyncedAt: new Date().toISOString(),
+        templateCount: templates.length,
+        approvedTemplateCount,
+      };
+
+      await this.prisma.whatsappAccount.update({
+        where: { id: account.id },
+        data: { metadata: metadata as object },
+      });
+
+      return { templateCount: templates.length, approvedTemplateCount };
+    } catch (err) {
+      this.logger.warn(
+        `Template sync failed for account ${accountId}: ${err instanceof Error ? err.message : err}`,
+      );
+      return null;
+    }
+  }
+
   async discoverPhones(accessToken: string): Promise<DiscoveredPhone[]> {
     const token = accessToken.trim();
     const version = this.apiVersion();
@@ -275,6 +310,8 @@ export class WhatsappAccountsService {
         metadata: metadata as object,
       },
     });
+
+    await this.syncTemplatesAfterConnect(account.id);
 
     return this.toSafe(account);
   }
@@ -455,6 +492,113 @@ export class WhatsappAccountsService {
           : "",
         testTip:
           "Meta's \"Send test message\" in API Setup sends from your business to your phone — it won't appear in Conversations. Message your business number from your personal phone instead.",
+      },
+    };
+  }
+
+  /** Customer-facing go-live checklist after WhatsApp connect. */
+  async getOnboardingProgress(user: JwtPayload) {
+    const health = await this.getConnectionHealth(user);
+    const activeAccount = await this.prisma.whatsappAccount.findFirst({
+      where: { organizationId: user.organizationId, isActive: true },
+      select: { displayPhoneNumber: true, verifiedName: true, metadata: true },
+    });
+
+    const accountMeta = (activeAccount?.metadata ?? {}) as Record<string, unknown>;
+    const templatesSynced = !!accountMeta.templatesSyncedAt;
+    const templateCount = Number(accountMeta.templateCount ?? 0);
+    const approvedTemplateCount = Number(accountMeta.approvedTemplateCount ?? 0);
+
+    const [classifiedLeads, pipelineLeads] = await Promise.all([
+      this.prisma.lead.count({
+        where: {
+          organizationId: user.organizationId,
+          lastClassifiedAt: { not: null },
+        },
+      }),
+      this.prisma.lead.count({
+        where: {
+          organizationId: user.organizationId,
+          OR: [
+            { valueCents: { gt: 0 } },
+            { stage: { in: ["QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON"] } },
+          ],
+        },
+      }),
+    ]);
+
+    const checkOk = (id: string) => health.checks.find((c) => c.id === id)?.ok ?? false;
+    const connected = checkOk("account");
+    const webhooksSubscribed =
+      checkOk("meta_webhooks") ||
+      (checkOk("webhook_url") && checkOk("verify_token") && checkOk("app_secret"));
+    const firstMessage = health.stats.inboundCount > 0;
+    const firstClassification = classifiedLeads > 0;
+    const pipelineTracked = pipelineLeads > 0;
+
+    const steps = [
+      {
+        id: "webhooks",
+        done: webhooksSubscribed,
+        title: "Webhooks subscribed",
+        description: webhooksSubscribed
+          ? "Meta is delivering customer messages to Growvisi."
+          : "Waiting for Meta to confirm webhook delivery — send a test message after connect.",
+      },
+      {
+        id: "first_message",
+        done: firstMessage,
+        title: "First customer message",
+        description: firstMessage
+          ? `${health.stats.inboundCount} message${health.stats.inboundCount === 1 ? "" : "s"} received in Conversations.`
+          : "Message your business number from your personal phone to confirm ingestion.",
+      },
+      {
+        id: "classification",
+        done: firstClassification,
+        title: "First AI classification",
+        description: firstClassification
+          ? "Growvisi scored intent and pipeline stage on an inbound thread."
+          : "After your test message, open Conversations to see AI scoring.",
+      },
+      {
+        id: "pipeline",
+        done: pipelineTracked,
+        title: "Deal in pipeline",
+        description: pipelineTracked
+          ? "At least one lead has a stage or deal value in Pipeline."
+          : "Review the classified thread in Pipeline and add a deal value when ready.",
+      },
+      {
+        id: "templates",
+        done: templatesSynced,
+        title: "Message templates synced",
+        description: templatesSynced
+          ? approvedTemplateCount > 0
+            ? `${approvedTemplateCount} approved template${approvedTemplateCount === 1 ? "" : "s"} ready for Campaigns.`
+            : templateCount > 0
+              ? `${templateCount} template${templateCount === 1 ? "" : "s"} found on your WABA.`
+              : "No templates on this WABA yet — add them in Meta when you need Campaigns."
+          : "Syncing templates from Meta after connect…",
+      },
+    ] as const;
+
+    const doneCount = steps.filter((s) => s.done).length + (connected ? 1 : 0);
+    const totalCount = steps.length + 1;
+
+    return {
+      connected,
+      displayPhoneNumber: activeAccount?.displayPhoneNumber ?? null,
+      verifiedName: activeAccount?.verifiedName ?? null,
+      steps,
+      progressPct: Math.round((doneCount / totalCount) * 100),
+      stats: {
+        inboundMessages: health.stats.inboundCount,
+        classifiedLeads,
+        pipelineLeads,
+        templateCount,
+        approvedTemplateCount,
+        templatesSynced,
       },
     };
   }

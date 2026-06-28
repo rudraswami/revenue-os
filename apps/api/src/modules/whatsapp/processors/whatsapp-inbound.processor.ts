@@ -28,7 +28,7 @@ export class WhatsappInboundProcessor extends WorkerHost {
   async process(job: Job<InboundJobData>) {
     const { webhookEventId, payload } = job.data;
     try {
-      const events = await this.whatsapp.processInboundPayload(payload);
+      const events = await this.whatsapp.processWebhookPayload(payload);
       await this.prisma.webhookEvent.update({
         where: { id: webhookEventId },
         data: { processedAt: new Date() },
