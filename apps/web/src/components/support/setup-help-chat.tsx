@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -19,15 +19,6 @@ export function SetupHelpChat({ context }: { context: HelpFabContext }) {
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const { data: capabilities } = useQuery({
-    queryKey: ["support-capabilities"],
-    queryFn: () => apiFetch<{ setupHelpLlm: boolean }>("/support/capabilities", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token,
-    staleTime: 120_000,
-  });
 
   const chatMutation = useMutation({
     mutationFn: (message: string) =>
@@ -53,14 +44,6 @@ export function SetupHelpChat({ context }: { context: HelpFabContext }) {
       });
     },
   });
-
-  if (!capabilities?.setupHelpLlm) {
-    return (
-      <div className="border-b border-border/60 px-4 py-6 text-center">
-        <p className="text-sm text-muted-foreground">{t("setupHelp.chatOffline")}</p>
-      </div>
-    );
-  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +106,7 @@ export function SetupHelpChat({ context }: { context: HelpFabContext }) {
           onChange={(e) => setInput(e.target.value)}
           placeholder={t("setupHelp.chatPlaceholder")}
           maxLength={500}
-          className="min-w-0 flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none ring-accent/30 focus:ring-2"
+          className="min-w-0 flex-1 touch-manipulation rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none ring-accent/30 focus:ring-2"
           disabled={chatMutation.isPending}
         />
         <Button
