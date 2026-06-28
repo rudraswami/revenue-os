@@ -1,12 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Send, Sparkles, ArrowLeft, Inbox, ExternalLink } from "lucide-react";
+import { ArrowLeft, Inbox, ExternalLink, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { formatStage } from "@/lib/stage-labels";
@@ -17,6 +16,7 @@ import { InboxConversationList } from "@/components/dashboard/inbox-conversation
 import { InboxAiPanel, type InboxAiContext } from "@/components/dashboard/inbox-ai-panel";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
+import { InboxComposer } from "@/components/dashboard/inbox-composer";
 import { InboxTimeline } from "@/components/dashboard/inbox-timeline";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError } from "@/lib/api-client";
@@ -471,28 +471,66 @@ export default function InboxPage() {
                   <p className="truncate text-sm font-semibold">
                     {thread.contactName ?? thread.contactPhone}
                   </p>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span className="truncate">{thread.contactPhone}</span>
-                    {thread.lead?.valueCents != null && thread.lead.valueCents > 0 && (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span className="font-semibold text-emerald-700">
-                          {formatInr(thread.lead.valueCents)}
-                        </span>
-                      </>
-                    )}
-                    {thread.lead && (
-                      <>
-                        <span aria-hidden>·</span>
-                        <Link
-                          href={`/dashboard/pipeline?lead=${thread.lead.id}`}
-                          className="inline-flex items-center gap-0.5 font-medium text-accent hover:underline"
-                        >
-                          {CONVERSATIONS.openPipeline}
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      </>
-                    )}
+                    {thread.lead && (() => {
+                      const lead = thread.lead;
+                      const hasValue = lead.valueCents != null && lead.valueCents > 0;
+                      const closed = lead.stage === "WON" || lead.stage === "LOST";
+                      const pipelineHref = `/dashboard/pipeline?lead=${lead.id}`;
+
+                      if (hasValue) {
+                        const label =
+                          lead.stage === "WON"
+                            ? CONVERSATIONS.dealClosed(formatInr(lead.valueCents))
+                            : CONVERSATIONS.dealValue(formatInr(lead.valueCents));
+                        return (
+                          <>
+                            <span aria-hidden className="text-border">·</span>
+                            <Link
+                              href={pipelineHref}
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium transition hover:underline",
+                                lead.stage === "WON"
+                                  ? "bg-emerald-50 text-emerald-800"
+                                  : "bg-[#f8f9ff] text-foreground",
+                              )}
+                              title="Deal ₹ tracked on Pipeline — tap to view or edit"
+                            >
+                              {label}
+                              <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+                            </Link>
+                          </>
+                        );
+                      }
+
+                      if (!closed) {
+                        return (
+                          <>
+                            <span aria-hidden className="text-border">·</span>
+                            <Link
+                              href={pipelineHref}
+                              className="font-medium text-muted-foreground hover:text-accent hover:underline"
+                            >
+                              {CONVERSATIONS.addDealValue}
+                            </Link>
+                          </>
+                        );
+                      }
+
+                      return (
+                        <>
+                          <span aria-hidden className="text-border">·</span>
+                          <Link
+                            href={pipelineHref}
+                            className="inline-flex items-center gap-0.5 font-medium text-accent hover:underline"
+                          >
+                            {CONVERSATIONS.viewOnPipeline}
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
@@ -651,104 +689,42 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-5">
+            <div className="shrink-0 border-t border-border/80 bg-[#f8f9ff]/40 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-5">
               <div className="mx-auto max-w-xl">
                 {showComposer ? (
-                <form onSubmit={handleSend} className="space-y-2">
-                  {sendError && (
-                    <div className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                      <p className="font-medium">{sendError}</p>
-                      {(sendError.toLowerCase().includes("auth") ||
-                        sendError.toLowerCase().includes("token")) && (
-                        <a
-                          href="/dashboard/settings?tab=whatsapp"
-                          className="mt-1 inline-block font-semibold underline"
-                        >
-                          Refresh WhatsApp token →
-                        </a>
-                      )}
-                    </div>
-                  )}
-                  {(replyTemplates?.templates?.length ?? 0) > 0 && (
-                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 custom-scrollbar">
-                      {replyTemplates!.templates.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          className="shrink-0 rounded-full border border-border/80 bg-[#f8f9ff] px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:border-accent/40 hover:text-accent"
-                          onClick={() => setDraft(t.body)}
-                        >
-                          {t.title}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex items-end gap-2 rounded-xl border border-border/80 bg-[#f8f9ff] p-1.5 shadow-sm">
-                    <div className="min-w-0 flex-1 py-1">
-                      <Input
-                        ref={composeRef}
-                        placeholder={CONVERSATIONS.composePlaceholder}
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        disabled={sendMutation.isPending || !thread.whatsappAccount.isActive}
-                        className="border-0 bg-transparent text-base shadow-none focus-visible:ring-0 md:text-sm"
-                      />
-                    </div>
-                    <div className="flex shrink-0 flex-col gap-1">
-                      {capabilities?.aiSuggestReply && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 text-muted-foreground"
-                          disabled={suggestMutation.isPending}
-                          onClick={() => suggestMutation.mutate()}
-                          title="Draft suggestion"
-                        >
-                          {suggestMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
-                      <Button
-                        type="submit"
-                        size="icon"
-                        className="h-9 w-9 rounded-xl bg-accent hover:bg-accent-hover"
-                        disabled={
-                          !draft.trim() || sendMutation.isPending || !thread.whatsappAccount.isActive
-                        }
-                      >
-                        {sendMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <p className="mt-1.5 text-center text-[10px] leading-relaxed text-muted-foreground">
-                    {CONVERSATIONS.composeFooter}
-                  </p>
+                  <InboxComposer
+                    draft={draft}
+                    onDraftChange={setDraft}
+                    onSend={handleSend}
+                    sendPending={sendMutation.isPending}
+                    sendDisabled={!thread.whatsappAccount.isActive}
+                    sendError={sendError}
+                    showAiSuggest={!!capabilities?.aiSuggestReply}
+                    suggestPending={suggestMutation.isPending}
+                    onSuggest={() => suggestMutation.mutate()}
+                    templates={replyTemplates?.templates}
+                    composeRef={composeRef}
+                    onMinimize={() => setShowComposer(false)}
+                  />
+                ) : (
                   <button
                     type="button"
-                    className="text-[10px] text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowComposer(false)}
-                  >
-                    Hide composer
-                  </button>
-                </form>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full rounded-xl"
+                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/80 bg-white px-4 py-3.5 text-left shadow-sm transition hover:border-accent/30 hover:bg-[#ecfdf5]/30"
                     onClick={() => setShowComposer(true)}
                   >
-                    {CONVERSATIONS.composeCollapsed}
-                  </Button>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {CONVERSATIONS.composeTitle}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {CONVERSATIONS.composeFooter}
+                      </p>
+                    </div>
+                    <span className="flex shrink-0 items-center gap-1 rounded-lg bg-accent px-2.5 py-1.5 text-[11px] font-semibold text-white">
+                      <ChevronUp className="h-3.5 w-3.5" />
+                      Open
+                    </span>
+                  </button>
                 )}
               </div>
             </div>

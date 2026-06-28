@@ -78,6 +78,16 @@ export const CONVERSATIONS = {
   scoreHot: (n: number) => `Hot lead · ${n}`,
   scoreWarm: (n: number) => `Score · ${n}`,
   openPipeline: "Open in pipeline",
+  viewOnPipeline: "View on pipeline",
+  /** Labeled deal ₹ — only when set on the lead */
+  dealValue: (amount: string) => `Deal value · ${amount}`,
+  dealClosed: (amount: string) => `Closed · ${amount}`,
+  addDealValue: "Set deal ₹ on pipeline",
+  /** Composer chrome */
+  composeTitle: "Reply on WhatsApp",
+  draftWithAi: "Draft with AI",
+  minimizeComposer: "Minimize",
+  sendReply: "Send",
   /** Timeline empty states */
   timelineEmptyClassify:
     "No AI insights yet — send or receive a message after WhatsApp is connected.",
