@@ -2,20 +2,17 @@
 
 import Link from "next/link";
 import {
-  AlertTriangle,
-  Clock,
-  Inbox,
   IndianRupee,
   Sparkles,
   TrendingUp,
-  UserRound,
+  Clock,
   Users,
 } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { MetricCardsSkeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { formatInr } from "@/lib/crm";
+import { formatInr, STAGE_LABELS } from "@/lib/crm";
 import { cn } from "@/lib/utils";
+import { HomeUrgentStrip, type UrgentCounts } from "./home-urgent-strip";
 
 interface FunnelData {
   total: number;
@@ -49,7 +46,6 @@ interface HomeCommandCenterProps {
     unassignedConversations: number;
     members: Array<{ name: string | null; email: string }>;
   };
-  hasWhatsapp: boolean;
 }
 
 const STAGE_COLORS: Record<string, string> = {
@@ -76,7 +72,6 @@ export function HomeCommandCenter({
   revenueSnapshot,
   slaSnapshot,
   teamWorkload,
-  hasWhatsapp,
 }: HomeCommandCenterProps) {
   if (isLoading) return <MetricCardsSkeleton variant="home" />;
 
@@ -97,90 +92,17 @@ export function HomeCommandCenter({
   const stageTotal = openStages.reduce((n, s) => n + s.count, 0) || 1;
 
   const priorityCount = [unread, handoffs, stale, unassigned].filter((n) => n > 0).length;
+  const urgentCounts: UrgentCounts = { unread, handoffs, stale, unassigned };
+  const qualifiedCount = funnel?.total ?? 0;
+  const wonCount = funnel?.won ?? 0;
 
   return (
     <div className="space-y-6">
-      {/* ── Today's priorities ── */}
-      <section>
-        <div className="mb-3 flex items-end justify-between gap-2">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
-              Today&apos;s priorities
-            </p>
-            <h2 className="text-base font-bold text-foreground">
-              {priorityCount > 0
-                ? `${priorityCount} item${priorityCount === 1 ? "" : "s"} need attention`
-                : "You're caught up — nice work"}
-            </h2>
-          </div>
-          {priorityCount > 0 && (
-            <Button asChild size="sm" variant="outline" className="hidden shrink-0 rounded-xl sm:inline-flex">
-              <Link href="/dashboard/inbox">Open inbox</Link>
-            </Button>
-          )}
-        </div>
+      <HomeUrgentStrip counts={urgentCounts} />
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            title="Unread messages"
-            value={unread}
-            delta={unread > 0 ? "Customers waiting in WhatsApp" : "Inbox is clear"}
-            icon={<Inbox className="h-5 w-5" />}
-            variant={unread > 0 ? "amber" : "slate"}
-            href="/dashboard/inbox"
-            actionLabel={unread > 0 ? "Reply now" : "View inbox"}
-            urgent={unread > 0}
-            delay={0}
-          />
-          <MetricCard
-            title="Needs your team"
-            value={handoffs}
-            delta={
-              handoffs > 0
-                ? "AI flagged for human follow-up"
-                : hasWhatsapp
-                  ? "No handoffs right now"
-                  : "Connect WhatsApp to enable"
-            }
-            icon={<UserRound className="h-5 w-5" />}
-            variant={handoffs > 0 ? "rose" : "slate"}
-            href={handoffs > 0 ? "/dashboard/inbox?filter=handoff" : "/dashboard/inbox"}
-            actionLabel={handoffs > 0 ? "Review handoffs" : "Open inbox"}
-            urgent={handoffs > 0}
-            delay={0.04}
-          />
-          <MetricCard
-            title="Waiting 24h+"
-            value={stale}
-            delta={
-              stale > 0
-                ? "No Growvisi human reply yet"
-                : `Target ${slaSnapshot?.targetHours ?? 4}h reply time`
-            }
-            icon={<Clock className="h-5 w-5" />}
-            variant={stale > 0 ? "rose" : "blue"}
-            href="/dashboard/inbox"
-            actionLabel={stale > 0 ? "Respond today" : "View conversations"}
-            urgent={stale > 0}
-            delay={0.08}
-          />
-          <MetricCard
-            title="Unassigned"
-            value={unassigned}
-            delta={
-              unassigned > 0
-                ? "Threads without an owner"
-                : "All conversations assigned"
-            }
-            icon={<AlertTriangle className="h-5 w-5" />}
-            variant={unassigned > 0 ? "amber" : "slate"}
-            href="/dashboard/inbox"
-            actionLabel={unassigned > 0 ? "Assign owners" : "Team settings"}
-            urgent={unassigned > 0}
-            delay={0.12}
-          />
-        </div>
-      </section>
+      {priorityCount === 0 && (
+        <p className="text-sm text-muted-foreground">Inbox is clear — focus on pipeline and follow-ups.</p>
+      )}
 
       {/* ── Revenue pulse ── */}
       <section>
@@ -192,7 +114,13 @@ export function HomeCommandCenter({
             <MetricCard
               title="Open pipeline value"
               value={pipelineValue}
-              delta={`${openLeads} open lead${openLeads === 1 ? "" : "s"}`}
+              delta={
+                (revenueSnapshot?.pipelineValueCents ?? 0) > 0
+                  ? `${openLeads} open lead${openLeads === 1 ? "" : "s"} with ₹ value`
+                  : openLeads > 0
+                    ? `${openLeads} open — add ₹ on pipeline cards`
+                    : "No open deals with ₹ value"
+              }
               icon={<IndianRupee className="h-6 w-6" />}
               variant="emerald"
               size="large"
@@ -207,9 +135,9 @@ export function HomeCommandCenter({
                 title="Won revenue (30d)"
                 value={wonRevenue}
                 delta={
-                  funnel?.won
-                    ? `${funnel.won} deal${funnel.won === 1 ? "" : "s"} closed`
-                    : "Closed in last 30 days"
+                  wonCount > 0
+                    ? `${wonCount} deal${wonCount === 1 ? "" : "s"} · last 30 days`
+                    : "No deals closed this period"
                 }
                 trend={revenueSnapshot?.wonValueCents ? "up" : "neutral"}
                 icon={<TrendingUp className="h-5 w-5" />}
@@ -252,7 +180,7 @@ export function HomeCommandCenter({
                     ? `${Math.round(funnel.conversionRate * 100)}%`
                     : "—"
                 }
-                delta={`${funnel?.won ?? 0} won · ${funnel?.total ?? 0} total`}
+                delta={`${wonCount} won · ${qualifiedCount} in funnel (30d)`}
                 icon={<Sparkles className="h-5 w-5" />}
                 variant="violet"
                 href="/dashboard/analytics"
@@ -287,7 +215,9 @@ export function HomeCommandCenter({
                   <span
                     className={cn("h-2 w-2 rounded-full", STAGE_COLORS[s.stage] ?? "bg-slate-400")}
                   />
-                  {s.stage[0] + s.stage.slice(1).toLowerCase()} ({s.count})
+                  {STAGE_LABELS[s.stage as keyof typeof STAGE_LABELS] ??
+                    s.stage[0] + s.stage.slice(1).toLowerCase()}{" "}
+                  ({s.count})
                 </span>
               ))}
             </div>

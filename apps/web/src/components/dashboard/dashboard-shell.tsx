@@ -4,8 +4,8 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
-import { WhatsappTokenExpiryBanner } from "@/components/dashboard/whatsapp-token-expiry-banner";
 import { TrialExpiredBanner } from "@/components/dashboard/status-banners";
+import { FloatingTasksDock } from "@/components/dashboard/floating-tasks-dock";
 import { Sidebar } from "./sidebar";
 import { cn } from "@/lib/utils";
 
@@ -65,8 +65,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <TrialExpiredBanner />
-          <WhatsappTokenExpiryBanner />
           {children}
+          <FloatingTasksDock />
         </main>
       </div>
     </div>

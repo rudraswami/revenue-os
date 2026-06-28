@@ -17,6 +17,7 @@ import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
 import { Button } from "@/components/ui/button";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch } from "@/lib/api-client";
+import { formatActivityLabel } from "@/lib/activity-labels";
 import { CTA, EYEBROW } from "@/lib/brand-copy";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { timeGreeting } from "@/lib/greeting";
@@ -37,25 +38,6 @@ function timeAgo(date: string | Date) {
   if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
   if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
   return `${Math.floor(ms / 86_400_000)}d ago`;
-}
-
-function activityLabel(item: { type: string; data: Record<string, unknown> }) {
-  switch (item.type) {
-    case "ai_classification":
-      return `AI classified ${item.data.contactName ?? "a lead"} — ${item.data.intent ?? item.data.stage}`;
-    case "stage_change":
-      return `${item.data.leadName} moved ${item.data.from} → ${item.data.to}${item.data.isAi ? " (AI)" : ""}`;
-    case "task_created":
-      return `Task created: ${item.data.title}`;
-    case "task_completed":
-      return `Task done: ${item.data.title}`;
-    case "note_added":
-      return `${item.data.author ?? "Team"} noted on ${item.data.leadName}`;
-    case "automation_run":
-      return `${item.data.result}`;
-    default:
-      return item.type;
-  }
 }
 
 export default function DashboardPage() {
@@ -144,22 +126,10 @@ export default function DashboardPage() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: whatsappAccounts } = useQuery({
-    queryKey: QUERY_KEYS.whatsappAccounts,
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token,
-    staleTime: STALE.config,
-    placeholderData: (prev) => prev,
-  });
-
-  const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
   const isLoading = funnelLoading || convLoading;
 
   return (
     <div className="dashboard-page">
-      {/* Hero greeting */}
       <div className="dashboard-hero">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -196,7 +166,6 @@ export default function DashboardPage() {
         revenueSnapshot={revenueSnapshot}
         slaSnapshot={slaSnapshot}
         teamWorkload={teamWorkload}
-        hasWhatsapp={hasWhatsapp}
       />
 
       <div className="mt-8">
@@ -214,58 +183,65 @@ export default function DashboardPage() {
           description="Classifications, pipeline moves, and team actions"
           delay={0.15}
         >
-            {!activityFeed || activityFeed.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bento-mint">
-                  <Sparkles className="h-5 w-5 text-accent" />
-                </div>
-                <p className="mt-3 font-semibold">No activity yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Activity appears as AI classifies conversations and your team takes action.
-                </p>
-                <Button asChild size="sm" className="mt-4 rounded-xl">
-                  <Link href="/dashboard/inbox">{CTA.openConversations}</Link>
-                </Button>
+          {!activityFeed || activityFeed.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bento-mint">
+                <Sparkles className="h-5 w-5 text-accent" />
               </div>
-            ) : (
-              <div className="space-y-1 max-h-[460px] overflow-y-auto custom-scrollbar pr-1">
-                {activityFeed.slice(0, 15).map((item, i) => {
-                  const Icon = activityIcons[item.type] ?? Sparkles;
-                  const isAi = item.type === "ai_classification" || item.type === "automation_run";
-                  return (
-                    <motion.div
-                      key={`${item.type}-${i}`}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      className={`flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-muted/50 ${
-                        isAi ? "bg-bento-mint/20" : ""
+              <p className="mt-3 font-semibold">No activity yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Activity appears as AI classifies conversations and your team takes action.
+              </p>
+              <Button asChild size="sm" className="mt-4 rounded-xl">
+                <Link href="/dashboard/inbox">{CTA.openConversations}</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="max-h-[460px] space-y-1 overflow-y-auto custom-scrollbar pr-1">
+              {activityFeed.slice(0, 15).map((item, i) => {
+                const Icon = activityIcons[item.type] ?? Sparkles;
+                const isAi = item.type === "ai_classification" || item.type === "automation_run";
+                const { primary, secondary, href } = formatActivityLabel(item);
+                const inner = (
+                  <>
+                    <div
+                      className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                        isAi ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                        isAi ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
-                      }`}>
-                        <Icon className="h-3.5 w-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm leading-snug">{activityLabel(item)}</p>
-                        {typeof item.data.nextAction === "string" && item.type === "ai_classification" && (
-                          <p className="mt-0.5 text-xs font-medium text-accent">
-                            Next: {item.data.nextAction}
-                          </p>
-                        )}
-                        {typeof item.data.summary === "string" && item.type === "ai_classification" && (
-                          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-                            {item.data.summary}
-                          </p>
-                        )}
-                      </div>
-                      <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(item.time)}</span>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
+                      <Icon className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-snug">{primary}</p>
+                      {secondary && (
+                        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{secondary}</p>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(item.time)}</span>
+                  </>
+                );
+                return (
+                  <motion.div
+                    key={`${item.type}-${item.time}-${i}`}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    className={`flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-muted/50 ${
+                      isAi ? "bg-bento-mint/20" : ""
+                    }`}
+                  >
+                    {href ? (
+                      <Link href={href} className="flex w-full items-start gap-3">
+                        {inner}
+                      </Link>
+                    ) : (
+                      inner
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </DashboardPanel>
       </motion.div>
     </div>
