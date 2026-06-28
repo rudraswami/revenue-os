@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,15 +10,13 @@ import {
   ArrowRight,
   Bot,
   CheckCircle2,
-  Circle,
   Inbox,
   Kanban,
   Shield,
-  Sparkles,
   Users,
-  Zap,
 } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
+import { OnboardingStepper } from "@/components/onboarding/onboarding-stepper";
 import { Button } from "@/components/ui/button";
 import WhatsappConnect from "@/components/settings/whatsapp-connect";
 import { WhatsappGoLiveChecklist } from "@/components/settings/whatsapp-go-live-checklist";
@@ -27,13 +25,28 @@ import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboardin
 import { apiFetch } from "@/lib/api-client";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
-import { cn } from "@/lib/utils";
 
 const VALUE_PROPS = [
-  { icon: Bot, title: "AI classifies every message", desc: "Intent, sentiment, and pipeline stage — automatically." },
-  { icon: Kanban, title: "Revenue pipeline", desc: "Kanban board that updates as AI processes conversations." },
-  { icon: Users, title: "Team collaboration", desc: "Assign leads, add notes, create tasks for your team." },
-  { icon: Shield, title: "Enterprise security", desc: "Role-based access, encrypted tokens, audit trail." },
+  {
+    icon: Bot,
+    title: "AI reads every message",
+    desc: "Intent, urgency, and pipeline stage — scored automatically.",
+  },
+  {
+    icon: Kanban,
+    title: "Pipeline that updates itself",
+    desc: "Deals move as conversations progress. No manual CRM entry.",
+  },
+  {
+    icon: Users,
+    title: "Team-ready from day one",
+    desc: "Assign threads, add notes, and follow up without chaos.",
+  },
+  {
+    icon: Shield,
+    title: "Built for Indian SMBs",
+    desc: "INR billing, encrypted tokens, role-based access.",
+  },
 ];
 
 function OnboardingPageContent() {
@@ -45,7 +58,6 @@ function OnboardingPageContent() {
   const organization = useAuthStore((s) => s.organization);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const dismissOnboarding = useAuthStore((s) => s.dismissOnboarding);
-  const [activeStep, setActiveStep] = useState(2);
 
   function goToDashboard() {
     dismissOnboarding();
@@ -84,297 +96,231 @@ function OnboardingPageContent() {
         firstMessageReceived,
         complete: true,
       });
-      setActiveStep(3);
     }
   }, [whatsappConnected, firstMessageReceived, patchOnboarding]);
 
-  const steps = [
+  const stepperSteps = [
+    { id: "account", label: "Workspace", done: true, current: false },
+    { id: "whatsapp", label: "Connect", done: whatsappConnected, current: !whatsappConnected },
     {
-      id: "account",
-      title: "Workspace created",
-      done: true,
-      description: organization?.name ?? "Your workspace is ready.",
-    },
-    {
-      id: "explore",
-      title: "Explore Growvisi",
-      done: true,
-      description: "Conversations, Pipeline, Contacts, and Insights are ready.",
-    },
-    {
-      id: "whatsapp",
-      title: "Connect your WhatsApp number",
-      done: whatsappConnected,
-      description: "Continue with Facebook or paste a token from Meta API Setup.",
-    },
-    {
-      id: "inbox",
-      title: "Go live on Conversations",
+      id: "live",
+      label: "Go live",
       done: firstMessageReceived,
-      description: "Complete the go-live checklist: webhooks, test message, AI classification, pipeline.",
+      current: whatsappConnected && !firstMessageReceived,
     },
   ];
 
-  const completedCount = steps.filter((s) => s.done).length;
-  const progress = Math.round((completedCount / steps.length) * 100);
+  const progressPct = Math.round(
+    ((stepperSteps.filter((s) => s.done).length + (whatsappConnected && !firstMessageReceived ? 0.5 : 0)) /
+      stepperSteps.length) *
+      100,
+  );
 
   return (
-    <div className="min-h-screen surface-lavender">
-      <header className="border-b border-border/80 bg-white/90 px-6 py-4 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
+    <div className="min-h-screen bg-[#f8fafc]">
+      {/* Header */}
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
           <Logo href="/dashboard" />
+          <div className="hidden flex-1 justify-center md:flex">
+            <OnboardingStepper steps={stepperSteps} />
+          </div>
           <div className="flex items-center gap-2">
-            {fromAgency && (
-              <Button variant="ghost" size="sm" asChild>
+            {fromAgency ? (
+              <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
                 <Link href="/dashboard/agency">
                   <ArrowLeft className="h-4 w-4" />
-                  Agency clients
+                  <span className="hidden sm:inline">Agency</span>
                 </Link>
               </Button>
-            )}
-            {!fromAgency && (
-              <Button variant="ghost" size="sm" asChild>
+            ) : (
+              <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
                 <Link href="/dashboard">
                   <ArrowLeft className="h-4 w-4" />
-                  Dashboard
+                  <span className="hidden sm:inline">Dashboard</span>
                 </Link>
               </Button>
             )}
             {whatsappConnected ? (
               fromAgency ? (
-                <Button size="sm" onClick={goToDashboard}>
+                <Button size="sm" className="rounded-xl" onClick={goToDashboard}>
                   Back to agency
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button size="sm" onClick={() => router.push("/dashboard/inbox")}>
-                  Open conversations
+                <Button
+                  size="sm"
+                  className="rounded-xl"
+                  onClick={() => router.push("/dashboard/inbox")}
+                >
+                  Open Conversations
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               )
             ) : (
-              <Button variant="outline" size="sm" onClick={goToDashboard}>
+              <Button variant="outline" size="sm" className="rounded-xl" onClick={goToDashboard}>
                 {fromAgency ? "Back to agency" : "Skip for now"}
               </Button>
             )}
           </div>
         </div>
+        <div className="border-t border-border/40 px-5 py-2.5 md:hidden">
+          <OnboardingStepper steps={stepperSteps} className="justify-center" />
+        </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         {fromAgency && (
-          <div className="mb-6 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-muted-foreground">
-            Setting up WhatsApp for{" "}
-            <strong className="text-foreground">{organization?.name ?? "this client"}</strong>.
-            When go-live is complete, return to Agency clients to monitor health across your portfolio.
+          <div className="mb-8 flex items-start gap-3 rounded-2xl border border-[#dce9ff] bg-white px-4 py-3.5 shadow-sm">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent text-xs font-bold">
+              A
+            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Setting up WhatsApp for{" "}
+              <strong className="text-foreground">{organization?.name ?? "this client"}</strong>.
+              Complete go-live here, then return to Agency clients to monitor portfolio health.
+            </p>
           </div>
         )}
-        <div className="grid gap-8 lg:grid-cols-5">
-          {/* Left: Main content */}
-          <div className="lg:col-span-3">
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-8 overflow-hidden rounded-2xl border border-border/80 bg-white p-6 shadow-sm"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold tracking-tight md:text-2xl">
-                    {timeGreeting(user?.name)}
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    Set up takes about 2 minutes. You can explore the dashboard anytime.
-                  </p>
-                </div>
-              </div>
 
-              <div className="mt-5">
-                <div className="mb-2 flex justify-between text-[12px] font-medium text-muted-foreground">
-                  <span>Setup progress</span>
-                  <span className="font-bold text-accent">{progress}%</span>
-                </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-border">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-14">
+          {/* Primary column */}
+          <div className="min-w-0">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <p className="text-xs font-semibold uppercase tracking-widest text-accent">
+                {whatsappConnected ? "Almost there" : "Step 2 of 3"}
+              </p>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#0b1c30] sm:text-3xl">
+                {whatsappConnected
+                  ? "Confirm your WhatsApp is live"
+                  : `${timeGreeting(user?.name).replace(/[!?.]+$/, "")} — connect WhatsApp`}
+              </h1>
+              <p className="mt-2 max-w-xl text-base leading-relaxed text-muted-foreground">
+                {whatsappConnected
+                  ? "Send a test message, verify AI classification, and unlock Conversations + Pipeline."
+                  : "Link the business number your customers already use. Growvisi classifies messages and tracks revenue — your team replies when it matters."}
+              </p>
+              <div className="mt-5 flex items-center gap-3">
+                <div className="h-1.5 flex-1 max-w-xs overflow-hidden rounded-full bg-border">
                   <motion.div
                     className="h-full rounded-full bg-gradient-to-r from-accent to-[#128C7E]"
                     initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    animate={{ width: `${Math.max(progressPct, whatsappConnected ? 66 : 33)}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
                   />
                 </div>
+                <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                  {Math.max(progressPct, whatsappConnected ? 66 : 33)}%
+                </span>
               </div>
             </motion.div>
-
-            {/* Steps */}
-            <ol className="mb-10 space-y-3">
-              {steps.map((step, i) => (
-                <motion.li
-                  key={step.id}
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.06 }}
-                  className={cn(
-                    "cursor-pointer rounded-xl border p-4 transition-all duration-200",
-                    step.done
-                      ? "border-success/30 bg-success/5 shadow-sm"
-                      : activeStep === i
-                        ? "border-accent/30 bg-accent/5 shadow-md ring-1 ring-accent/10"
-                        : "border-border/80 bg-white shadow-sm hover:border-primary/20",
-                  )}
-                  onClick={() => !step.done && setActiveStep(i)}
-                >
-                  <div className="flex gap-4">
-                    <div className="mt-0.5 shrink-0">
-                      {step.done ? (
-                        <CheckCircle2 className="h-5 w-5 text-success" />
-                      ) : activeStep === i ? (
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-accent">
-                          <div className="h-2 w-2 rounded-full bg-accent" />
-                        </div>
-                      ) : (
-                        <Circle className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Step {i + 1}
-                        </p>
-                        {step.done && (
-                          <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-[9px] font-bold text-success">
-                            Done
-                          </span>
-                        )}
-                      </div>
-                      <p className="font-medium">{step.title}</p>
-                      <p className="text-sm text-muted-foreground">{step.description}</p>
-                    </div>
-                  </div>
-                </motion.li>
-              ))}
-            </ol>
 
             <AnimatePresence mode="wait">
               {!whatsappConnected ? (
                 <motion.div
                   key="connect"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  className="space-y-6"
+                  exit={{ opacity: 0, y: -8 }}
                 >
-                  <WhatsappConnect />
-                  <WhatsappOnboardingHelp />
-                  <p className="text-center text-sm text-muted-foreground">
-                    Not ready yet?{" "}
+                  <WhatsappConnect variant="onboarding" />
+                  <p className="mt-6 text-center text-sm text-muted-foreground">
+                    Not ready?{" "}
                     <button
                       type="button"
-                      className="font-medium text-primary hover:underline"
+                      className="font-medium text-accent hover:underline"
                       onClick={goToDashboard}
                     >
-                      Go to dashboard
-                    </button>{" "}
-                    — you can connect WhatsApp anytime from Settings.
+                      Explore dashboard first
+                    </button>
+                    <span className="hidden sm:inline"> — connect anytime from Connection settings.</span>
                   </p>
                 </motion.div>
               ) : (
                 <motion.div
                   key="connected"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
+                  exit={{ opacity: 0, y: -8 }}
                   className="space-y-6"
                 >
-                  <div className="overflow-hidden rounded-2xl border border-success/30 bg-success/5 p-6">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-success">
-                      <CheckCircle2 className="h-4 w-4" />
-                      WhatsApp connected
-                      {activeAccount?.displayPhoneNumber && (
-                        <span className="font-mono text-muted-foreground">
-                          · {activeAccount.displayPhoneNumber}
-                        </span>
-                      )}
+                  <div className="flex items-center gap-4 rounded-2xl border border-[#6cf8bb]/40 bg-white p-5 shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#25D366]/15 text-[#128C7E]">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[#0b1c30]">WhatsApp connected</p>
+                      <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                        {activeAccount?.verifiedName ?? "Business line"}
+                        {activeAccount?.displayPhoneNumber
+                          ? ` · ${activeAccount.displayPhoneNumber}`
+                          : ""}
+                      </p>
                     </div>
                   </div>
-                  {activeAccount?.displayPhoneNumber && (
-                    <WhatsappGoLiveChecklist />
-                  )}
+
+                  {activeAccount?.displayPhoneNumber && <WhatsappGoLiveChecklist />}
                   <WhatsappOnboardingFaq />
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Right: Value preview sidebar */}
-          <div className="lg:col-span-2">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="sticky top-8 space-y-4"
-            >
-              <div className="rounded-2xl border border-accent/20 bg-gradient-to-b from-bento-mint/50 to-white p-5">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-accent" />
-                  <p className="text-sm font-bold">What you&apos;ll unlock</p>
-                </div>
-                <div className="mt-4 space-y-4">
-                  {VALUE_PROPS.map((vp, i) => (
-                    <motion.div
-                      key={vp.title}
-                      initial={{ opacity: 0, x: 8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + i * 0.08 }}
-                      className="flex gap-3"
-                    >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                        <vp.icon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{vp.title}</p>
-                        <p className="text-xs text-muted-foreground">{vp.desc}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
+          {/* Sidebar */}
+          <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+            <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
+              <p className="text-sm font-bold text-[#0b1c30]">What Growvisi does</p>
+              <ul className="mt-4 space-y-4">
+                {VALUE_PROPS.map((vp) => (
+                  <li key={vp.title} className="flex gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+                      <vp.icon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{vp.title}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{vp.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-              <div className="rounded-2xl border border-border bg-white p-5">
-                <div className="flex items-center gap-2">
-                  <Inbox className="h-4 w-4 text-blue-600" />
-                  <p className="text-sm font-bold">What happens next</p>
-                </div>
-                <ol className="mt-3 space-y-2.5 text-sm text-muted-foreground">
-                  <li className="flex gap-2">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[10px] font-bold text-accent">1</span>
-                    Customer sends a WhatsApp message
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[10px] font-bold text-accent">2</span>
-                    AI classifies intent, scores the lead
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[10px] font-bold text-accent">3</span>
-                    Lead appears in your pipeline
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[10px] font-bold text-accent">4</span>
-                    Your team acts — assign, tag, close
-                  </li>
-                </ol>
+            <div className="rounded-2xl border border-border/60 bg-white p-5">
+              <div className="flex items-center gap-2">
+                <Inbox className="h-4 w-4 text-accent" />
+                <p className="text-sm font-bold text-[#0b1c30]">After you connect</p>
               </div>
+              <ol className="mt-4 space-y-3">
+                {[
+                  "Customer messages your WhatsApp number",
+                  "AI classifies intent and scores the lead",
+                  "Deal appears in Pipeline automatically",
+                  "Your team replies — Growvisi never auto-replies",
+                ].map((text, i) => (
+                  <li key={text} className="flex gap-3 text-sm text-muted-foreground">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f1f5f9] text-[11px] font-bold text-[#0b1c30]">
+                      {i + 1}
+                    </span>
+                    <span className="pt-0.5 leading-snug">{text}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
 
-              <div className="rounded-2xl bg-gradient-to-br from-[#0b1c30] to-[#006c49] p-5 text-white">
-                <p className="text-xs font-semibold uppercase tracking-wider text-white/70">14-day free trial</p>
-                <p className="mt-2 text-sm font-bold">No credit card required</p>
-                <p className="mt-1 text-xs text-white/70">
-                  Starts at ₹999/mo after trial. Cancel anytime.
-                </p>
-              </div>
-            </motion.div>
-          </div>
+            <div className="overflow-hidden rounded-2xl bg-[#0b1c30] p-5 text-white">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/60">
+                14-day free trial
+              </p>
+              <p className="mt-2 text-lg font-bold">No credit card required</p>
+              <p className="mt-1 text-sm text-white/65">From ₹999/mo after trial · Cancel anytime</p>
+            </div>
+
+            <WhatsappOnboardingHelp compact />
+          </aside>
         </div>
       </main>
     </div>
@@ -383,7 +329,13 @@ function OnboardingPageContent() {
 
 export default function OnboardingPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen animate-pulse bg-muted/30" aria-busy="true" />}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]" aria-busy="true">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        </div>
+      }
+    >
       <OnboardingPageContent />
     </Suspense>
   );

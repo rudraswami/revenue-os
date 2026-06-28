@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
@@ -58,7 +58,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-export default function WhatsappConnect() {
+export default function WhatsappConnect({ variant = "default" }: { variant?: "default" | "onboarding" }) {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canConnect = canConnectWhatsapp(role);
@@ -71,6 +71,8 @@ export default function WhatsappConnect() {
   const [connectedAccount, setConnectedAccount] = useState<WhatsappAccount | null>(null);
   const [connectPath, setConnectPath] = useState<WhatsappConnectPath>("cloud_api");
   const [addingAnother, setAddingAnother] = useState(false);
+  const [connectMode, setConnectMode] = useState<"facebook" | "token">("facebook");
+  const isOnboarding = variant === "onboarding";
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -86,6 +88,12 @@ export default function WhatsappConnect() {
     enabled: !!token,
     staleTime: 60_000,
   });
+
+  useEffect(() => {
+    if (isOnboarding && config && !config.embeddedSignupLive) {
+      setConnectMode("token");
+    }
+  }, [isOnboarding, config]);
 
   const { data: readiness } = useQuery({
     queryKey: ["whatsapp-onboarding-readiness"],
@@ -370,13 +378,15 @@ export default function WhatsappConnect() {
   if (!config?.enabled) {
     return (
       <div className="space-y-6">
-        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">
-            Connect your <strong className="text-foreground">WhatsApp Business number</strong> with a
-            Meta API Setup token. Growvisi ingests messages, classifies intent, and tracks pipeline — your
-            team replies from Inbox when customers need a human.
-          </p>
-        </div>
+        {!isOnboarding && (
+          <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
+            <p className="text-sm text-muted-foreground">
+              Connect your <strong className="text-foreground">WhatsApp Business number</strong> with a
+              Meta API Setup token. Growvisi ingests messages, classifies intent, and tracks pipeline — your
+              team replies from Inbox when customers need a human.
+            </p>
+          </div>
+        )}
         {canConnect ? (
           <WhatsappConnectWizard />
         ) : (
@@ -385,10 +395,172 @@ export default function WhatsappConnect() {
             is linked.
           </p>
         )}
-        <WhatsappOnboardingHelp />
+        {!isOnboarding && <WhatsappOnboardingHelp />}
       </div>
     );
   }
+
+  const facebookConnectCard = (
+    <div
+      className={cn(
+        "overflow-hidden rounded-2xl border bg-white shadow-[0_8px_30px_rgb(11_28_48/0.04)]",
+        isOnboarding ? "border-border/60" : "border-border",
+      )}
+    >
+      {isOnboarding ? (
+        embeddedLive ? (
+          <div className="flex gap-2 border-b border-border/60 p-2">
+            <button
+              type="button"
+              onClick={() => setConnectMode("facebook")}
+              className={cn(
+                "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors",
+                connectMode === "facebook"
+                  ? "bg-[#0b1c30] text-white"
+                  : "text-muted-foreground hover:bg-muted/50",
+              )}
+            >
+              Facebook (recommended)
+            </button>
+            <button
+              type="button"
+              onClick={() => setConnectMode("token")}
+              className={cn(
+                "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors",
+                connectMode === "token"
+                  ? "bg-[#0b1c30] text-white"
+                  : "text-muted-foreground hover:bg-muted/50",
+              )}
+            >
+              Meta API token
+            </button>
+          </div>
+        ) : (
+          <div className="border-b border-border/60 px-5 py-4">
+            <p className="text-sm font-semibold text-[#0b1c30]">Connect with Meta API token</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Facebook one-click unlocks after App Review. Use your Meta API Setup token for now.
+            </p>
+          </div>
+        )
+      ) : (
+        <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-6">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1877F2]/15 text-[#1877F2]">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#1877F2]">
+                Recommended
+              </p>
+              <h3 className="text-lg font-semibold">One-click with Facebook</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Sign in with the Facebook account that manages your WhatsApp Business. Takes about
+                2 minutes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={cn("space-y-5", isOnboarding ? "p-5 sm:p-6" : "space-y-4 px-6 py-6")}>
+        {error && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        {(connectMode === "facebook" || !isOnboarding) && embeddedLive && (
+          <>
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">
+                {isOnboarding ? "Which setup matches you?" : "How do you use WhatsApp today?"}
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(Object.keys(WHATSAPP_CONNECT_PATHS) as WhatsappConnectPath[]).map((pathId) => {
+                  const path = WHATSAPP_CONNECT_PATHS[pathId];
+                  const selected = connectPath === pathId;
+                  return (
+                    <button
+                      key={pathId}
+                      type="button"
+                      onClick={() => setConnectPath(pathId)}
+                      className={cn(
+                        "rounded-xl border p-4 text-left transition-all",
+                        selected
+                          ? "border-[#0b1c30]/20 bg-[#f8fafc] ring-1 ring-[#0b1c30]/10"
+                          : "border-border/80 bg-white hover:border-primary/20",
+                      )}
+                    >
+                      <p className="text-sm font-semibold text-foreground">{path.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {path.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {!isOnboarding && (
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { icon: Smartphone, title: "Business account", text: "Use your Meta Business login" },
+                  { icon: ShieldCheck, title: "Pick your number", text: "Select your WhatsApp line" },
+                  { icon: MessageCircle, title: "Go live", text: "Messages flow to Inbox" },
+                ].map((step, i) => (
+                  <div key={step.title} className="rounded-lg bg-muted/40 p-3">
+                    <p className="text-xs font-bold text-primary">Step {i + 1}</p>
+                    <step.icon className="mb-1 mt-2 h-4 w-4 text-muted-foreground" />
+                    <p className="text-sm font-medium">{step.title}</p>
+                    <p className="text-xs text-muted-foreground">{step.text}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Button
+              size="lg"
+              className={cn(
+                "h-12 w-full gap-2 text-base font-semibold rounded-xl",
+                "bg-[#1877F2] hover:bg-[#166FE0]",
+                isOnboarding && "sm:max-w-md",
+              )}
+              disabled={phase === "waiting_meta" || phase === "saving"}
+              onClick={() => void handleConnect()}
+            >
+              {(phase === "waiting_meta" || phase === "saving") && (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              )}
+              {phase === "waiting_meta"
+                ? "Complete setup in the Facebook window…"
+                : phase === "saving"
+                  ? "Connecting your number…"
+                  : phase === "error"
+                    ? "Try again"
+                    : "Continue with Facebook"}
+            </Button>
+
+            <p className="text-xs text-muted-foreground">
+              Secure connection powered by Meta. Growvisi never sees your Facebook password.
+            </p>
+            {!isOnboarding && <WhatsappEmbeddedSignupDiagnostics />}
+          </>
+        )}
+
+        {isOnboarding && (connectMode === "token" || !embeddedLive) && (
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">
+              Paste the temporary token from Meta API Setup while App Review is in progress.
+            </p>
+            <WhatsappConnectWizard onConnected={() => setPhase("done")} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -411,115 +583,20 @@ export default function WhatsappConnect() {
           </Button>
         </div>
       )}
-      <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
-        <p className="text-sm text-muted-foreground">
-          Connect the <strong className="text-foreground">WhatsApp Business number you already use</strong>{" "}
-          — the line your customers message. Growvisi ingests conversations for classification,
-          pipeline tracking, and team replies from Conversations.
-        </p>
-      </div>
+      {!isOnboarding && (
+        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            Connect the <strong className="text-foreground">WhatsApp Business number you already use</strong>{" "}
+            — the line your customers message. Growvisi ingests conversations for classification,
+            pipeline tracking, and team replies from Conversations.
+          </p>
+        </div>
+      )}
 
       {embeddedLive ? (
         <>
         {canConnect ? (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1877F2]/15 text-[#1877F2]">
-                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#1877F2]">
-                  Recommended
-                </p>
-                <h3 className="text-lg font-semibold">One-click with Facebook</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Sign in with the Facebook account that manages your WhatsApp Business. Takes about
-                  2 minutes.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4 px-6 py-6">
-            {error && (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground">How do you use WhatsApp today?</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {(Object.keys(WHATSAPP_CONNECT_PATHS) as WhatsappConnectPath[]).map((pathId) => {
-                  const path = WHATSAPP_CONNECT_PATHS[pathId];
-                  const selected = connectPath === pathId;
-                  return (
-                    <button
-                      key={pathId}
-                      type="button"
-                      onClick={() => setConnectPath(pathId)}
-                      className={cn(
-                        "rounded-xl border p-4 text-left transition-all",
-                        selected
-                          ? "border-[#1877F2]/40 bg-[#1877F2]/5 ring-1 ring-[#1877F2]/20"
-                          : "border-border/80 bg-white hover:border-primary/20",
-                      )}
-                    >
-                      <p className="text-sm font-semibold text-foreground">{path.title}</p>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        {path.description}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                { icon: Smartphone, title: "Business account", text: "Use your Meta Business login" },
-                { icon: ShieldCheck, title: "Pick your number", text: "Select your WhatsApp line" },
-                { icon: MessageCircle, title: "Go live", text: "Messages flow to Inbox" },
-              ].map((step, i) => (
-                <div key={step.title} className="rounded-lg bg-muted/40 p-3">
-                  <p className="text-xs font-bold text-primary">Step {i + 1}</p>
-                  <step.icon className="mb-1 mt-2 h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium">{step.title}</p>
-                  <p className="text-xs text-muted-foreground">{step.text}</p>
-                </div>
-              ))}
-            </div>
-
-            <Button
-              size="lg"
-              className={cn(
-                "h-12 w-full max-w-md gap-2 text-base font-semibold",
-                "bg-[#1877F2] hover:bg-[#166FE0]",
-              )}
-              disabled={phase === "waiting_meta" || phase === "saving"}
-              onClick={() => void handleConnect()}
-            >
-              {(phase === "waiting_meta" || phase === "saving") && (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              )}
-              {phase === "waiting_meta"
-                ? "Complete setup in the Facebook window…"
-                : phase === "saving"
-                  ? "Connecting your number…"
-                  : phase === "error"
-                    ? "Try again"
-                    : "Continue with Facebook"}
-            </Button>
-
-            <p className="text-xs text-muted-foreground">
-              Secure connection powered by Meta. Growvisi never sees your Facebook password.
-            </p>
-            <WhatsappEmbeddedSignupDiagnostics />
-          </div>
-        </div>
+          facebookConnectCard
         ) : (
           <p className="rounded-xl border border-border/80 bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
             Only workspace admins can connect WhatsApp. Ask an owner or admin to link your business
@@ -527,7 +604,7 @@ export default function WhatsappConnect() {
           </p>
         )}
 
-        {canConnect && (
+        {canConnect && !isOnboarding && (
         <details className="rounded-2xl border border-border/80 bg-white">
           <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-muted-foreground hover:text-foreground">
             During App Review: connect with Meta API Setup token
@@ -541,14 +618,18 @@ export default function WhatsappConnect() {
       ) : (
         <>
           {canConnect ? (
-            <WhatsappConnectWizard />
+            isOnboarding ? (
+              facebookConnectCard
+            ) : (
+              <WhatsappConnectWizard />
+            )
           ) : (
             <p className="text-sm text-muted-foreground">
               Only workspace admins can connect WhatsApp numbers.
             </p>
           )}
 
-          <WhatsappOnboardingHelp />
+          {!isOnboarding && <WhatsappOnboardingHelp />}
         </>
       )}
     </div>
