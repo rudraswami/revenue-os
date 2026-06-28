@@ -90,7 +90,7 @@ export function DailyDigestCard() {
               )}
             </div>
             <p className="mt-1 max-w-lg text-sm text-muted-foreground">
-              Every morning IST: pipeline ₹, hot leads, handoffs, and unread messages — by email
+              Every morning IST: pipeline ₹, hot leads, chats waiting on you, and unread messages — by email
               and/or WhatsApp so owners who skip inbox email still get the brief.
             </p>
             <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">

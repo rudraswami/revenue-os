@@ -151,7 +151,7 @@ export function usePendingSetupActions() {
         actions.push({
           id: "enable-digest",
           title: "Turn on morning digest",
-          description: "Pipeline ₹ and handoffs brief — email or WhatsApp for owners.",
+          description: "Pipeline ₹ and chats waiting on you — email or WhatsApp for owners.",
           href: "/dashboard/automations",
           priority: "recommended",
           order: 30,

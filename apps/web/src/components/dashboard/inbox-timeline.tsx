@@ -2,6 +2,7 @@
 
 import { Clock, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CONVERSATIONS } from "@/lib/brand-copy";
 import { cn } from "@/lib/utils";
 
 export interface InboxTimelineEvent {
@@ -18,12 +19,14 @@ export function InboxTimeline({
   open,
   onToggle,
   className,
+  hasClassification,
 }: {
   events: InboxTimelineEvent[];
   aiConfidence: number | null | undefined;
   open: boolean;
   onToggle: () => void;
   className?: string;
+  hasClassification?: boolean;
 }) {
   return (
     <aside
@@ -79,8 +82,10 @@ export function InboxTimeline({
             </div>
           )}
           {!events.length && (
-            <p className="rounded-xl border border-dashed border-[#dce9ff] bg-white px-3 py-4 text-center text-xs text-muted-foreground">
-              Timeline fills in after the next message is classified.
+            <p className="rounded-xl border border-dashed border-[#dce9ff] bg-white px-3 py-4 text-center text-xs leading-relaxed text-muted-foreground">
+              {hasClassification || aiConfidence != null
+                ? CONVERSATIONS.timelineEmptyEvents
+                : CONVERSATIONS.timelineEmptyClassify}
             </p>
           )}
           <ul className="space-y-4">

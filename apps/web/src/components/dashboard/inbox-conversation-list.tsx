@@ -7,7 +7,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { InboxListSkeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-state";
-import { EYEBROW, NAV } from "@/lib/brand-copy";
+import { CONVERSATIONS, EYEBROW, NAV, type InboxListFilter } from "@/lib/brand-copy";
+import { STAGE_BADGE } from "@/lib/crm";
 import { formatStage } from "@/lib/stage-labels";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,13 @@ export interface InboxConversationRow {
   lead: { id: string; stage: string } | null;
   messages: Array<{ content: string | null }>;
 }
+
+const LIST_FILTERS: { id: InboxListFilter; label: string }[] = [
+  { id: "all", label: CONVERSATIONS.filterAll },
+  { id: "handoff", label: CONVERSATIONS.yourTurn },
+  { id: "unread", label: CONVERSATIONS.filterUnread },
+  { id: "unassigned", label: CONVERSATIONS.filterUnassigned },
+];
 
 function formatListTime(iso: string | null) {
   if (!iso) return "";
@@ -36,6 +44,10 @@ function formatListTime(iso: string | null) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function isClosedStage(stage: string) {
+  return stage === "WON" || stage === "LOST";
+}
+
 export function InboxConversationList({
   conversations,
   selectedId,
@@ -48,9 +60,9 @@ export function InboxConversationList({
   onRetry,
   onSelect,
   onNewMessage,
-  listFilter,
+  listFilter = "all",
   onListFilterChange,
-  handoffCount,
+  yourTurnCount,
 }: {
   conversations: InboxConversationRow[];
   selectedId: string | null;
@@ -63,12 +75,12 @@ export function InboxConversationList({
   onRetry: () => void;
   onSelect: (id: string) => void;
   onNewMessage?: () => void;
-  listFilter?: "all" | "handoff";
-  onListFilterChange?: (f: "all" | "handoff") => void;
-  handoffCount?: number;
+  listFilter?: InboxListFilter;
+  onListFilterChange?: (f: InboxListFilter) => void;
+  yourTurnCount?: number;
 }) {
   return (
-    <aside className="flex h-full w-full shrink-0 flex-col border-r border-border/80 bg-[#f8f9ff] md:w-[min(100%,300px)] lg:w-[320px]">
+    <aside className="flex h-full w-full shrink-0 flex-col border-r border-border/80 bg-[#f8f9ff] md:w-[min(100%,320px)] lg:w-[360px]">
       <div className="shrink-0 border-b border-border/80 bg-white px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -115,32 +127,29 @@ export function InboxConversationList({
           </div>
         )}
         {onListFilterChange && (
-          <div className="mt-2 flex gap-1">
-            <button
-              type="button"
-              onClick={() => onListFilterChange("all")}
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition",
-                listFilter !== "handoff"
-                  ? "bg-accent text-white"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => onListFilterChange("handoff")}
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition",
-                listFilter === "handoff"
-                  ? "bg-amber-600 text-white"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              Handoff
-              {(handoffCount ?? 0) > 0 && ` (${handoffCount})`}
-            </button>
+          <div className="mt-2.5 flex gap-1 overflow-x-auto pb-0.5 custom-scrollbar">
+            {LIST_FILTERS.map(({ id, label }) => {
+              const active = listFilter === id;
+              const count = id === "handoff" ? yourTurnCount : undefined;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => onListFilterChange(id)}
+                  className={cn(
+                    "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
+                    active
+                      ? id === "handoff"
+                        ? "bg-amber-600 text-white shadow-sm"
+                        : "bg-accent text-white shadow-sm"
+                      : "bg-muted/80 text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {label}
+                  {count != null && count > 0 ? ` · ${count}` : ""}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -176,10 +185,22 @@ export function InboxConversationList({
             <EmptyState
               compact
               icon={<Inbox className="h-6 w-6" />}
-              title="No messages yet"
-              description="Message your business number from your phone to start."
-              actionHref="/dashboard/settings?tab=whatsapp"
-              actionLabel="WhatsApp settings"
+              title={
+                listFilter === "handoff"
+                  ? "You're all caught up"
+                  : listFilter === "unread"
+                    ? "No unread messages"
+                    : listFilter === "unassigned"
+                      ? "Everyone has an owner"
+                      : "No messages yet"
+              }
+              description={
+                listFilter === "all"
+                  ? "Message your business number from your phone to start."
+                  : "Try another filter or check back when new messages arrive."
+              }
+              actionHref={listFilter === "all" ? "/dashboard/settings?tab=whatsapp" : undefined}
+              actionLabel={listFilter === "all" ? "WhatsApp settings" : undefined}
             />
           </div>
         )}
@@ -188,6 +209,7 @@ export function InboxConversationList({
           {conversations.map((c) => {
             const displayName = c.contactName ?? c.contactPhone;
             const active = selectedId === c.id;
+            const closed = c.lead ? isClosedStage(c.lead.stage) : false;
             return (
               <li key={c.id}>
                 <button
@@ -198,6 +220,7 @@ export function InboxConversationList({
                     active
                       ? "border-l-[3px] border-l-accent bg-white"
                       : "border-l-[3px] border-l-transparent hover:bg-white/70",
+                    closed && !active && "opacity-75",
                   )}
                 >
                   <AvatarInitials name={displayName} size="sm" />
@@ -214,19 +237,21 @@ export function InboxConversationList({
                       {c.messages[0]?.content ?? "No messages"}
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {c.requiresHuman && (
+                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">
+                          {CONVERSATIONS.waitingOnYou}
+                        </span>
+                      )}
                       {c.lead && (
                         <span
                           className={cn(
                             "rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
-                            active ? "bg-accent/10 text-accent" : "bg-primary-soft text-muted-foreground",
+                            STAGE_BADGE[c.lead.stage as keyof typeof STAGE_BADGE] ??
+                              "bg-primary-soft text-muted-foreground",
+                            closed && "opacity-80",
                           )}
                         >
                           {formatStage(c.lead.stage)}
-                        </span>
-                      )}
-                      {c.requiresHuman && (
-                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">
-                          Handoff
                         </span>
                       )}
                       {c.unreadCount > 0 && (

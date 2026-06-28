@@ -8,7 +8,7 @@ import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
-import { CTA, EYEBROW } from "@/lib/brand-copy";
+import { CTA, CONVERSATIONS, EYEBROW } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   Activity,
@@ -47,8 +47,8 @@ const features = [
   },
   {
     icon: UserRound,
-    title: "Human handoff flags",
-    description: "Complex deals flagged for your team — Meta may still reply in-chat.",
+    title: `${CONVERSATIONS.yourTurn} alerts`,
+    description: "When AI can't answer alone, the thread lands in your queue — you reply as a person.",
     href: "/dashboard/inbox?filter=handoff",
     stat: "Team alerts",
   },
@@ -175,7 +175,7 @@ export default function AiStudioPage() {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {stats
-                      ? `${stats.aiClassifications} total analyses · ${stats.classifiedLeads} scored · ${stats.humanHandoffRecommended} handoffs`
+                      ? `${stats.aiClassifications} total analyses · ${stats.classifiedLeads} scored · ${stats.humanHandoffRecommended} waiting on you`
                       : "Runs on each inbound customer message."}
                   </p>
                 </>
@@ -255,11 +255,11 @@ export default function AiStudioPage() {
               {capabilities?.aiClassification ? "On — runs on every inbound message" : "Off — set OPENAI_API_KEY"}
             </li>
             <li>
-              <strong className="text-foreground">Human handoff:</strong> Flags threads that need your team; Take over in Inbox
+              <strong className="text-foreground">{CONVERSATIONS.yourTurn}:</strong> Flags chats that need a real reply — use {CONVERSATIONS.replyNow} in Conversations
             </li>
             <li>
               <strong className="text-foreground">Smart reply drafts:</strong>{" "}
-              {capabilities?.aiSuggestReply ? "On — suggestions for human takeover only" : "Off"}
+              {capabilities?.aiSuggestReply ? "On — suggestions when you compose a reply" : "Off"}
             </li>
             <li>
               <strong className="text-foreground">Business context (RAG):</strong>{" "}

@@ -15,14 +15,14 @@ export const POSITIONING = {
   trialNote: "14-day trial · 500 leads · 1 WhatsApp number · No credit card",
 } as const;
 
-/** What “handoff” means in product — use in FAQ, onboarding, sales */
+/** What “your turn” means in product — use in FAQ, onboarding, sales */
 export const HANDOFF_EXPLAINER = {
-  short: "When AI decides a customer needs a person, the thread is flagged for your team.",
+  short: "When AI decides a customer needs a person, the chat is flagged for your team.",
   steps: [
-    "AI classifies the message and may set “Needs human” on the thread.",
-    "Inbox shows a handoff filter; Home and digest alert your team.",
-    "Take over assigns the deal to you, creates a task, and clears the flag.",
-    "You reply from Inbox (human message) or in WhatsApp — not an AI bot.",
+    "AI classifies the message and may mark the thread as waiting on you.",
+    "Conversations shows a Your turn filter; Home and digest alert your team.",
+    "I'll reply now assigns the deal to you, creates a task, and clears the alert.",
+    "You reply from Conversations or in WhatsApp — Growvisi never auto-messages customers.",
   ],
 } as const;
 

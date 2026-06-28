@@ -15,6 +15,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { formatInr, STAGE_LABELS } from "@/lib/crm";
+import { CONVERSATIONS } from "@/lib/brand-copy";
 import { cn } from "@/lib/utils";
 
 interface FunnelData {
@@ -125,18 +126,18 @@ export function HomeCommandCenter({
             delta={unread > 0 ? "Customers waiting in WhatsApp" : "Inbox is clear"}
             icon={<Inbox className="h-5 w-5" />}
             variant={unread > 0 ? "amber" : "slate"}
-            href="/dashboard/inbox"
+            href={unread > 0 ? "/dashboard/inbox?filter=unread" : "/dashboard/inbox"}
             actionLabel={unread > 0 ? "Reply now" : "View inbox"}
             urgent={unread > 0}
           />
           <MetricCard
-            title="Needs your team"
+            title={CONVERSATIONS.yourTurn}
             value={handoffs}
-            delta={handoffs > 0 ? "AI flagged for human follow-up" : "No handoffs right now"}
+            delta={handoffs > 0 ? CONVERSATIONS.yourTurnHint : CONVERSATIONS.yourTurnClear}
             icon={<UserRound className="h-5 w-5" />}
             variant={handoffs > 0 ? "rose" : "slate"}
             href={handoffs > 0 ? "/dashboard/inbox?filter=handoff" : "/dashboard/inbox"}
-            actionLabel={handoffs > 0 ? "Review handoffs" : "Open inbox"}
+            actionLabel={handoffs > 0 ? CONVERSATIONS.seeWhoWaiting : "Open conversations"}
             urgent={handoffs > 0}
           />
           <MetricCard
@@ -159,7 +160,7 @@ export function HomeCommandCenter({
             delta={unassigned > 0 ? "Threads without an owner" : "All conversations assigned"}
             icon={<AlertTriangle className="h-5 w-5" />}
             variant={unassigned > 0 ? "amber" : "slate"}
-            href="/dashboard/inbox"
+            href={unassigned > 0 ? "/dashboard/inbox?filter=unassigned" : "/dashboard/inbox"}
             actionLabel={unassigned > 0 ? "Assign owners" : "Team settings"}
             urgent={unassigned > 0}
           />

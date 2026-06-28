@@ -139,7 +139,7 @@ export function SlaMetricsPanel({ period }: { period: MetricsPeriod }) {
           compact
           icon={<Clock className="h-6 w-6" />}
           title="No response data yet"
-          description="Send a reply from Conversations (human takeover) to start measuring first-response time."
+          description="Send a reply from Conversations to start measuring first-response time."
           actionHref="/dashboard/inbox"
           actionLabel="Open Conversations"
         />

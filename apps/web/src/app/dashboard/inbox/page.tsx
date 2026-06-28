@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Send, Sparkles, ArrowLeft, Inbox } from "lucide-react";
+import { Loader2, Send, Sparkles, ArrowLeft, Inbox, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { formatStage } from "@/lib/stage-labels";
-import { LEAD_STAGES, STAGE_LABELS } from "@/lib/crm";
+import { LEAD_STAGES, STAGE_LABELS, STAGE_BADGE, formatInr } from "@/lib/crm";
 import type { LeadStage } from "@growvisi/shared";
+import { CONVERSATIONS, type InboxListFilter } from "@/lib/brand-copy";
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
 import { InboxAiPanel, type InboxAiContext } from "@/components/dashboard/inbox-ai-panel";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
@@ -52,7 +54,7 @@ interface ConversationDetail {
   handoffReason?: string | null;
   aiContext?: InboxAiContext | null;
   assignedTo: { id: string; name: string | null; email: string } | null;
-  lead: { id: string; stage: string; score?: number; aiConfidence?: number | null } | null;
+  lead: { id: string; stage: string; score?: number; aiConfidence?: number | null; valueCents?: number | null } | null;
   messages: Message[];
   whatsappAccount: { displayPhoneNumber: string; isActive: boolean };
 }
@@ -95,8 +97,9 @@ export default function InboxPage() {
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [showOutbound, setShowOutbound] = useState(false);
-  const [listFilter, setListFilter] = useState<"all" | "handoff">("all");
+  const [listFilter, setListFilter] = useState<InboxListFilter>("all");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const composeRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
@@ -107,12 +110,20 @@ export default function InboxPage() {
     const params = new URLSearchParams(window.location.search);
     const c = params.get("c");
     if (c) setSelectedId(c);
-    if (params.get("filter") === "handoff") setListFilter("handoff");
+    const f = params.get("filter");
+    if (f === "handoff" || f === "unread" || f === "unassigned") {
+      setListFilter(f);
+    }
 
     function onPopState() {
       const p = new URLSearchParams(window.location.search);
       setSelectedId(p.get("c"));
-      setListFilter(p.get("filter") === "handoff" ? "handoff" : "all");
+      const filter = p.get("filter");
+      setListFilter(
+        filter === "handoff" || filter === "unread" || filter === "unassigned"
+          ? filter
+          : "all",
+      );
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -123,7 +134,7 @@ export default function InboxPage() {
     queryFn: () => {
       const params = new URLSearchParams({ pageSize: "50" });
       if (searchDebounced) params.set("q", searchDebounced);
-      if (listFilter === "handoff") params.set("filter", "handoff");
+      if (listFilter !== "all") params.set("filter", listFilter);
       return apiFetch<{ data: ConversationRow[] }>(`/conversations?${params}`, {
         token: token ?? undefined,
       });
@@ -201,6 +212,12 @@ export default function InboxPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [thread?.messages.length]);
+
+  useEffect(() => {
+    if (thread?.requiresHuman && showComposer) {
+      composeRef.current?.focus();
+    }
+  }, [thread?.requiresHuman, thread?.id, showComposer]);
 
   const suggestMutation = useMutation({
     mutationFn: () =>
@@ -332,10 +349,10 @@ export default function InboxPage() {
     }).catch(() => {});
   }
 
-  function setInboxFilter(filter: "all" | "handoff") {
+  function setInboxFilter(filter: InboxListFilter) {
     setListFilter(filter);
     const params = new URLSearchParams(window.location.search);
-    if (filter === "handoff") params.set("filter", "handoff");
+    if (filter !== "all") params.set("filter", filter);
     else params.delete("filter");
     const q = params.toString();
     window.history.replaceState(null, "", q ? `/dashboard/inbox?${q}` : "/dashboard/inbox");
@@ -373,7 +390,7 @@ export default function InboxPage() {
           onNewMessage={canSend && hasWhatsapp ? () => setShowOutbound(true) : undefined}
           listFilter={listFilter}
           onListFilterChange={setInboxFilter}
-          handoffCount={convStats?.humanHandoffRecommended}
+          yourTurnCount={convStats?.humanHandoffRecommended}
         />
       </div>
 
@@ -391,10 +408,9 @@ export default function InboxPage() {
               <Inbox className="h-7 w-7 text-accent" />
             </div>
             <div className="max-w-sm space-y-1">
-              <h2 className="text-lg font-bold tracking-tight">Select a conversation</h2>
+              <h2 className="text-lg font-bold tracking-tight">{CONVERSATIONS.selectTitle}</h2>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Pick a contact on the left to view messages, AI classification, and pipeline timeline.
-                Reply as a human from Inbox when AI flags a handoff — or continue in WhatsApp.
+                {CONVERSATIONS.selectBody}
               </p>
             </div>
             <div className="mt-2 grid max-w-md gap-2 text-left text-xs text-muted-foreground sm:grid-cols-3">
@@ -455,7 +471,29 @@ export default function InboxPage() {
                   <p className="truncate text-sm font-semibold">
                     {thread.contactName ?? thread.contactPhone}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">{thread.contactPhone}</p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                    <span className="truncate">{thread.contactPhone}</span>
+                    {thread.lead?.valueCents != null && thread.lead.valueCents > 0 && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="font-semibold text-emerald-700">
+                          {formatInr(thread.lead.valueCents)}
+                        </span>
+                      </>
+                    )}
+                    {thread.lead && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <Link
+                          href={`/dashboard/pipeline?lead=${thread.lead.id}`}
+                          className="inline-flex items-center gap-0.5 font-medium text-accent hover:underline"
+                        >
+                          {CONVERSATIONS.openPipeline}
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                   {thread.lead?.score != null && thread.lead.score > 0 && (
@@ -466,14 +504,20 @@ export default function InboxPage() {
                           ? "bg-accent text-white"
                           : "bg-[#ecfdf5] text-accent",
                       )}
+                      title="Lead score from AI"
                     >
-                      {thread.lead.score}
+                      {thread.lead.score >= 80
+                        ? CONVERSATIONS.scoreHot(thread.lead.score)
+                        : CONVERSATIONS.scoreWarm(thread.lead.score)}
                     </span>
                   )}
                   {thread.lead && (
                     canSend ? (
                       <select
-                        className="max-w-[110px] truncate rounded-full border border-primary-soft bg-primary-soft px-2 py-0.5 text-[10px] font-semibold text-accent"
+                        className={cn(
+                          "max-w-[110px] truncate rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                          STAGE_BADGE[thread.lead.stage as LeadStage] ?? "bg-primary-soft text-accent",
+                        )}
                         value={thread.lead.stage}
                         disabled={stageMutation.isPending}
                         onChange={(e) => stageMutation.mutate(e.target.value as LeadStage)}
@@ -485,14 +529,19 @@ export default function InboxPage() {
                         ))}
                       </select>
                     ) : (
-                      <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[10px] font-semibold text-accent">
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
+                          STAGE_BADGE[thread.lead.stage as LeadStage],
+                        )}
+                      >
                         {formatStage(thread.lead.stage)}
                       </span>
                     )
                   )}
                   {thread.requiresHuman && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                      Handoff
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                      {CONVERSATIONS.waitingOnYou}
                     </span>
                   )}
                 </div>
@@ -527,21 +576,21 @@ export default function InboxPage() {
               />
               <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-[#f8f9ff]/60 px-4 py-2 lg:px-5">
                 <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    AI
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    {CONVERSATIONS.autoClassify}
                   </span>
                   <span className="scale-90">
                     <Switch
                       checked={thread.aiEnabled}
                       disabled={aiToggleMutation.isPending}
                       onCheckedChange={(v) => aiToggleMutation.mutate(v)}
-                      aria-label="Toggle AI classification"
+                      aria-label={CONVERSATIONS.autoClassify}
                     />
                   </span>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
                   <label htmlFor="assign-agent" className="text-[10px] font-medium text-muted-foreground">
-                    Owner
+                    {CONVERSATIONS.assignedTo}
                   </label>
                   <select
                     id="assign-agent"
@@ -553,7 +602,7 @@ export default function InboxPage() {
                       assignMutation.mutate(v ? v : null);
                     }}
                   >
-                    <option value="">Unassigned</option>
+                    <option value="">{CONVERSATIONS.unassigned}</option>
                     {(teamMembers ?? []).map((m) => (
                       <option key={m.user.id} value={m.user.id}>
                         {m.user.name ?? m.user.email}
@@ -637,7 +686,8 @@ export default function InboxPage() {
                   <div className="flex items-end gap-2 rounded-xl border border-border/80 bg-[#f8f9ff] p-1.5 shadow-sm">
                     <div className="min-w-0 flex-1 py-1">
                       <Input
-                        placeholder="Human takeover reply…"
+                        ref={composeRef}
+                        placeholder={CONVERSATIONS.composePlaceholder}
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         disabled={sendMutation.isPending || !thread.whatsappAccount.isActive}
@@ -678,8 +728,8 @@ export default function InboxPage() {
                       </Button>
                     </div>
                   </div>
-                  <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-                    Human reply from Growvisi · optional Meta Business Agent can also reply in WhatsApp
+                  <p className="mt-1.5 text-center text-[10px] leading-relaxed text-muted-foreground">
+                    {CONVERSATIONS.composeFooter}
                   </p>
                   <button
                     type="button"
@@ -697,7 +747,7 @@ export default function InboxPage() {
                     className="w-full rounded-xl"
                     onClick={() => setShowComposer(true)}
                   >
-                    Reply from Growvisi (human takeover)
+                    {CONVERSATIONS.composeCollapsed}
                   </Button>
                 )}
               </div>
@@ -709,6 +759,7 @@ export default function InboxPage() {
                 className="hidden lg:flex"
                 events={timeline?.events ?? []}
                 aiConfidence={timeline?.lead.aiConfidence}
+                hasClassification={!!thread.aiContext}
                 open={showTimeline}
                 onToggle={() => setShowTimeline((v) => !v)}
               />

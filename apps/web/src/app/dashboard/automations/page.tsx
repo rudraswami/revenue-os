@@ -16,6 +16,7 @@ import { apiFetch } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { Activity, Bell, Clock, MessageCircle, Sparkles, UserRound, Zap } from "lucide-react";
+import { CONVERSATIONS } from "@/lib/brand-copy";
 
 const SERVER_AUTOMATIONS: Array<{
   id: Exclude<AutomationId, "welcome">;
@@ -52,10 +53,10 @@ const SERVER_AUTOMATIONS: Array<{
   {
     id: "handoff",
     icon: UserRound,
-    title: "Human handoff",
+    title: `${CONVERSATIONS.yourTurn} task`,
     description:
-      "When AI flags a conversation for your team, create a high-priority task and email the assignee.",
-    impact: "No complex chats dropped",
+      `When AI flags a chat as ${CONVERSATIONS.waitingOnYou.toLowerCase()}, create a high-priority task and email the assignee.`,
+    impact: "No hot leads left hanging",
     serverNote: "Task + email on requiresHuman",
   },
 ];

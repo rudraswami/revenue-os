@@ -118,6 +118,9 @@ export class ConversationsService {
       ...(filter === "handoff"
         ? { metadata: { path: ["requiresHuman"], equals: true } }
         : {}),
+      ...(filter === "unread" ? { unreadCount: { gt: 0 } } : {}),
+      ...(filter === "unassigned" ? { assignedToId: null } : {}),
+      ...(filter === "mine" ? { assignedToId: user.sub } : {}),
       ...(query
         ? {
             OR: [
