@@ -1,4 +1,8 @@
-import { GROWVISI_WHATSAPP_ONBOARDING_HELP_MAILTO } from "@growvisi/shared";
+import {
+  GROWVISI_EMAIL_SUPPORT,
+  GROWVISI_WEB_URL,
+  GROWVISI_WHATSAPP_ONBOARDING_HELP_MAILTO,
+} from "@growvisi/shared";
 
 export type HelpFabContext = "onboarding" | "connection" | "general";
 
@@ -27,7 +31,9 @@ export function setupHelpForContext(
 
 export const SETUP_HELP_ESCALATION = {
   bookCallHref: GROWVISI_WHATSAPP_ONBOARDING_HELP_MAILTO,
-  emailHref: "mailto:support@growvisi.in",
+  emailHref: `mailto:${GROWVISI_EMAIL_SUPPORT}`,
+  contactFormHref: `${GROWVISI_WEB_URL}/contact`,
+  supportEmail: GROWVISI_EMAIL_SUPPORT,
 } as const;
 
 export function helpFabContextForPath(pathname: string): HelpFabContext | null {

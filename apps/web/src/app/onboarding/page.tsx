@@ -29,28 +29,14 @@ import { apiFetch } from "@/lib/api-client";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
 
-const VALUE_PROPS = [
-  {
-    icon: Bot,
-    title: "AI reads every message",
-    desc: "Intent, urgency, and pipeline stage — scored automatically.",
-  },
-  {
-    icon: Kanban,
-    title: "Pipeline that updates itself",
-    desc: "Deals move as conversations progress. No manual CRM entry.",
-  },
-  {
-    icon: Users,
-    title: "Team-ready from day one",
-    desc: "Assign threads, add notes, and follow up without chaos.",
-  },
-  {
-    icon: Shield,
-    title: "Built for Indian SMBs",
-    desc: "INR billing, encrypted tokens, role-based access.",
-  },
-];
+const VALUE_PROP_KEYS = [
+  { icon: Bot, key: "ai" },
+  { icon: Kanban, key: "pipeline" },
+  { icon: Users, key: "team" },
+  { icon: Shield, key: "india" },
+] as const;
+
+const AFTER_CONNECT_KEYS = ["step1", "step2", "step3", "step4"] as const;
 
 function OnboardingPageContent() {
   const { t } = useI18n();
@@ -257,7 +243,7 @@ function OnboardingPageContent() {
                       <CheckCircle2 className="h-6 w-6" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-[#0b1c30]">WhatsApp connected</p>
+                      <p className="font-semibold text-[#0b1c30]">{t("onboardingPage.connectedBanner")}</p>
                       <p className="mt-0.5 truncate text-sm text-muted-foreground">
                         {activeAccount?.verifiedName ?? "Business line"}
                         {activeAccount?.displayPhoneNumber
@@ -279,14 +265,18 @@ function OnboardingPageContent() {
             <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
               <p className="text-sm font-bold text-[#0b1c30]">{t("onboardingPage.unlockTitle")}</p>
               <ul className="mt-4 space-y-4">
-                {VALUE_PROPS.map((vp) => (
-                  <li key={vp.title} className="flex gap-3">
+                {VALUE_PROP_KEYS.map((vp) => (
+                  <li key={vp.key} className="flex gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
                       <vp.icon className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{vp.title}</p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{vp.desc}</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {t(`onboardingPage.valueProps.${vp.key}.title`)}
+                      </p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                        {t(`onboardingPage.valueProps.${vp.key}.desc`)}
+                      </p>
                     </div>
                   </li>
                 ))}
@@ -299,17 +289,12 @@ function OnboardingPageContent() {
                 <p className="text-sm font-bold text-[#0b1c30]">{t("onboardingPage.afterConnectTitle")}</p>
               </div>
               <ol className="mt-4 space-y-3">
-                {[
-                  "Customer messages your WhatsApp number",
-                  "AI classifies intent and scores the lead",
-                  "Deal appears in Pipeline automatically",
-                  "Your team replies — Growvisi never auto-replies",
-                ].map((text, i) => (
-                  <li key={text} className="flex gap-3 text-sm text-muted-foreground">
+                {AFTER_CONNECT_KEYS.map((key, i) => (
+                  <li key={key} className="flex gap-3 text-sm text-muted-foreground">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f1f5f9] text-[11px] font-bold text-[#0b1c30]">
                       {i + 1}
                     </span>
-                    <span className="pt-0.5 leading-snug">{text}</span>
+                    <span className="pt-0.5 leading-snug">{t(`onboardingPage.afterConnect.${key}`)}</span>
                   </li>
                 ))}
               </ol>

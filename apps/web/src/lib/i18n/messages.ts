@@ -199,6 +199,15 @@ export const messages = {
         },
       },
     },
+    whatsappOnboardingHelp: {
+      needHand: "Need a hand?",
+      compactDesc: "Free 15-min setup call — we walk through Meta API Setup together.",
+      bookCallLink: "Book setup call →",
+      guidedTitle: "Prefer a guided setup?",
+      guidedDesc:
+        "Book a free 15-minute call — we'll walk you through Meta API Setup and connect your number together.",
+      bookCallBtn: "Book setup call",
+    },
     setupHelp: {
       eyebrow: "Setup assistant",
       subtitle: "Quick answers — or talk to our team.",
@@ -209,6 +218,22 @@ export const messages = {
       emailSupport: "Email support@growvisi.in",
       openHelp: "Open setup help",
       closeHelp: "Close setup help",
+      tabAnswers: "Quick answers",
+      tabAsk: "Ask assistant",
+      chatOffline: "Ask assistant is temporarily unavailable. Use quick answers below or book a call.",
+      chatIntroTitle: "Ask about WhatsApp setup",
+      chatIntroBody: "I know Growvisi onboarding, tokens, and go-live — not your customer chats.",
+      chatExample1: "Which option — phone or API?",
+      chatExample2: "My test message isn't showing",
+      chatExample3: "Token expired — what now?",
+      chatPlaceholder: "Ask a setup question…",
+      chatSend: "Send",
+      chatThinking: "Thinking…",
+      chatError: "Could not get an answer. Try quick answers or book a call.",
+      supportNeedTitle: "Need our team?",
+      supportHours: "Mon–Sat, 10am–7pm IST · we reply within 1 business day",
+      supportEmailLabel: "Email",
+      contactForm: "Contact form",
       faqIds: {
         onboarding: ["which-option", "facebook-vs-token", "test-message", "skip"],
         connection: ["token-expiry", "no-number", "which-option", "facebook-vs-token"],
@@ -485,6 +510,35 @@ export const messages = {
       },
       connectedBanner: "WhatsApp कनेक्ट",
     },
+    whatsappOnboardingFaq: {
+      title: "अक्सर पूछे जाने वाले प्रश्न",
+      items: {
+        "which-option": {
+          q: "फोन या API — क्या चुनूँ?",
+          a: "ज़्यादातर व्यवसाय WhatsApp Business ऐप से फोन पर जवाब देते हैं — “मैं फोन से जवाब देता/देती हूँ” चुनें। Cloud API, WATI, Interakt आदि पहले से उपयोग करते हैं तो API विकल्प चुनें।",
+        },
+        "before-connect": {
+          q: "कनेक्ट करने से पहले क्या चाहिए?",
+          a: "आपका WhatsApp Business नंबर और Meta एक्सेस। टोकन से कनेक्ट करते समय एक टोकन पेस्ट करें — Growvisi नंबर अपने आप ढूँढ लेगा।",
+        },
+        "test-message": {
+          q: "मेरा टेस्ट संदेश Conversations में नहीं दिखता",
+          a: "Meta का “Send test message” केवल आउटबाउंड है। अपने फोन से बिज़नेस नंबर पर WhatsApp भेजें। Meta टेस्ट लाइन हो तो पहले अपना फोन टेस्ट रिसिपिएंट के रूप में जोड़ें।",
+        },
+        "token-expiry": {
+          q: "क्या हर दिन दोबारा कनेक्ट करना होगा?",
+          a: "Meta का अस्थायी टोकन लगभग 24 घंटे में एक्सपायर होता है। Settings → Refresh access token से नया टोकन पेस्ट करें — नंबर डिस्कनेक्ट करने की जरूरत नहीं।",
+        },
+        "multi-number": {
+          q: "मेरे पास एक से ज़्यादा बिज़नेस नंबर हैं",
+          a: "टोकन पेस्ट करने के बाद सही लाइन सूची से चुनें, फिर Connect my number पर क्लिक करें।",
+        },
+        "facebook-vs-token": {
+          q: "Facebook one-click या टोकन पेस्ट?",
+          a: "सुझाया: Continue with Facebook (Embedded Signup)। Meta एरर दिखे तो Meta API token टैब से Meta API Setup का अस्थायी टोकन पेस्ट करें।",
+        },
+      },
+    },
     whatsappConnect: {
       pathQuestion: "आप ग्राहकों को कहाँ जवाब देते हैं?",
       pathHint: "अपने WhatsApp उपयोग के अनुसार विकल्प चुनें — हम सही Meta सेटअप खोलेंगे।",
@@ -509,6 +563,15 @@ export const messages = {
         },
       },
     },
+    whatsappOnboardingHelp: {
+      needHand: "मदद चाहिए?",
+      compactDesc: "मुफ्त 15-मिनट सेटअप कॉल — Meta API Setup साथ में करेंगे।",
+      bookCallLink: "सेटअप कॉल बुक करें →",
+      guidedTitle: "गाइडेड सेटअप पसंद है?",
+      guidedDesc:
+        "मुफ्त 15-मिनट कॉल बुक करें — Meta API Setup और नंबर कनेक्ट साथ में करेंगे।",
+      bookCallBtn: "सेटअप कॉल बुक करें",
+    },
     setupHelp: {
       eyebrow: "सेटअप सहायक",
       subtitle: "त्वरित जवाब — या हमारी टीम से बात करें।",
@@ -519,6 +582,22 @@ export const messages = {
       emailSupport: "support@growvisi.in पर ईमेल",
       openHelp: "सेटअप सहायता खोलें",
       closeHelp: "सेटअप सहायता बंद करें",
+      tabAnswers: "त्वरित जवाब",
+      tabAsk: "सहायक से पूछें",
+      chatOffline: "सहायक अस्थायी रूप से उपलब्ध नहीं है। नीचे त्वरित जवाब देखें या कॉल बुक करें।",
+      chatIntroTitle: "WhatsApp सेटअप के बारे में पूछें",
+      chatIntroBody: "मुझे Growvisi onboarding, tokens और go-live पता है — आपके ग्राहक चैट नहीं।",
+      chatExample1: "फोन या API — कौन सा?",
+      chatExample2: "मेरा टेस्ट संदेश नहीं दिख रहा",
+      chatExample3: "टोकन एक्सपायर — अब क्या?",
+      chatPlaceholder: "सेटअप से जुड़ा सवाल पूछें…",
+      chatSend: "भेजें",
+      chatThinking: "सोच रहा हूँ…",
+      chatError: "जवाब नहीं मिला। त्वरित जवाब देखें या कॉल बुक करें।",
+      supportNeedTitle: "हमारी टीम से संपर्क?",
+      supportHours: "सोम–शनि, 10am–7pm IST · 1 कार्य दिवस में जवाब",
+      supportEmailLabel: "ईमेल",
+      contactForm: "संपर्क फॉर्म",
       faqIds: {
         onboarding: ["which-option", "facebook-vs-token", "test-message", "skip"],
         connection: ["token-expiry", "no-number", "which-option", "facebook-vs-token"],

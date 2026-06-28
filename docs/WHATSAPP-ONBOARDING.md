@@ -32,7 +32,17 @@ Growvisi ingests messages from **your existing** WhatsApp Business number on Met
 4. If multiple numbers exist, pick the business line to connect.
 5. Complete the same **Go-live checklist** as above.
 
-**Concierge help:** use **Book concierge help** on the onboarding page or email via the link in Settings.
+**Concierge help:** tap the green **Setup assistant** button (bottom-left) on onboarding or Connection — quick answers, AI setup help, or email **support@growvisi.in** (Mon–Sat IST).
+
+## Setup assistant (Phase B)
+
+On **Onboarding**, **Connection**, and **Settings → WhatsApp**, the green help button offers:
+
+1. **Quick answers** — curated FAQs (phone vs API, tokens, test messages)
+2. **Ask assistant** — LLM grounded in Growvisi setup docs + your workspace onboarding/connection snapshot (requires `OPENAI_API_KEY` on API)
+3. **Human escalation** — book a free setup call or email support@growvisi.in
+
+The assistant helps **merchants connect WhatsApp** — it does not draft replies to your customers.
 
 ## Prerequisites (Meta)
 
@@ -71,6 +81,8 @@ Growvisi ingests messages from **your existing** WhatsApp Business number on Met
 | `POST` | `/agency/clients/:organizationId/quick-connect` | Agency hub: token connect for a client workspace in-place |
 | `POST` | `/whatsapp-accounts/:id/refresh-token` | Replace access token |
 | `GET` | `/whatsapp-accounts/connection-health` | Diagnostics + `tokenHealth` |
+| `GET` | `/support/capabilities` | `{ setupHelpLlm: boolean }` — LLM setup assistant online |
+| `POST` | `/support/setup-help` | JWT; body `{ context, message, history?, locale? }` — merchant setup Q&A (not customer chat) |
 | `GET` | `/internal/cron/whatsapp-token-reminders` | Cron: email owners (auth required) |
 | `GET` | `/internal/cron/whatsapp-token-refresh` | Cron: auto-exchange long-lived tokens |
 
