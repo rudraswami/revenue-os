@@ -15,6 +15,7 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
+import type { GrowvisiPlanId } from "@growvisi/shared";
 import { Activity, Bell, Clock, MessageCircle, Sparkles, Timer, UserRound, Zap } from "lucide-react";
 import { CONVERSATIONS } from "@/lib/brand-copy";
 
@@ -86,6 +87,13 @@ function timeAgo(date: string | Date) {
   return `${Math.floor(ms / 86_400_000)}d ago`;
 }
 
+const PLAN_RANK: Record<GrowvisiPlanId, number> = {
+  trial: 0,
+  starter: 1,
+  growth: 2,
+  pro: 3,
+};
+
 export default function AutomationsPage() {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
@@ -100,6 +108,14 @@ export default function AutomationsPage() {
     enabled: !!token,
     initialData: DEFAULT_AUTOMATIONS,
   });
+
+  const { data: billing } = useQuery({
+    queryKey: ["billing-status"],
+    queryFn: () => apiFetch<{ planId: GrowvisiPlanId }>("/billing", { token: token ?? undefined }),
+    enabled: !!token,
+  });
+
+  const growthPlanOk = PLAN_RANK[billing?.planId ?? "trial"] >= PLAN_RANK.growth;
 
   const { data: stats } = useQuery({
     queryKey: ["automation-stats"],
@@ -226,8 +242,17 @@ export default function AutomationsPage() {
           role="alert"
           className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
-          Couldn&apos;t save that change. Please try again.
+          Couldn&apos;t save that change.{" "}
+          {mutation.error instanceof Error && mutation.error.message.includes("Growth")
+            ? "Stale deal reminder requires the Growth plan."
+            : "Please try again."}
         </p>
+      )}
+
+      {!canManage && (
+        <div className="mb-6 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          You have view-only access. Ask an admin or manager to change automations.
+        </div>
       )}
 
       {isLoading ? (
@@ -262,6 +287,7 @@ export default function AutomationsPage() {
           {SERVER_AUTOMATIONS.map((auto, i) => {
             const enabled = toggles?.[auto.id] ?? DEFAULT_AUTOMATIONS[auto.id];
             const runCount = stats?.byType.find((b) => b.type === auto.id)?.count ?? 0;
+            const planLocked = auto.id === "staleDeal" && !growthPlanOk;
             return (
             <motion.div
               key={auto.id}
@@ -292,12 +318,24 @@ export default function AutomationsPage() {
                     </div>
                     <p className="mt-1.5 text-sm text-muted-foreground">{auto.description}</p>
                     <p className="mt-2 text-xs font-medium text-accent">
-                      {enabled ? auto.serverNote : "Off"}
+                      {planLocked
+                        ? "Requires Growth plan"
+                        : enabled
+                          ? auto.serverNote
+                          : "Off"}
                     </p>
+                    {planLocked && (
+                      <Link
+                        href="/dashboard/pricing?plan=growth"
+                        className="mt-1 inline-block text-xs font-semibold text-accent hover:underline"
+                      >
+                        Upgrade to Growth →
+                      </Link>
+                    )}
                   </div>
                   <Switch
-                    checked={enabled}
-                    disabled={!canManage || mutation.isPending}
+                    checked={enabled && !planLocked}
+                    disabled={!canManage || mutation.isPending || planLocked}
                     onCheckedChange={(v) => toggle(auto.id, v)}
                     aria-label={`${auto.title} automation`}
                   />

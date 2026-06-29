@@ -4,15 +4,15 @@ import { Logo } from "./logo";
 
 const links = {
   Product: [
-    { label: "Features", href: "#product" },
-    { label: "How it works", href: "#engine" },
-    { label: "Pricing", href: "#pricing" },
+    { label: "Features", href: "/#product" },
+    { label: "How it works", href: "/#engine" },
+    { label: "Pricing", href: "/#pricing" },
     { label: "Demo", href: "/demo" },
   ],
   Company: [
     { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
-    { label: "Case Studies", href: "#case-study" },
+    { label: "Case Studies", href: "/#case-study" },
   ],
   Legal: [
     { label: "Privacy", href: "/privacy" },

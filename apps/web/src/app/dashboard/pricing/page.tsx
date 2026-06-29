@@ -27,6 +27,7 @@ interface BillingStatus {
 export default function PricingPage() {
   const token = useAuthStore((s) => s.accessToken);
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
+  const [checkoutOpened, setCheckoutOpened] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["billing-status"],
@@ -43,7 +44,12 @@ export default function PricingPage() {
       }),
     onMutate: (planId) => setCheckoutPlan(planId),
     onSuccess: (res) => {
-      window.open(res.checkoutUrl, "_blank", "noopener,noreferrer");
+      const opened = window.open(res.checkoutUrl, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        window.location.href = res.checkoutUrl;
+      } else {
+        setCheckoutOpened(true);
+      }
     },
     onSettled: () => setCheckoutPlan(null),
   });
@@ -64,6 +70,25 @@ export default function PricingPage() {
         title="Plans & pricing"
         description="Transparent INR pricing. 14-day free trial — upgrade anytime with Razorpay."
       />
+
+      {checkoutOpened && (
+        <div
+          role="status"
+          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/25 bg-bento-mint/40 px-4 py-3 text-sm"
+        >
+          <p>
+            <strong>Razorpay opened in a new tab.</strong> Complete payment there, then return here —
+            your plan updates in a few seconds.
+          </p>
+          <button
+            type="button"
+            className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+            onClick={() => setCheckoutOpened(false)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {isLoading && (
         <div className="mb-8 h-20 animate-pulse rounded-2xl border border-border/80 bg-[#f8f9ff]/60" />

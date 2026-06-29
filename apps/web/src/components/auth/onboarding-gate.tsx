@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 
 const SKIP_PREFIXES = [
@@ -16,12 +16,32 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const onboarding = useAuthStore((s) => s.onboarding);
   const onboardingDismissed = useAuthStore((s) => s.onboardingDismissed);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const [checked, setChecked] = useState(false);
+
+  const shouldRedirect =
+    hydrated &&
+    !!onboarding &&
+    !onboarding.whatsappConnected &&
+    !onboardingDismissed &&
+    !SKIP_PREFIXES.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
-    if (!onboarding || onboarding.whatsappConnected || onboardingDismissed) return;
-    if (SKIP_PREFIXES.some((p) => pathname.startsWith(p))) return;
-    router.replace("/onboarding");
-  }, [onboarding, onboardingDismissed, pathname, router]);
+    if (!hydrated) return;
+    if (shouldRedirect) {
+      router.replace("/onboarding");
+      return;
+    }
+    setChecked(true);
+  }, [hydrated, shouldRedirect, router]);
+
+  if (!hydrated || (shouldRedirect && !checked)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f9ff]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }

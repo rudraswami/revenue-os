@@ -140,7 +140,7 @@ export default function AgencyPage() {
                 ? "Pro plan unlocks up to 15 client workspaces — each with its own WhatsApp, pipeline, and team."
                 : t("agency.proRequired")}
             </p>
-            {status?.canEnableAgency && (
+            {status?.canEnableAgency ? (
               <Button
                 className="mt-4 rounded-xl"
                 disabled={enableMutation.isPending}
@@ -150,6 +150,13 @@ export default function AgencyPage() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 {t("agency.enableAgency")}
+              </Button>
+            ) : (
+              <Button className="mt-4 rounded-xl" asChild>
+                <Link href="/dashboard/pricing?plan=pro">
+                  Upgrade to Pro
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
             )}
           </div>

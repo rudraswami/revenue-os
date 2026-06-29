@@ -167,7 +167,10 @@ export function ProfileSettingsCard() {
             size="sm"
             variant="ghost"
             className="rounded-xl text-muted-foreground"
-            onClick={() => setName(user?.name ?? "")}
+            onClick={() => {
+              setName(user?.name ?? "");
+              setLocale((user?.locale as Locale) ?? "en");
+            }}
           >
             Discard
           </Button>

@@ -104,7 +104,7 @@ export function HomeCommandCenter({
     <div className="space-y-8">
       {/* Operational — what needs a human today */}
       <section>
-        <div className="mb-4 flex items-end justify-between gap-2">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2 sm:items-end">
           <div>
             <h2 className="text-sm font-bold text-foreground">Today&apos;s priorities</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -114,7 +114,7 @@ export function HomeCommandCenter({
             </p>
           </div>
           {priorityCount > 0 && (
-            <Button asChild size="sm" variant="outline" className="hidden shrink-0 rounded-lg sm:inline-flex">
+            <Button asChild size="sm" variant="outline" className="shrink-0 rounded-lg w-full sm:w-auto">
               <Link href="/dashboard/inbox">Open inbox</Link>
             </Button>
           )}

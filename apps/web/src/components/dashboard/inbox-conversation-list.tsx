@@ -223,7 +223,7 @@ export function InboxConversationList({
               icon={<MessageSquare className="h-6 w-6" />}
               title={copy.whatsappNotConnected}
               description={copy.whatsappNotConnectedHint}
-              actionHref="/dashboard/settings?tab=whatsapp"
+              actionHref="/onboarding"
               actionLabel={copy.connectWhatsapp}
             />
           </div>

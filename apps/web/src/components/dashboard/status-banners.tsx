@@ -121,7 +121,7 @@ export function OnboardingBanner() {
   if (connected || !token) return null;
 
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/25 bg-bento-mint/50 px-4 py-3">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/25 bg-bento-mint/50 px-4 py-3 lg:mb-6">
       <div>
         <p className="text-sm font-semibold text-foreground">Connect WhatsApp to start capturing revenue</p>
         <p className="mt-0.5 text-xs text-muted-foreground">

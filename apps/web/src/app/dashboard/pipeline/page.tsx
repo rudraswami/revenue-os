@@ -209,7 +209,7 @@ export default function PipelinePage() {
     if (!token || exporting) return;
     setExporting(true);
     try {
-      await apiDownload("/leads/export?period=all", "growvisi-contacts.csv", token);
+      await apiDownload("/leads/export?period=all", "growvisi-pipeline.csv", token);
     } finally {
       setExporting(false);
     }

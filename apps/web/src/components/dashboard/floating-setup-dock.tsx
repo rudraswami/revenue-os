@@ -77,9 +77,9 @@ export function FloatingSetupDock() {
 
   const scheduleCollapse = useCallback(() => {
     if (collapseTimer.current) clearTimeout(collapseTimer.current);
-    if (pinnedRef.current) return;
+    if (pinnedRef.current || criticalCount > 0) return;
     collapseTimer.current = setTimeout(() => setExpanded(false), AUTO_COLLAPSE_MS);
-  }, []);
+  }, [criticalCount]);
 
   useEffect(() => {
     if (allComplete || isLoading || didAutoOpen.current) return;

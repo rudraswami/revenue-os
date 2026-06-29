@@ -171,12 +171,14 @@ export default function AiStudioPage() {
               ) : (
                 <>
                   <p className="text-lg font-bold">
-                    {isActive ? "AI Revenue Agent running" : "Set OPENAI_API_KEY to enable"}
+                    {isActive ? "Intelligence is active" : "Intelligence is being set up"}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {stats
-                      ? `${stats.aiClassifications} total analyses · ${stats.classifiedLeads} scored · ${stats.humanHandoffRecommended} waiting on you`
-                      : "Runs on each inbound customer message."}
+                    {isActive
+                      ? stats
+                        ? `${stats.aiClassifications} total analyses · ${stats.classifiedLeads} scored · ${stats.humanHandoffRecommended} waiting on you`
+                        : "Runs on each inbound customer message."
+                      : "Classification will start automatically once your workspace is fully configured. Need help? Use AI Support (bottom-left)."}
                   </p>
                 </>
               )}
@@ -252,7 +254,9 @@ export default function AiStudioPage() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>
               <strong className="text-foreground">Classification:</strong>{" "}
-              {capabilities?.aiClassification ? "On — runs on every inbound message" : "Off — set OPENAI_API_KEY"}
+              {capabilities?.aiClassification
+                ? "On — runs on every inbound message"
+                : "Setting up — contact support@growvisi.in if this persists after WhatsApp is connected"}
             </li>
             <li>
               <strong className="text-foreground">{CONVERSATIONS.yourTurn}:</strong> Flags chats that need a real reply — use {CONVERSATIONS.replyNow} in Conversations

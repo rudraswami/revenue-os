@@ -255,6 +255,7 @@ export function ContactDetailDrawer({
                 type="button"
                 onClick={onClose}
                 className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted"
+                aria-label="Close contact details"
               >
                 <X className="h-5 w-5" />
               </button>

@@ -21,6 +21,8 @@ import { OutboundCompose } from "@/components/dashboard/outbound-compose";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
 import { InboxComposer } from "@/components/dashboard/inbox-composer";
 import { InboxTimeline } from "@/components/dashboard/inbox-timeline";
+import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
+import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
@@ -101,6 +103,8 @@ export default function InboxPage() {
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [showOutbound, setShowOutbound] = useState(false);
+  const [lostPrompt, setLostPrompt] = useState(false);
+  const [wonPrompt, setWonPrompt] = useState(false);
   const [listFilter, setListFilter] = useState<InboxListFilter>("all");
   const [listScope, setListScope] = useState<InboxListScope>("active");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -272,18 +276,32 @@ export default function InboxPage() {
   });
 
   const stageMutation = useMutation({
-    mutationFn: (stage: LeadStage) =>
+    mutationFn: ({ stage, reason }: { stage: LeadStage; reason?: string }) =>
       apiFetch(`/leads/${thread?.lead?.id}/stage`, {
         method: "PATCH",
         token: token ?? undefined,
-        body: JSON.stringify({ stage, reason: "Updated from Conversations" }),
+        body: JSON.stringify({ stage, reason }),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       if (leadId) void queryClient.invalidateQueries({ queryKey: ["lead-timeline", leadId] });
     },
   });
+
+  function handleStageChange(next: LeadStage) {
+    if (!thread?.lead || next === thread.lead.stage) return;
+    if (next === "LOST") {
+      setLostPrompt(true);
+      return;
+    }
+    if (next === "WON") {
+      setWonPrompt(true);
+      return;
+    }
+    stageMutation.mutate({ stage: next });
+  }
 
   const createTaskMutation = useMutation({
     mutationFn: (title: string) =>
@@ -588,7 +606,7 @@ export default function InboxPage() {
                         )}
                         value={thread.lead.stage}
                         disabled={stageMutation.isPending}
-                        onChange={(e) => stageMutation.mutate(e.target.value as LeadStage)}
+                        onChange={(e) => handleStageChange(e.target.value as LeadStage)}
                       >
                         {LEAD_STAGES.map((s) => (
                           <option key={s} value={s}>
@@ -755,6 +773,35 @@ export default function InboxPage() {
                 )}
               </div>
             </div>
+
+            {thread.lead && (
+              <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 lg:hidden">
+                <button
+                  type="button"
+                  className="mb-2 text-xs font-semibold text-accent"
+                  onClick={() => setShowTimeline((v) => !v)}
+                >
+                  {showTimeline ? "Hide activity" : "Show activity & stage history"}
+                </button>
+                {showTimeline && (
+                  <ul className="max-h-48 space-y-2 overflow-y-auto text-xs">
+                    {(timeline?.events ?? []).slice(0, 12).map((ev) => (
+                      <li key={ev.id} className="border-b border-border/40 pb-2 last:border-0">
+                        <p className="font-medium text-foreground">{ev.title}</p>
+                        {ev.detail && (
+                          <p className="mt-0.5 text-muted-foreground">{ev.detail}</p>
+                        )}
+                      </li>
+                    ))}
+                    {(timeline?.events?.length ?? 0) === 0 && (
+                      <li className="text-muted-foreground">
+                        No activity yet — AI runs when messages arrive.
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            )}
             </div>
 
             {thread.lead && (
@@ -771,6 +818,30 @@ export default function InboxPage() {
         ) : null}
       </div>
     </div>
+    <LostReasonDialog
+      open={lostPrompt}
+      leadName={thread?.contactName}
+      loading={stageMutation.isPending}
+      onCancel={() => setLostPrompt(false)}
+      onConfirm={(reason) => {
+        stageMutation.mutate(
+          { stage: "LOST", reason },
+          { onSuccess: () => setLostPrompt(false) },
+        );
+      }}
+    />
+    <WonReasonDialog
+      open={wonPrompt}
+      leadName={thread?.contactName}
+      loading={stageMutation.isPending}
+      onCancel={() => setWonPrompt(false)}
+      onConfirm={(reason) => {
+        stageMutation.mutate(
+          { stage: "WON", reason },
+          { onSuccess: () => setWonPrompt(false) },
+        );
+      }}
+    />
     <OutboundCompose
       open={showOutbound}
       onClose={() => setShowOutbound(false)}
