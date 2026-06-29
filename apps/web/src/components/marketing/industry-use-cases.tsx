@@ -48,13 +48,55 @@ const industries: Array<{
   },
 ];
 
-const ORBIT_RADIUS = 42;
+/** Icon centers on this ring (viewBox 0–100, matches % positioning). */
+const ICON_RING_R = 32;
+/** Title labels sit outside the icon ring along the same spoke. */
+const LABEL_RING_R = 42;
 
-function polarPosition(angleDeg: number) {
+function polar(angleDeg: number, radius: number) {
   const rad = (angleDeg * Math.PI) / 180;
   return {
-    x: 50 + ORBIT_RADIUS * Math.cos(rad),
-    y: 50 + ORBIT_RADIUS * Math.sin(rad),
+    x: 50 + radius * Math.cos(rad),
+    y: 50 + radius * Math.sin(rad),
+  };
+}
+
+function pct(point: { x: number; y: number }) {
+  return { left: `${point.x}%`, top: `${point.y}%` };
+}
+
+type LabelPlacement = {
+  className: string;
+  style: React.CSSProperties;
+};
+
+/** Anchor labels outward along each spoke — no jagged mixed alignment. */
+function labelPlacement(angle: number): LabelPlacement {
+  const rad = (angle * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+
+  if (sin < -0.85) {
+    return {
+      className: "text-center",
+      style: { transform: "translate(-50%, calc(-100% - 0.65rem))" },
+    };
+  }
+  if (sin > 0.85) {
+    return {
+      className: "text-center",
+      style: { transform: "translate(-50%, 0.65rem)" },
+    };
+  }
+  if (cos > 0) {
+    return {
+      className: "text-left",
+      style: { transform: "translate(0.55rem, -50%)" },
+    };
+  }
+  return {
+    className: "text-right",
+    style: { transform: "translate(calc(-100% - 0.55rem), -50%)" },
   };
 }
 
@@ -67,7 +109,7 @@ function OrbitLine({
   active: boolean;
   reducedMotion: boolean;
 }) {
-  const end = polarPosition(angle);
+  const end = polar(angle, ICON_RING_R);
   return (
     <motion.line
       x1={50}
@@ -75,17 +117,17 @@ function OrbitLine({
       x2={end.x}
       y2={end.y}
       stroke={active ? "url(#orbit-line-active)" : "url(#orbit-line)"}
-      strokeWidth={active ? 2 : 1}
+      strokeWidth={active ? 1.75 : 1}
       strokeLinecap="round"
-      initial={reducedMotion ? false : { pathLength: 0, opacity: 0 }}
-      whileInView={{ pathLength: 1, opacity: active ? 0.9 : 0.35 }}
+      initial={reducedMotion ? false : { opacity: 0 }}
+      whileInView={{ opacity: active ? 0.95 : 0.28 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.8, delay: 0.1 }}
+      transition={{ duration: 0.5, delay: 0.08 }}
     />
   );
 }
 
-function IndustryNode({
+function IndustryIcon({
   item,
   active,
   onHover,
@@ -96,75 +138,95 @@ function IndustryNode({
   onHover: (title: string | null) => void;
   reducedMotion: boolean;
 }) {
-  const pos = polarPosition(item.angle);
-  const content = (
-  <>
-      <motion.div
-        className={cn(
-          "relative flex h-14 w-14 items-center justify-center rounded-full",
-          "bg-gradient-to-br from-[#6cf8bb]/25 to-[#6cf8bb]/5 shadow-[0_0_32px_rgb(108_248_187/0.25)]",
-          active && "shadow-[0_0_48px_rgb(108_248_187/0.45)]",
-        )}
-        animate={
-          reducedMotion
-            ? undefined
-            : active
-              ? { scale: 1.08 }
-              : { scale: [1, 1.04, 1] }
-        }
-        transition={
-          active
-            ? { type: "spring", stiffness: 400, damping: 24 }
-            : { duration: 4, repeat: Infinity, ease: "easeInOut" }
-        }
-      >
-        <MarketingIcon name={item.icon} className="h-6 w-6 text-[#6cf8bb]" strokeWidth={2} />
-        {active && (
-          <motion.span
-            className="absolute inset-0 rounded-full border border-[#6cf8bb]/50"
-            layoutId="industry-ring"
-            transition={{ type: "spring", stiffness: 380, damping: 28 }}
-          />
-        )}
-      </motion.div>
-      <p className="mt-3 text-center text-sm font-bold text-white">{item.title}</p>
-      <p
-        className={cn(
-          "mt-1 max-w-[140px] text-center text-[11px] leading-snug text-white/50 transition-colors",
-          active && "text-white/80",
-        )}
-      >
-        {item.example}
-      </p>
-      {item.href && (
-        <span className="mt-1 inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#6cf8bb] opacity-0 transition-opacity group-hover:opacity-100">
-          Explore <ArrowRight className="h-3 w-3" />
-        </span>
-      )}
-    </>
-  );
+  const pos = pct(polar(item.angle, ICON_RING_R));
 
-  const className = "group absolute flex w-[148px] -translate-x-1/2 -translate-y-1/2 flex-col items-center";
+  const orb = (
+    <motion.div
+      className={cn(
+        "relative flex h-12 w-12 items-center justify-center rounded-full",
+        "bg-gradient-to-br from-[#6cf8bb]/30 to-[#6cf8bb]/8",
+        "ring-1 ring-[#6cf8bb]/25",
+        active && "ring-2 ring-[#6cf8bb]/60 shadow-[0_0_40px_rgb(108_248_187/0.4)]",
+      )}
+      animate={
+        reducedMotion ? undefined : active ? { scale: 1.1 } : { scale: [1, 1.03, 1] }
+      }
+      transition={
+        active
+          ? { type: "spring", stiffness: 420, damping: 26 }
+          : { duration: 3.5, repeat: Infinity, ease: "easeInOut" }
+      }
+    >
+      <MarketingIcon name={item.icon} className="h-[1.25rem] w-[1.25rem] text-[#6cf8bb]" strokeWidth={2} />
+    </motion.div>
+  );
 
   return (
     <motion.div
-      className={className}
-      style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-      initial={reducedMotion ? false : { opacity: 0, scale: 0.85 }}
+      className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
+      style={pos}
+      initial={reducedMotion ? false : { opacity: 0, scale: 0.8 }}
       whileInView={{ opacity: 1, scale: 1 }}
       viewport={{ once: true }}
-      transition={{ delay: 0.15, type: "spring", stiffness: 260, damping: 22 }}
+      transition={{ type: "spring", stiffness: 300, damping: 22, delay: 0.1 }}
       onMouseEnter={() => onHover(item.title)}
       onMouseLeave={() => onHover(null)}
       onFocus={() => onHover(item.title)}
       onBlur={() => onHover(null)}
     >
       {item.href ? (
-        <Link href={item.href} className="flex flex-col items-center outline-none">
-          {content}
+        <Link href={item.href} className="block rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[#6cf8bb]/60">
+          {orb}
         </Link>
       ) : (
-        content
+        orb
+      )}
+    </motion.div>
+  );
+}
+
+function IndustryLabel({
+  item,
+  active,
+  onHover,
+  reducedMotion,
+}: {
+  item: (typeof industries)[0];
+  active: boolean;
+  onHover: (title: string | null) => void;
+  reducedMotion: boolean;
+}) {
+  const pos = pct(polar(item.angle, LABEL_RING_R));
+  const placement = labelPlacement(item.angle);
+
+  const inner = (
+    <p
+      className={cn(
+        "text-[13px] font-bold leading-tight text-white transition-colors",
+        active && "text-[#6cf8bb]",
+      )}
+    >
+      {item.title}
+    </p>
+  );
+
+  return (
+    <motion.div
+      className={cn("group absolute z-10 max-w-[8.5rem]", placement.className)}
+      style={{ ...pos, ...placement.style }}
+      initial={reducedMotion ? false : { opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.45, delay: 0.18 }}
+      onMouseEnter={() => onHover(item.title)}
+      onMouseLeave={() => onHover(null)}
+    >
+      {item.href ? (
+        <Link href={item.href} className="block outline-none focus-visible:underline">
+          {inner}
+        </Link>
+      ) : (
+        inner
       )}
     </motion.div>
   );
@@ -173,14 +235,15 @@ function IndustryNode({
 export function IndustryUseCases() {
   const [activeTitle, setActiveTitle] = useState<string | null>(null);
   const reducedMotion = useReducedMotion();
+  const activeItem = industries.find((i) => i.title === activeTitle);
 
   return (
     <section
       id="industries"
-      className="scroll-mt-20 relative overflow-hidden bg-[#071018] py-20 md:py-28"
+      className="scroll-mt-20 relative overflow-hidden bg-[#071018] py-16 md:py-24"
     >
-      <div className="marketing-aurora pointer-events-none absolute inset-0 opacity-80" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,rgb(0_108_73/0.18),transparent_70%)]" />
+      <div className="marketing-aurora pointer-events-none absolute inset-0 opacity-75" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_65%_55%_at_50%_45%,rgb(0_108_73/0.2),transparent_68%)]" />
 
       <div className="relative mx-auto max-w-[1100px] px-6 lg:px-8">
         <SectionHeader
@@ -190,107 +253,153 @@ export function IndustryUseCases() {
           subtitle="Same engine — tuned for how your industry closes."
         />
 
-        {/* Desktop — orbital constellation */}
-        <div className="relative mx-auto mt-14 hidden aspect-square max-h-[520px] w-full max-w-[520px] md:block">
-          <svg
-            className="absolute inset-0 h-full w-full overflow-visible"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="xMidYMid meet"
-            aria-hidden
-          >
-            <defs>
-              <linearGradient id="orbit-line" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#6cf8bb" stopOpacity="0.1" />
-                <stop offset="100%" stopColor="#6cf8bb" stopOpacity="0.45" />
-              </linearGradient>
-              <linearGradient id="orbit-line-active" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#6cf8bb" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#6cf8bb" stopOpacity="1" />
-              </linearGradient>
-            </defs>
-            <motion.circle
-              cx={50}
-              cy={50}
-              r={ORBIT_RADIUS}
-              fill="none"
-              stroke="white"
-              strokeOpacity="0.06"
-              strokeWidth="1"
-              strokeDasharray="4 8"
-              initial={reducedMotion ? false : { pathLength: 0 }}
-              whileInView={{ pathLength: 1 }}
+        {/* Desktop — orbital diagram */}
+        <div className="relative mx-auto mt-6 hidden w-full max-w-[700px] overflow-visible px-6 md:block">
+          <div className="relative mx-auto aspect-square w-full max-w-[520px]">
+            <svg
+              className="absolute inset-0 h-full w-full overflow-visible"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="xMidYMid meet"
+              aria-hidden
+            >
+              <defs>
+                <linearGradient id="orbit-line" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#6cf8bb" stopOpacity="0.15" />
+                  <stop offset="100%" stopColor="#6cf8bb" stopOpacity="0.5" />
+                </linearGradient>
+                <linearGradient id="orbit-line-active" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#6cf8bb" stopOpacity="0.6" />
+                  <stop offset="100%" stopColor="#6cf8bb" stopOpacity="1" />
+                </linearGradient>
+              </defs>
+              <circle
+                cx={50}
+                cy={50}
+                r={ICON_RING_R}
+                fill="none"
+                stroke="white"
+                strokeOpacity="0.07"
+                strokeWidth="0.6"
+                strokeDasharray="3 6"
+              />
+              {industries.map((item) => (
+                <OrbitLine
+                  key={item.title}
+                  angle={item.angle}
+                  active={activeTitle === item.title}
+                  reducedMotion={!!reducedMotion}
+                />
+              ))}
+            </svg>
+
+            {/* Center hub */}
+            <motion.div
+              className="absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
+              initial={reducedMotion ? false : { scale: 0.85, opacity: 0 }}
+              whileInView={{ scale: 1, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 1.2 }}
-            />
+              transition={{ type: "spring", stiffness: 320, damping: 24 }}
+            >
+              <motion.div
+                className="flex h-[4.25rem] w-[4.25rem] flex-col items-center justify-center rounded-full bg-gradient-to-br from-accent to-[#128C7E] shadow-[0_0_48px_rgb(0_108_73/0.5)] ring-4 ring-[#071018]"
+                animate={
+                  reducedMotion
+                    ? undefined
+                    : {
+                        boxShadow: [
+                          "0 0 36px rgb(0 108 73/0.4)",
+                          "0 0 64px rgb(0 108 73/0.62)",
+                          "0 0 36px rgb(0 108 73/0.4)",
+                        ],
+                      }
+                }
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <MessageCircle className="h-6 w-6 text-white" strokeWidth={2} />
+                <span className="mt-1 text-[7px] font-bold uppercase tracking-[0.18em] text-white/90">
+                  Engine
+                </span>
+              </motion.div>
+            </motion.div>
+
             {industries.map((item) => (
-              <OrbitLine
-                key={item.title}
-                angle={item.angle}
+              <IndustryLabel
+                key={`label-${item.title}`}
+                item={item}
                 active={activeTitle === item.title}
+                onHover={setActiveTitle}
                 reducedMotion={!!reducedMotion}
               />
             ))}
-          </svg>
+            {industries.map((item) => (
+              <IndustryIcon
+                key={`icon-${item.title}`}
+                item={item}
+                active={activeTitle === item.title}
+                onHover={setActiveTitle}
+                reducedMotion={!!reducedMotion}
+              />
+            ))}
+          </div>
 
+          {/* Active industry caption */}
           <motion.div
-            className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
-            initial={reducedMotion ? false : { scale: 0.8, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ type: "spring", stiffness: 320, damping: 24 }}
+            key={activeItem?.title ?? "default"}
+            className="mx-auto mt-6 min-h-[3.25rem] max-w-lg text-center"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
           >
-            <motion.div
-              className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-accent to-[#128C7E] shadow-[0_0_60px_rgb(0_108_73/0.55)]"
-              animate={reducedMotion ? undefined : { boxShadow: ["0 0 40px rgb(0 108 73/0.4)", "0 0 70px rgb(0 108 73/0.65)", "0 0 40px rgb(0 108 73/0.4)"] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <MessageCircle className="h-9 w-9 text-white" strokeWidth={2} />
-            </motion.div>
-            <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#6cf8bb]">
-              Growvisi engine
-            </p>
+            {activeItem ? (
+              <>
+                <p className="text-base font-bold text-white">{activeItem.title}</p>
+                <p className="mt-1 text-sm leading-relaxed text-white/55">{activeItem.example}</p>
+                {activeItem.href && (
+                  <Link
+                    href={activeItem.href}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#6cf8bb] hover:underline"
+                  >
+                    Explore solution <ArrowRight className="h-3 w-3" />
+                  </Link>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-white/45">
+                Hover an industry to see how Growvisi fits your workflow
+              </p>
+            )}
           </motion.div>
-
-          {industries.map((item) => (
-            <IndustryNode
-              key={item.title}
-              item={item}
-              active={activeTitle === item.title}
-              onHover={setActiveTitle}
-              reducedMotion={!!reducedMotion}
-            />
-          ))}
         </div>
 
-        {/* Mobile — horizontal snap ribbon */}
-        <div className="mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden">
+        {/* Mobile — snap ribbon */}
+        <div className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden">
           {industries.map((item, i) => (
             <motion.div
               key={item.title}
               className="w-[min(78vw,280px)] shrink-0 snap-center"
-              initial={reducedMotion ? false : { opacity: 0, x: 24 }}
+              initial={reducedMotion ? false : { opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.06 }}
+              transition={{ delay: i * 0.05 }}
             >
               {item.href ? (
                 <Link
                   href={item.href}
-                  className="flex flex-col items-start gap-3 rounded-[2rem] bg-gradient-to-br from-white/[0.08] to-transparent p-6 backdrop-blur-sm"
+                  className="flex flex-col gap-3 rounded-[1.75rem] bg-gradient-to-br from-white/[0.09] to-white/[0.02] p-6 backdrop-blur-sm"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#6cf8bb]/15">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#6cf8bb]/15 ring-1 ring-[#6cf8bb]/20">
                     <MarketingIcon name={item.icon} className="h-5 w-5 text-[#6cf8bb]" />
                   </div>
-                  <p className="text-lg font-bold text-white">{item.title}</p>
+                  <p className="text-base font-bold text-white">{item.title}</p>
                   <p className="text-sm leading-relaxed text-white/55">{item.example}</p>
                   <span className="text-xs font-semibold text-[#6cf8bb]">Explore →</span>
                 </Link>
               ) : (
-                <div className="flex flex-col items-start gap-3 rounded-[2rem] bg-gradient-to-br from-white/[0.08] to-transparent p-6 backdrop-blur-sm">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#6cf8bb]/15">
+                <div className="flex flex-col gap-3 rounded-[1.75rem] bg-gradient-to-br from-white/[0.09] to-white/[0.02] p-6 backdrop-blur-sm">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#6cf8bb]/15 ring-1 ring-[#6cf8bb]/20">
                     <MarketingIcon name={item.icon} className="h-5 w-5 text-[#6cf8bb]" />
                   </div>
-                  <p className="text-lg font-bold text-white">{item.title}</p>
+                  <p className="text-base font-bold text-white">{item.title}</p>
                   <p className="text-sm leading-relaxed text-white/55">{item.example}</p>
                 </div>
               )}
