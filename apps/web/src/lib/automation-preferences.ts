@@ -1,6 +1,13 @@
 const STORAGE_PREFIX = "growvisi-automations";
 
-export type AutomationId = "welcome" | "followup" | "stage" | "notify" | "handoff";
+export type AutomationId =
+  | "welcome"
+  | "followup"
+  | "stage"
+  | "notify"
+  | "handoff"
+  | "staleDeal"
+  | "stageNotify";
 
 export const DEFAULT_AUTOMATIONS: Record<AutomationId, boolean> = {
   welcome: true,
@@ -8,6 +15,8 @@ export const DEFAULT_AUTOMATIONS: Record<AutomationId, boolean> = {
   stage: true,
   notify: false,
   handoff: true,
+  staleDeal: false,
+  stageNotify: false,
 };
 
 function storageKey(organizationId: string) {

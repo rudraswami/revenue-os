@@ -41,6 +41,9 @@ export class AutomationsService {
   ): Promise<AutomationPreferences> {
     await this.entitlements.assertHasAccess(user.organizationId);
     const { welcome: _ignored, ...serverPatch } = patch;
+    if (serverPatch.staleDeal === true) {
+      await this.entitlements.assertPlanAtLeast(user.organizationId, "growth");
+    }
     const current = await this.getPreferences(user);
     const next: AutomationPreferences = { ...current, ...serverPatch };
     const org = await this.prisma.organization.findUnique({
@@ -215,6 +218,78 @@ export class AutomationsService {
     };
   }
 
+  async getRunsToday(organizationId: string): Promise<number> {
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
+    return this.prisma.automationLog.count({
+      where: { organizationId, createdAt: { gte: start } },
+    });
+  }
+
+  async handleManualStageChange(opts: {
+    organizationId: string;
+    leadId: string;
+    leadName: string | null;
+    leadPhone: string;
+    fromStage: string;
+    toStage: string;
+    changedByUserId: string;
+  }) {
+    const prefs = await this.getPreferencesForOrg(opts.organizationId);
+    const label = opts.leadName?.trim() || opts.leadPhone;
+
+    await this.logExecution(
+      opts.organizationId,
+      "stage",
+      "manual_stage_change",
+      `Moved ${label} from ${opts.fromStage} to ${opts.toStage}`,
+      opts.leadId,
+    );
+
+    if (!prefs.stageNotify) return;
+
+    const conv = await this.prisma.conversation.findFirst({
+      where: { leadId: opts.leadId },
+      select: { id: true },
+    });
+
+    const changer = await this.prisma.user.findUnique({
+      where: { id: opts.changedByUserId },
+      select: { name: true, email: true },
+    });
+    const changedBy = changer?.name ?? changer?.email ?? "Team member";
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: opts.organizationId },
+      select: { name: true },
+    });
+    const recipients = await this.ownerEmails(opts.organizationId);
+    if (recipients.length === 0) return;
+
+    const appUrl = (
+      this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+    ).replace(/\/$/, "");
+
+    await this.email.sendStageChangeAlert({
+      to: recipients,
+      organizationName: org?.name ?? "your workspace",
+      leadLabel: label,
+      fromStage: opts.fromStage,
+      toStage: opts.toStage,
+      changedBy,
+      pipelineUrl: `${appUrl}/dashboard/pipeline`,
+      inboxUrl: conv ? `${appUrl}/dashboard/inbox?c=${conv.id}` : `${appUrl}/dashboard/inbox`,
+    });
+
+    await this.logExecution(
+      opts.organizationId,
+      "stageNotify",
+      "manual_stage_change",
+      `Stage change email sent for ${label}`,
+      opts.leadId,
+    );
+  }
+
   async runFollowupReminderJob() {
     const orgs = await this.prisma.organization.findMany({
       select: { id: true, name: true, settings: true },
@@ -222,6 +297,7 @@ export class AutomationsService {
 
     let emailed = 0;
     let skipped = 0;
+    let staleTasks = 0;
 
     for (const org of orgs) {
       const prefs = normalizeAutomationPreferences(
@@ -229,81 +305,195 @@ export class AutomationsService {
       );
       if (!prefs.followup) {
         skipped++;
-        continue;
-      }
-
-      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const stale = await this.prisma.conversation.findMany({
-        where: {
-          organizationId: org.id,
-          status: "OPEN",
-          lastInboundAt: { lt: cutoff },
-          OR: [{ unreadCount: { gt: 0 } }, { assignedToId: null }],
-        },
-        take: 5,
-        orderBy: { lastInboundAt: "asc" },
-        select: {
-          id: true,
-          contactName: true,
-          contactPhone: true,
-          lastInboundAt: true,
-          metadata: true,
-        },
-      });
-
-      if (stale.length === 0) {
-        skipped++;
-        continue;
-      }
-
-      const alreadySentToday = stale.every((c) => {
-        const meta = (c.metadata ?? {}) as Record<string, unknown>;
-        const sentAt = meta.followupReminderSentAt
-          ? new Date(String(meta.followupReminderSentAt)).getTime()
-          : 0;
-        return sentAt > Date.now() - 12 * 60 * 60 * 1000;
-      });
-      if (alreadySentToday) {
-        skipped++;
-        continue;
-      }
-
-      const recipients = await this.ownerEmails(org.id);
-      if (recipients.length === 0) {
-        skipped++;
-        continue;
-      }
-
-      const appUrl = (
-        this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
-      ).replace(/\/$/, "");
-
-      await this.email.sendFollowupReminder({
-        to: recipients,
-        organizationName: org.name,
-        count: stale.length,
-        inboxUrl: `${appUrl}/dashboard/inbox`,
-      });
-
-      for (const conv of stale) {
-        const meta = (conv.metadata ?? {}) as Record<string, unknown>;
-        await this.prisma.conversation.update({
-          where: { id: conv.id },
-          data: {
-            metadata: {
-              ...meta,
-              followupReminderSentAt: new Date().toISOString(),
-            },
+      } else {
+        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const stale = await this.prisma.conversation.findMany({
+          where: {
+            organizationId: org.id,
+            status: "OPEN",
+            lastInboundAt: { lt: cutoff },
+            OR: [{ unreadCount: { gt: 0 } }, { assignedToId: null }],
+          },
+          take: 5,
+          orderBy: { lastInboundAt: "asc" },
+          select: {
+            id: true,
+            contactName: true,
+            contactPhone: true,
+            lastInboundAt: true,
+            metadata: true,
           },
         });
+
+        if (stale.length > 0) {
+          const alreadySentToday = stale.every((c) => {
+            const meta = (c.metadata ?? {}) as Record<string, unknown>;
+            const sentAt = meta.followupReminderSentAt
+              ? new Date(String(meta.followupReminderSentAt)).getTime()
+              : 0;
+            return sentAt > Date.now() - 12 * 60 * 60 * 1000;
+          });
+
+          if (!alreadySentToday) {
+            const recipients = await this.ownerEmails(org.id);
+            if (recipients.length > 0) {
+              const appUrl = (
+                this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+              ).replace(/\/$/, "");
+
+              await this.email.sendFollowupReminder({
+                to: recipients,
+                organizationName: org.name,
+                count: stale.length,
+                inboxUrl: `${appUrl}/dashboard/inbox`,
+              });
+
+              for (const conv of stale) {
+                const meta = (conv.metadata ?? {}) as Record<string, unknown>;
+                await this.prisma.conversation.update({
+                  where: { id: conv.id },
+                  data: {
+                    metadata: {
+                      ...meta,
+                      followupReminderSentAt: new Date().toISOString(),
+                    },
+                  },
+                });
+              }
+
+              await this.logExecution(
+                org.id,
+                "followup",
+                "daily_cron",
+                `Follow-up reminder sent for ${stale.length} stale conversation(s)`,
+              );
+              emailed++;
+            }
+          }
+        }
       }
 
-      await this.logExecution(org.id, "followup", "daily_cron",
-        `Follow-up reminder sent for ${stale.length} stale conversation(s)`);
-      emailed++;
+      if (prefs.staleDeal) {
+        const created = await this.runStaleDealForOrg(org.id, org.name);
+        staleTasks += created;
+      }
     }
 
-    return { emailed, skipped, organizations: orgs.length };
+    return { emailed, skipped, staleTasks, organizations: orgs.length };
+  }
+
+  /** Creates follow-up tasks for leads idle in stage or awaiting reply (Growth+ automation). */
+  async runStaleDealForOrg(organizationId: string, organizationName: string): Promise<number> {
+    const { OPEN_STAGES, computePipelineSignals } = await import("../leads/pipeline.helpers");
+
+    const leads = await this.prisma.lead.findMany({
+      where: { organizationId, stage: { in: OPEN_STAGES } },
+      select: {
+        id: true,
+        stage: true,
+        score: true,
+        ownerId: true,
+        displayName: true,
+        phone: true,
+        updatedAt: true,
+        profile: true,
+        conversation: {
+          select: { id: true, lastInboundAt: true, unreadCount: true, metadata: true },
+        },
+      },
+      take: 100,
+    });
+
+    if (leads.length === 0) return 0;
+
+    const histories = await this.prisma.leadStageHistory.findMany({
+      where: { leadId: { in: leads.map((l) => l.id) } },
+      orderBy: { createdAt: "desc" },
+      select: { leadId: true, toStage: true, createdAt: true },
+    });
+    const stageEnteredMap = new Map<string, Date>();
+    for (const h of histories) {
+      const lead = leads.find((l) => l.id === h.leadId);
+      if (!lead || h.toStage !== lead.stage) continue;
+      if (!stageEnteredMap.has(h.leadId)) stageEnteredMap.set(h.leadId, h.createdAt);
+    }
+
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    let created = 0;
+
+    for (const lead of leads) {
+      const convMeta = (lead.conversation?.metadata ?? {}) as Record<string, unknown>;
+      const signals = computePipelineSignals({
+        stage: lead.stage,
+        score: lead.score,
+        stageEnteredAt: stageEnteredMap.get(lead.id) ?? lead.updatedAt,
+        lastInboundAt: lead.conversation?.lastInboundAt,
+        unreadCount: lead.conversation?.unreadCount ?? 0,
+        requiresHuman: convMeta.requiresHuman === true,
+        ownerId: lead.ownerId,
+      });
+      if (!signals.isStale) continue;
+
+      const existing = await this.prisma.task.findFirst({
+        where: {
+          leadId: lead.id,
+          status: "OPEN",
+          title: { startsWith: "Stale deal:" },
+          createdAt: { gte: weekAgo },
+        },
+      });
+      if (existing) continue;
+
+      const label = lead.displayName?.trim() || lead.phone;
+      const profile = (lead.profile ?? {}) as Record<string, unknown>;
+      const nextAction =
+        typeof profile.nextAction === "string" ? profile.nextAction : null;
+
+      await this.prisma.task.create({
+        data: {
+          organizationId,
+          leadId: lead.id,
+          title: `Stale deal: ${label}`,
+          description: [
+            signals.staleLabel ?? `Idle in ${lead.stage}`,
+            nextAction ? `Suggested: ${nextAction}` : null,
+            `Review in Pipeline and follow up in WhatsApp.`,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          priority: lead.score >= 80 ? "HIGH" : "MEDIUM",
+          status: "OPEN",
+          assignedToId: lead.ownerId ?? undefined,
+        },
+      });
+
+      await this.logExecution(
+        organizationId,
+        "staleDeal",
+        "daily_cron",
+        `Stale deal task for ${label} (${signals.staleLabel})`,
+        lead.id,
+      );
+      created++;
+    }
+
+    if (created > 0) {
+      const recipients = await this.ownerEmails(organizationId);
+      if (recipients.length > 0) {
+        const appUrl = (
+          this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+        ).replace(/\/$/, "");
+        await this.email.sendStaleDealReminder({
+          to: recipients,
+          organizationName,
+          count: created,
+          pipelineUrl: `${appUrl}/dashboard/pipeline?filter=stale`,
+          tasksUrl: `${appUrl}/dashboard/tasks`,
+        });
+      }
+    }
+
+    return created;
   }
 
   private async maybeSendHotLeadAlert(

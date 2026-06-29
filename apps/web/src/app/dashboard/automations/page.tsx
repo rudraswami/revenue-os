@@ -15,7 +15,7 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
-import { Activity, Bell, Clock, MessageCircle, Sparkles, UserRound, Zap } from "lucide-react";
+import { Activity, Bell, Clock, MessageCircle, Sparkles, Timer, UserRound, Zap } from "lucide-react";
 import { CONVERSATIONS } from "@/lib/brand-copy";
 
 const SERVER_AUTOMATIONS: Array<{
@@ -58,6 +58,23 @@ const SERVER_AUTOMATIONS: Array<{
       `When AI flags a chat as ${CONVERSATIONS.waitingOnYou.toLowerCase()}, create a high-priority task and email the assignee.`,
     impact: "No hot leads left hanging",
     serverNote: "Task + email on requiresHuman",
+  },
+  {
+    id: "staleDeal",
+    icon: Timer,
+    title: "Stale deal reminder",
+    description:
+      "Daily task + email when a deal sits 3+ days in the same stage or waits 48h for a reply. Growth plan.",
+    impact: "Recover stuck ₹",
+    serverNote: "Daily cron when enabled",
+  },
+  {
+    id: "stageNotify",
+    icon: Bell,
+    title: "Stage change alert",
+    description: "Email owners when a teammate manually moves a lead to a new pipeline stage.",
+    impact: "Team visibility",
+    serverNote: "Email on manual stage move",
   },
 ];
 
@@ -130,6 +147,8 @@ export default function AutomationsPage() {
     notify: Bell,
     followup: Clock,
     handoff: Activity,
+    staleDeal: Timer,
+    stageNotify: Bell,
   };
 
   return (
@@ -196,8 +215,8 @@ export default function AutomationsPage() {
             <p className="font-semibold">AI-powered revenue workflows</p>
           </div>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Stage updates and hot-lead alerts fire when AI classifies messages. Follow-up reminders
-            run once daily via scheduled job. All executions are logged below.
+            Stage updates and hot-lead alerts fire when AI classifies messages. Follow-up and stale-deal
+            reminders run once daily. Manual stage moves can trigger email alerts when enabled.
           </p>
         </div>
       </DashboardPanel>

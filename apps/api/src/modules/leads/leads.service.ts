@@ -4,7 +4,15 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { AuditService } from "../audit/audit.service";
+import { AutomationsService } from "../automations/automations.service";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
+import {
+  computePipelineSignals,
+  matchesPipelineFilter,
+  OPEN_STAGES,
+  readProfileSlice,
+  type PipelineFilter,
+} from "./pipeline.helpers";
 
 export interface ContactListFilters {
   q?: string;
@@ -40,36 +48,237 @@ export class LeadsService {
     private readonly entitlements: EntitlementsService,
     private readonly webhooks: WebhookDispatchService,
     private readonly audit: AuditService,
+    private readonly automations: AutomationsService,
   ) {}
 
-  async listByStage(user: JwtPayload) {
+  async listByStage(user: JwtPayload, filter?: PipelineFilter) {
+    const validFilters: PipelineFilter[] = ["hot", "stale", "mine", "unassigned"];
+    const activeFilter =
+      filter && validFilters.includes(filter) ? filter : undefined;
+
     const leads = await this.prisma.lead.findMany({
       where: { organizationId: user.organizationId },
       orderBy: { updatedAt: "desc" },
       include: {
         conversation: {
-          select: { id: true, unreadCount: true, lastMessageAt: true },
+          select: {
+            id: true,
+            unreadCount: true,
+            lastMessageAt: true,
+            lastInboundAt: true,
+            metadata: true,
+          },
         },
         tags: { include: { tag: true } },
       },
     });
 
-    const mapped = leads.map(({ tags, ...rest }) => ({
-      ...rest,
-      tags: tags.map((lt) => ({ id: lt.tag.id, name: lt.tag.name, color: lt.tag.color })),
-    }));
+    const leadIds = leads.map((l) => l.id);
+    const ownerIds = [...new Set(leads.map((l) => l.ownerId).filter(Boolean))] as string[];
 
-    const grouped = mapped.reduce(
+    const [stageHistories, owners, runsToday] = await Promise.all([
+      leadIds.length > 0
+        ? this.prisma.leadStageHistory.findMany({
+            where: { leadId: { in: leadIds } },
+            orderBy: { createdAt: "desc" },
+            select: { leadId: true, toStage: true, createdAt: true },
+          })
+        : [],
+      ownerIds.length > 0
+        ? this.prisma.user.findMany({
+            where: { id: { in: ownerIds } },
+            select: { id: true, name: true, email: true },
+          })
+        : [],
+      this.automations.getRunsToday(user.organizationId),
+    ]);
+
+    const ownerMap = new Map(owners.map((o) => [o.id, o]));
+    const stageEnteredMap = new Map<string, Date>();
+    for (const h of stageHistories) {
+      const lead = leads.find((l) => l.id === h.leadId);
+      if (!lead || h.toStage !== lead.stage) continue;
+      if (!stageEnteredMap.has(h.leadId)) {
+        stageEnteredMap.set(h.leadId, h.createdAt);
+      }
+    }
+
+    const mapped = leads.map(({ tags, conversation, profile, ownerId, ...rest }) => {
+      const convMeta = (conversation?.metadata ?? {}) as Record<string, unknown>;
+      const requiresHuman = convMeta.requiresHuman === true;
+      const stageEnteredAt = stageEnteredMap.get(rest.id) ?? rest.updatedAt;
+      const profileSlice = readProfileSlice(profile);
+      const signals = computePipelineSignals({
+        stage: rest.stage,
+        score: rest.score,
+        stageEnteredAt,
+        lastInboundAt: conversation?.lastInboundAt,
+        unreadCount: conversation?.unreadCount ?? 0,
+        requiresHuman,
+        ownerId,
+      });
+      const owner = ownerId ? ownerMap.get(ownerId) : null;
+
+      return {
+        ...rest,
+        ownerId,
+        owner: owner
+          ? { id: owner.id, name: owner.name ?? owner.email.split("@")[0] }
+          : null,
+        profile: profileSlice,
+        conversation: conversation
+          ? {
+              id: conversation.id,
+              unreadCount: conversation.unreadCount,
+              lastInboundAt: conversation.lastInboundAt?.toISOString() ?? null,
+            }
+          : null,
+        daysInStage: signals.daysInStage,
+        isHot: signals.isHot,
+        isStale: signals.isStale,
+        staleLabel: signals.staleLabel,
+        waitingOnTeam: signals.waitingOnTeam,
+        tags: tags.map((lt) => ({ id: lt.tag.id, name: lt.tag.name, color: lt.tag.color })),
+      };
+    });
+
+    const filtered = activeFilter
+      ? mapped.filter((lead) => matchesPipelineFilter(activeFilter, lead, user.sub))
+      : mapped;
+
+    const grouped = filtered.reduce(
       (acc, lead) => {
         const stage = lead.stage;
         if (!acc[stage]) acc[stage] = [];
         acc[stage].push(lead);
         return acc;
       },
-      {} as Record<string, typeof mapped>,
+      {} as Record<string, typeof filtered>,
     );
 
-    return grouped;
+    return { grouped, automationRunsToday: runsToday };
+  }
+
+  async getPipelineSummary(user: JwtPayload) {
+    const orgId = user.organizationId;
+    const [openAgg, staleLeads, runsToday, avgDays] = await Promise.all([
+      this.prisma.lead.aggregate({
+        where: {
+          organizationId: orgId,
+          stage: { in: OPEN_STAGES },
+          valueCents: { not: null },
+        },
+        _sum: { valueCents: true },
+        _count: { id: true },
+      }),
+      this.listStaleLeadIds(orgId),
+      this.automations.getRunsToday(orgId),
+      this.avgDaysInOpenStages(orgId),
+    ]);
+
+    const staleValueAgg =
+      staleLeads.length > 0
+        ? await this.prisma.lead.aggregate({
+            where: { id: { in: staleLeads }, valueCents: { not: null } },
+            _sum: { valueCents: true },
+          })
+        : { _sum: { valueCents: 0 } };
+
+    const hotCount = await this.prisma.lead.count({
+      where: {
+        organizationId: orgId,
+        stage: { in: OPEN_STAGES },
+        score: { gte: 80 },
+      },
+    });
+
+    const totalLeads = await this.prisma.lead.count({
+      where: { organizationId: orgId },
+    });
+
+    return {
+      totalLeads,
+      pipelineValueCents: openAgg._sum.valueCents ?? 0,
+      pipelineDealsWithValue: openAgg._count.id,
+      staleCount: staleLeads.length,
+      staleValueCents: staleValueAgg._sum.valueCents ?? 0,
+      hotCount,
+      avgDaysInStage: avgDays,
+      automationRunsToday: runsToday,
+    };
+  }
+
+  private async avgDaysInOpenStages(organizationId: string): Promise<number | null> {
+    const leads = await this.prisma.lead.findMany({
+      where: { organizationId, stage: { in: OPEN_STAGES } },
+      select: { id: true, stage: true, updatedAt: true },
+      take: 500,
+    });
+    if (leads.length === 0) return null;
+
+    const histories = await this.prisma.leadStageHistory.findMany({
+      where: { leadId: { in: leads.map((l) => l.id) } },
+      orderBy: { createdAt: "desc" },
+      select: { leadId: true, toStage: true, createdAt: true },
+    });
+
+    const entered = new Map<string, Date>();
+    for (const h of histories) {
+      const lead = leads.find((l) => l.id === h.leadId);
+      if (!lead || h.toStage !== lead.stage) continue;
+      if (!entered.has(h.leadId)) entered.set(h.leadId, h.createdAt);
+    }
+
+    const days = leads.map((l) => {
+      const at = entered.get(l.id) ?? l.updatedAt;
+      return (Date.now() - at.getTime()) / 86_400_000;
+    });
+    return Math.round((days.reduce((s, d) => s + d, 0) / days.length) * 10) / 10;
+  }
+
+  /** Lead IDs that are stale by reply or stage-idle rules (open stages only). */
+  async listStaleLeadIds(organizationId: string): Promise<string[]> {
+    const leads = await this.prisma.lead.findMany({
+      where: { organizationId, stage: { in: OPEN_STAGES } },
+      select: {
+        id: true,
+        stage: true,
+        score: true,
+        ownerId: true,
+        updatedAt: true,
+        conversation: {
+          select: { lastInboundAt: true, unreadCount: true, metadata: true },
+        },
+      },
+    });
+
+    const histories = await this.prisma.leadStageHistory.findMany({
+      where: { leadId: { in: leads.map((l) => l.id) } },
+      orderBy: { createdAt: "desc" },
+      select: { leadId: true, toStage: true, createdAt: true },
+    });
+    const stageEnteredMap = new Map<string, Date>();
+    for (const h of histories) {
+      const lead = leads.find((l) => l.id === h.leadId);
+      if (!lead || h.toStage !== lead.stage) continue;
+      if (!stageEnteredMap.has(h.leadId)) stageEnteredMap.set(h.leadId, h.createdAt);
+    }
+
+    return leads
+      .filter((lead) => {
+        const convMeta = (lead.conversation?.metadata ?? {}) as Record<string, unknown>;
+        const signals = computePipelineSignals({
+          stage: lead.stage,
+          score: lead.score,
+          stageEnteredAt: stageEnteredMap.get(lead.id) ?? lead.updatedAt,
+          lastInboundAt: lead.conversation?.lastInboundAt,
+          unreadCount: lead.conversation?.unreadCount ?? 0,
+          requiresHuman: convMeta.requiresHuman === true,
+          ownerId: lead.ownerId,
+        });
+        return signals.isStale;
+      })
+      .map((l) => l.id);
   }
 
   async updateStage(user: JwtPayload, id: string, stage: LeadStage, reason?: string) {
@@ -122,6 +331,16 @@ export class LeadsService {
       resource: "lead",
       resourceId: id,
       metadata: { fromStage: lead.stage, toStage: stage, reason: reason ?? null },
+    });
+
+    void this.automations.handleManualStageChange({
+      organizationId: user.organizationId,
+      leadId: id,
+      leadName: lead.displayName,
+      leadPhone: lead.phone,
+      fromStage: lead.stage,
+      toStage: stage,
+      changedByUserId: user.sub,
     });
 
     return updated;

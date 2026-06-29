@@ -30,6 +30,14 @@ class UpdateAutomationsDto {
   @IsOptional()
   @IsBoolean()
   handoff?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  staleDeal?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  stageNotify?: boolean;
 }
 
 @Controller("automations")

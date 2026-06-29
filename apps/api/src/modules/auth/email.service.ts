@@ -123,6 +123,58 @@ export class EmailService {
     });
   }
 
+  async sendStageChangeAlert(opts: {
+    to: string[];
+    organizationName: string;
+    leadLabel: string;
+    fromStage: string;
+    toStage: string;
+    changedBy: string;
+    pipelineUrl: string;
+    inboxUrl: string;
+  }): Promise<void> {
+    const fmt = (s: string) => s.replace(/_/g, " ").toLowerCase();
+    await this.sendRaw({
+      to: opts.to,
+      subject: `Pipeline: ${opts.leadLabel} → ${fmt(opts.toStage)}`,
+      html: `
+        <p>Hi,</p>
+        <p><strong>${opts.changedBy}</strong> moved <strong>${opts.leadLabel}</strong> in <strong>${opts.organizationName}</strong>.</p>
+        <p>${fmt(opts.fromStage)} → <strong>${fmt(opts.toStage)}</strong></p>
+        <p>
+          <a href="${opts.pipelineUrl}">View pipeline</a>
+          &nbsp;·&nbsp;
+          <a href="${opts.inboxUrl}">Open conversation</a>
+        </p>
+      `,
+      replyTo: "support@growvisi.in",
+    });
+  }
+
+  async sendStaleDealReminder(opts: {
+    to: string[];
+    organizationName: string;
+    count: number;
+    pipelineUrl: string;
+    tasksUrl: string;
+  }): Promise<void> {
+    await this.sendRaw({
+      to: opts.to,
+      subject: `${opts.count} stale deal${opts.count > 1 ? "s" : ""} need attention — ${opts.organizationName}`,
+      html: `
+        <p>Hi,</p>
+        <p>Growvisi found <strong>${opts.count}</strong> open deal${opts.count > 1 ? "s" : ""} with no progress — either waiting on a reply or sitting too long in the same stage.</p>
+        <p>Follow-up tasks were created for your team.</p>
+        <p>
+          <a href="${opts.pipelineUrl}">Review stale deals</a>
+          &nbsp;·&nbsp;
+          <a href="${opts.tasksUrl}">Open tasks</a>
+        </p>
+      `,
+      replyTo: "support@growvisi.in",
+    });
+  }
+
   async sendDailyDigest(opts: {
     to: string[];
     organizationName: string;

@@ -20,6 +20,7 @@ import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import { LeadsService } from "./leads.service";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import type { MetricsPeriod } from "../../common/date-range";
+import type { PipelineFilter } from "./pipeline.helpers";
 import type { Response } from "express";
 
 const STAGES = ["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON", "LOST"] as const;
@@ -126,8 +127,16 @@ export class LeadsController {
   constructor(private readonly leads: LeadsService) {}
 
   @Get("pipeline")
-  pipeline(@CurrentUser() user: JwtPayload) {
-    return this.leads.listByStage(user);
+  pipeline(
+    @CurrentUser() user: JwtPayload,
+    @Query("filter") filter?: PipelineFilter,
+  ) {
+    return this.leads.listByStage(user, filter);
+  }
+
+  @Get("pipeline/summary")
+  pipelineSummary(@CurrentUser() user: JwtPayload) {
+    return this.leads.getPipelineSummary(user);
   }
 
   @Get("contacts")

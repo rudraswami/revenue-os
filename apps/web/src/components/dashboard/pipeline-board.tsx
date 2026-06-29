@@ -6,6 +6,7 @@ import { GripVertical } from "lucide-react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { cn } from "@/lib/utils";
 import { readableOn } from "@/lib/crm";
+import { CONVERSATIONS } from "@/lib/brand-copy";
 import type { LeadStage } from "@growvisi/shared";
 
 export interface PipelineLead {
@@ -16,7 +17,15 @@ export interface PipelineLead {
   stage: LeadStage;
   valueCents: number | null;
   currency?: string;
-  conversation: { id: string } | null;
+  ownerId: string | null;
+  owner: { id: string; name: string } | null;
+  profile: { lastIntent?: string | null; nextAction?: string | null };
+  daysInStage: number;
+  isHot: boolean;
+  isStale: boolean;
+  staleLabel: string | null;
+  waitingOnTeam: boolean;
+  conversation: { id: string; unreadCount: number; lastInboundAt: string | null } | null;
   tags?: Array<{ id: string; name: string; color: string }>;
 }
 
@@ -27,17 +36,15 @@ interface PipelineBoardProps {
   data: Record<string, PipelineLead[]> | undefined;
   isPending: boolean;
   onMoveLead: (leadId: string, stage: LeadStage) => void;
-  onUpdateValue?: (leadId: string, valueCents: number | null) => void;
-}
-
-function scoreTone(score: number) {
-  if (score >= 80) return "text-accent font-bold";
-  if (score >= 50) return "text-foreground font-semibold";
-  return "text-muted-foreground";
+  onEditValue?: (lead: PipelineLead) => void;
 }
 
 function formatInr(cents: number) {
   return `₹${(cents / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+}
+
+function columnValueCents(leads: PipelineLead[]) {
+  return leads.reduce((sum, l) => sum + (l.valueCents ?? 0), 0);
 }
 
 function LeadCard({
@@ -49,7 +56,7 @@ function LeadCard({
   onDragStart,
   onDragEnd,
   onMoveLead,
-  onUpdateValue,
+  onEditValue,
 }: {
   lead: PipelineLead;
   stages: LeadStage[];
@@ -59,10 +66,8 @@ function LeadCard({
   onDragStart: (e: React.DragEvent, leadId: string) => void;
   onDragEnd: () => void;
   onMoveLead: (leadId: string, stage: LeadStage) => void;
-  onUpdateValue?: (leadId: string, valueCents: number | null) => void;
+  onEditValue?: (lead: PipelineLead) => void;
 }) {
-  const hot = lead.score >= 80;
-
   return (
     <div
       draggable={!isPending}
@@ -70,23 +75,59 @@ function LeadCard({
       onDragEnd={onDragEnd}
       className={cn(
         "rounded-2xl border bg-white p-3.5 shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all md:cursor-grab md:active:cursor-grabbing",
-        hot ? "border-accent/25 ring-1 ring-accent/10" : "border-[#dce9ff]",
+        lead.isHot && "border-accent/25 ring-1 ring-accent/10",
+        lead.isStale && !lead.isHot && "border-amber-200/80 ring-1 ring-amber-100",
+        !lead.isHot && !lead.isStale && "border-[#dce9ff]",
         draggingId === lead.id && "scale-[1.02] opacity-60 shadow-lg ring-2 ring-accent/30",
       )}
     >
-      <div className="flex items-start gap-2.5">
-        <GripVertical className="mt-2 hidden h-4 w-4 shrink-0 text-muted-foreground/40 md:block" />
+      <div className="flex items-start gap-2">
+        <GripVertical className="mt-2.5 hidden h-4 w-4 shrink-0 text-muted-foreground/35 md:block" />
         <AvatarInitials name={lead.displayName ?? lead.phone} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-snug">{lead.displayName ?? lead.phone}</p>
-          {hot && (
-            <span className="mt-1 inline-block rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent">
-              Hot · {lead.score}
-            </span>
+          <div className="flex items-start justify-between gap-2">
+            <p className="truncate text-sm font-semibold leading-snug">
+              {lead.displayName ?? lead.phone}
+            </p>
+            {lead.score > 0 && (
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                  lead.isHot ? "bg-[#ecfdf5] text-accent" : "bg-[#f8f9ff] text-muted-foreground",
+                )}
+              >
+                {lead.score}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {lead.isHot && (
+              <span className="rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent">
+                Hot
+              </span>
+            )}
+            {lead.waitingOnTeam && (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700">
+                {CONVERSATIONS.waitingOnYou}
+              </span>
+            )}
+            {lead.isStale && lead.staleLabel && (
+              <span className="rounded-full bg-amber-50/80 px-2 py-0.5 text-[9px] font-semibold text-amber-800">
+                {lead.staleLabel}
+              </span>
+            )}
+          </div>
+
+          {lead.profile.lastIntent && (
+            <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
+              {lead.profile.lastIntent}
+            </p>
           )}
+
           {lead.tags && lead.tags.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">
-              {lead.tags.slice(0, 3).map((t) => (
+              {lead.tags.slice(0, 2).map((t) => (
                 <span
                   key={t.id}
                   className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
@@ -100,7 +141,7 @@ function LeadCard({
         </div>
       </div>
 
-      <div className="mt-3 space-y-3 md:pl-7">
+      <div className="mt-3 space-y-2.5 md:pl-6">
         <div className="md:hidden">
           <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Stage
@@ -122,58 +163,48 @@ function LeadCard({
           </select>
         </div>
 
-        {lead.score > 0 && (
+        {lead.profile.nextAction && (
+          <p className="text-[11px] leading-snug text-foreground/75">
+            <span className="font-semibold text-muted-foreground">Next: </span>
+            {lead.profile.nextAction}
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eef3ff] pt-2.5">
           <div className="flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#e5eeff]">
-              <div
-                className="h-full rounded-full bg-accent transition-all"
-                style={{ width: `${Math.min(lead.score, 100)}%` }}
-              />
-            </div>
-            <span className={cn("text-[10px] tabular-nums", scoreTone(lead.score))}>{lead.score}</span>
-          </div>
-        )}
-
-        {onUpdateValue && (
-          <button
-            type="button"
-            className="text-left text-xs text-muted-foreground hover:text-accent"
-            disabled={isPending}
-            onClick={(e) => {
-              e.stopPropagation();
-              const current =
-                lead.valueCents != null ? String(Math.round(lead.valueCents / 100)) : "";
-              const raw = window.prompt("Deal value in ₹ (leave empty to clear)", current);
-              if (raw === null) return;
-              const trimmed = raw.trim();
-              if (!trimmed) {
-                onUpdateValue(lead.id, null);
-                return;
-              }
-              const rupees = Number(trimmed.replace(/,/g, ""));
-              if (!Number.isFinite(rupees) || rupees < 0) return;
-              onUpdateValue(lead.id, Math.round(rupees * 100));
-            }}
-          >
-            {lead.valueCents != null ? (
-              <span className="font-semibold text-foreground">{formatInr(lead.valueCents)}</span>
-            ) : (
-              "+ Add deal value"
+            {onEditValue && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-accent"
+                disabled={isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditValue(lead);
+                }}
+              >
+                {lead.valueCents != null ? (
+                  <span className="font-semibold text-foreground">{formatInr(lead.valueCents)}</span>
+                ) : (
+                  "+ Deal value"
+                )}
+              </button>
             )}
-          </button>
-        )}
-
-        {lead.conversation?.id ? (
-          <Link
-            href={`/dashboard/inbox?c=${lead.conversation.id}`}
-            className="inline-flex text-xs font-semibold text-accent hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            Open chat →
-          </Link>
-        ) : (
-          <span className="text-xs text-muted-foreground">No chat linked</span>
-        )}
+            {lead.owner && (
+              <span className="text-[10px] text-muted-foreground">· {lead.owner.name}</span>
+            )}
+          </div>
+          {lead.conversation?.id ? (
+            <Link
+              href={`/dashboard/inbox?c=${lead.conversation.id}`}
+              className="text-xs font-semibold text-accent hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Open chat →
+            </Link>
+          ) : (
+            <span className="text-xs text-muted-foreground">No chat</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -186,7 +217,7 @@ export function PipelineBoard({
   data,
   isPending,
   onMoveLead,
-  onUpdateValue,
+  onEditValue,
 }: PipelineBoardProps) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<LeadStage | null>(null);
@@ -220,35 +251,50 @@ export function PipelineBoard({
 
   return (
     <div>
-      <p className="mb-4 text-xs text-muted-foreground md:hidden">Use the stage dropdown on each card.</p>
-      <p className="mb-4 hidden text-xs text-muted-foreground md:block">Drag cards between columns — stages sync to WhatsApp leads.</p>
-      <div className="flex flex-1 gap-4 overflow-x-auto pb-4 custom-scrollbar">
+      <p className="mb-4 text-xs text-muted-foreground md:hidden">
+        Use the stage dropdown on each card.
+      </p>
+      <p className="mb-4 hidden text-xs text-muted-foreground md:block">
+        Drag cards between columns — AI scoring and automations keep stages in sync.
+      </p>
+      <div className="flex flex-1 gap-3 overflow-x-auto pb-4 custom-scrollbar">
         {stages.map((stage) => {
-          const count = data?.[stage]?.length ?? 0;
+          const columnLeads = data?.[stage] ?? [];
+          const count = columnLeads.length;
+          const colValue = columnValueCents(columnLeads);
           return (
             <div
               key={stage}
-              className="min-w-[280px] shrink-0"
+              className="min-w-[272px] shrink-0"
               onDragOver={(e) => handleDragOver(e, stage)}
               onDragLeave={() => setDropTarget(null)}
               onDrop={(e) => handleDrop(e, stage)}
             >
-              <div className="mb-3 flex items-center gap-2 rounded-xl border border-[#dce9ff] bg-white px-3 py-2 shadow-sm">
-                <div className={cn("h-2.5 w-2.5 rounded-full", stageColors[stage])} />
-                <h2 className="text-sm font-bold">{stageLabels[stage]}</h2>
-                <span className="ml-auto rounded-full bg-[#f8f9ff] px-2.5 py-0.5 text-xs font-bold text-muted-foreground">
-                  {count}
-                </span>
+              <div className="mb-2.5 flex items-center gap-2 rounded-xl border border-[#dce9ff] bg-white px-3 py-2.5 shadow-sm">
+                <div className={cn("h-2 w-2 shrink-0 rounded-full", stageColors[stage])} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h2 className="truncate text-sm font-bold">{stageLabels[stage]}</h2>
+                    <span className="shrink-0 rounded-full bg-[#f8f9ff] px-2 py-0.5 text-[11px] font-bold tabular-nums text-muted-foreground">
+                      {count}
+                    </span>
+                  </div>
+                  {colValue > 0 && (
+                    <p className="mt-0.5 text-[11px] font-semibold text-accent">
+                      {formatInr(colValue)}
+                    </p>
+                  )}
+                </div>
               </div>
               <div
                 className={cn(
-                  "min-h-[280px] space-y-2.5 rounded-2xl border-2 border-dashed p-2 transition-colors",
+                  "min-h-[260px] space-y-2.5 rounded-2xl border-2 border-dashed p-2 transition-colors",
                   dropTarget === stage
                     ? "border-accent/40 bg-[#ecfdf5]/50"
                     : "border-transparent bg-[#f8f9ff]/80",
                 )}
               >
-                {(data?.[stage] ?? []).map((lead) => (
+                {columnLeads.map((lead) => (
                   <LeadCard
                     key={lead.id}
                     lead={lead}
@@ -259,7 +305,7 @@ export function PipelineBoard({
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                     onMoveLead={onMoveLead}
-                    onUpdateValue={onUpdateValue}
+                    onEditValue={onEditValue}
                   />
                 ))}
                 {count === 0 && (
