@@ -281,3 +281,38 @@ h1, h2, h3, h4, h5, h6 {
 }
 .typing-dot:nth-child(2) { animation-delay: 0.15s; }
 .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* Marketing landing — aurora + shimmer */
+@keyframes marketing-aurora-shift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50% { transform: translate(2%, -1%) scale(1.05); opacity: 1; }
+}
+.marketing-aurora {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 30%, rgb(0 108 73 / 0.35), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 80% 70%, rgb(108 248 187 / 0.12), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 100%, rgb(11 28 48 / 0.8), transparent 60%);
+  animation: marketing-aurora-shift 14s ease-in-out infinite;
+}
+@keyframes marketing-shimmer-slide {
+  0% { transform: translateX(-100%) skewX(-12deg); }
+  100% { transform: translateX(200%) skewX(-12deg); }
+}
+.marketing-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgb(255 255 255 / 0.35) 50%,
+    transparent 60%
+  );
+  animation: marketing-shimmer-slide 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marketing-aurora,
+  .marketing-shimmer::after {
+    animation: none;
+  }
+}
