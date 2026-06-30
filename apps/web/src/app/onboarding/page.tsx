@@ -22,7 +22,6 @@ import WhatsappConnect from "@/components/settings/whatsapp-connect";
 import { WhatsappGoLiveChecklist } from "@/components/settings/whatsapp-go-live-checklist";
 import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
 import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
-import { GrowvisiHelpFab } from "@/components/support/growvisi-help-fab";
 import { formatMessage } from "@/lib/i18n/format-message";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { apiFetch } from "@/lib/api-client";
@@ -312,7 +311,6 @@ function OnboardingPageContent() {
           </aside>
         </div>
       </main>
-      <GrowvisiHelpFab context="onboarding" />
     </div>
   );
 }

@@ -327,6 +327,7 @@ export const messages = {
       pricing: "Plans & pricing",
       connection: "Connection health",
       setupGuide: "Setup guide",
+      help: "AI Support",
       signOut: "Sign out",
     },
     auth: {
@@ -819,6 +820,7 @@ export const messages = {
       pricing: "प्लान और कीमत",
       connection: "कनेक्शन स्वास्थ्य",
       setupGuide: "सेटअप गाइड",
+      help: "AI सपोर्ट",
       signOut: "साइन आउट",
     },
     auth: {

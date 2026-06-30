@@ -263,6 +263,12 @@ function UserAccountMenu({
           <HelpCircle className="h-4 w-4 text-muted-foreground" />
           {t("userMenu.setupGuide")}
         </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => go("/dashboard/settings?tab=whatsapp&assist=help")}
+        >
+          <Bot className="h-4 w-4 text-muted-foreground" />
+          {t("userMenu.help")}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:bg-destructive/10 focus:text-destructive"

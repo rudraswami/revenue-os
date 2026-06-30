@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -10,6 +11,8 @@ import {
   Bell,
   ChevronDown,
   CreditCard,
+  HelpCircle,
+  ListChecks,
   MessageCircle,
   Settings2,
   Sparkles,
@@ -17,14 +20,20 @@ import {
 } from "lucide-react";
 import { SetupHelpPanel } from "@/components/support/setup-help-panel";
 import { usePendingSetupActions, type SetupAction } from "@/hooks/use-pending-setup-actions";
-import type { HelpFabContext } from "@/lib/setup-help-content";
+import { resolveHelpContext, type HelpFabContext } from "@/lib/setup-help-content";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { formatMessage } from "@/lib/i18n/format-message";
 import { cn } from "@/lib/utils";
 
 const AUTO_COLLAPSE_MS = 12_000;
 
-type DockView = "setup" | "help";
+/** Never show a floating assist on these routes (composer / focus surfaces). */
+const HIDE_ASSIST_PATHS = [/^\/dashboard\/inbox(?:\/|$)/];
+
+/** After setup is complete, help FAB only on these surfaces (+ ?assist=help deep-link). */
+const HELP_SURFACE_PATHS = [/^\/dashboard\/connection(?:\/|$)/, /^\/dashboard\/pricing(?:\/|$)/];
+
+type PanelView = "setup" | "help";
 
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "trial-ended": CreditCard,
@@ -74,31 +83,60 @@ function SetupRow({ action, index }: { action: SetupAction; index: number }) {
   );
 }
 
-/** Pending workspace setup — hides when everything is complete. Includes help tab. */
-export function FloatingSetupDock({ helpContext }: { helpContext: HelpFabContext }) {
+function isHelpSurfacePath(pathname: string, settingsTab: string | null): boolean {
+  if (HELP_SURFACE_PATHS.some((re) => re.test(pathname))) return true;
+  return pathname.startsWith("/dashboard/settings") && settingsTab === "whatsapp";
+}
+
+/**
+ * Single floating assist control for the dashboard.
+ * Setup checklist while milestones are incomplete; contextual help after — never two FABs.
+ */
+export function WorkspaceAssistFab() {
   const { t } = useI18n();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
+  const settingsTab = searchParams.get("tab");
+  const assistDeepLink = searchParams.get("assist") === "help";
+  const helpContext: HelpFabContext = resolveHelpContext(pathname, settingsTab) ?? "general";
+
   const { actions, criticalCount, totalCount, allComplete, isLoading } = usePendingSetupActions();
+  const showSetup = !isLoading && !allComplete && totalCount > 0;
+
   const [expanded, setExpanded] = useState(false);
-  const [view, setView] = useState<DockView>("setup");
+  const [view, setView] = useState<PanelView>("setup");
   const pinnedRef = useRef(false);
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didAutoOpen = useRef(false);
 
+  const hiddenByPath = HIDE_ASSIST_PATHS.some((re) => re.test(pathname));
+  const helpSurface = isHelpSurfacePath(pathname, settingsTab);
+  const visible = !hiddenByPath && (showSetup || helpSurface || assistDeepLink);
+
   const scheduleCollapse = useCallback(() => {
     if (collapseTimer.current) clearTimeout(collapseTimer.current);
-    if (pinnedRef.current || criticalCount > 0) return;
+    if (pinnedRef.current || criticalCount > 0 || assistDeepLink) return;
     collapseTimer.current = setTimeout(() => {
       setExpanded(false);
-      setView("setup");
+      setView(showSetup ? "setup" : "help");
     }, AUTO_COLLAPSE_MS);
-  }, [criticalCount]);
+  }, [assistDeepLink, criticalCount, showSetup]);
 
   useEffect(() => {
-    if (allComplete || isLoading || didAutoOpen.current) return;
+    if (assistDeepLink) {
+      setView("help");
+      setExpanded(true);
+      pinnedRef.current = true;
+    }
+  }, [assistDeepLink]);
+
+  useEffect(() => {
+    if (!showSetup || isLoading || didAutoOpen.current || hiddenByPath) return;
     didAutoOpen.current = true;
+    setView("setup");
     setExpanded(true);
     scheduleCollapse();
-  }, [allComplete, isLoading, scheduleCollapse]);
+  }, [showSetup, isLoading, hiddenByPath, scheduleCollapse]);
 
   useEffect(() => {
     return () => {
@@ -106,10 +144,16 @@ export function FloatingSetupDock({ helpContext }: { helpContext: HelpFabContext
     };
   }, []);
 
+  useEffect(() => {
+    if (!showSetup && view === "setup") setView("help");
+  }, [showSetup, view]);
+
+  if (!visible) return null;
+
   function toggle() {
     const next = !expanded;
     setExpanded(next);
-    if (!next) setView("setup");
+    if (!next) setView(showSetup ? "setup" : "help");
     pinnedRef.current = next;
     if (next) scheduleCollapse();
     else if (collapseTimer.current) clearTimeout(collapseTimer.current);
@@ -122,10 +166,20 @@ export function FloatingSetupDock({ helpContext }: { helpContext: HelpFabContext
     if (collapseTimer.current) clearTimeout(collapseTimer.current);
   }
 
-  if (isLoading || allComplete) return null;
+  const FabIcon = showSetup ? ListChecks : HelpCircle;
+  const fabLabel = expanded
+    ? showSetup
+      ? t("setupDock.close")
+      : t("setupHelp.closeHelp")
+    : showSetup
+      ? t("setupDock.open")
+      : t("setupHelp.openHelp");
 
   return (
-    <div className="pointer-events-none fixed bottom-5 right-5 z-[55] flex flex-col items-end gap-2 sm:bottom-6 sm:right-6">
+    <div
+      className="pointer-events-none fixed bottom-5 right-5 z-[55] flex flex-col items-end gap-2 sm:bottom-6 sm:right-6"
+      data-assist-mode={showSetup ? "setup" : "help"}
+    >
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -141,7 +195,7 @@ export function FloatingSetupDock({ helpContext }: { helpContext: HelpFabContext
               if (expanded && !pinnedRef.current) scheduleCollapse();
             }}
           >
-            {view === "setup" ? (
+            {view === "setup" && showSetup ? (
               <>
                 <div className="border-b border-border/80 bg-gradient-to-r from-bento-mint/40 to-white px-4 py-3.5">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
@@ -177,17 +231,23 @@ export function FloatingSetupDock({ helpContext }: { helpContext: HelpFabContext
               </>
             ) : (
               <div>
-                <div className="flex items-center gap-2 border-b border-border/80 px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => setView("setup")}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    {t("setupDock.backToSteps")}
-                  </button>
-                </div>
-                <SetupHelpPanel context={helpContext} showHeader={false} />
+                {showSetup && (
+                  <div className="flex items-center gap-2 border-b border-border/80 px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => setView("setup")}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      {t("setupDock.backToSteps")}
+                    </button>
+                  </div>
+                )}
+                <SetupHelpPanel
+                  context={helpContext}
+                  showHeader={!showSetup}
+                  onClose={showSetup ? undefined : () => setExpanded(false)}
+                />
               </div>
             )}
           </motion.div>
@@ -198,26 +258,33 @@ export function FloatingSetupDock({ helpContext }: { helpContext: HelpFabContext
         type="button"
         onClick={toggle}
         className={cn(
-          "pointer-events-auto relative flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-[0_8px_32px_rgb(11_158_109/0.45)] transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-          criticalCount > 0 && !expanded && "animate-pulse ring-2 ring-amber-400 ring-offset-2",
+          "pointer-events-auto relative flex h-14 w-14 touch-manipulation items-center justify-center rounded-full text-white shadow-[0_8px_32px_rgb(11_158_109/0.45)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+          showSetup
+            ? "bg-accent hover:bg-accent-hover"
+            : "border-2 border-accent/20 bg-white text-accent hover:bg-[#ecfdf5]",
+          showSetup && criticalCount > 0 && !expanded && "animate-pulse ring-2 ring-amber-400 ring-offset-2",
+          !showSetup && expanded && "ring-2 ring-accent/30 ring-offset-2",
         )}
         whileTap={{ scale: 0.94 }}
         aria-expanded={expanded}
-        aria-label={expanded ? t("setupDock.close") : t("setupDock.open")}
+        aria-label={fabLabel}
       >
-        <Settings2 className="h-5 w-5" strokeWidth={2} />
-        <span
-          className={cn(
-            "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white",
-            criticalCount > 0 ? "bg-amber-500" : "bg-accent",
-          )}
-        >
-          {totalCount > 99 ? "99+" : totalCount}
-        </span>
+        <FabIcon className="h-5 w-5" strokeWidth={2} />
+        {showSetup && (
+          <span
+            className={cn(
+              "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white",
+              criticalCount > 0 ? "bg-amber-500" : "bg-accent",
+            )}
+          >
+            {totalCount > 99 ? "99+" : totalCount}
+          </span>
+        )}
         <ChevronDown
           className={cn(
             "absolute bottom-1.5 h-3 w-3 opacity-80 transition-transform",
             expanded && "rotate-180",
+            !showSetup && "text-accent",
           )}
         />
       </motion.button>
