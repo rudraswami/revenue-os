@@ -1,5 +1,7 @@
-import type { LucideIcon } from "lucide-react";
+"use client";
+
 import type { InputHTMLAttributes } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +9,7 @@ type AuthFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   icon?: LucideIcon;
   hint?: string;
+  error?: string | null;
   labelExtra?: React.ReactNode;
 };
 
@@ -14,11 +17,14 @@ export function AuthField({
   label,
   icon: Icon,
   hint,
+  error,
   labelExtra,
   id,
   className,
   ...props
 }: AuthFieldProps) {
+  const errorId = error && id ? `${id}-error` : undefined;
+
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -36,15 +42,26 @@ export function AuthField({
         )}
         <Input
           id={id}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId ?? (hint ? `${id}-hint` : undefined)}
           className={cn(
             "auth-input h-11 rounded-xl border-[#dce9ff] bg-[#f8f9ff]/50 transition-colors focus-visible:border-accent/40 focus-visible:ring-accent/20",
             Icon && "pl-10",
+            error && "border-destructive/50 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
             className,
           )}
           {...props}
         />
       </div>
-      {hint && <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>}
+      {error ? (
+        <p id={errorId} className="mt-1.5 text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      ) : hint ? (
+        <p id={`${id}-hint`} className="mt-1.5 text-xs text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

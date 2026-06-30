@@ -409,11 +409,13 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
-        <strong className="font-semibold">Meta policy:</strong> Business-initiated outbound
-        messages must use a <strong>pre-approved WhatsApp template</strong> from your WhatsApp
-        Manager. Growvisi sends only approved templates to contacts you choose.
-      </div>
+      {canManage && campaignsPlanOk && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
+          <strong className="font-semibold">Meta policy:</strong> Business-initiated outbound
+          messages must use a <strong>pre-approved WhatsApp template</strong> from your WhatsApp
+          Manager. Growvisi sends only approved templates to contacts you choose.
+        </div>
+      )}
 
       {canManage && campaignsPlanOk && (
         <DashboardPanel className="mb-6" title="New campaign" description="Build from your CRM audience or import a CSV list.">

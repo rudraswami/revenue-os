@@ -1,6 +1,7 @@
+import { SETTINGS_TAB_ORDER } from "@/lib/settings-access";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const NAV_ITEMS = 6;
+const NAV_ITEMS = SETTINGS_TAB_ORDER.length;
 
 export function SettingsPageSkeleton() {
   return (
@@ -24,7 +25,7 @@ export function SettingsPageSkeleton() {
 
         <div className="lg:hidden" aria-hidden>
           <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: NAV_ITEMS }).map((_, i) => (
               <Skeleton key={i} className="h-9 w-24 shrink-0 rounded-full" />
             ))}
           </div>
@@ -39,7 +40,7 @@ export function SettingsPageSkeleton() {
             </div>
           </div>
 
-          <div className="min-h-[420px] space-y-4">
+          <div className="min-h-[480px] space-y-4">
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-white">
               <div className="border-b border-border/60 bg-[#fafbfd] px-5 py-4">
                 <Skeleton className="h-4 w-36" />

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
 import { CookieConsent } from "@/components/marketing/cookie-consent";
 import { RealtimeProvider } from "@/components/realtime/realtime-provider";
+import { ToastProvider } from "@/components/ui/toast";
 import { GC, STALE } from "@/lib/query-config";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -25,10 +26,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <AuthBootstrap>
-        <RealtimeProvider>
-          {children}
-          <CookieConsent />
-        </RealtimeProvider>
+        <ToastProvider>
+          <RealtimeProvider>
+            {children}
+            <CookieConsent />
+          </RealtimeProvider>
+        </ToastProvider>
       </AuthBootstrap>
     </QueryClientProvider>
   );

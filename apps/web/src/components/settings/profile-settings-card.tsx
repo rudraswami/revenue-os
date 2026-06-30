@@ -12,6 +12,7 @@ import { applySession } from "@/lib/auth-session";
 import type { MeResponse } from "@/lib/auth-types";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
+import { useToast } from "@/components/ui/toast";
 import type { MembershipRole } from "@growvisi/shared";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import type { Locale } from "@/lib/i18n/messages";
@@ -23,6 +24,7 @@ export function ProfileSettingsCard() {
   const role = useAuthStore((s) => s.role);
   const organization = useAuthStore((s) => s.organization);
   const { t } = useI18n();
+  const { success, error: toastError } = useToast();
   const [name, setName] = useState(user?.name ?? "");
   const [locale, setLocale] = useState<Locale>((user?.locale as Locale) ?? "en");
   const [error, setError] = useState<string | null>(null);
@@ -47,10 +49,13 @@ export function ProfileSettingsCard() {
       });
       setError(null);
       setSaved(true);
+      success(t("toast.profileSaved"));
       setTimeout(() => setSaved(false), 2500);
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Could not update profile.");
+      const msg = e instanceof ApiError ? e.message : t("toast.actionFailed");
+      setError(msg);
+      toastError(msg);
     },
   });
 

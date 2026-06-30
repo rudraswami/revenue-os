@@ -14,13 +14,26 @@ export type SettingsTabId =
 export type LegacySettingsTabId = SettingsTabId | "workspace";
 
 export const SETTINGS_TAB_ORDER: SettingsTabId[] = [
-  "team",
   "whatsapp",
   "billing",
+  "account",
+  "team",
   "intelligence",
   "growth",
   "developers",
+];
+
+export const SETTINGS_ESSENTIAL_TABS: SettingsTabId[] = [
+  "whatsapp",
+  "billing",
   "account",
+  "team",
+];
+
+export const SETTINGS_ADVANCED_TABS: SettingsTabId[] = [
+  "intelligence",
+  "growth",
+  "developers",
 ];
 
 const PLAN_RANK: Record<GrowvisiPlanId, number> = {

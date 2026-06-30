@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Tag as TagIcon, Users } from "lucide-react";
+import { Plus, Search, Tag as TagIcon, Users, MoreVertical, Download } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { ContactDetailDrawer } from "@/components/dashboard/contact-detail";
@@ -13,6 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InboxListSkeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { apiDownload, apiFetch } from "@/lib/api-client";
 import { canWrite } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
@@ -27,6 +34,7 @@ import {
 } from "@/lib/crm";
 import type { LeadStage } from "@growvisi/shared";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/locale-provider";
 
 interface ContactRow {
   id: string;
@@ -59,6 +67,8 @@ export default function ContactsPage() {
   const role = useAuthStore((s) => s.role);
   const canEdit = canWrite(role);
   const qc = useQueryClient();
+  const { success, error: toastError } = useToast();
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [stage, setStage] = useState<LeadStage | "">("");
   const [tagId, setTagId] = useState("");
@@ -122,14 +132,20 @@ export default function ContactsPage() {
       apiFetch("/tags", { method: "POST", token: token ?? undefined, body: JSON.stringify(body) }),
     onSuccess: () => {
       setNewTagName("");
+      success(t("toast.tagCreated"));
       void qc.invalidateQueries({ queryKey: ["tags"] });
     },
+    onError: () => toastError(t("toast.actionFailed")),
   });
 
   const deleteTag = useMutation({
     mutationFn: (id: string) =>
       apiFetch(`/tags/${id}`, { method: "DELETE", token: token ?? undefined }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["tags"] }),
+    onSuccess: () => {
+      success(t("toast.tagDeleted"));
+      void qc.invalidateQueries({ queryKey: ["tags"] });
+    },
+    onError: () => toastError(t("toast.actionFailed")),
   });
 
   const updateTag = useMutation({
@@ -141,9 +157,11 @@ export default function ContactsPage() {
       }),
     onSuccess: () => {
       setEditingTagId(null);
+      success(t("toast.tagUpdated"));
       void qc.invalidateQueries({ queryKey: ["tags"] });
       void qc.invalidateQueries({ queryKey: ["contacts"] });
     },
+    onError: () => toastError(t("toast.actionFailed")),
   });
 
   const createContact = useMutation({
@@ -160,8 +178,10 @@ export default function ContactsPage() {
       setNewPhone("");
       setNewName("");
       setShowAddContact(false);
+      success(t("toast.contactCreated"));
       void qc.invalidateQueries({ queryKey: ["contacts"] });
     },
+    onError: () => toastError(t("toast.actionFailed")),
   });
 
   const total = contactPage?.total ?? 0;
@@ -175,32 +195,63 @@ export default function ContactsPage() {
         title="Contacts"
         description="Every WhatsApp lead in one searchable place — profiles, tags, notes, tasks and deal value."
         action={
-          <div className="flex gap-2">
-            {canEdit && (
-              <Button variant="accent" size="sm" className="gap-1.5" onClick={() => setShowAddContact(true)}>
-                <Plus className="h-3.5 w-3.5" /> Add contact
+          <>
+            <div className="hidden gap-2 sm:flex">
+              {canEdit && (
+                <Button variant="accent" size="sm" className="gap-1.5" onClick={() => setShowAddContact(true)}>
+                  <Plus className="h-3.5 w-3.5" /> Add contact
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setShowTagManager((v) => !v)}
+              >
+                <TagIcon className="h-3.5 w-3.5" /> Tags
               </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setShowTagManager((v) => !v)}
-            >
-              <TagIcon className="h-3.5 w-3.5" /> Tags
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={!token || total === 0}
-              onClick={() =>
-                token && void apiDownload("/leads/export?period=all", "growvisi-contacts.csv", token)
-              }
-            >
-              Export
-            </Button>
-          </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={!token || total === 0}
+                onClick={() =>
+                  token && void apiDownload("/leads/export?period=all", "growvisi-contacts.csv", token)
+                }
+              >
+                Export
+              </Button>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 sm:hidden" aria-label="Contact actions">
+                  <MoreVertical className="h-4 w-4" />
+                  Actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setShowAddContact(true)}>
+                    <Plus className="h-4 w-4" />
+                    Add contact
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => setShowTagManager((v) => !v)}>
+                  <TagIcon className="h-4 w-4" />
+                  Manage tags
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!token || total === 0}
+                  onClick={() =>
+                    token && void apiDownload("/leads/export?period=all", "growvisi-contacts.csv", token)
+                  }
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
         }
       />
 

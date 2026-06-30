@@ -23,6 +23,7 @@ import { InboxComposer } from "@/components/dashboard/inbox-composer";
 import { InboxTimeline } from "@/components/dashboard/inbox-timeline";
 import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
+import { InboxThreadDetailsMobile } from "@/components/dashboard/inbox-thread-details-mobile";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
@@ -581,7 +582,7 @@ export default function InboxPage() {
                     })()}
                   </div>
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                <div className="hidden shrink-0 flex-wrap items-center justify-end gap-1.5 md:flex">
                   {thread.lead?.score != null && thread.lead.score > 0 && (
                     <span
                       className={cn(
@@ -632,6 +633,17 @@ export default function InboxPage() {
                   )}
                 </div>
               </div>
+              <InboxThreadDetailsMobile
+                stage={thread.lead?.stage as LeadStage | undefined}
+                score={thread.lead?.score}
+                assignedToId={thread.assignedTo?.id ?? null}
+                teamMembers={teamMembers ?? []}
+                canEditStage={canSend && !!thread.lead}
+                stagePending={stageMutation.isPending}
+                assignPending={assignMutation.isPending}
+                onStageChange={(s) => handleStageChange(s)}
+                onAssign={(userId) => assignMutation.mutate(userId)}
+              />
               <InboxAiPanel
                 aiContext={thread.aiContext ?? null}
                 requiresHuman={thread.requiresHuman}
@@ -674,7 +686,7 @@ export default function InboxPage() {
                     />
                   </span>
                 </div>
-                <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
+                <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5 md:flex">
                   <label htmlFor="assign-agent" className="text-[10px] font-medium text-muted-foreground">
                     {copy.assignedTo}
                   </label>

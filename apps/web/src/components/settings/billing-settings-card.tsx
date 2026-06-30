@@ -5,6 +5,8 @@ import { CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +36,8 @@ interface BillingStatus {
 export function BillingSettingsCard() {
   const token = useAuthStore((s) => s.accessToken);
   const qc = useQueryClient();
+  const { success, error: toastError } = useToast();
+  const { t } = useI18n();
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const [cancelMsg, setCancelMsg] = useState<string | null>(null);
 
@@ -52,8 +56,14 @@ export function BillingSettingsCard() {
       }),
     onMutate: (planId) => setCheckoutPlan(planId),
     onSuccess: (res) => {
-      window.open(res.checkoutUrl, "_blank", "noopener,noreferrer");
+      const opened = window.open(res.checkoutUrl, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        window.location.href = res.checkoutUrl;
+      } else {
+        success(t("toast.checkoutOpened"));
+      }
     },
+    onError: () => toastError(t("toast.actionFailed")),
     onSettled: () => setCheckoutPlan(null),
   });
 

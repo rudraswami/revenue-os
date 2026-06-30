@@ -13,23 +13,23 @@ import {
   Users,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { CTA } from "@/lib/brand-copy";
+import { CTA, CONVERSATIONS } from "@/lib/brand-copy";
 import { POSITIONING } from "@/lib/gtm-copy";
 import { HeroIllustration } from "./illustrations/hero-illustration";
 
-const logos = ["Real Estate", "EdTech", "Healthcare", "D2C", "Automotive", "Consulting"];
+const industries = ["Real estate", "EdTech", "Healthcare", "D2C", "Automotive", "Consulting"];
 
 const capabilities = [
   { icon: MessageCircle, label: "Shared WhatsApp inbox" },
   { icon: Sparkles, label: "AI intent & lead score" },
   { icon: MessageCircle, label: "Human reply from Inbox" },
   { icon: BarChart3, label: "Pipeline in ₹" },
-  { icon: Users, label: "Handoff & Take over" },
+  { icon: Users, label: CONVERSATIONS.yourTurn },
   { icon: IndianRupee, label: "Razorpay → Won" },
 ];
 
 const stats = [
-  { value: "500", label: "leads on trial" },
+  { value: "₹999", label: "from /mo" },
   { value: "14d", label: "free trial" },
   { value: "<15m", label: "to first classified lead" },
 ];
@@ -200,9 +200,12 @@ export function Hero() {
           <p className="mt-1.5 text-[14px] text-muted-foreground">
             Real estate, education, healthcare, D2C — same pipeline engine, your industry workflow
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-70 grayscale">
-            {logos.map((name) => (
-              <span key={name} className="text-[15px] font-semibold tracking-tight text-muted-foreground">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
+            {industries.map((name) => (
+              <span
+                key={name}
+                className="rounded-full border border-border/80 bg-[#f8f9ff] px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground"
+              >
                 {name}
               </span>
             ))}

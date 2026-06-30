@@ -9,6 +9,8 @@ import { PricingPlansGrid } from "@/components/pricing/pricing-plans-grid";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { EnterpriseCallout } from "@/components/marketing/enterprise-callout";
 import { PRICING_FOOTNOTES } from "@/lib/pricing-plans";
+import { useToast } from "@/components/ui/toast";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface BillingStatus {
@@ -26,6 +28,8 @@ interface BillingStatus {
 
 export default function PricingPage() {
   const token = useAuthStore((s) => s.accessToken);
+  const { success } = useToast();
+  const { t } = useI18n();
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const [checkoutOpened, setCheckoutOpened] = useState(false);
 
@@ -49,6 +53,7 @@ export default function PricingPage() {
         window.location.href = res.checkoutUrl;
       } else {
         setCheckoutOpened(true);
+        success(t("toast.checkoutOpened"));
       }
     },
     onSettled: () => setCheckoutPlan(null),

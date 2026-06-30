@@ -17,6 +17,8 @@ import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import type { GrowvisiPlanId } from "@growvisi/shared";
 import { Activity, Bell, Clock, MessageCircle, Sparkles, Timer, UserRound, Zap } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { CONVERSATIONS } from "@/lib/brand-copy";
 
 const SERVER_AUTOMATIONS: Array<{
@@ -99,6 +101,8 @@ export default function AutomationsPage() {
   const role = useAuthStore((s) => s.role);
   const canManage = canManageCampaigns(role);
   const queryClient = useQueryClient();
+  const { success, error: toastError } = useToast();
+  const { t } = useI18n();
 
   const { data: toggles, isLoading } = useQuery({
     queryKey: ["automation-preferences"],
@@ -147,6 +151,14 @@ export default function AutomationsPage() {
       }),
     onSuccess: (data) => {
       queryClient.setQueryData(["automation-preferences"], data);
+      success(t("toast.automationsSaved"));
+    },
+    onError: (e) => {
+      toastError(
+        e instanceof Error && e.message.includes("Growth")
+          ? "Stale deal reminder requires the Growth plan."
+          : t("toast.actionFailed"),
+      );
     },
   });
 

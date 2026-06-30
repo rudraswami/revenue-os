@@ -30,7 +30,7 @@ export function MarketingHeader() {
         className="group flex items-center justify-center gap-2 bg-[#0b1c30] px-4 py-2 text-center text-[13px] font-medium text-white/90 transition-colors hover:text-white"
       >
         <Sparkles className="h-3.5 w-3.5 text-[#6cf8bb]" />
-        <span>Human inbox + pipeline ₹ — 14-day trial, 500 leads</span>
+        <span>From ₹999/mo · Human inbox + pipeline ₹ — 14-day trial, 500 leads</span>
         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
       </Link>
 

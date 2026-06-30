@@ -26,6 +26,7 @@ import { canConnectWhatsapp } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { useToast } from "@/components/ui/toast";
 import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 import { WhatsappGoLiveChecklist } from "@/components/settings/whatsapp-go-live-checklist";
@@ -77,6 +78,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
   const [connectMode, setConnectMode] = useState<"facebook" | "token">("facebook");
   const isOnboarding = variant === "onboarding";
   const { t } = useI18n();
+  const { success, error: toastError } = useToast();
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -161,6 +163,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
       setPhase("done");
       setError(null);
       setAddingAnother(false);
+      success(t("toast.whatsappConnected"));
       patchOnboarding({
         whatsappConnected: true,
         firstMessageReceived: onboarding?.firstMessageReceived ?? false,
@@ -182,10 +185,11 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
     onSuccess: () => {
       setConnectedAccount(null);
       setPhase("idle");
+      success(t("toast.whatsappDisconnected"));
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Could not disconnect.");
+      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
     },
   });
 

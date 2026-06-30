@@ -96,10 +96,10 @@ export function AiCapabilitiesBanner() {
     <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
       <div className="flex-1">
-        <p className="font-semibold">AI classification is off for this deployment</p>
+        <p className="font-semibold">AI classification is being set up</p>
         <p className="mt-1 text-[13px] text-amber-900/85">
-          Set <code className="rounded bg-white/70 px-1">OPENAI_API_KEY</code> on the API
-          project so inbound messages are scored and pipeline stages update automatically.
+          Classification starts automatically once your workspace is configured. Use AI Support
+          (bottom-left) or email support@growvisi.in if this persists after WhatsApp is connected.
         </p>
       </div>
     </div>

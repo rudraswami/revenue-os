@@ -208,6 +208,7 @@ function UserAccountMenu({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useI18n();
 
   function go(href: string) {
     onNavigate?.();
@@ -244,23 +245,23 @@ function UserAccountMenu({
       >
         <DropdownMenuItem onSelect={() => go("/dashboard/settings?tab=account")}>
           <Settings className="h-4 w-4 text-muted-foreground" />
-          Settings
+          {t("userMenu.settings")}
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() =>
-            go(whatsappConnected ? "/dashboard/settings?tab=whatsapp" : "/onboarding")
+            go(whatsappConnected ? "/dashboard/connection" : "/onboarding")
           }
         >
           <MessageCircle className="h-4 w-4 text-muted-foreground" />
-          {whatsappConnected ? "WhatsApp & channels" : "Connect WhatsApp"}
+          {whatsappConnected ? t("userMenu.connection") : t("conversations.connectWhatsapp")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => go("/dashboard/pricing")}>
           <CreditCard className="h-4 w-4 text-muted-foreground" />
-          Plans & pricing
+          {t("userMenu.pricing")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => go("/onboarding")}>
           <HelpCircle className="h-4 w-4 text-muted-foreground" />
-          Setup guide
+          {t("userMenu.setupGuide")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -268,7 +269,7 @@ function UserAccountMenu({
           onSelect={onLogout}
         >
           <LogOut className="h-4 w-4" />
-          Sign out
+          {t("userMenu.signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

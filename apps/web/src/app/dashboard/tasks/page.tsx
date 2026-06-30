@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { apiFetch } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { canManageCampaigns, canWrite } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
@@ -40,6 +42,8 @@ export default function TasksPage() {
   const canEdit = canWrite(role);
   const canDelete = canManageCampaigns(role);
   const qc = useQueryClient();
+  const { success, error: toastError } = useToast();
+  const { t } = useI18n();
   const [scope, setScope] = useState<"mine" | "open" | "all">("open");
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
@@ -95,8 +99,10 @@ export default function TasksPage() {
       setDue("");
       setAssignee("");
       setPriority("MEDIUM");
+      success(t("toast.taskCreated"));
       invalidate();
     },
+    onError: () => toastError(t("toast.actionFailed")),
   });
 
   const toggle = useMutation({
@@ -149,7 +155,7 @@ export default function TasksPage() {
       {canEdit && (
       <DashboardPanel className="mb-6" title="New task">
         <form
-          className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto_auto] md:items-end"
+          className="grid gap-3 sm:grid-cols-2 md:grid-cols-[1fr_auto_auto_auto_auto] md:items-end"
           onSubmit={(e) => {
             e.preventDefault();
             if (title.trim()) createTask.mutate();
@@ -190,7 +196,7 @@ export default function TasksPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Due">
+          <Field label="Due" className="sm:col-span-2 md:col-span-1">
             <Input
               type="date"
               value={due}
@@ -360,9 +366,17 @@ function StatCard({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <label className="block">
+    <label className={cn("block", className)}>
       <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>

@@ -46,10 +46,13 @@ import {
   getVisibleSettingsTabs,
   normalizeSettingsTab,
   settingsTabPlanRequirement,
+  SETTINGS_ADVANCED_TABS,
+  SETTINGS_ESSENTIAL_TABS,
   SETTINGS_HASH_TO_TAB,
   type SettingsAccessContext,
   type SettingsTabId,
 } from "@/lib/settings-access";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -61,51 +64,29 @@ interface SettingsTab {
   iconClassName?: string;
 }
 
-const TAB_META: Record<SettingsTabId, SettingsTab> = {
-  team: {
-    id: "team",
-    label: "Team & workspace",
-    description: "Workspace identity, members, invites, and assignment rules.",
-    icon: Users,
-  },
-  whatsapp: {
-    id: "whatsapp",
-    label: "WhatsApp",
-    description: "Business line, token health, and Meta connection.",
-    icon: MessageCircle,
-    iconClassName: "bg-[#ecfdf5] text-[#128C7E]",
-  },
-  billing: {
-    id: "billing",
-    label: "Billing",
-    description: "Plan, usage, and upgrades — INR via Razorpay.",
-    icon: CreditCard,
-  },
-  intelligence: {
-    id: "intelligence",
-    label: "AI & replies",
-    description: "Business context for Intelligence and inbox quick replies.",
-    icon: BookOpen,
-  },
-  growth: {
-    id: "growth",
-    label: "Attribution",
-    description: "Tracked click-to-chat links for ads and campaigns.",
-    icon: Link2,
-  },
-  developers: {
-    id: "developers",
-    label: "Developer",
-    description: "API keys and outbound webhooks (Pro).",
-    icon: Key,
-  },
-  account: {
-    id: "account",
-    label: "Account",
-    description: "Your profile, session, and data controls.",
-    icon: User,
-  },
+const TAB_ICONS: Record<SettingsTabId, LucideIcon> = {
+  team: Users,
+  whatsapp: MessageCircle,
+  billing: CreditCard,
+  intelligence: BookOpen,
+  growth: Link2,
+  developers: Key,
+  account: User,
 };
+
+const TAB_ICON_CLASS: Partial<Record<SettingsTabId, string>> = {
+  whatsapp: "bg-[#ecfdf5] text-[#128C7E]",
+};
+
+function buildTabMeta(id: SettingsTabId, t: (path: string) => string): SettingsTab {
+  return {
+    id,
+    label: t(`settings.tabs.${id}.label`),
+    description: t(`settings.tabs.${id}.description`),
+    icon: TAB_ICONS[id],
+    iconClassName: TAB_ICON_CLASS[id],
+  };
+}
 
 function resolveTabFromLocation(search: string, hash: string): SettingsTabId | null {
   const hashKey = hash.replace("#", "");
@@ -135,6 +116,8 @@ function SettingsAccessPanel({
   tab: SettingsTabId;
   ctx: SettingsAccessContext;
 }) {
+  const { t } = useI18n();
+  const tabLabel = buildTabMeta(tab, t).label;
   const planReq = settingsTabPlanRequirement(tab);
   const roleOk = canAccessSettingsTabRole(tab, ctx.role);
 
@@ -147,7 +130,7 @@ function SettingsAccessPanel({
         </div>
         <p className="mt-4 text-base font-semibold">You don&apos;t have access to this area</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          {TAB_META[tab].label} is limited to {settingsTabRoleHint(tab)}. Ask an owner or admin if
+          {tabLabel} is limited to {settingsTabRoleHint(tab)}. Ask an owner or admin if
           you need access.
         </p>
         <Button variant="outline" size="sm" className="mt-5 rounded-xl" asChild>
@@ -168,7 +151,7 @@ function SettingsAccessPanel({
         </div>
         <p className="mt-4 text-base font-semibold">{planName} plan required</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          {TAB_META[tab].label} is included on the {planName} plan and above.
+          {tabLabel} is included on the {planName} plan and above.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <Button size="sm" className="rounded-xl" asChild>
@@ -197,6 +180,8 @@ function SettingsTabContent({
   isAdmin: boolean;
   onLogout: () => void;
 }) {
+  const { t } = useI18n();
+
   switch (tab) {
     case "team":
       return (
@@ -304,15 +289,15 @@ function SettingsTabContent({
       return (
         <div className="space-y-5">
           <SettingsSection
-            title="Profile"
-            description="Your name and identity across this workspace."
+            title={t("settings.account.profileTitle")}
+            description={t("settings.account.profileDescription")}
           >
             <ProfileSettingsCard />
           </SettingsSection>
-          <SettingsSection title="Session" description="Sign out of Growvisi on this device.">
+          <SettingsSection title={t("settings.account.sessionTitle")} description={t("settings.account.sessionDescription")}>
             <div className="flex flex-wrap gap-3">
               <Button variant="outline" size="sm" asChild className="rounded-xl">
-                <Link href="/onboarding">Guided WhatsApp setup</Link>
+                <Link href="/onboarding">{t("settings.account.guidedSetup")}</Link>
               </Button>
               <Button
                 variant="ghost"
@@ -321,11 +306,11 @@ function SettingsTabContent({
                 onClick={onLogout}
               >
                 <LogOut className="h-4 w-4" />
-                Sign out
+                {t("settings.account.signOut")}
               </Button>
             </div>
           </SettingsSection>
-          <SettingsSection title="Legal & help" description="Policies and how Growvisi works.">
+          <SettingsSection title={t("settings.account.legalTitle")} description={t("settings.account.legalDescription")}>
             <p className="text-sm text-muted-foreground">
               <Link href="/privacy" className="font-medium text-accent underline hover:text-foreground">
                 Privacy
@@ -345,8 +330,8 @@ function SettingsTabContent({
             </p>
           </SettingsSection>
           <SettingsSection
-            title="Danger zone"
-            description="Permanently delete your account and sole-owner workspace data."
+            title={t("settings.account.dangerTitle")}
+            description={t("settings.account.dangerDescription")}
             contentClassName="p-0"
             noPadding
           >
@@ -364,6 +349,7 @@ function SettingsTabContent({
 export function SettingsShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const isAdmin = canManageTeam(role);
@@ -387,8 +373,12 @@ export function SettingsShell() {
 
   const visibleTabIds = useMemo(() => getVisibleSettingsTabs(accessCtx), [accessCtx]);
   const visibleTabs = useMemo(
-    () => visibleTabIds.map((id) => TAB_META[id]),
-    [visibleTabIds],
+    () => visibleTabIds.map((id) => buildTabMeta(id, t)),
+    [visibleTabIds, t],
+  );
+  const tabById = useMemo(
+    () => Object.fromEntries(visibleTabs.map((tab) => [tab.id, tab])) as Record<SettingsTabId, SettingsTab>,
+    [visibleTabs],
   );
 
   const tabFromUrl = normalizeSettingsTab(searchParams.get("tab")) ?? getDefaultSettingsTab(accessCtx);
@@ -415,7 +405,7 @@ export function SettingsShell() {
     setTabSwitching(false);
   }, [searchParams, accessCtx]);
 
-  const current = TAB_META[activeTab] ?? TAB_META.team;
+  const current = tabById[activeTab] ?? buildTabMeta(activeTab, t);
   const tabAllowed = canAccessSettingsTab(activeTab, accessCtx);
   const showAccessPanel = !tabAllowed && roleReady;
   const shellReady = roleReady && !billingLoading;
@@ -441,8 +431,8 @@ export function SettingsShell() {
     <div className="dashboard-page">
       <PageHeader
         eyebrow="Workspace"
-        title="Settings"
-        description="Manage your workspace, channels, billing, and integrations — organized by area."
+        title={t("settings.title")}
+        description={t("settings.description")}
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
@@ -450,30 +440,49 @@ export function SettingsShell() {
           className="hidden shrink-0 lg:block lg:w-56"
           aria-label="Settings sections"
         >
-          <ul className="sticky top-6 space-y-0.5 rounded-2xl border border-border/80 bg-white p-2 shadow-[0_4px_20px_rgb(11_28_48/0.04)]">
-            {(shellReady ? visibleTabs : visibleTabs.length > 0 ? visibleTabs : Object.values(TAB_META).slice(0, 6)).map((tab) => {
-              const active = activeTab === tab.id;
+          <div className="sticky top-6 space-y-3 rounded-2xl border border-border/80 bg-white p-2 shadow-[0_4px_20px_rgb(11_28_48/0.04)]">
+            {[
+              { label: t("settings.essentials"), ids: SETTINGS_ESSENTIAL_TABS },
+              { label: t("settings.advanced"), ids: SETTINGS_ADVANCED_TABS },
+            ].map((group) => {
+              const tabs = group.ids
+                .filter((id) => visibleTabIds.includes(id))
+                .map((id) => tabById[id])
+                .filter(Boolean);
+              if (tabs.length === 0) return null;
               return (
-                <li key={tab.id}>
-                  <button
-                    type="button"
-                    onClick={() => selectTab(tab.id)}
-                    disabled={!shellReady}
-                    className={cn(
-                      "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition",
-                      active
-                        ? "bg-accent/10 text-accent shadow-sm"
-                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                      !shellReady && "pointer-events-none opacity-60",
-                    )}
-                  >
-                    <tab.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.25 : 2} />
-                    {tab.label}
-                  </button>
-                </li>
+                <div key={group.label}>
+                  <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {group.label}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {tabs.map((tab) => {
+                      const active = activeTab === tab.id;
+                      return (
+                        <li key={tab.id}>
+                          <button
+                            type="button"
+                            onClick={() => selectTab(tab.id)}
+                            disabled={!shellReady}
+                            className={cn(
+                              "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition",
+                              active
+                                ? "bg-accent/10 text-accent shadow-sm"
+                                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                              !shellReady && "pointer-events-none opacity-60",
+                            )}
+                          >
+                            <tab.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.25 : 2} />
+                            {tab.label}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               );
             })}
-          </ul>
+          </div>
         </nav>
 
         <div className="lg:hidden">

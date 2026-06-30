@@ -14,6 +14,8 @@ import { formatRelative } from "@/lib/crm";
 import { canManageTeam, INVITE_ROLES, ROLE_LABELS } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import type { MembershipRole } from "@growvisi/shared";
+import { useToast } from "@/components/ui/toast";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 
 interface MemberRow {
@@ -42,6 +44,8 @@ export function TeamMembersCard() {
   const myRole = useAuthStore((s) => s.role);
   const myUserId = useAuthStore((s) => s.user?.id);
   const queryClient = useQueryClient();
+  const { success, error: toastError } = useToast();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<MembershipRole>("AGENT");
   const [sent, setSent] = useState<string | null>(null);
@@ -79,8 +83,12 @@ export function TeamMembersCard() {
     onSuccess: (res) => {
       setSent(res.email);
       setEmail("");
+      success(t("toast.inviteSent"));
       void queryClient.invalidateQueries({ queryKey: ["organization-invites"] });
       void queryClient.invalidateQueries({ queryKey: ["team-limits"] });
+    },
+    onError: (e) => {
+      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
     },
   });
 
@@ -91,7 +99,13 @@ export function TeamMembersCard() {
         token: token ?? undefined,
         body: JSON.stringify({ role }),
       }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["organization-members"] }),
+    onSuccess: () => {
+      success(t("toast.roleUpdated"));
+      void queryClient.invalidateQueries({ queryKey: ["organization-members"] });
+    },
+    onError: (e) => {
+      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
+    },
   });
 
   const removeMutation = useMutation({
@@ -101,8 +115,12 @@ export function TeamMembersCard() {
         token: token ?? undefined,
       }),
     onSuccess: () => {
+      success(t("toast.memberRemoved"));
       void queryClient.invalidateQueries({ queryKey: ["organization-members"] });
       void queryClient.invalidateQueries({ queryKey: ["team-limits"] });
+    },
+    onError: (e) => {
+      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
     },
   });
 
@@ -113,8 +131,12 @@ export function TeamMembersCard() {
         token: token ?? undefined,
       }),
     onSuccess: () => {
+      success(t("toast.inviteRevoked"));
       void queryClient.invalidateQueries({ queryKey: ["organization-invites"] });
       void queryClient.invalidateQueries({ queryKey: ["team-limits"] });
+    },
+    onError: (e) => {
+      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
     },
   });
 
