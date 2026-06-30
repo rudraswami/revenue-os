@@ -3,8 +3,10 @@ import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength
 import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { SkipSubscriptionCheck } from "../../common/decorators/skip-subscription-check.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload, LeadStage, MembershipRole } from "@growvisi/shared";
 import { AssignmentService } from "../assignments/assignment.service";
 import { DigestService } from "../digest/digest.service";
@@ -150,7 +152,7 @@ class UpdateAssignmentRulesDto {
 const ADMIN_ROLES = ["OWNER", "ADMIN"] as const;
 
 @Controller("organizations")
-@UseGuards(JwtAuthGuard, MembershipRoleGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class OrganizationsController {
   constructor(
     private readonly organizations: OrganizationsService,
@@ -229,6 +231,7 @@ export class OrganizationsController {
   }
 
   @Get("onboarding-progress")
+  @SkipSubscriptionCheck()
   onboardingProgress(@CurrentUser() user: JwtPayload) {
     return this.organizations.getOnboardingProgress(user.organizationId);
   }

@@ -8,6 +8,9 @@ const SKIP_PREFIXES = [
   "/onboarding",
   "/dashboard/settings",
   "/dashboard/pricing",
+  "/dashboard/agency",
+  "/dashboard/partner",
+  "/dashboard/connection",
 ];
 
 /** Soft gate: new workspaces without WhatsApp land on onboarding first. */

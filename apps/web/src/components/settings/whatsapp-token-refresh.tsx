@@ -5,7 +5,7 @@ import { ClipboardPaste, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { looksLikeMetaToken } from "@/lib/whatsapp-onboarding";
@@ -51,7 +51,7 @@ export function WhatsappTokenRefresh({
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Could not refresh token.");
+      setError(toUserMessage(e, "Could not refresh token."));
       setSuccess(false);
     },
   });

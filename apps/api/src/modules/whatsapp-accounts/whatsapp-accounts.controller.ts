@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -10,8 +11,11 @@ import {
 } from "@nestjs/common";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { SkipSubscriptionCheck } from "../../common/decorators/skip-subscription-check.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
+import { isProductionDeploy } from "../../config/production";
 import type { JwtPayload } from "@growvisi/shared";
 import { CompleteEmbeddedSignupDto } from "./dto/embedded-signup.dto";
 import {
@@ -27,7 +31,7 @@ import { EmbeddedSignupService } from "./embedded-signup.service";
 import { WhatsappAccountsService } from "./whatsapp-accounts.service";
 
 @Controller("whatsapp-accounts")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class WhatsappAccountsController {
   constructor(
     private readonly accounts: WhatsappAccountsService,
@@ -35,12 +39,18 @@ export class WhatsappAccountsController {
   ) {}
 
   @Get("embedded-signup/config")
+  @SkipSubscriptionCheck()
   getEmbeddedSignupConfig() {
     return this.embeddedSignup.getPublicConfig();
   }
 
   @Get("embedded-signup/diagnose")
+  @UseGuards(MembershipRoleGuard)
+  @Roles("OWNER", "ADMIN")
   diagnoseEmbeddedSignup() {
+    if (isProductionDeploy()) {
+      throw new ForbiddenException("Diagnostics are not available in this environment.");
+    }
     return this.embeddedSignup.diagnoseMetaApp();
   }
 
@@ -72,11 +82,13 @@ export class WhatsappAccountsController {
   }
 
   @Get("onboarding-readiness")
+  @SkipSubscriptionCheck()
   onboardingReadiness() {
     return this.accounts.getOnboardingReadiness();
   }
 
   @Get("onboarding-progress")
+  @SkipSubscriptionCheck()
   onboardingProgress(@CurrentUser() user: JwtPayload) {
     return this.accounts.getOnboardingProgress(user);
   }
@@ -85,7 +97,13 @@ export class WhatsappAccountsController {
   @UseGuards(MembershipRoleGuard)
   @Roles("OWNER", "ADMIN")
   getTechnical() {
-    return this.accounts.getTechnicalSetup();
+    const setup = this.accounts.getTechnicalSetup();
+    const token = setup.verifyToken;
+    return {
+      webhookUrl: setup.webhookUrl,
+      hasVerifyToken: !!token,
+      verifyTokenHint: token ? `${token.slice(0, 4)}…` : null,
+    };
   }
 
   @Post("discover-phones")

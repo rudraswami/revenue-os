@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
@@ -147,7 +147,7 @@ export function BillingSettingsCard() {
 
           {!data?.razorpayConfigured && (
             <p className="text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200/80">
-              Razorpay keys are not set on this API deployment — upgrades are disabled until configured.
+              Online payments are not available yet — upgrades will open once Razorpay is connected.
             </p>
           )}
 
@@ -230,9 +230,7 @@ export function BillingSettingsCard() {
               )}
               {cancelMutation.isError && (
                 <p className="mt-2 text-xs text-destructive">
-                  {cancelMutation.error instanceof ApiError
-                    ? cancelMutation.error.message
-                    : "Could not cancel subscription."}
+                  {toUserMessage(cancelMutation.error, "Could not cancel subscription.")}
                 </p>
               )}
             </div>
@@ -242,9 +240,7 @@ export function BillingSettingsCard() {
 
       {checkoutMutation.isError && (
         <p className="text-xs text-destructive">
-          {checkoutMutation.error instanceof ApiError
-            ? checkoutMutation.error.message
-            : "Checkout failed."}
+          {toUserMessage(checkoutMutation.error, "Checkout failed.")}
         </p>
       )}
     </div>

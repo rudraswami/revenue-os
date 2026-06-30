@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { logout } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
@@ -29,7 +29,7 @@ export function DeleteAccountCard() {
       await logout();
       router.replace("/login?deleted=1");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not delete account.");
+      setError(toUserMessage(e, "Could not delete account."));
     } finally {
       setLoading(false);
     }

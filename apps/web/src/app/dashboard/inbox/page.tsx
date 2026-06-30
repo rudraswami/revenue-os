@@ -25,7 +25,7 @@ import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
 import { InboxThreadDetailsMobile } from "@/components/dashboard/inbox-thread-details-mobile";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { canWrite } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -247,7 +247,7 @@ export default function InboxPage() {
       setSendError(null);
     },
     onError: (e) => {
-      setSendError(e instanceof ApiError ? e.message : "Could not suggest a reply.");
+      setSendError(toUserMessage(e, "Could not suggest a reply."));
     },
   });
 
@@ -361,7 +361,7 @@ export default function InboxPage() {
       void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
     },
     onError: (e) => {
-      setSendError(e instanceof ApiError ? e.message : "Message could not be sent.");
+      setSendError(toUserMessage(e, "Message could not be sent."));
     },
   });
 

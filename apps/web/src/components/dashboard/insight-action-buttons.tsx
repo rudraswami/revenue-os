@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { canWrite } from "@/lib/permissions";
 
@@ -117,7 +117,7 @@ export function InsightActionButtons({
       )}
       {apiMut.isError && (
         <p className="w-full text-xs text-destructive">
-          {apiMut.error instanceof ApiError ? apiMut.error.message : "Action failed"}
+          {toUserMessage(apiMut.error, "Action failed")}
         </p>
       )}
     </div>

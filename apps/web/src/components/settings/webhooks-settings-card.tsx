@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { canManageTeam } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { formatRelative } from "@/lib/crm";
@@ -70,7 +70,7 @@ export function WebhooksSettingsCard() {
       setError(null);
       void qc.invalidateQueries({ queryKey: ["webhooks"] });
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Could not create webhook."),
+    onError: (e) => setError(toUserMessage(e, "Could not create webhook.")),
   });
 
   const toggleMut = useMutation({

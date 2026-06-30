@@ -383,7 +383,7 @@ export class OrganizationsService {
       "http://localhost:4000"
     ).replace(/\/$/, "");
     return {
-      ...integration,
+      autoWinOnPayment: integration.autoWinOnPayment,
       webhookUrl: `${apiBase}/api/v1/webhooks/payments/${user.organizationId}`,
       hasWebhookSecret: !!integration.razorpayWebhookSecret,
     };

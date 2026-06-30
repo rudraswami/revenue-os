@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { CTA, CONVERSATIONS, EYEBROW } from "@/lib/brand-copy";
@@ -71,7 +72,7 @@ const features = [
 export default function AiStudioPage() {
   const token = useAuthStore((s) => s.accessToken);
 
-  const { data: capabilities, isLoading } = useQuery({
+  const { data: capabilities, isLoading, isError, refetch } = useQuery({
     queryKey: ["conversation-capabilities"],
     queryFn: () =>
       apiFetch<{
@@ -151,6 +152,15 @@ export default function AiStudioPage() {
         }
       />
 
+      {isError && (
+        <div className="mb-6">
+          <QueryErrorState
+            title="Couldn't load Intelligence"
+            onRetry={() => void refetch()}
+          />
+        </div>
+      )}
+
       {/* Agent status hero card */}
       <DashboardPanel
         noPadding
@@ -178,7 +188,7 @@ export default function AiStudioPage() {
                       ? stats
                         ? `${stats.aiClassifications} total analyses · ${stats.classifiedLeads} scored · ${stats.humanHandoffRecommended} waiting on you`
                         : "Runs on each inbound customer message."
-                      : "Classification will start automatically once your workspace is fully configured. Need help? Use AI Support (bottom-left)."}
+                      : "Classification will start automatically once your workspace is fully configured. Need help? Use the help button (bottom-right) or AI Support in the user menu."}
                   </p>
                 </>
               )}

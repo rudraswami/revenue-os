@@ -9,6 +9,7 @@ import { formatMessage } from "@/lib/i18n/format-message";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { connectionSummary, type HealthCheck } from "@/lib/whatsapp-health-copy";
 import { useAuthStore } from "@/stores/auth-store";
+import { useGlobalDashboardBanner } from "@/components/dashboard/use-global-dashboard-banner";
 import { cn } from "@/lib/utils";
 
 type ConnectionHealthData = {
@@ -27,6 +28,7 @@ type ConnectionHealthData = {
 export function HomeConnectionHealthBanner() {
   const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
+  const globalBanner = useGlobalDashboardBanner();
 
   const { data: progress } = useQuery({
     queryKey: ["onboarding-progress"],
@@ -50,7 +52,7 @@ export function HomeConnectionHealthBanner() {
     staleTime: 60_000,
   });
 
-  if (!connected || !health) return null;
+  if (globalBanner || !connected || !health) return null;
 
   const passed = health.checks.filter((c) => c.ok).length;
   const healthPct = health.checks.length

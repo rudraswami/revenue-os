@@ -20,7 +20,8 @@ import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { QueryErrorState } from "@/components/ui/query-state";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
@@ -175,7 +176,7 @@ export default function CampaignsPage() {
 
   const activeAccounts = (whatsappAccounts ?? []).filter((a) => a.isActive);
 
-  const { data: campaigns, isLoading } = useQuery({
+  const { data: campaigns, isLoading, isError, refetch } = useQuery({
     queryKey: ["campaigns"],
     queryFn: () => apiFetch<CampaignRow[]>("/campaigns", { token: token ?? undefined }),
     enabled: !!token && campaignsPlanOk,
@@ -247,7 +248,7 @@ export default function CampaignsPage() {
       }),
     onSuccess: (data) => setPreview(data),
     onError: (err) =>
-      setError(err instanceof ApiError ? err.message : "Could not preview audience"),
+      setError(toUserMessage(err, "Could not preview audience")),
   });
 
   const createMut = useMutation({
@@ -268,7 +269,7 @@ export default function CampaignsPage() {
       resetForm();
       void qc.invalidateQueries({ queryKey: ["campaigns"] });
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : "Could not create campaign"),
+    onError: (err) => setError(toUserMessage(err, "Could not create campaign")),
   });
 
   const importMut = useMutation({
@@ -289,7 +290,7 @@ export default function CampaignsPage() {
       resetForm();
       void qc.invalidateQueries({ queryKey: ["campaigns"] });
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : "Could not import campaign"),
+    onError: (err) => setError(toUserMessage(err, "Could not import campaign")),
   });
 
   const sendMut = useMutation({
@@ -300,7 +301,7 @@ export default function CampaignsPage() {
       if (detailId) void qc.invalidateQueries({ queryKey: ["campaign", detailId] });
     },
     onError: (err) =>
-      setError(err instanceof ApiError ? err.message : "Could not send campaign"),
+      setError(toUserMessage(err, "Could not send campaign")),
   });
 
   const deleteMut = useMutation({
@@ -324,7 +325,7 @@ export default function CampaignsPage() {
       if (detailId) void qc.invalidateQueries({ queryKey: ["campaign", detailId] });
     },
     onError: (err) =>
-      setError(err instanceof ApiError ? err.message : "Could not schedule campaign"),
+      setError(toUserMessage(err, "Could not schedule campaign")),
   });
 
   const cancelScheduleMut = useMutation({
@@ -703,6 +704,10 @@ export default function CampaignsPage() {
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-14 animate-pulse rounded-lg bg-muted" />
             ))}
+          </div>
+        ) : isError ? (
+          <div className="p-5">
+            <QueryErrorState title="Couldn't load campaigns" onRetry={() => void refetch()} />
           </div>
         ) : filteredCampaigns.length === 0 ? (
           <EmptyState

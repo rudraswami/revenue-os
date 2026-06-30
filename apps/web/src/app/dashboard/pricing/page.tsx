@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { UsageMeterCard } from "@/components/dashboard/usage-meter-card";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { PricingPlansGrid } from "@/components/pricing/pricing-plans-grid";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { EnterpriseCallout } from "@/components/marketing/enterprise-callout";
 import { PRICING_FOOTNOTES } from "@/lib/pricing-plans";
 import { useToast } from "@/components/ui/toast";
@@ -136,7 +136,7 @@ export default function PricingPage() {
 
       {!data?.razorpayConfigured && (
         <p className="mb-6 rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Razorpay is not configured on this deployment yet — plan upgrades will open once billing is
+          Razorpay billing is not available yet — plan upgrades will open once online payments are
           enabled.
         </p>
       )}
@@ -153,9 +153,7 @@ export default function PricingPage() {
 
       {checkoutMutation.isError && (
         <p className="mt-4 text-sm text-destructive">
-          {checkoutMutation.error instanceof ApiError
-            ? checkoutMutation.error.message
-            : "Checkout failed. Try again or contact support@growvisi.in."}
+          {toUserMessage(checkoutMutation.error, "Checkout failed. Try again or contact support@growvisi.in.")}
         </p>
       )}
 

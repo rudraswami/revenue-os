@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { WhatsappTemplatePicker } from "@/components/dashboard/whatsapp-template-picker";
 import { useAuthStore } from "@/stores/auth-store";
@@ -61,7 +61,7 @@ export function OutboundCompose({
       setError(null);
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Could not send message.");
+      setError(toUserMessage(e, "Could not send message."));
     },
   });
 

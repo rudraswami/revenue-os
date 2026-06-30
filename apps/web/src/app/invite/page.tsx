@@ -6,7 +6,7 @@ import { Suspense, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { applySession } from "@/lib/auth-session";
 import type { AuthSession } from "@/lib/auth-types";
 import { useAuthStore } from "@/stores/auth-store";
@@ -41,7 +41,7 @@ function InviteAcceptForm() {
       router.push("/dashboard");
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Could not accept invite.");
+      setError(toUserMessage(e, "Could not accept invite."));
     },
   });
 

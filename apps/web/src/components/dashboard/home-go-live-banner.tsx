@@ -8,11 +8,13 @@ import { apiFetch } from "@/lib/api-client";
 import { formatMessage } from "@/lib/i18n/format-message";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
+import { useGlobalDashboardBanner } from "@/components/dashboard/use-global-dashboard-banner";
 
 /** Home banner when WhatsApp is connected but go-live checklist is incomplete. */
 export function HomeGoLiveBanner() {
   const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
+  const globalBanner = useGlobalDashboardBanner();
 
   const { data: progress } = useQuery({
     queryKey: ["onboarding-progress"],
@@ -27,7 +29,7 @@ export function HomeGoLiveBanner() {
   });
 
   const goLive = progress?.goLive;
-  if (!goLive?.connected || goLive.progressPct >= 100) return null;
+  if (globalBanner || !goLive?.connected || goLive.progressPct >= 100) return null;
 
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/20 bg-gradient-to-r from-accent/5 to-white px-4 py-3.5 sm:px-5">

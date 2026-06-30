@@ -7,7 +7,7 @@ import { useState } from "react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { applySession } from "@/lib/auth-session";
 import type { MeResponse } from "@/lib/auth-types";
 import { ROLE_LABELS } from "@/lib/permissions";
@@ -53,7 +53,7 @@ export function ProfileSettingsCard() {
       setTimeout(() => setSaved(false), 2500);
     },
     onError: (e) => {
-      const msg = e instanceof ApiError ? e.message : t("toast.actionFailed");
+      const msg = toUserMessage(e, t("toast.actionFailed"));
       setError(msg);
       toastError(msg);
     },

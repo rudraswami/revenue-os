@@ -12,6 +12,17 @@ function resolveApiBase(): string {
 
 const API_URL = resolveApiBase();
 
+/** Shown when fetch fails (offline, DNS, CORS) — never expose internal URLs to customers. */
+export const CUSTOMER_NETWORK_ERROR =
+  "We couldn't reach Growvisi. Check your internet connection and try again, or email support@growvisi.in.";
+
+function logNetworkFailure(path: string, cause: unknown) {
+  if (process.env.NODE_ENV === "development") {
+    console.error(`[growvisi-api] Network error on ${path}`, cause);
+    console.info(`[growvisi-api] Base URL: ${API_URL}`);
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -19,6 +30,39 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+const INTERNAL_ERROR_PATTERN =
+  /requiresHuman|prisma|ECONNREFUSED|localhost|127\.0\.0\.1|pnpm dev|Graph API|OPENAI|nestjs|META_APP_ID|WHATSAPP_VERIFY/i;
+
+/** Map API errors to customer-safe copy. Logs raw message in development. */
+export function toUserMessage(error: unknown, fallback = "Something went wrong. Please try again."): string {
+  if (!(error instanceof ApiError)) return fallback;
+
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[growvisi-api] Error surfaced to user:", error.status, error.message);
+  }
+
+  if (error.status === 0) return error.message;
+  if (error.status === 401) return "Your session expired. Please sign in again.";
+  if (error.status === 402) {
+    return "Your trial has ended. Open Plans & pricing to upgrade and continue.";
+  }
+  if (error.status === 403) {
+    if (/plan|growth|pro|subscription|trial/i.test(error.message)) {
+      return "This feature needs a higher plan. View Plans & pricing in the sidebar.";
+    }
+    return "You don't have permission to do that.";
+  }
+  if (error.status === 404) return "We couldn't find that. It may have been removed.";
+  if (error.status === 429) return "Too many requests. Please wait a moment and try again.";
+  if (error.status >= 500) {
+    return "Something went wrong on our side. Please try again or email support@growvisi.in.";
+  }
+
+  const msg = error.message.trim();
+  if (!msg || INTERNAL_ERROR_PATTERN.test(msg)) return fallback;
+  return msg;
 }
 
 let refreshInFlight: Promise<string | null> | null = null;
@@ -42,11 +86,9 @@ async function rawFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
       headers,
       credentials: "include",
     });
-  } catch {
-    throw new ApiError(
-      `Cannot reach API at ${API_URL}. Start the API: cd growvisi && pnpm dev:api`,
-      0,
-    );
+  } catch (cause) {
+    logNetworkFailure(path, cause);
+    throw new ApiError(CUSTOMER_NETWORK_ERROR, 0);
   }
 
   if (!res.ok) {

@@ -347,6 +347,7 @@ export class CampaignsService {
     for (const campaign of due) {
       try {
         await this.entitlements.assertHasAccess(campaign.organizationId);
+        await this.assertCampaignsPlan(campaign.organizationId);
         await this.executeSend(campaign.organizationId, campaign.id);
         results.push({ id: campaign.id, organizationId: campaign.organizationId, ok: true });
       } catch (err) {

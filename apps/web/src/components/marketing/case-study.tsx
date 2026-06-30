@@ -165,8 +165,8 @@ export function CaseStudy() {
                 <p className="text-xs font-bold uppercase tracking-widest text-accent">What we measure</p>
               </div>
               <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-                GreenSpace was a placeholder name. Your first real customer story goes here with their
-                permission — logo, quote, and numbers from Analytics.
+                We publish verified customer stories here — with permission, a short quote, and
+                before/after numbers from Analytics. Join our pilot cohort if you want to be first.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
@@ -190,7 +190,7 @@ export function CaseStudy() {
         {/* Metrics — circular gauges, not stat boxes */}
         <div className="mt-16 border-t border-border/60 pt-14">
           <p className="mb-10 text-center text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-            30-day pilot metrics · awaiting first cohort
+            30-day pilot metrics · published after first cohort
           </p>
           <div className="grid grid-cols-2 gap-10 lg:grid-cols-4 lg:gap-6">
             {PILOT_METRICS_TEMPLATE.map((m, i) => (

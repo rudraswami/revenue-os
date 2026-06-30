@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 
 const benefits = [
   {
@@ -53,7 +53,7 @@ export default function ContactPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not send request. Email support@growvisi.in");
+      setError(toUserMessage(err, "Could not send request. Email support@growvisi.in"));
     } finally {
       setLoading(false);
     }

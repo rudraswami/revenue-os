@@ -7,7 +7,7 @@ import { Suspense, useState } from "react";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -34,7 +34,7 @@ function ResetPasswordForm() {
       });
       router.replace("/login?reset=1");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not reset password.");
+      setError(toUserMessage(err, "Could not reset password."));
     } finally {
       setLoading(false);
     }

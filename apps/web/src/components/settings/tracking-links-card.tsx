@@ -5,7 +5,7 @@ import { Copy, Link2, MousePointerClick, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface TrackingLinkRow {
@@ -69,7 +69,7 @@ export function TrackingLinksCard() {
       void qc.invalidateQueries({ queryKey: ["tracking-links"] });
       void qc.invalidateQueries({ queryKey: ["tracking-metrics"] });
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Could not create link."),
+    onError: (e) => setError(toUserMessage(e, "Could not create link.")),
   });
 
   const deleteMut = useMutation({

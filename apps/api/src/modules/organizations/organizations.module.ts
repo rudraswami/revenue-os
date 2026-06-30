@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import { AssignmentModule } from "../assignments/assignment.module";
 import { AuthModule } from "../auth/auth.module";
 import { BillingModule } from "../billing/billing.module";
@@ -12,7 +13,7 @@ import { OrganizationsService } from "./organizations.service";
 @Module({
   imports: [AuthModule, BillingModule, DigestModule, AssignmentModule, WhatsappAccountsModule],
   controllers: [OrganizationsController, OrganizationInvitesController],
-  providers: [OrganizationsService, MembershipRoleGuard],
+  providers: [OrganizationsService, MembershipRoleGuard, SubscriptionGuard],
   exports: [OrganizationsService],
 })
 export class OrganizationsModule {}

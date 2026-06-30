@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InboxListSkeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { useToast } from "@/components/ui/toast";
 import {
   DropdownMenu,
@@ -94,7 +95,7 @@ export default function ContactsPage() {
   if (ownerId) params.set("ownerId", ownerId);
   const query = params.toString();
 
-  const { data: contactPage, isLoading } = useQuery({
+  const { data: contactPage, isLoading, isError, refetch } = useQuery({
     queryKey: ["contacts", q, stage, tagId, ownerId, page],
     queryFn: () =>
       apiFetch<{ data: ContactRow[]; total: number; page: number; hasMore: boolean }>(
@@ -422,6 +423,13 @@ export default function ContactsPage() {
         {isLoading ? (
           <div className="p-5">
             <InboxListSkeleton />
+          </div>
+        ) : isError ? (
+          <div className="p-5">
+            <QueryErrorState
+              title="Couldn't load contacts"
+              onRetry={() => void refetch()}
+            />
           </div>
         ) : total === 0 ? (
           <EmptyState

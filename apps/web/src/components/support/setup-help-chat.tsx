@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import type { Locale } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import type { HelpFabContext } from "@/lib/setup-help-content";
@@ -93,9 +93,7 @@ export function SetupHelpChat({ context }: { context: HelpFabContext }) {
         )}
         {chatMutation.isError && (
           <p className="mt-2 text-xs text-destructive">
-            {chatMutation.error instanceof ApiError
-              ? chatMutation.error.message
-              : t("setupHelp.chatError")}
+            {toUserMessage(chatMutation.error, t("setupHelp.chatError"))}
           </p>
         )}
       </div>

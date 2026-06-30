@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { applySession, postAuthPath } from "@/lib/auth-session";
 import { CTA } from "@/lib/brand-copy";
 import type { AuthSession } from "@/lib/auth-types";
@@ -96,7 +96,7 @@ function RegisterForm() {
       applySession(res);
       router.push(postAuthPath(res.onboarding));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("auth.registerFailed"));
+      setError(toUserMessage(err, t("auth.registerFailed")));
     } finally {
       setLoading(false);
     }

@@ -5,7 +5,7 @@ import { Key, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { formatRelative } from "@/lib/crm";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -45,7 +45,7 @@ export function ApiKeysSettingsCard() {
       void queryClient.invalidateQueries({ queryKey: ["api-keys"] });
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Could not create API key.");
+      setError(toUserMessage(e, "Could not create API key."));
     },
   });
 

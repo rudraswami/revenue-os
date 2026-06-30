@@ -15,7 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -215,9 +215,7 @@ export function WhatsappGoLiveChecklist({
         )}
         {syncMutation.isError && (
           <p className="text-xs text-destructive">
-            {syncMutation.error instanceof ApiError
-              ? syncMutation.error.message
-              : t("whatsappGoLive.syncFailed")}
+            {toUserMessage(syncMutation.error, t("whatsappGoLive.syncFailed"))}
           </p>
         )}
 

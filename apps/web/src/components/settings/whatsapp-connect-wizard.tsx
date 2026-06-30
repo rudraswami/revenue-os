@@ -15,7 +15,7 @@ import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingest
 import { WhatsappMetaSetupGuide } from "@/components/settings/whatsapp-meta-setup-guide";
 import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
 import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   looksLikeMetaToken,
@@ -92,7 +92,7 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
     },
     onError: (e) => {
       setDiscovered([]);
-      setError(e instanceof ApiError ? e.message : "Could not find a number on this token.");
+      setError(toUserMessage(e, "Could not find a number on this token."));
     },
   });
 
@@ -126,7 +126,7 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
       onConnected?.();
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Connection failed. Check your token and try again.");
+      setError(toUserMessage(e, "Connection failed. Check your token and try again."));
     },
   });
 

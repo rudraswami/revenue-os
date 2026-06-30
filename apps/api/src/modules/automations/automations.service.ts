@@ -300,6 +300,13 @@ export class AutomationsService {
     let staleTasks = 0;
 
     for (const org of orgs) {
+      try {
+        await this.entitlements.assertHasAccess(org.id);
+      } catch {
+        skipped++;
+        continue;
+      }
+
       const prefs = normalizeAutomationPreferences(
         (org.settings as Record<string, unknown>)?.automations,
       );
@@ -374,8 +381,13 @@ export class AutomationsService {
       }
 
       if (prefs.staleDeal) {
-        const created = await this.runStaleDealForOrg(org.id, org.name);
-        staleTasks += created;
+        try {
+          await this.entitlements.assertPlanAtLeast(org.id, "growth");
+          const created = await this.runStaleDealForOrg(org.id, org.name);
+          staleTasks += created;
+        } catch {
+          // Org lacks Growth+ or access — skip stale-deal automation.
+        }
       }
     }
 

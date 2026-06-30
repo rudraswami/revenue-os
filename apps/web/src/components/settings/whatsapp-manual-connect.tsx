@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WhatsappMetaSetupGuide } from "@/components/settings/whatsapp-meta-setup-guide";
 import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { looksLikeMetaToken, type DiscoveredPhone } from "@/lib/whatsapp-onboarding";
 import { cn } from "@/lib/utils";
@@ -72,7 +72,7 @@ export function WhatsappManualConnect({
     },
     onError: (e) => {
       setDiscovered([]);
-      setError(e instanceof ApiError ? e.message : "Could not find a number on this token.");
+      setError(toUserMessage(e, "Could not find a number on this token."));
     },
   });
 
@@ -98,7 +98,7 @@ export function WhatsappManualConnect({
       onConnected?.();
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Connection failed.");
+      setError(toUserMessage(e, "Connection failed."));
     },
   });
 

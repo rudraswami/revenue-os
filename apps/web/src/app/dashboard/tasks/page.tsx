@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -54,7 +55,7 @@ export default function TasksPage() {
   if (scope === "mine") taskParams.set("mine", "true");
   if (scope === "all") taskParams.set("scope", "all");
 
-  const { data: tasks, isLoading } = useQuery({
+  const { data: tasks, isLoading, isError, refetch } = useQuery({
     queryKey: ["tasks", scope],
     queryFn: () =>
       apiFetch<TaskRow[]>(`/tasks?${taskParams.toString()}`, { token: token ?? undefined }),
@@ -235,6 +236,10 @@ export default function TasksPage() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-12 animate-pulse rounded-lg bg-muted" />
             ))}
+          </div>
+        ) : isError ? (
+          <div className="p-5">
+            <QueryErrorState title="Couldn't load tasks" onRetry={() => void refetch()} />
           </div>
         ) : total === 0 ? (
           <EmptyState

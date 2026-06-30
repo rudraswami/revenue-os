@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { WhatsappConnectPathPicker } from "@/components/settings/whatsapp-connect-path-picker";
 import {
@@ -175,7 +175,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
     },
     onError: (e) => {
       setPhase("error");
-      setError(e instanceof ApiError ? e.message : "Connection failed. Please try again.");
+      setError(toUserMessage(e, "Connection failed. Please try again."));
     },
   });
 
@@ -189,7 +189,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
     },
     onError: (e) => {
-      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
+      toastError(toUserMessage(e, t("toast.actionFailed")));
     },
   });
 

@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
+import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import { AuthModule } from "../auth/auth.module";
 import { BillingModule } from "../billing/billing.module";
 import { WhatsappModule } from "../whatsapp/whatsapp.module";
@@ -9,7 +11,7 @@ import { WhatsappAccountsService } from "./whatsapp-accounts.service";
 @Module({
   imports: [AuthModule, BillingModule, WhatsappModule],
   controllers: [WhatsappAccountsController],
-  providers: [WhatsappAccountsService, EmbeddedSignupService],
+  providers: [WhatsappAccountsService, EmbeddedSignupService, MembershipRoleGuard, SubscriptionGuard],
   exports: [WhatsappAccountsService, EmbeddedSignupService],
 })
 export class WhatsappAccountsModule {}

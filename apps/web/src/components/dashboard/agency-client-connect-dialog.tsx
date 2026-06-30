@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { formatMessage } from "@/lib/i18n/format-message";
 import { useI18n } from "@/lib/i18n/locale-provider";
@@ -91,7 +91,7 @@ export function AgencyClientConnectDialog({
     },
     onError: (e) => {
       setPhase("error");
-      setError(e instanceof ApiError ? e.message : t("agency.connect.tokenError"));
+      setError(toUserMessage(e, t("agency.connect.tokenError")));
     },
   });
 
@@ -115,7 +115,7 @@ export function AgencyClientConnectDialog({
     },
     onError: (e) => {
       setDiscovered([]);
-      setError(e instanceof ApiError ? e.message : t("agency.connect.discoverError"));
+      setError(toUserMessage(e, t("agency.connect.discoverError")));
     },
   });
 
@@ -138,7 +138,7 @@ export function AgencyClientConnectDialog({
     },
     onError: (e) => {
       setPhase("error");
-      setError(e instanceof ApiError ? e.message : t("agency.connect.tokenError"));
+      setError(toUserMessage(e, t("agency.connect.tokenError")));
     },
   });
 

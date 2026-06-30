@@ -79,5 +79,5 @@ export const PRICING_PLANS: PricingPlan[] = [
 export const PRICING_FOOTNOTES = [
   POSITIONING.trialNote,
   POSITIONING.replyNote,
-  "* AI classification requires OpenAI on your Growvisi deployment.",
+  "* AI classification requires an OpenAI API key in your workspace settings.",
 ] as const;

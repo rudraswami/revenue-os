@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { formatRelative } from "@/lib/crm";
 import { canManageTeam, INVITE_ROLES, ROLE_LABELS } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
@@ -88,7 +88,7 @@ export function TeamMembersCard() {
       void queryClient.invalidateQueries({ queryKey: ["team-limits"] });
     },
     onError: (e) => {
-      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
+      toastError(toUserMessage(e, t("toast.actionFailed")));
     },
   });
 
@@ -104,7 +104,7 @@ export function TeamMembersCard() {
       void queryClient.invalidateQueries({ queryKey: ["organization-members"] });
     },
     onError: (e) => {
-      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
+      toastError(toUserMessage(e, t("toast.actionFailed")));
     },
   });
 
@@ -120,7 +120,7 @@ export function TeamMembersCard() {
       void queryClient.invalidateQueries({ queryKey: ["team-limits"] });
     },
     onError: (e) => {
-      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
+      toastError(toUserMessage(e, t("toast.actionFailed")));
     },
   });
 
@@ -136,7 +136,7 @@ export function TeamMembersCard() {
       void queryClient.invalidateQueries({ queryKey: ["team-limits"] });
     },
     onError: (e) => {
-      toastError(e instanceof ApiError ? e.message : t("toast.actionFailed"));
+      toastError(toUserMessage(e, t("toast.actionFailed")));
     },
   });
 
@@ -209,9 +209,7 @@ export function TeamMembersCard() {
           )}
           {inviteMutation.isError && (
             <p className="mt-2 text-xs text-destructive">
-              {inviteMutation.error instanceof ApiError
-                ? inviteMutation.error.message
-                : "Could not send invite."}
+              {toUserMessage(inviteMutation.error, "Could not send invite.")}
             </p>
           )}
         </div>

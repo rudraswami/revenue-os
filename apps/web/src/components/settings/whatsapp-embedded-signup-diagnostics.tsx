@@ -16,8 +16,11 @@ interface EmbeddedConfig {
   featureType?: string;
 }
 
+const SHOW_EMBEDDED_DIAGNOSTICS = process.env.NODE_ENV !== "production";
+
 export function WhatsappEmbeddedSignupDiagnostics() {
   const token = useAuthStore((s) => s.accessToken);
+  const show = SHOW_EMBEDDED_DIAGNOSTICS;
 
   const { data: config } = useQuery({
     queryKey: ["embedded-signup-config"],
@@ -25,7 +28,7 @@ export function WhatsappEmbeddedSignupDiagnostics() {
       apiFetch<EmbeddedConfig>("/whatsapp-accounts/embedded-signup/config", {
         token: token ?? undefined,
       }),
-    enabled: !!token,
+    enabled: !!token && show,
     staleTime: 60_000,
   });
 
@@ -37,9 +40,11 @@ export function WhatsappEmbeddedSignupDiagnostics() {
         graphApp: { name?: string; app_domains?: string[] } | null;
         graphError: string | null;
       }>("/whatsapp-accounts/embedded-signup/diagnose", { token: token ?? undefined }),
-    enabled: !!token,
+    enabled: !!token && show,
     staleTime: 60_000,
   });
+
+  if (!show) return null;
 
   if (!config?.enabled) return null;
 
