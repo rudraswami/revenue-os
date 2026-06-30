@@ -395,6 +395,17 @@ export const messages = {
       title: "Partner install kit",
       description: "Human Inbox + AI classification — the WhatsApp revenue stack for Indian SMBs.",
     },
+    setupDock: {
+      eyebrow: "Setup",
+      stepsOne: "1 step remaining",
+      stepsMany: "{count} steps remaining",
+      subtitle: "Finish these to run Growvisi on WhatsApp revenue",
+      openSettings: "Open settings",
+      getHelp: "Get help",
+      backToSteps: "Back to steps",
+      close: "Close setup",
+      open: "Open setup steps",
+    },
     conversations: {
       yourTurn: "Your turn",
       waitingOnYou: "Waiting on you",
@@ -875,6 +886,17 @@ export const messages = {
     partner: {
       title: "पार्टनर इंस्टॉल किट",
       description: "ह्यूमन Inbox + AI वर्गीकरण — भारतीय SMB के लिए WhatsApp राजस्व स्टैक।",
+    },
+    setupDock: {
+      eyebrow: "सेटअप",
+      stepsOne: "1 कदम बाकी",
+      stepsMany: "{count} कदम बाकी",
+      subtitle: "WhatsApp राजस्व के लिए ये पूरे करें",
+      openSettings: "सेटिंग्स खोलें",
+      getHelp: "मदद लें",
+      backToSteps: "सेटअप पर वापस",
+      close: "सेटअप बंद करें",
+      open: "सेटअप खोलें",
     },
     conversations: {
       yourTurn: "आपकी बारी",

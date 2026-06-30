@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { GrowvisiHelpFab } from "@/components/support/growvisi-help-fab";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,6 @@ export default function ConnectionPage() {
           Open WhatsApp settings →
         </Link>
       </p>
-      <GrowvisiHelpFab context="connection" />
     </div>
   );
 }

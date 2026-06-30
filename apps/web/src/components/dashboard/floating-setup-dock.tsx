@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   Bell,
   ChevronDown,
@@ -14,10 +15,16 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import { SetupHelpPanel } from "@/components/support/setup-help-panel";
 import { usePendingSetupActions, type SetupAction } from "@/hooks/use-pending-setup-actions";
+import type { HelpFabContext } from "@/lib/setup-help-content";
+import { useI18n } from "@/lib/i18n/locale-provider";
+import { formatMessage } from "@/lib/i18n/format-message";
 import { cn } from "@/lib/utils";
 
 const AUTO_COLLAPSE_MS = 12_000;
+
+type DockView = "setup" | "help";
 
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "trial-ended": CreditCard,
@@ -67,10 +74,12 @@ function SetupRow({ action, index }: { action: SetupAction; index: number }) {
   );
 }
 
-/** Pending workspace setup — hides when everything is complete. */
-export function FloatingSetupDock() {
+/** Pending workspace setup — hides when everything is complete. Includes help tab. */
+export function FloatingSetupDock({ helpContext }: { helpContext: HelpFabContext }) {
+  const { t } = useI18n();
   const { actions, criticalCount, totalCount, allComplete, isLoading } = usePendingSetupActions();
   const [expanded, setExpanded] = useState(false);
+  const [view, setView] = useState<DockView>("setup");
   const pinnedRef = useRef(false);
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didAutoOpen = useRef(false);
@@ -78,7 +87,10 @@ export function FloatingSetupDock() {
   const scheduleCollapse = useCallback(() => {
     if (collapseTimer.current) clearTimeout(collapseTimer.current);
     if (pinnedRef.current || criticalCount > 0) return;
-    collapseTimer.current = setTimeout(() => setExpanded(false), AUTO_COLLAPSE_MS);
+    collapseTimer.current = setTimeout(() => {
+      setExpanded(false);
+      setView("setup");
+    }, AUTO_COLLAPSE_MS);
   }, [criticalCount]);
 
   useEffect(() => {
@@ -97,15 +109,23 @@ export function FloatingSetupDock() {
   function toggle() {
     const next = !expanded;
     setExpanded(next);
+    if (!next) setView("setup");
     pinnedRef.current = next;
     if (next) scheduleCollapse();
     else if (collapseTimer.current) clearTimeout(collapseTimer.current);
   }
 
+  function openHelp() {
+    setView("help");
+    setExpanded(true);
+    pinnedRef.current = true;
+    if (collapseTimer.current) clearTimeout(collapseTimer.current);
+  }
+
   if (isLoading || allComplete) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2 sm:bottom-6 sm:right-6">
+    <div className="pointer-events-none fixed bottom-5 right-5 z-[55] flex flex-col items-end gap-2 sm:bottom-6 sm:right-6">
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -113,7 +133,7 @@ export function FloatingSetupDock() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 420, damping: 32 }}
-            className="pointer-events-auto w-[min(100vw-2.5rem,340px)] overflow-hidden rounded-2xl border border-border bg-white shadow-[0_20px_60px_rgb(11_28_48/0.16)]"
+            className="pointer-events-auto w-[min(100vw-2.5rem,380px)] overflow-hidden rounded-2xl border border-border bg-white shadow-[0_20px_60px_rgb(11_28_48/0.16)]"
             onMouseEnter={() => {
               if (collapseTimer.current) clearTimeout(collapseTimer.current);
             }}
@@ -121,34 +141,55 @@ export function FloatingSetupDock() {
               if (expanded && !pinnedRef.current) scheduleCollapse();
             }}
           >
-            <div className="border-b border-border/80 bg-gradient-to-r from-bento-mint/40 to-white px-4 py-3.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Setup</p>
-              <p className="text-sm font-bold">
-                {totalCount} step{totalCount === 1 ? "" : "s"} remaining
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Finish these to run Growvisi on WhatsApp revenue
-              </p>
-            </div>
-            <ul className="max-h-[min(50vh,320px)] overflow-y-auto p-2 custom-scrollbar">
-              {actions.map((action, i) => (
-                <SetupRow key={action.id} action={action} index={i} />
-              ))}
-            </ul>
-            <div className="border-t border-border/80 px-4 py-2.5 flex items-center justify-between gap-2">
-              <Link
-                href="/dashboard/settings?tab=whatsapp"
-                className="text-xs font-semibold text-accent hover:underline"
-              >
-                Open settings
-              </Link>
-              <a
-                href="mailto:support@growvisi.in?subject=Growvisi%20setup%20help"
-                className="text-xs font-medium text-muted-foreground hover:text-accent"
-              >
-                Need help?
-              </a>
-            </div>
+            {view === "setup" ? (
+              <>
+                <div className="border-b border-border/80 bg-gradient-to-r from-bento-mint/40 to-white px-4 py-3.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                    {t("setupDock.eyebrow")}
+                  </p>
+                  <p className="text-sm font-bold">
+                    {totalCount === 1
+                      ? t("setupDock.stepsOne")
+                      : formatMessage(t("setupDock.stepsMany"), { count: totalCount })}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t("setupDock.subtitle")}</p>
+                </div>
+                <ul className="max-h-[min(50vh,320px)] overflow-y-auto p-2 custom-scrollbar">
+                  {actions.map((action, i) => (
+                    <SetupRow key={action.id} action={action} index={i} />
+                  ))}
+                </ul>
+                <div className="flex items-center justify-between gap-2 border-t border-border/80 px-4 py-2.5">
+                  <Link
+                    href="/dashboard/settings?tab=whatsapp"
+                    className="text-xs font-semibold text-accent hover:underline"
+                  >
+                    {t("setupDock.openSettings")}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={openHelp}
+                    className="text-xs font-semibold text-muted-foreground hover:text-accent"
+                  >
+                    {t("setupDock.getHelp")}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div>
+                <div className="flex items-center gap-2 border-b border-border/80 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => setView("setup")}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    {t("setupDock.backToSteps")}
+                  </button>
+                </div>
+                <SetupHelpPanel context={helpContext} showHeader={false} />
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -162,7 +203,7 @@ export function FloatingSetupDock() {
         )}
         whileTap={{ scale: 0.94 }}
         aria-expanded={expanded}
-        aria-label={expanded ? "Close setup" : "Open setup steps"}
+        aria-label={expanded ? t("setupDock.close") : t("setupDock.open")}
       >
         <Settings2 className="h-5 w-5" strokeWidth={2} />
         <span

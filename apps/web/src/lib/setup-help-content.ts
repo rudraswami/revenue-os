@@ -37,8 +37,18 @@ export const SETUP_HELP_ESCALATION = {
 } as const;
 
 export function helpFabContextForPath(pathname: string): HelpFabContext | null {
+  return resolveHelpContext(pathname, null);
+}
+
+export function resolveHelpContext(
+  pathname: string,
+  settingsTab: string | null,
+): HelpFabContext | null {
   if (pathname.startsWith("/onboarding")) return "onboarding";
   if (pathname.startsWith("/dashboard/connection")) return "connection";
+  if (pathname.startsWith("/dashboard/settings") && settingsTab === "whatsapp") {
+    return "connection";
+  }
   if (pathname.startsWith("/dashboard")) return "general";
   return null;
 }

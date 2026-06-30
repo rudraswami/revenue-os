@@ -5,12 +5,11 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { WhatsappTokenExpiryBanner } from "@/components/dashboard/whatsapp-token-expiry-banner";
-import { FloatingSetupDock } from "@/components/dashboard/floating-setup-dock";
+import { DashboardAssistLayer } from "@/components/dashboard/dashboard-assist-layer";
 import {
   OnboardingBanner,
   TrialExpiredBanner,
 } from "@/components/dashboard/status-banners";
-import { GrowvisiHelpFab } from "@/components/support/growvisi-help-fab";
 import { Sidebar } from "./sidebar";
 import { cn } from "@/lib/utils";
 
@@ -75,8 +74,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <OnboardingBanner />
           </div>
           {children}
-          <GrowvisiHelpFab />
-          <FloatingSetupDock />
+          <DashboardAssistLayer />
         </main>
       </div>
     </div>

@@ -33,7 +33,6 @@ import { TrackingLinksCard } from "@/components/settings/tracking-links-card";
 import { PaymentIntegrationCard } from "@/components/settings/payment-integration-card";
 import { WebhooksSettingsCard } from "@/components/settings/webhooks-settings-card";
 import WhatsappConnect from "@/components/settings/whatsapp-connect";
-import { GrowvisiHelpFab } from "@/components/support/growvisi-help-fab";
 import { WorkspaceOverview, WorkspaceOverviewLinks } from "@/components/settings/workspace-overview";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { apiFetch } from "@/lib/api-client";
@@ -547,9 +546,6 @@ export function SettingsShell() {
           </div>
         </div>
       </div>
-      {activeTab === "whatsapp" && shellReady && !showAccessPanel ? (
-        <GrowvisiHelpFab context="connection" />
-      ) : null}
     </div>
   );
 }
