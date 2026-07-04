@@ -58,6 +58,7 @@ export function WhatsappConnectWizard({
   onConnected?: () => void;
 }) {
   const token = useAuthStore((s) => s.accessToken);
+  const onboarding = useAuthStore((s) => s.onboarding);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const queryClient = useQueryClient();
   const { success: toastSuccess, error: toastError } = useToast();
@@ -168,7 +169,8 @@ export function WhatsappConnectWizard({
       setError(null);
       patchOnboarding({
         whatsappConnected: true,
-        firstMessageReceived: false,
+        firstMessageReceived: onboarding?.firstMessageReceived ?? false,
+        complete: true,
       });
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-connection-health"] });
