@@ -566,9 +566,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             <p className="text-sm text-muted-foreground">
               Paste the temporary token from Meta API Setup while App Review is in progress.
             </p>
-            <WhatsappConnectWizard
-              onConnected={() => setPhase("done")}
-            />
+            <WhatsappConnectWizard />
           </div>
         )}
       </div>

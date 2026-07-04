@@ -279,7 +279,7 @@ export class WhatsappAccountsService {
       );
     }
 
-    await this.subscribeWabaWebhooks(wabaId, accessToken);
+    const webhookSubscribed = await this.subscribeWabaWebhooks(wabaId, accessToken);
 
     return this.create(user, {
       phoneNumberId,
@@ -287,11 +287,11 @@ export class WhatsappAccountsService {
       displayPhoneNumber: details.display_phone_number ?? phoneNumberId,
       verifiedName: details.verified_name,
       accessToken,
-    });
+    }, { webhookSubscribed, connectMethod: "token" });
   }
 
-  async create(user: JwtPayload, dto: CreateWhatsappAccountDto) {
-    return this.createAccountForOrganization(user.organizationId, dto);
+  async create(user: JwtPayload, dto: CreateWhatsappAccountDto, extraMetadata?: Record<string, unknown>) {
+    return this.createAccountForOrganization(user.organizationId, dto, extraMetadata);
   }
 
   async createAccountForOrganization(
@@ -814,7 +814,7 @@ export class WhatsappAccountsService {
       );
     }
 
-    await this.subscribeWabaWebhooks(wabaId, accessToken);
+    const webhookSubscribed = await this.subscribeWabaWebhooks(wabaId, accessToken);
 
     return this.createAccountForOrganization(organizationId, {
       phoneNumberId,
@@ -822,7 +822,7 @@ export class WhatsappAccountsService {
       displayPhoneNumber: details.display_phone_number ?? phoneNumberId,
       verifiedName: details.verified_name,
       accessToken,
-    });
+    }, { webhookSubscribed, connectMethod: "quick-connect" });
   }
 
   async refreshAccessTokenForOrganization(
@@ -1374,7 +1374,7 @@ export class WhatsappAccountsService {
       }));
   }
 
-  private async subscribeWabaWebhooks(wabaId: string, accessToken: string) {
+  private async subscribeWabaWebhooks(wabaId: string, accessToken: string): Promise<boolean> {
     const version = this.apiVersion();
     const res = await fetchWithTimeout(`https://graph.facebook.com/${version}/${wabaId}/subscribed_apps`, {
       method: "POST",
@@ -1382,9 +1382,10 @@ export class WhatsappAccountsService {
     });
     const body = (await res.json()) as { success?: boolean; error?: { message?: string } };
     if (!res.ok && !body.success) {
-      throw new BadRequestException(
-        body.error?.message ?? "Could not enable WhatsApp webhooks for this account.",
-      );
+      const message = body.error?.message ?? "Could not enable WhatsApp webhooks for this account.";
+      this.logger.warn(`Webhook subscribe failed for WABA ${wabaId}: ${message}`);
+      return false;
     }
+    return true;
   }
 }

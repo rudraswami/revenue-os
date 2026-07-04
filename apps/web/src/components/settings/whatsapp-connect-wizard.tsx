@@ -10,11 +10,13 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
 import { WhatsappMetaSetupGuide } from "@/components/settings/whatsapp-meta-setup-guide";
 import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
 import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   looksLikeMetaToken,
@@ -28,6 +30,28 @@ import {
 } from "@/lib/whatsapp-onboarding";
 import { cn } from "@/lib/utils";
 
+type QuickConnectResult = {
+  account: WhatsappAccountSummary;
+  discovered: DiscoveredPhone[];
+  autoSelected: boolean;
+};
+
+function unwrapQuickConnect(res: unknown): QuickConnectResult | null {
+  if (!res || typeof res !== "object") return null;
+  const row = res as Record<string, unknown>;
+  if (row.account && typeof row.account === "object" && "id" in (row.account as object)) {
+    return res as QuickConnectResult;
+  }
+  if ("id" in row && "displayPhoneNumber" in row) {
+    return {
+      account: res as WhatsappAccountSummary,
+      discovered: [],
+      autoSelected: false,
+    };
+  }
+  return null;
+}
+
 export function WhatsappConnectWizard({
   onConnected,
 }: {
@@ -36,6 +60,7 @@ export function WhatsappConnectWizard({
   const token = useAuthStore((s) => s.accessToken);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const queryClient = useQueryClient();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const [step, setStep] = useState<WizardStepId>("connect");
   const [accessToken, setAccessToken] = useState("");
@@ -45,14 +70,15 @@ export function WhatsappConnectWizard({
   const [connected, setConnected] = useState<WhatsappAccountSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lastAutoDiscover = useRef("");
+  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const saved = sessionStorage.getItem(WIZARD_STEP_KEY) as WizardStepId | "prepare" | null;
-    if (saved === "prepare") {
+    // verify step needs in-memory connected state — never restore it from storage alone.
+    if (saved === "verify" || saved === "prepare") {
       setStep("connect");
-      return;
-    }
-    if (saved && WIZARD_STEPS.some((s) => s.id === saved)) {
+      sessionStorage.setItem(WIZARD_STEP_KEY, "connect");
+    } else if (saved && WIZARD_STEPS.some((s) => s.id === saved)) {
       setStep(saved);
     }
     const draft = sessionStorage.getItem(WIZARD_TOKEN_DRAFT_KEY);
@@ -74,6 +100,12 @@ export function WhatsappConnectWizard({
     }
     sessionStorage.setItem(WIZARD_TOKEN_DRAFT_KEY, accessToken);
   }, [accessToken]);
+
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [error]);
 
   const { data: readiness } = useQuery({
     queryKey: ["whatsapp-onboarding-readiness"],
@@ -114,11 +146,7 @@ export function WhatsappConnectWizard({
 
   const quickConnectMutation = useMutation({
     mutationFn: () =>
-      apiFetch<{
-        account: WhatsappAccountSummary;
-        discovered: DiscoveredPhone[];
-        autoSelected: boolean;
-      }>("/whatsapp-accounts/quick-connect", {
+      apiFetch<QuickConnectResult>("/whatsapp-accounts/quick-connect", {
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({
@@ -128,21 +156,30 @@ export function WhatsappConnectWizard({
         }),
       }),
     onSuccess: (res) => {
-      setConnected(res.account);
-      setDiscovered(res.discovered);
+      const parsed = unwrapQuickConnect(res);
+      if (!parsed?.account?.id) {
+        const msg = "Connection succeeded but the response was unexpected. Refresh and check Settings → WhatsApp.";
+        setError(msg);
+        toastError(msg);
+        return;
+      }
+      setConnected(parsed.account);
+      if (parsed.discovered.length > 0) setDiscovered(parsed.discovered);
       setError(null);
       patchOnboarding({
         whatsappConnected: true,
         firstMessageReceived: false,
-        complete: true,
       });
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-connection-health"] });
       setStep("verify");
+      toastSuccess("WhatsApp number connected");
       onConnected?.();
     },
     onError: (e) => {
-      setError(toUserMessage(e, "Connection failed. Check your token and try again."));
+      const msg = toUserMessage(e, "Connection failed. Check your token and try again.");
+      setError(msg);
+      toastError(msg);
     },
   });
 
@@ -207,7 +244,7 @@ export function WhatsappConnectWizard({
     }
   }
 
-  function handleTokenPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+  function handleTokenPaste(e: React.ClipboardEvent<HTMLInputElement>) {
     const text = e.clipboardData.getData("text");
     if (!text.trim()) return;
     e.preventDefault();
@@ -219,6 +256,12 @@ export function WhatsappConnectWizard({
     if (normalized && normalized !== accessToken) {
       setAccessToken(normalized);
     }
+  }
+
+  function handleConnect() {
+    if (!canConnect || connecting) return;
+    setError(null);
+    quickConnectMutation.mutate();
   }
 
   function selectPhone(phone: DiscoveredPhone) {
@@ -274,7 +317,11 @@ export function WhatsappConnectWizard({
 
       <div className="space-y-5 px-6 py-6">
         {error && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <div
+            ref={errorRef}
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+          >
             {error}
           </div>
         )}
@@ -301,13 +348,13 @@ export function WhatsappConnectWizard({
                       Paste
                     </Button>
                   </div>
-                  <textarea
+                  <Input
                     id="wa-access-token"
+                    type="password"
                     autoComplete="off"
                     spellCheck={false}
-                    rows={3}
                     placeholder="EAA… — paste from Meta API Setup"
-                    className="min-h-[72px] w-full resize-none rounded-xl border border-[#dce9ff] bg-white px-3 py-2.5 font-mono text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                    className="font-mono"
                     value={accessToken}
                     onPaste={handleTokenPaste}
                     onBlur={handleTokenBlur}
@@ -342,11 +389,12 @@ export function WhatsappConnectWizard({
                 )}
 
                 <Button
+                  type="button"
                   disabled={connecting || !canConnect}
                   variant="accent"
                   size="lg"
                   className="mt-5 h-12 w-full rounded-xl text-[15px] font-semibold"
-                  onClick={() => quickConnectMutation.mutate()}
+                  onClick={handleConnect}
                 >
                   {connecting ? (
                     <>

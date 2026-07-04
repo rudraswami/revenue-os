@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, ClipboardPaste, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { WhatsappMetaSetupGuide } from "@/components/settings/whatsapp-meta-setup-guide";
 import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
@@ -195,12 +196,12 @@ export function WhatsappManualConnect({
                 Paste
               </Button>
             </div>
-            <textarea
+            <Input
+              type="password"
               autoComplete="off"
               spellCheck={false}
-              rows={3}
               placeholder="EAA… from Meta API Setup"
-              className="min-h-[72px] w-full resize-none rounded-xl border border-input bg-background px-3 py-2.5 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+              className="font-mono"
               value={accessToken}
               onPaste={(e) => {
                 const text = e.clipboardData.getData("text");
