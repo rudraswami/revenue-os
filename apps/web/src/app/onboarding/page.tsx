@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -42,6 +42,7 @@ function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromAgency = searchParams.get("from") === "agency";
+  const queryClient = useQueryClient();
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const organization = useAuthStore((s) => s.organization);
@@ -61,7 +62,14 @@ function OnboardingPageContent() {
         { token: token ?? undefined },
       ),
     enabled: !!token,
-    refetchInterval: 3000,
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
+    // Poll only after connect — while waiting for the first inbound test message.
+    refetchInterval: (query) => {
+      const rows = query.state.data;
+      const connected = rows?.some((a) => a.isActive) ?? false;
+      return connected ? 10_000 : false;
+    },
   });
 
   const { data: convStats } = useQuery({
@@ -71,7 +79,14 @@ function OnboardingPageContent() {
         token: token ?? undefined,
       }),
     enabled: !!token,
-    refetchInterval: 5000,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+    refetchInterval: (query) => {
+      const hasInbound = (query.state.data?.inboundMessages ?? 0) > 0;
+      if (hasInbound) return false;
+      const rows = queryClient.getQueryData<Array<{ isActive: boolean }>>(["whatsapp-accounts"]);
+      return rows?.some((a) => a.isActive) ? 10_000 : false;
+    },
   });
 
   const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;

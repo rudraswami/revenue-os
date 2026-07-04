@@ -7,6 +7,7 @@ import { createHash } from "crypto";
 import { QUEUES } from "@growvisi/shared";
 import { isProductionDeploy } from "../../config/production";
 import { useBackgroundWorkers } from "../../config/workers";
+import { withTimeout } from "../../common/utils/with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface WhatsappWebhookPayload {
@@ -98,36 +99,7 @@ export class WhatsappService {
 
     // Serverless without Redis — process inline; otherwise queue handles async work.
     if (!useBackgroundWorkers()) {
-      try {
-        const events = await this.processWebhookPayload(payload);
-        await this.prisma.webhookEvent.update({
-          where: { id: event.id },
-          data: {
-            processedAt: new Date(),
-            organizationId: events[0]?.organizationId ?? undefined,
-          },
-        });
-        const orgIds = new Set<string>();
-        for (const inbound of events) {
-          orgIds.add(inbound.organizationId);
-          this.realtime.emitMessageNew(inbound.organizationId, {
-            conversationId: inbound.conversationId,
-          });
-          if (inbound.leadId) {
-            await this.aiClassify.enqueue(inbound as typeof inbound & { leadId: string });
-          }
-        }
-        for (const orgId of orgIds) {
-          this.realtime.emitInboxUpdated(orgId);
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.error(`Inline webhook processing failed: ${message}`);
-        await this.prisma.webhookEvent.update({
-          where: { id: event.id },
-          data: { error: message },
-        });
-      }
+      await this.processInline(event.id, payload);
       return { received: true, eventId: event.id };
     }
 
@@ -135,13 +107,60 @@ export class WhatsappService {
       .update(JSON.stringify({ id: event.id, entry: payload.entry }))
       .digest("hex");
 
-    await this.inboundQueue.add(
-      "process",
-      { webhookEventId: event.id, payload },
-      { jobId, removeOnComplete: 1000, removeOnFail: 5000 },
-    );
+    try {
+      // Bounded: if Redis is configured but unreachable, ioredis buffers the
+      // command and waits indefinitely, hanging this request forever. Fail
+      // fast and fall back to inline processing instead.
+      await withTimeout(
+        this.inboundQueue.add(
+          "process",
+          { webhookEventId: event.id, payload },
+          { jobId, removeOnComplete: 1000, removeOnFail: 5000 },
+        ),
+        5_000,
+        "Queue unavailable",
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Could not enqueue webhook ${event.id} (${err instanceof Error ? err.message : err}) — processing inline`,
+      );
+      await this.processInline(event.id, payload);
+    }
 
     return { received: true, eventId: event.id };
+  }
+
+  private async processInline(eventId: string, payload: WhatsappWebhookPayload) {
+    try {
+      const events = await this.processWebhookPayload(payload);
+      await this.prisma.webhookEvent.update({
+        where: { id: eventId },
+        data: {
+          processedAt: new Date(),
+          organizationId: events[0]?.organizationId ?? undefined,
+        },
+      });
+      const orgIds = new Set<string>();
+      for (const inbound of events) {
+        orgIds.add(inbound.organizationId);
+        this.realtime.emitMessageNew(inbound.organizationId, {
+          conversationId: inbound.conversationId,
+        });
+        if (inbound.leadId) {
+          await this.aiClassify.enqueue(inbound as typeof inbound & { leadId: string });
+        }
+      }
+      for (const orgId of orgIds) {
+        this.realtime.emitInboxUpdated(orgId);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Inline webhook processing failed: ${message}`);
+      await this.prisma.webhookEvent.update({
+        where: { id: eventId },
+        data: { error: message },
+      });
+    }
   }
 
   /** Process message + account_update webhook fields. */

@@ -362,6 +362,10 @@ export function SettingsShell() {
     placeholderData: (prev) => prev,
   });
 
+  // Only block the shell on the first billing fetch — not on background refetches.
+  const billingReady = !billingLoading || !!billing;
+  const shellReady = roleReady && billingReady;
+
   const accessCtx = useMemo<SettingsAccessContext>(
     () => ({
       role,
@@ -407,7 +411,6 @@ export function SettingsShell() {
   const current = tabById[activeTab] ?? buildTabMeta(activeTab, t);
   const tabAllowed = canAccessSettingsTab(activeTab, accessCtx);
   const showAccessPanel = !tabAllowed && roleReady;
-  const shellReady = roleReady && !billingLoading;
 
   function selectTab(id: SettingsTabId) {
     if (!canAccessSettingsTab(id, accessCtx) || id === activeTab) return;

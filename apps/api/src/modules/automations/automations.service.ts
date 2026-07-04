@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
 import { GROWVISI_WEB_URL } from "@growvisi/shared";
@@ -13,6 +13,8 @@ import {
 
 @Injectable()
 export class AutomationsService {
+  private readonly logger = new Logger(AutomationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
@@ -20,6 +22,22 @@ export class AutomationsService {
     private readonly entitlements: EntitlementsService,
     private readonly audit: AuditService,
   ) {}
+
+  /**
+   * These alert emails are side effects of core business logic (task
+   * creation, stage changes, hot-lead scoring). A transient email provider
+   * failure must never abort the underlying automation or leave DB state
+   * update, so failures are logged and swallowed here.
+   */
+  private async safeSendEmail(kind: string, send: () => Promise<void>): Promise<void> {
+    try {
+      await send();
+    } catch (err) {
+      this.logger.warn(
+        `Failed to send ${kind} email: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
 
   async getPreferences(user: JwtPayload): Promise<AutomationPreferences> {
     return this.getPreferencesForOrg(user.organizationId);
@@ -151,13 +169,15 @@ export class AutomationsService {
     ).replace(/\/$/, "");
 
     if (recipients.length > 0) {
-      await this.email.sendHandoffAlert({
-        to: recipients,
-        organizationName: org?.name ?? "your workspace",
-        leadLabel: label,
-        reason: opts.reason,
-        inboxUrl: `${appUrl}/dashboard/inbox?c=${opts.conversationId}`,
-      });
+      await this.safeSendEmail("handoff alert", () =>
+        this.email.sendHandoffAlert({
+          to: recipients,
+          organizationName: org?.name ?? "your workspace",
+          leadLabel: label,
+          reason: opts.reason,
+          inboxUrl: `${appUrl}/dashboard/inbox?c=${opts.conversationId}`,
+        }),
+      );
     }
 
     await this.prisma.conversation.update({
@@ -270,16 +290,18 @@ export class AutomationsService {
       this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
     ).replace(/\/$/, "");
 
-    await this.email.sendStageChangeAlert({
-      to: recipients,
-      organizationName: org?.name ?? "your workspace",
-      leadLabel: label,
-      fromStage: opts.fromStage,
-      toStage: opts.toStage,
-      changedBy,
-      pipelineUrl: `${appUrl}/dashboard/pipeline`,
-      inboxUrl: conv ? `${appUrl}/dashboard/inbox?c=${conv.id}` : `${appUrl}/dashboard/inbox`,
-    });
+    await this.safeSendEmail("stage change alert", () =>
+      this.email.sendStageChangeAlert({
+        to: recipients,
+        organizationName: org?.name ?? "your workspace",
+        leadLabel: label,
+        fromStage: opts.fromStage,
+        toStage: opts.toStage,
+        changedBy,
+        pipelineUrl: `${appUrl}/dashboard/pipeline`,
+        inboxUrl: conv ? `${appUrl}/dashboard/inbox?c=${conv.id}` : `${appUrl}/dashboard/inbox`,
+      }),
+    );
 
     await this.logExecution(
       opts.organizationId,
@@ -348,12 +370,14 @@ export class AutomationsService {
                 this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
               ).replace(/\/$/, "");
 
-              await this.email.sendFollowupReminder({
-                to: recipients,
-                organizationName: org.name,
-                count: stale.length,
-                inboxUrl: `${appUrl}/dashboard/inbox`,
-              });
+              await this.safeSendEmail("follow-up reminder", () =>
+                this.email.sendFollowupReminder({
+                  to: recipients,
+                  organizationName: org.name,
+                  count: stale.length,
+                  inboxUrl: `${appUrl}/dashboard/inbox`,
+                }),
+              );
 
               for (const conv of stale) {
                 const meta = (conv.metadata ?? {}) as Record<string, unknown>;
@@ -495,13 +519,15 @@ export class AutomationsService {
         const appUrl = (
           this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
         ).replace(/\/$/, "");
-        await this.email.sendStaleDealReminder({
-          to: recipients,
-          organizationName,
-          count: created,
-          pipelineUrl: `${appUrl}/dashboard/pipeline?filter=stale`,
-          tasksUrl: `${appUrl}/dashboard/tasks`,
-        });
+        await this.safeSendEmail("stale deal reminder", () =>
+          this.email.sendStaleDealReminder({
+            to: recipients,
+            organizationName,
+            count: created,
+            pipelineUrl: `${appUrl}/dashboard/pipeline?filter=stale`,
+            tasksUrl: `${appUrl}/dashboard/tasks`,
+          }),
+        );
       }
     }
 
@@ -541,14 +567,16 @@ export class AutomationsService {
     ).replace(/\/$/, "");
 
     const label = opts.leadName?.trim() || opts.leadPhone;
-    await this.email.sendHotLeadAlert({
-      to: recipients,
-      organizationName: org?.name ?? "your workspace",
-      leadLabel: label,
-      score: opts.score,
-      stage: opts.newStage,
-      inboxUrl: `${appUrl}/dashboard/inbox?c=${opts.conversationId}`,
-    });
+    await this.safeSendEmail("hot lead alert", () =>
+      this.email.sendHotLeadAlert({
+        to: recipients,
+        organizationName: org?.name ?? "your workspace",
+        leadLabel: label,
+        score: opts.score,
+        stage: opts.newStage,
+        inboxUrl: `${appUrl}/dashboard/inbox?c=${opts.conversationId}`,
+      }),
+    );
 
     await this.prisma.conversation.update({
       where: { id: opts.conversationId },

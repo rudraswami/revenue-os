@@ -311,6 +311,7 @@ export class EmailService {
         text: opts.text,
         html: opts.html,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!res.ok) {

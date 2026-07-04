@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
+
 /** Exchange a short-lived Meta user token for a long-lived token (~60 days). */
 export async function exchangeForLongLivedToken(
   shortLivedToken: string,
@@ -11,7 +13,7 @@ export async function exchangeForLongLivedToken(
   url.searchParams.set("client_secret", appSecret);
   url.searchParams.set("fb_exchange_token", shortLivedToken);
 
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   const body = (await res.json()) as {
     access_token?: string;
     expires_in?: number;

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
 import { encryptSecret } from "../../common/crypto/token-cipher";
+import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { sanitizeEnvValue } from "../../config/cors-origins";
 import { isProductionDeploy } from "../../config/production";
 import { EntitlementsService } from "../billing/entitlements.service";
@@ -111,7 +112,7 @@ export class EmbeddedSignupService {
     try {
       const appToken = `${appId}|${secret}`;
       const url = `https://graph.facebook.com/${version}/${appId}?fields=name,category,app_domains,restrictions`;
-      const res = await fetch(url);
+      const res = await fetchWithTimeout(url);
       const body = (await res.json()) as Record<string, unknown> & {
         error?: { message?: string };
       };
@@ -250,7 +251,7 @@ export class EmbeddedSignupService {
     });
 
     const url = `https://graph.facebook.com/${version}/oauth/access_token?${params}`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     const body = (await res.json()) as { access_token?: string; error?: { message?: string } };
 
     if (!res.ok || !body.access_token) {
@@ -265,7 +266,7 @@ export class EmbeddedSignupService {
 
   private async subscribeWebhooks(wabaId: string, businessToken: string) {
     const version = this.apiVersion();
-    const res = await fetch(`https://graph.facebook.com/${version}/${wabaId}/subscribed_apps`, {
+    const res = await fetchWithTimeout(`https://graph.facebook.com/${version}/${wabaId}/subscribed_apps`, {
       method: "POST",
       headers: { Authorization: `Bearer ${businessToken}` },
     });
@@ -287,7 +288,7 @@ export class EmbeddedSignupService {
     }
 
     const version = this.apiVersion();
-    const res = await fetch(`https://graph.facebook.com/${version}/${phoneNumberId}/register`, {
+    const res = await fetchWithTimeout(`https://graph.facebook.com/${version}/${phoneNumberId}/register`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${businessToken}`,
@@ -312,7 +313,7 @@ export class EmbeddedSignupService {
   private async fetchPhoneDetails(phoneNumberId: string, accessToken: string) {
     const version = this.apiVersion();
     const url = `https://graph.facebook.com/${version}/${phoneNumberId}?fields=display_phone_number,verified_name`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const res = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     const body = (await res.json()) as {
       display_phone_number?: string;
       verified_name?: string;

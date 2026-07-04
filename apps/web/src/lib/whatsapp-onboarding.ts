@@ -14,6 +14,8 @@ export function looksLikeMetaToken(value: string) {
 }
 
 export const WIZARD_STEP_KEY = "growvisi-wa-wizard-step";
+/** Draft Meta token — survives tab switches / remounts while user is pasting. */
+export const WIZARD_TOKEN_DRAFT_KEY = "growvisi-wa-token-draft";
 
 export type WizardStepId = "connect" | "verify";
 

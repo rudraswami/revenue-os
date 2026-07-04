@@ -7,10 +7,12 @@ export function QueryErrorState({
   title = "Couldn’t load data",
   message = "Check your connection and try again.",
   onRetry,
+  children,
 }: {
   title?: string;
   message?: string;
   onRetry?: () => void;
+  children?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-destructive/20 bg-destructive/5 px-6 py-10 text-center">
@@ -25,6 +27,7 @@ export function QueryErrorState({
           Try again
         </Button>
       )}
+      {children}
     </div>
   );
 }

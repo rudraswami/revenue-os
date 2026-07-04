@@ -5,6 +5,7 @@ import { Queue } from "bullmq";
 import { createHash } from "crypto";
 import type { AiClassificationResult, LeadStage } from "@growvisi/shared";
 import { LEAD_STAGE_ORDER, QUEUES } from "@growvisi/shared";
+import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 import { AutomationsService } from "../automations/automations.service";
 import { AssignmentService } from "../assignments/assignment.service";
@@ -13,6 +14,7 @@ import { EntitlementsService } from "../billing/entitlements.service";
 import { KnowledgeEmbedService } from "../knowledge/knowledge-embed.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { useBackgroundWorkers } from "../../config/workers";
+import { withTimeout } from "../../common/utils/with-timeout";
 
 export interface ClassifyJobData {
   organizationId: string;
@@ -57,13 +59,26 @@ export class AiClassifyService {
       .update(`${data.organizationId}:${data.messageId}`)
       .digest("hex");
 
-    await this.classifyQueue.add("classify", data, {
-      jobId,
-      removeOnComplete: 1000,
-      removeOnFail: 5000,
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-    });
+    try {
+      // Bounded: a configured-but-unreachable Redis makes ioredis buffer the
+      // command and wait forever, hanging whatever request triggered this.
+      await withTimeout(
+        this.classifyQueue.add("classify", data, {
+          jobId,
+          removeOnComplete: 1000,
+          removeOnFail: 5000,
+          attempts: 3,
+          backoff: { type: "exponential", delay: 5000 },
+        }),
+        5_000,
+        "Queue unavailable",
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Could not enqueue classification for ${data.messageId} (${err instanceof Error ? err.message : err}) — processing inline`,
+      );
+      await this.process(data);
+    }
   }
 
   async process(data: ClassifyJobData) {
@@ -261,20 +276,22 @@ export class AiClassifyService {
     const contextBlock = businessContext?.trim()
       ? `\n\nBusiness knowledge (use to interpret pricing, policies, and offers — do not invent facts beyond this):\n${businessContext}`
       : "";
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: `You are an AI revenue agent for Growvisi — classifying WhatsApp sales conversations for Indian SMBs.
+    const res = await fetchWithTimeout(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: `You are an AI revenue agent for Growvisi — classifying WhatsApp sales conversations for Indian SMBs.
 The business may use Meta Business Agent to reply inside WhatsApp. Analyze the full thread to infer sales intent, pipeline stage, and what the team should do next.
 
 Return JSON with these keys:
@@ -289,14 +306,16 @@ Return JSON with these keys:
 - nextAction: the single most important thing the sales rep should do right now (e.g. "Send pricing PDF", "Call within 2 hours", "Follow up on delivery status")
 
 Current pipeline stage: ${currentStage}.${contextBlock}`,
-          },
-          {
-            role: "user",
-            content: `Classify this conversation:\n\n${transcript}`,
-          },
-        ],
-      }),
-    });
+            },
+            {
+              role: "user",
+              content: `Classify this conversation:\n\n${transcript}`,
+            },
+          ],
+        }),
+      },
+      25_000,
+    );
 
     const body = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;

@@ -20,6 +20,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import {
   looksLikeMetaToken,
   WIZARD_STEP_KEY,
+  WIZARD_TOKEN_DRAFT_KEY,
   WIZARD_STEPS,
   type DiscoveredPhone,
   type WhatsappAccountSummary,
@@ -27,7 +28,13 @@ import {
 } from "@/lib/whatsapp-onboarding";
 import { cn } from "@/lib/utils";
 
-export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => void }) {
+export function WhatsappConnectWizard({
+  onConnected,
+  disabled = false,
+}: {
+  onConnected?: () => void;
+  disabled?: boolean;
+}) {
   const token = useAuthStore((s) => s.accessToken);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const queryClient = useQueryClient();
@@ -50,14 +57,25 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
     if (saved && WIZARD_STEPS.some((s) => s.id === saved)) {
       setStep(saved);
     }
+    const draft = sessionStorage.getItem(WIZARD_TOKEN_DRAFT_KEY);
+    if (draft) setAccessToken(draft);
   }, []);
 
   useEffect(() => {
     sessionStorage.setItem(WIZARD_STEP_KEY, step);
     if (step === "verify" && connected) {
       sessionStorage.removeItem(WIZARD_STEP_KEY);
+      sessionStorage.removeItem(WIZARD_TOKEN_DRAFT_KEY);
     }
   }, [step, connected]);
+
+  useEffect(() => {
+    if (!accessToken.trim()) {
+      sessionStorage.removeItem(WIZARD_TOKEN_DRAFT_KEY);
+      return;
+    }
+    sessionStorage.setItem(WIZARD_TOKEN_DRAFT_KEY, accessToken);
+  }, [accessToken]);
 
   const { data: readiness } = useQuery({
     queryKey: ["whatsapp-onboarding-readiness"],
@@ -133,6 +151,7 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
   const busy = discoverMutation.isPending || quickConnectMutation.isPending;
   const needsPhonePick = discovered.length > 1;
   const canConnect =
+    !disabled &&
     looksLikeMetaToken(accessToken) &&
     (!needsPhonePick || phoneNumberId.trim().length > 5);
   const stepIndex = WIZARD_STEPS.findIndex((s) => s.id === step);
@@ -144,7 +163,7 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
 
   useEffect(() => {
     const trimmed = accessToken.trim();
-    if (!looksLikeMetaToken(trimmed) || trimmed === lastAutoDiscover.current) return;
+    if (disabled || !looksLikeMetaToken(trimmed) || trimmed === lastAutoDiscover.current) return;
     if (discoverMutation.isPending) return;
 
     const timer = setTimeout(() => {
@@ -153,7 +172,7 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [accessToken, discoverMutation.isPending, runDiscover]);
+  }, [accessToken, disabled, discoverMutation.isPending, runDiscover]);
 
   async function pasteFromClipboard() {
     try {
@@ -254,6 +273,7 @@ export function WhatsappConnectWizard({ onConnected }: { onConnected?: () => voi
                     placeholder="EAA… — paste from Meta API Setup"
                     className="h-12 rounded-xl border-[#dce9ff] bg-white text-sm"
                     value={accessToken}
+                    disabled={disabled}
                     onChange={(e) => {
                       setAccessToken(e.target.value);
                       setError(null);

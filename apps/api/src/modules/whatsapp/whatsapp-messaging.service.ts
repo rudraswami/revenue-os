@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { decryptSecret } from "../../common/crypto/token-cipher";
+import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 
 interface WhatsappAccountRow {
   phoneNumberId: string;
@@ -23,7 +24,7 @@ export class WhatsappMessagingService {
     const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
     const to = toPhone.replace(/\D/g, "");
 
-    const res = await fetch(`https://graph.facebook.com/${version}/${account.phoneNumberId}/messages`, {
+    const res = await fetchWithTimeout(`https://graph.facebook.com/${version}/${account.phoneNumberId}/messages`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -87,7 +88,7 @@ export class WhatsappMessagingService {
           ]
         : undefined;
 
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://graph.facebook.com/${version}/${account.phoneNumberId}/messages`,
       {
         method: "POST",
@@ -143,7 +144,7 @@ export class WhatsappMessagingService {
     const token = decryptSecret(accessTokenEnc);
     const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
 
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://graph.facebook.com/${version}/${wabaId}/message_templates?limit=100&fields=name,status,language,category,components`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
@@ -191,7 +192,7 @@ export class WhatsappMessagingService {
     const token = decryptSecret(account.accessTokenEnc);
     const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
 
-    const metaRes = await fetch(`https://graph.facebook.com/${version}/${mediaId}`, {
+    const metaRes = await fetchWithTimeout(`https://graph.facebook.com/${version}/${mediaId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const metaBody = (await metaRes.json()) as {
@@ -203,9 +204,11 @@ export class WhatsappMessagingService {
       throw new BadRequestException(metaBody.error?.message ?? "Could not resolve media from WhatsApp.");
     }
 
-    const fileRes = await fetch(metaBody.url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const fileRes = await fetchWithTimeout(
+      metaBody.url,
+      { headers: { Authorization: `Bearer ${token}` } },
+      30_000,
+    );
     if (!fileRes.ok) {
       throw new BadRequestException("Could not download media from WhatsApp.");
     }

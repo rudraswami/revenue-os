@@ -44,6 +44,11 @@ import { QUEUES } from "@growvisi/shared";
     BullModule.forRoot({
       connection: {
         url: process.env.REDIS_URL ?? "redis://localhost:6379",
+        // Cap reconnect backoff instead of ioredis's default unbounded retry —
+        // paired with the `withTimeout` guards around `queue.add()`, this keeps
+        // an unreachable Redis from silently hanging requests forever.
+        retryStrategy: (times: number) => Math.min(times * 200, 5_000),
+        connectTimeout: 5_000,
       },
     }),
     BullModule.registerQueue(

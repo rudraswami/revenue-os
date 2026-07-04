@@ -153,6 +153,7 @@ export class RazorpayService {
         "Content-Type": "application/json",
       },
       body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(15_000),
     });
 
     const data = (await res.json()) as T & { error?: { description?: string } };

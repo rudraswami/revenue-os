@@ -16,6 +16,13 @@ const API_URL = resolveApiBase();
 export const CUSTOMER_NETWORK_ERROR =
   "We couldn't reach Growvisi. Check your internet connection and try again, or email support@growvisi.in.";
 
+/** Shown when a request hangs — never spin forever on a slow/stuck backend. */
+export const CUSTOMER_TIMEOUT_ERROR =
+  "That took too long to respond. Please try again in a moment.";
+
+/** Bound every request so a stuck backend call can't spin the UI forever. */
+const REQUEST_TIMEOUT_MS = 20_000;
+
 function logNetworkFailure(path: string, cause: unknown) {
   if (process.env.NODE_ENV === "development") {
     console.error(`[growvisi-api] Network error on ${path}`, cause);
@@ -56,6 +63,9 @@ export function toUserMessage(error: unknown, fallback = "Something went wrong. 
   }
   if (error.status === 404) return "We couldn't find that. It may have been removed.";
   if (error.status === 429) return "Too many requests. Please wait a moment and try again.";
+  if (error.status === 503) {
+    return "Could not reach an upstream service. Please try again in a moment.";
+  }
   if (error.status >= 500) {
     return "Something went wrong on our side. Please try again or email support@growvisi.in.";
   }
@@ -85,9 +95,13 @@ async function rawFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
       ...options,
       headers,
       credentials: "include",
+      signal: options.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (cause) {
     logNetworkFailure(path, cause);
+    if (cause instanceof DOMException && cause.name === "TimeoutError") {
+      throw new ApiError(CUSTOMER_TIMEOUT_ERROR, 0);
+    }
     throw new ApiError(CUSTOMER_NETWORK_ERROR, 0);
   }
 

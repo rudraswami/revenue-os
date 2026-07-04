@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { LeadStage, type Prisma } from "@prisma/client";
 import type { JwtPayload } from "@growvisi/shared";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
+import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import {
   formatDurationMs,
   normalizeWorkspaceOpsSettings,
@@ -466,35 +467,39 @@ export class ConversationsService {
       .join("\n");
 
     const model = this.config.get<string>("AI_CHAT_MODEL") ?? "gpt-4o-mini";
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+    const res = await fetchWithTimeout(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.4,
+          max_tokens: 180,
+          messages: [
+            {
+              role: "system",
+              content: [
+                "You draft WhatsApp replies for a sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
+                knowledgeBlock
+                  ? `Use this business context when relevant:\n\n${knowledgeBlock}`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join("\n\n"),
+            },
+            {
+              role: "user",
+              content: `Draft the next reply.\n\n${transcript}`,
+            },
+          ],
+        }),
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0.4,
-        max_tokens: 180,
-        messages: [
-          {
-            role: "system",
-            content: [
-              "You draft WhatsApp replies for a sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
-              knowledgeBlock
-                ? `Use this business context when relevant:\n\n${knowledgeBlock}`
-                : "",
-            ]
-              .filter(Boolean)
-              .join("\n\n"),
-          },
-          {
-            role: "user",
-            content: `Draft the next reply.\n\n${transcript}`,
-          },
-        ],
-      }),
-    });
+      25_000,
+    );
 
     const body = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;

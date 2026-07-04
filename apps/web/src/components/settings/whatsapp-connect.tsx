@@ -14,6 +14,7 @@ import {
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { WhatsappConnectPathPicker } from "@/components/settings/whatsapp-connect-path-picker";
 import {
@@ -80,10 +81,16 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
   const { t } = useI18n();
   const { success, error: toastError } = useToast();
 
-  const { data: accounts, isLoading: accountsLoading } = useQuery({
-    queryKey: ["whatsapp-accounts"],
+  const { data: accounts, isLoading: accountsLoading, isError: accountsError, error: accountsErrorObj } = useQuery({
+    queryKey: QUERY_KEYS.whatsappAccounts,
     queryFn: () => apiFetch<WhatsappAccount[]>("/whatsapp-accounts", { token: token ?? undefined }),
     enabled: !!token,
+    staleTime: STALE.config,
+    placeholderData: (prev) => prev,
+    retry: (failureCount, err) => {
+      if (err instanceof ApiError && (err.status === 402 || err.status === 403)) return false;
+      return failureCount < 1;
+    },
   });
 
   const { data: config, isLoading: configLoading } = useQuery({
@@ -92,8 +99,13 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
       token: token ?? undefined,
     }),
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: STALE.config,
+    placeholderData: (prev) => prev,
   });
+
+  // Only block the connect UI on the first fetch — never replace tabs/input on background refetch.
+  const initialConnectLoading =
+    (!accounts && accountsLoading) || (!config && configLoading);
 
   useEffect(() => {
     if (isOnboarding && config && !config.embeddedSignupLive) {
@@ -129,7 +141,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
   });
 
   const { data: billing } = useQuery({
-    queryKey: ["billing-status"],
+    queryKey: QUERY_KEYS.billing,
     queryFn: () =>
       apiFetch<{ usage: { whatsappNumbers: number }; limits: { whatsappNumbers: number } }>(
         "/billing",
@@ -237,7 +249,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
     }
   }
 
-  if (accountsLoading || configLoading) {
+  if (initialConnectLoading) {
     return (
       <div className="space-y-4" aria-busy="true">
         <div className="h-[200px] animate-pulse rounded-2xl border border-border/80 bg-muted/40" />
@@ -245,6 +257,26 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
       </div>
     );
   }
+
+  const trialBlocked =
+    accountsError &&
+    accountsErrorObj instanceof ApiError &&
+    (accountsErrorObj.status === 402 || accountsErrorObj.status === 403);
+
+  const trialUpgradeBanner = trialBlocked ? (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+      <p className="font-semibold">Upgrade to connect WhatsApp</p>
+      <p className="mt-1 text-amber-900/90">
+        {toUserMessage(
+          accountsErrorObj,
+          "Your plan needs an upgrade before you can connect a number.",
+        )}
+      </p>
+      <Button asChild size="sm" className="mt-3 rounded-xl">
+        <Link href="/dashboard/pricing">View plans</Link>
+      </Button>
+    </div>
+  ) : null;
 
   if (displayAccount && !addingAnother && phase !== "waiting_meta" && phase !== "saving") {
     return (
@@ -386,6 +418,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
   if (!config?.enabled) {
     return (
       <div className="space-y-6">
+        {trialUpgradeBanner}
         {!isOnboarding && (
           <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
             <p className="text-sm text-muted-foreground">
@@ -396,7 +429,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
           </div>
         )}
         {canConnect ? (
-          <WhatsappConnectWizard />
+          <WhatsappConnectWizard disabled={!!trialBlocked} />
         ) : (
           <p className="text-sm text-muted-foreground">
             Only workspace admins can connect WhatsApp. You can view connection status once a number
@@ -533,7 +566,10 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             <p className="text-sm text-muted-foreground">
               Paste the temporary token from Meta API Setup while App Review is in progress.
             </p>
-            <WhatsappConnectWizard onConnected={() => setPhase("done")} />
+            <WhatsappConnectWizard
+              onConnected={() => setPhase("done")}
+              disabled={!!trialBlocked}
+            />
           </div>
         )}
       </div>
@@ -542,6 +578,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
 
   return (
     <div className="space-y-6">
+      {trialUpgradeBanner}
       {addingAnother && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3">
           <p className="text-sm text-muted-foreground">
@@ -588,7 +625,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             During App Review: connect with Meta API Setup token
           </summary>
           <div className="border-t border-border/80 px-6 py-6">
-            <WhatsappConnectWizard />
+            <WhatsappConnectWizard disabled={!!trialBlocked} />
           </div>
         </details>
         )}
@@ -599,7 +636,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             isOnboarding ? (
               facebookConnectCard
             ) : (
-              <WhatsappConnectWizard />
+              <WhatsappConnectWizard disabled={!!trialBlocked} />
             )
           ) : (
             <p className="text-sm text-muted-foreground">

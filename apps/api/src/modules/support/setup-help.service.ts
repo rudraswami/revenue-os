@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
+import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { OrganizationsService } from "../organizations/organizations.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 import { formatFaqForPrompt, SETUP_HELP_DOC_EXCERPT } from "./setup-help-knowledge";
@@ -112,19 +113,23 @@ export class SetupHelpService {
       { role: "user", content: message },
     ];
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+    const res = await fetchWithTimeout(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.3,
+          max_tokens: 400,
+          messages,
+        }),
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0.3,
-        max_tokens: 400,
-        messages,
-      }),
-    });
+      25_000,
+    );
 
     const body = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;

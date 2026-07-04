@@ -13,6 +13,7 @@ import {
 } from "@growvisi/shared";
 import { GROWVISI_API_URL, GROWVISI_WEB_URL } from "@growvisi/shared";
 import { decryptSecret, encryptSecret } from "../../common/crypto/token-cipher";
+import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { sanitizeEnvValue } from "../../config/cors-origins";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
@@ -177,7 +178,7 @@ export class WhatsappAccountsService {
     }
 
     const meUrl = `https://graph.facebook.com/${version}/me?fields=whatsapp_business_accounts{id,name,phone_numbers{id,display_phone_number,verified_name}}`;
-    const meRes = await fetch(meUrl, { headers: { Authorization: `Bearer ${token}` } });
+    const meRes = await fetchWithTimeout(meUrl, { headers: { Authorization: `Bearer ${token}` } });
     const meBody = (await meRes.json()) as {
       whatsapp_business_accounts?: MetaGraphList<{
         id: string;
@@ -211,13 +212,13 @@ export class WhatsappAccountsService {
     }
 
     const bizUrl = `https://graph.facebook.com/${version}/me/businesses?fields=id,name`;
-    const bizRes = await fetch(bizUrl, { headers: { Authorization: `Bearer ${token}` } });
+    const bizRes = await fetchWithTimeout(bizUrl, { headers: { Authorization: `Bearer ${token}` } });
     const bizBody = (await bizRes.json()) as MetaGraphList<{ id: string; name?: string }>;
 
     if (bizRes.ok && bizBody.data?.length) {
       for (const biz of bizBody.data) {
         const wabaUrl = `https://graph.facebook.com/${version}/${biz.id}/owned_whatsapp_business_accounts?fields=id,name,phone_numbers{id,display_phone_number,verified_name}`;
-        const wabaRes = await fetch(wabaUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const wabaRes = await fetchWithTimeout(wabaUrl, { headers: { Authorization: `Bearer ${token}` } });
         const wabaBody = (await wabaRes.json()) as MetaGraphList<{
           id: string;
           name?: string;
@@ -1059,7 +1060,7 @@ export class WhatsappAccountsService {
     url.searchParams.set("input_token", accessToken);
     url.searchParams.set("access_token", `${appId}|${appSecret}`);
 
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     const body = (await res.json()) as {
       data?: { is_valid?: boolean; expires_at?: number; type?: string; user_id?: string };
     };
@@ -1279,7 +1280,7 @@ export class WhatsappAccountsService {
   private async fetchPhoneDetails(phoneNumberId: string, accessToken: string) {
     const version = this.apiVersion();
     const url = `https://graph.facebook.com/${version}/${phoneNumberId}?fields=display_phone_number,verified_name`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const body = (await res.json()) as MetaPhoneDetails;
@@ -1308,7 +1309,7 @@ export class WhatsappAccountsService {
     url.searchParams.set("input_token", accessToken);
     url.searchParams.set("access_token", appToken);
 
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     const body = (await res.json()) as {
       data?: {
         granular_scopes?: Array<{ scope?: string; target_ids?: string[] }>;
@@ -1347,7 +1348,7 @@ export class WhatsappAccountsService {
     version: string,
   ): Promise<DiscoveredPhone[]> {
     const url = `https://graph.facebook.com/${version}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const res = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     const body = (await res.json()) as MetaGraphList<{
       id: string;
       display_phone_number?: string;
@@ -1369,7 +1370,7 @@ export class WhatsappAccountsService {
 
   private async subscribeWabaWebhooks(wabaId: string, accessToken: string) {
     const version = this.apiVersion();
-    const res = await fetch(`https://graph.facebook.com/${version}/${wabaId}/subscribed_apps`, {
+    const res = await fetchWithTimeout(`https://graph.facebook.com/${version}/${wabaId}/subscribed_apps`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
     });

@@ -19,7 +19,7 @@ import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
 import { Button } from "@/components/ui/button";
 import { QueryErrorState } from "@/components/ui/query-state";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { formatActivityLabel } from "@/lib/activity-labels";
 import { CTA, EYEBROW } from "@/lib/brand-copy";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
 
-  const { data: funnel, isLoading: funnelLoading, isError: funnelError, refetch: refetchFunnel } = useQuery({
+  const { data: funnel, isLoading: funnelLoading, isError: funnelError, error: funnelErrorObj, refetch: refetchFunnel } = useQuery({
     queryKey: QUERY_KEYS.funnel("30d"),
     queryFn: () =>
       apiFetch<{ total: number; won: number; conversionRate: number; byStage: { stage: string; count: number }[] }>(
@@ -59,7 +59,7 @@ export default function DashboardPage() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: convStats, isLoading: convLoading, isError: convError, refetch: refetchConv } = useQuery({
+  const { data: convStats, isLoading: convLoading, isError: convError, error: convErrorObj, refetch: refetchConv } = useQuery({
     queryKey: QUERY_KEYS.conversationStats(),
     queryFn: () =>
       apiFetch<{
@@ -130,6 +130,9 @@ export default function DashboardPage() {
   });
 
   const isLoading = funnelLoading || convLoading;
+  const dashboardError = funnelErrorObj ?? convErrorObj;
+  const trialOrPlanBlocked =
+    dashboardError instanceof ApiError && (dashboardError.status === 402 || dashboardError.status === 403);
 
   return (
     <div className="dashboard-page">
@@ -153,12 +156,28 @@ export default function DashboardPage() {
 
       {(funnelError || convError) && !isLoading && (
         <div className="mb-8">
-          <QueryErrorState
-            onRetry={() => {
-              if (funnelError) void refetchFunnel();
-              if (convError) void refetchConv();
-            }}
-          />
+          {trialOrPlanBlocked ? (
+            <QueryErrorState
+              title="Upgrade to keep viewing your dashboard"
+              message={toUserMessage(dashboardError, "Your plan needs an upgrade to continue.")}
+              onRetry={undefined}
+            >
+              <Button asChild size="sm" className="mt-4 rounded-xl">
+                <Link href="/dashboard/pricing">View plans</Link>
+              </Button>
+            </QueryErrorState>
+          ) : (
+            <QueryErrorState
+              message={toUserMessage(
+                dashboardError,
+                "Check your connection and try again.",
+              )}
+              onRetry={() => {
+                if (funnelError) void refetchFunnel();
+                if (convError) void refetchConv();
+              }}
+            />
+          )}
         </div>
       )}
 
