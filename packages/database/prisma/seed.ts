@@ -15,6 +15,8 @@ const ACCOUNTS = [
     password: process.env.SEED_META_REVIEWER_PASSWORD ?? "MetaReview2026!Growvisi",
     name: "Meta Reviewer",
     organizationName: process.env.SEED_META_REVIEWER_ORG ?? "Meta Review Demo",
+    subscriptionPlanId: "pro",
+    subscriptionStatus: "ACTIVE",
   },
 ] as const;
 

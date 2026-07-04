@@ -18,6 +18,9 @@ export interface SeedAccountInput {
   password: string;
   name: string;
   organizationName: string;
+  /** When set, seeds an active paid plan instead of the default trial. */
+  subscriptionPlanId?: "starter" | "growth" | "pro";
+  subscriptionStatus?: "TRIALING" | "ACTIVE";
 }
 
 function slugify(name: string) {
@@ -82,12 +85,48 @@ export async function seedWorkspaceAccount(
   await tx.subscription.create({
     data: {
       organizationId: organization.id,
-      planId: "trial",
-      status: "TRIALING",
+      planId: input.subscriptionPlanId ?? "trial",
+      status: input.subscriptionStatus ?? "TRIALING",
+      ...(input.subscriptionStatus === "ACTIVE"
+        ? {
+            currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          }
+        : {}),
     },
   });
 
   return { user, organization };
+}
+
+function metaReviewerSeedEmail() {
+  return (
+    process.env.SEED_META_REVIEWER_EMAIL ??
+    process.env.META_REVIEWER_EMAIL ??
+    "meta.reviewer@growvisi.in"
+  ).trim().toLowerCase();
+}
+
+/** Keep Meta App Review account on full Pro — idempotent on every seed run. */
+async function ensureMetaReviewerProSubscription(organizationId: string, email: string) {
+  if (email.trim().toLowerCase() !== metaReviewerSeedEmail()) return;
+
+  const currentPeriodEnd = new Date();
+  currentPeriodEnd.setUTCFullYear(currentPeriodEnd.getUTCFullYear() + 1);
+
+  await prisma.subscription.upsert({
+    where: { organizationId },
+    create: {
+      organizationId,
+      planId: "pro",
+      status: "ACTIVE",
+      currentPeriodEnd,
+    },
+    update: {
+      planId: "pro",
+      status: "ACTIVE",
+      currentPeriodEnd,
+    },
+  });
 }
 
 export async function ensureSeedAccount(input: SeedAccountInput) {
@@ -98,6 +137,9 @@ export async function ensureSeedAccount(input: SeedAccountInput) {
       where: { userId: existing.id, role: "OWNER" },
       include: { organization: true },
     });
+    if (member?.organization) {
+      await ensureMetaReviewerProSubscription(member.organization.id, email);
+    }
     return {
       created: false as const,
       email,

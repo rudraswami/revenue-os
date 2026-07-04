@@ -74,6 +74,11 @@ class EnvironmentVariables {
   @IsOptional()
   META_WABA_REGISTER_PIN?: string;
 
+  /** Meta App Review demo owner — full Pro entitlements, never subscription-gated. */
+  @IsString()
+  @IsOptional()
+  META_REVIEWER_EMAIL?: string;
+
   @IsString()
   @IsOptional()
   RAZORPAY_KEY_ID?: string;

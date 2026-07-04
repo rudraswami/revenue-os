@@ -790,7 +790,7 @@ export class WhatsappAccountsService {
 
   async connectForOrganization(organizationId: string, dto: ConnectWhatsappDto) {
     const phoneNumberId = dto.phoneNumberId.trim();
-    const accessToken = dto.accessToken.trim();
+    const accessToken = normalizeMetaAccessToken(dto.accessToken) ?? dto.accessToken.trim();
 
     const duplicate = await this.prisma.whatsappAccount.findFirst({
       where: { organizationId, phoneNumberId },

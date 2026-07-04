@@ -1,12 +1,40 @@
 import { ForbiddenException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import { resolveSubscriptionAccess, type GrowvisiPlanId, type SubscriptionAccess } from "@growvisi/shared";
+import { PLAN_LIMITS, resolveSubscriptionAccess, type GrowvisiPlanId, type SubscriptionAccess } from "@growvisi/shared";
+import { metaReviewerEmail } from "../../config/meta-reviewer";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class EntitlementsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Meta App Review workspace — full Pro access, never trial-gated. */
+  private async metaReviewerAccess(organizationId: string): Promise<SubscriptionAccess | null> {
+    const reviewer = metaReviewerEmail();
+    const owner = await this.prisma.organizationMember.findFirst({
+      where: {
+        organizationId,
+        role: "OWNER",
+        user: { email: reviewer },
+      },
+      select: { id: true },
+    });
+    if (!owner) return null;
+
+    return {
+      planId: "pro",
+      limits: PLAN_LIMITS.pro,
+      trialEndsAt: null,
+      trialExpired: false,
+      hasAccess: true,
+      requiresUpgrade: false,
+      status: "ACTIVE",
+    };
+  }
+
   async getAccess(organizationId: string): Promise<SubscriptionAccess> {
+    const reviewerAccess = await this.metaReviewerAccess(organizationId);
+    if (reviewerAccess) return reviewerAccess;
+
     const sub = await this.prisma.subscription.findUnique({
       where: { organizationId },
     });
