@@ -429,7 +429,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
           </div>
         )}
         {canConnect ? (
-          <WhatsappConnectWizard disabled={!!trialBlocked} />
+          <WhatsappConnectWizard />
         ) : (
           <p className="text-sm text-muted-foreground">
             Only workspace admins can connect WhatsApp. You can view connection status once a number
@@ -568,7 +568,6 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             </p>
             <WhatsappConnectWizard
               onConnected={() => setPhase("done")}
-              disabled={!!trialBlocked}
             />
           </div>
         )}
@@ -625,7 +624,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             During App Review: connect with Meta API Setup token
           </summary>
           <div className="border-t border-border/80 px-6 py-6">
-            <WhatsappConnectWizard disabled={!!trialBlocked} />
+            <WhatsappConnectWizard />
           </div>
         </details>
         )}
@@ -636,7 +635,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             isOnboarding ? (
               facebookConnectCard
             ) : (
-              <WhatsappConnectWizard disabled={!!trialBlocked} />
+              <WhatsappConnectWizard />
             )
           ) : (
             <p className="text-sm text-muted-foreground">

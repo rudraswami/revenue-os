@@ -4,12 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, ClipboardPaste, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { WhatsappMetaSetupGuide } from "@/components/settings/whatsapp-meta-setup-guide";
 import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { looksLikeMetaToken, type DiscoveredPhone } from "@/lib/whatsapp-onboarding";
+import { looksLikeMetaToken, normalizeMetaToken, type DiscoveredPhone } from "@/lib/whatsapp-onboarding";
 import { cn } from "@/lib/utils";
 
 interface WhatsappAccount {
@@ -60,7 +59,7 @@ export function WhatsappManualConnect({
       apiFetch<DiscoveredPhone[]>("/whatsapp-accounts/discover-phones", {
         method: "POST",
         token: token ?? undefined,
-        body: JSON.stringify({ accessToken: accessToken.trim() }),
+        body: JSON.stringify({ accessToken: normalizeMetaToken(accessToken) }),
       }),
     onSuccess: (phones) => {
       setDiscovered(phones);
@@ -82,7 +81,7 @@ export function WhatsappManualConnect({
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({
-          accessToken: accessToken.trim(),
+          accessToken: normalizeMetaToken(accessToken),
           phoneNumberId: phoneNumberId.trim() || undefined,
           wabaId: wabaId.trim() || undefined,
         }),
@@ -102,7 +101,7 @@ export function WhatsappManualConnect({
     },
   });
 
-  const busy = discoverMutation.isPending || connectMutation.isPending;
+  const connecting = connectMutation.isPending;
   const needsPhonePick = discovered.length > 1;
   const canConnect =
     looksLikeMetaToken(accessToken) && (!needsPhonePick || phoneNumberId.trim().length > 5);
@@ -113,7 +112,7 @@ export function WhatsappManualConnect({
   }, [accessToken, discoverMutation]);
 
   useEffect(() => {
-    const trimmed = accessToken.trim();
+    const trimmed = normalizeMetaToken(accessToken);
     if (!looksLikeMetaToken(trimmed) || trimmed === lastAutoDiscover.current) return;
     if (discoverMutation.isPending) return;
     const timer = setTimeout(() => {
@@ -122,6 +121,14 @@ export function WhatsappManualConnect({
     }, 600);
     return () => clearTimeout(timer);
   }, [accessToken, discoverMutation.isPending, runDiscover]);
+
+  function applyToken(raw: string) {
+    const normalized = normalizeMetaToken(raw);
+    if (!normalized) return;
+    lastAutoDiscover.current = "";
+    setAccessToken(normalized);
+    setError(null);
+  }
 
   const shellClass = isPrimary
     ? "overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-sm"
@@ -174,26 +181,41 @@ export function WhatsappManualConnect({
                 variant="ghost"
                 size="sm"
                 className="h-7 gap-1 text-xs"
-                onClick={async () => {
+                onClick={() => void (async () => {
                   try {
                     const text = await navigator.clipboard.readText();
-                    if (text.trim()) setAccessToken(text.trim());
+                    if (text.trim()) applyToken(text);
+                    else setError("Clipboard is empty.");
                   } catch {
-                    setError("Paste manually with Ctrl+V.");
+                    setError("Click the field and press Ctrl+V (or ⌘V on Mac).");
                   }
-                }}
+                })()}
               >
                 <ClipboardPaste className="h-3.5 w-3.5" />
                 Paste
               </Button>
             </div>
-            <Input
-              type="password"
+            <textarea
               autoComplete="off"
+              spellCheck={false}
+              rows={3}
               placeholder="EAA… from Meta API Setup"
-              className="rounded-xl"
+              className="min-h-[72px] w-full resize-none rounded-xl border border-input bg-background px-3 py-2.5 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
               value={accessToken}
-              onChange={(e) => setAccessToken(e.target.value)}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData("text");
+                if (!text.trim()) return;
+                e.preventDefault();
+                applyToken(text);
+              }}
+              onBlur={() => {
+                const normalized = normalizeMetaToken(accessToken);
+                if (normalized && normalized !== accessToken) setAccessToken(normalized);
+              }}
+              onChange={(e) => {
+                setAccessToken(e.target.value);
+                setError(null);
+              }}
             />
             {discoverMutation.isPending && (
               <p className="flex items-center gap-2 text-xs text-accent">
@@ -218,10 +240,10 @@ export function WhatsappManualConnect({
             type="button"
             variant="accent"
             className="w-full rounded-xl"
-            disabled={busy || !canConnect}
+            disabled={connecting || !canConnect}
             onClick={() => connectMutation.mutate()}
           >
-            {connectMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {connecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Connect my number
           </Button>
         </div>

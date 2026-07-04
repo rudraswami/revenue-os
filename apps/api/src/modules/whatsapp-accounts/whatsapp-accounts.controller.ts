@@ -107,6 +107,7 @@ export class WhatsappAccountsController {
   }
 
   @Post("discover-phones")
+  @SkipSubscriptionCheck()
   @UseGuards(MembershipRoleGuard)
   @Roles("OWNER", "ADMIN", "MANAGER")
   discoverPhones(@Body() dto: DiscoverPhonesDto) {
@@ -121,6 +122,7 @@ export class WhatsappAccountsController {
   }
 
   @Post("quick-connect")
+  @SkipSubscriptionCheck()
   @UseGuards(MembershipRoleGuard)
   @Roles("OWNER", "ADMIN", "MANAGER")
   quickConnect(@CurrentUser() user: JwtPayload, @Body() dto: QuickConnectWhatsappDto) {

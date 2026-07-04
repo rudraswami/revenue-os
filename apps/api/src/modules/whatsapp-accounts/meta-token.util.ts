@@ -1,5 +1,27 @@
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 
+/** Normalize tokens pasted from Meta UI, curl, or JSON wrappers. */
+export function normalizeMetaAccessToken(raw: string): string {
+  let t = raw.trim();
+  if (!t) return "";
+
+  if (
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    t = t.slice(1, -1).trim();
+  }
+
+  const embedded = t.match(/EAA[A-Za-z0-9+/=_-]{15,}/);
+  if (embedded) return embedded[0];
+
+  if (/^EAA/i.test(t.replace(/\s+/g, ""))) {
+    return t.replace(/\s+/g, "");
+  }
+
+  return t;
+}
+
 /** Exchange a short-lived Meta user token for a long-lived token (~60 days). */
 export async function exchangeForLongLivedToken(
   shortLivedToken: string,

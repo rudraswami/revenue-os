@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
 import { WhatsappMetaSetupGuide } from "@/components/settings/whatsapp-meta-setup-guide";
 import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
@@ -19,6 +18,7 @@ import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   looksLikeMetaToken,
+  normalizeMetaToken,
   WIZARD_STEP_KEY,
   WIZARD_TOKEN_DRAFT_KEY,
   WIZARD_STEPS,
@@ -30,10 +30,8 @@ import { cn } from "@/lib/utils";
 
 export function WhatsappConnectWizard({
   onConnected,
-  disabled = false,
 }: {
   onConnected?: () => void;
-  disabled?: boolean;
 }) {
   const token = useAuthStore((s) => s.accessToken);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
@@ -58,7 +56,7 @@ export function WhatsappConnectWizard({
       setStep(saved);
     }
     const draft = sessionStorage.getItem(WIZARD_TOKEN_DRAFT_KEY);
-    if (draft) setAccessToken(draft);
+    if (draft) setAccessToken(normalizeMetaToken(draft));
   }, []);
 
   useEffect(() => {
@@ -95,7 +93,7 @@ export function WhatsappConnectWizard({
       apiFetch<DiscoveredPhone[]>("/whatsapp-accounts/discover-phones", {
         method: "POST",
         token: token ?? undefined,
-        body: JSON.stringify({ accessToken: accessToken.trim() }),
+        body: JSON.stringify({ accessToken: normalizeMetaToken(accessToken) }),
       }),
     onSuccess: (phones) => {
       setDiscovered(phones);
@@ -124,7 +122,7 @@ export function WhatsappConnectWizard({
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({
-          accessToken: accessToken.trim(),
+          accessToken: normalizeMetaToken(accessToken),
           phoneNumberId: phoneNumberId.trim() || undefined,
           wabaId: wabaId.trim() || undefined,
         }),
@@ -148,13 +146,27 @@ export function WhatsappConnectWizard({
     },
   });
 
-  const busy = discoverMutation.isPending || quickConnectMutation.isPending;
+  const connecting = quickConnectMutation.isPending;
   const needsPhonePick = discovered.length > 1;
+  const tokenReady = looksLikeMetaToken(accessToken);
   const canConnect =
-    !disabled &&
-    looksLikeMetaToken(accessToken) &&
-    (!needsPhonePick || phoneNumberId.trim().length > 5);
+    tokenReady && (!needsPhonePick || phoneNumberId.trim().length > 5);
   const stepIndex = WIZARD_STEPS.findIndex((s) => s.id === step);
+
+  const connectHint = (() => {
+    if (!tokenReady) {
+      const normalized = normalizeMetaToken(accessToken);
+      if (!normalized) return "Paste your access token from Meta API Setup to continue.";
+      if (!/^EAA/i.test(normalized)) {
+        return "Token should start with EAA — copy it from Meta API Setup → Generate access token.";
+      }
+      return "Token looks incomplete — copy the full string from Meta (usually 100+ characters).";
+    }
+    if (needsPhonePick && !phoneNumberId.trim()) {
+      return "Select which business line to connect.";
+    }
+    return null;
+  })();
 
   const runDiscover = useCallback(() => {
     if (!looksLikeMetaToken(accessToken)) return;
@@ -162,8 +174,8 @@ export function WhatsappConnectWizard({
   }, [accessToken, discoverMutation]);
 
   useEffect(() => {
-    const trimmed = accessToken.trim();
-    if (disabled || !looksLikeMetaToken(trimmed) || trimmed === lastAutoDiscover.current) return;
+    const trimmed = normalizeMetaToken(accessToken);
+    if (!looksLikeMetaToken(trimmed) || trimmed === lastAutoDiscover.current) return;
     if (discoverMutation.isPending) return;
 
     const timer = setTimeout(() => {
@@ -172,17 +184,40 @@ export function WhatsappConnectWizard({
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [accessToken, disabled, discoverMutation.isPending, runDiscover]);
+  }, [accessToken, discoverMutation.isPending, runDiscover]);
+
+  function applyToken(raw: string) {
+    const normalized = normalizeMetaToken(raw);
+    if (!normalized) return;
+    lastAutoDiscover.current = "";
+    setAccessToken(normalized);
+    setError(null);
+  }
 
   async function pasteFromClipboard() {
     try {
       const text = await navigator.clipboard.readText();
       if (text.trim()) {
-        setAccessToken(text.trim());
-        setError(null);
+        applyToken(text);
+        return;
       }
+      setError("Clipboard is empty. Copy your token from Meta API Setup first.");
     } catch {
-      setError("Could not read clipboard. Paste manually with Ctrl+V.");
+      setError("Could not read clipboard — click the field and press Ctrl+V (or ⌘V on Mac).");
+    }
+  }
+
+  function handleTokenPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const text = e.clipboardData.getData("text");
+    if (!text.trim()) return;
+    e.preventDefault();
+    applyToken(text);
+  }
+
+  function handleTokenBlur() {
+    const normalized = normalizeMetaToken(accessToken);
+    if (normalized && normalized !== accessToken) {
+      setAccessToken(normalized);
     }
   }
 
@@ -266,14 +301,16 @@ export function WhatsappConnectWizard({
                       Paste
                     </Button>
                   </div>
-                  <Input
+                  <textarea
                     id="wa-access-token"
-                    type="password"
                     autoComplete="off"
+                    spellCheck={false}
+                    rows={3}
                     placeholder="EAA… — paste from Meta API Setup"
-                    className="h-12 rounded-xl border-[#dce9ff] bg-white text-sm"
+                    className="min-h-[72px] w-full resize-none rounded-xl border border-[#dce9ff] bg-white px-3 py-2.5 font-mono text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
                     value={accessToken}
-                    disabled={disabled}
+                    onPaste={handleTokenPaste}
+                    onBlur={handleTokenBlur}
                     onChange={(e) => {
                       setAccessToken(e.target.value);
                       setError(null);
@@ -305,13 +342,13 @@ export function WhatsappConnectWizard({
                 )}
 
                 <Button
-                  disabled={busy || !canConnect}
+                  disabled={connecting || !canConnect}
                   variant="accent"
                   size="lg"
                   className="mt-5 h-12 w-full rounded-xl text-[15px] font-semibold"
                   onClick={() => quickConnectMutation.mutate()}
                 >
-                  {quickConnectMutation.isPending ? (
+                  {connecting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Connecting…
@@ -323,6 +360,10 @@ export function WhatsappConnectWizard({
                     </>
                   )}
                 </Button>
+
+                {connectHint && !connecting && (
+                  <p className="mt-2 text-center text-xs text-muted-foreground">{connectHint}</p>
+                )}
 
                 <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
                   Encrypted on our servers. We verify your token, enable webhooks, and link your

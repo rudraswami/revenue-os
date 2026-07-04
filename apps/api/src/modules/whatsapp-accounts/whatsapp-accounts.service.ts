@@ -18,7 +18,7 @@ import { sanitizeEnvValue } from "../../config/cors-origins";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { exchangeForLongLivedToken } from "./meta-token.util";
+import { exchangeForLongLivedToken, normalizeMetaAccessToken } from "./meta-token.util";
 import type { WhatsappWebhookPayload } from "../whatsapp/whatsapp.service";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import { ConnectWhatsappDto, CreateWhatsappAccountDto, UpdateWhatsappAccountDto } from "./dto/whatsapp-account.dto";
@@ -164,7 +164,10 @@ export class WhatsappAccountsService {
   }
 
   async discoverPhones(accessToken: string): Promise<DiscoveredPhone[]> {
-    const token = accessToken.trim();
+    const token = normalizeMetaAccessToken(accessToken);
+    if (!token) {
+      throw new BadRequestException("Paste a valid Meta access token from API Setup.");
+    }
     const version = this.apiVersion();
     const found: DiscoveredPhone[] = [];
 
@@ -729,7 +732,10 @@ export class WhatsappAccountsService {
     organizationId: string,
     dto: { accessToken: string; phoneNumberId?: string; wabaId?: string },
   ) {
-    const accessToken = dto.accessToken.trim();
+    const accessToken = normalizeMetaAccessToken(dto.accessToken);
+    if (!accessToken) {
+      throw new BadRequestException("Paste a valid Meta access token from API Setup.");
+    }
     const phones = await this.discoverPhones(accessToken);
 
     let phoneNumberId = dto.phoneNumberId?.trim();

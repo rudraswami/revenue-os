@@ -8,9 +8,35 @@ export function whatsappChatUrl(displayPhone: string) {
   return digits ? `https://wa.me/${digits}` : null;
 }
 
+/** Strip quotes, whitespace, and common copy-paste wrappers from a Meta Graph API token. */
+export function normalizeMetaToken(value: string): string {
+  let t = value.trim();
+  if (!t) return "";
+
+  // Unwrap one layer of quotes from JSON / form copy.
+  if (
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    t = t.slice(1, -1).trim();
+  }
+
+  // access_token=EAA… or "access_token": "EAA…"
+  const embedded = t.match(/EAA[A-Za-z0-9+/=_-]{15,}/);
+  if (embedded) return embedded[0];
+
+  // Collapse accidental line breaks / spaces inside the token string.
+  if (/^EAA/i.test(t.replace(/\s+/g, ""))) {
+    return t.replace(/\s+/g, "");
+  }
+
+  return t;
+}
+
 export function looksLikeMetaToken(value: string) {
-  const t = value.trim();
-  return t.startsWith("EAA") && t.length >= 40;
+  const t = normalizeMetaToken(value);
+  // Meta user / system tokens from API Setup start with EAA and are typically 100+ chars.
+  return /^EAA[A-Za-z0-9+/=_-]{15,}$/.test(t);
 }
 
 export const WIZARD_STEP_KEY = "growvisi-wa-wizard-step";
