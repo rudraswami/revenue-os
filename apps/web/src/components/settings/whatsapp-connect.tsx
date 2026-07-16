@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
@@ -53,7 +53,7 @@ interface EmbeddedConfig {
   coexFeatureType?: string;
 }
 
-type ConnectPhase = "idle" | "waiting_meta" | "saving" | "done" | "error";
+export type WhatsappConnectPhase = "idle" | "waiting_meta" | "saving" | "done" | "error";
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -63,7 +63,14 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-export default function WhatsappConnect({ variant = "default" }: { variant?: "default" | "onboarding" }) {
+export default function WhatsappConnect({
+  variant = "default",
+  onPhaseChange,
+}: {
+  variant?: "default" | "onboarding";
+  /** Fired when Embedded Signup / save phase changes (used by activation progress UI). */
+  onPhaseChange?: (phase: WhatsappConnectPhase) => void;
+}) {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canConnect = canConnectWhatsapp(role);
@@ -71,13 +78,20 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const queryClient = useQueryClient();
 
-  const [phase, setPhase] = useState<ConnectPhase>("idle");
+  const isOnboarding = variant === "onboarding";
+  const [phase, setPhaseState] = useState<WhatsappConnectPhase>("idle");
+  const onPhaseChangeRef = useRef(onPhaseChange);
+  onPhaseChangeRef.current = onPhaseChange;
+  const setPhase = (next: WhatsappConnectPhase) => {
+    setPhaseState(next);
+    onPhaseChangeRef.current?.(next);
+  };
   const [error, setError] = useState<string | null>(null);
   const [connectedAccount, setConnectedAccount] = useState<WhatsappAccount | null>(null);
+  /** Same default as Settings — do not change ES featureType for onboarding. */
   const [connectPath, setConnectPath] = useState<WhatsappConnectPath>(DEFAULT_WHATSAPP_CONNECT_PATH);
   const [addingAnother, setAddingAnother] = useState(false);
-  const [connectMode, setConnectMode] = useState<"facebook" | "token">("facebook");
-  const isOnboarding = variant === "onboarding";
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const { t } = useI18n();
   const { success, error: toastError } = useToast();
 
@@ -109,7 +123,7 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
 
   useEffect(() => {
     if (isOnboarding && config && !config.embeddedSignupLive) {
-      setConnectMode("token");
+      setShowAdvanced(true);
     }
   }, [isOnboarding, config]);
 
@@ -256,6 +270,12 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
         <div className="h-24 animate-pulse rounded-2xl border border-border/80 bg-muted/30" />
       </div>
     );
+  }
+
+  // Keep this instance mounted during Meta popup + save — parent only hides visually.
+  // Returning null here previously risked remount races with postMessage / FB.login.
+  if (isOnboarding && displayAccount && !addingAnother && phase !== "waiting_meta" && phase !== "saving") {
+    return null;
   }
 
   const trialBlocked =
@@ -416,18 +436,27 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
   }
 
   if (!config?.enabled) {
+    if (isOnboarding) {
+      return (
+        <div className="mx-auto max-w-md space-y-4 rounded-2xl border border-border/60 bg-white p-6 text-center shadow-sm">
+          {trialUpgradeBanner}
+          <p className="text-sm text-muted-foreground">{t("onboardingActivation.metaUnavailable")}</p>
+          <Button asChild variant="outline" className="rounded-xl">
+            <Link href="/dashboard/settings?tab=whatsapp">{t("onboardingActivation.settingsLink")}</Link>
+          </Button>
+        </div>
+      );
+    }
     return (
       <div className="space-y-6">
         {trialUpgradeBanner}
-        {!isOnboarding && (
-          <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
-            <p className="text-sm text-muted-foreground">
-              Connect your <strong className="text-foreground">WhatsApp Business number</strong> with a
-              Meta API Setup token. Growvisi ingests messages, classifies intent, and tracks pipeline — your
-              team replies from Inbox when customers need a human.
-            </p>
-          </div>
-        )}
+        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            Connect your <strong className="text-foreground">WhatsApp Business number</strong> with a
+            Meta API Setup token. Growvisi ingests messages, classifies intent, and tracks pipeline — your
+            team replies from Inbox when customers need a human.
+          </p>
+        </div>
         {canConnect ? (
           <WhatsappConnectWizard />
         ) : (
@@ -436,75 +465,103 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             is linked.
           </p>
         )}
-        {!isOnboarding && <WhatsappOnboardingHelp />}
+        <WhatsappOnboardingHelp />
       </div>
     );
   }
 
-  const facebookConnectCard = (
-    <div
-      className={cn(
-        "overflow-hidden rounded-2xl border bg-white shadow-[0_8px_30px_rgb(11_28_48/0.04)]",
-        isOnboarding ? "border-border/60" : "border-border",
-      )}
-    >
-      {isOnboarding ? (
-        embeddedLive ? (
-          <div className="flex gap-2 border-b border-border/60 p-2">
-            <button
-              type="button"
-              onClick={() => setConnectMode("facebook")}
-              className={cn(
-                "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors",
-                connectMode === "facebook"
-                  ? "bg-accent text-white shadow-sm"
-                  : "text-muted-foreground hover:bg-[#ecfdf5]/80",
-              )}
-            >
-              {t("whatsappConnect.facebookTab")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setConnectMode("token")}
-              className={cn(
-                "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors",
-                connectMode === "token"
-                  ? "bg-accent text-white shadow-sm"
-                  : "text-muted-foreground hover:bg-[#ecfdf5]/80",
-              )}
-            >
-              {t("whatsappConnect.tokenTab")}
-            </button>
+  const metaCtaLabel =
+    phase === "waiting_meta"
+      ? t("onboardingActivation.metaWindowHint")
+      : phase === "saving"
+        ? t("onboardingActivation.connectingNumber")
+        : phase === "error"
+          ? t("onboardingActivation.tryAgain")
+          : t("onboardingActivation.continueWithMeta");
+
+  const facebookConnectCard = isOnboarding ? (
+    <div className="mx-auto max-w-md overflow-hidden rounded-2xl border border-border/60 bg-white shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
+      <div className="space-y-5 p-6 sm:p-8">
+        {error && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <p>{error}</p>
+            <p className="mt-2 text-xs text-destructive/90">{t("onboardingActivation.connectErrorHint")}</p>
           </div>
+        )}
+
+        {embeddedLive ? (
+          <>
+            <Button
+              size="lg"
+              className="h-12 w-full gap-2 rounded-xl bg-[#1877F2] text-base font-semibold hover:bg-[#166FE0]"
+              disabled={phase === "waiting_meta" || phase === "saving"}
+              onClick={() => void handleConnect()}
+            >
+              {(phase === "waiting_meta" || phase === "saving") && (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              )}
+              {metaCtaLabel}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              {t("onboardingActivation.connectTrust")}
+            </p>
+          </>
         ) : (
-          <div className="border-b border-border/60 px-5 py-4">
-            <p className="text-sm font-semibold text-foreground">{t("whatsappConnect.tokenOnlyTitle")}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{t("whatsappConnect.tokenOnlyHint")}</p>
+          <p className="text-sm text-muted-foreground">{t("onboardingActivation.metaUnavailable")}</p>
+        )}
+
+        <div className="border-t border-border/60 pt-4">
+          <button
+            type="button"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground"
+            onClick={() => setShowAdvanced((v) => !v)}
+          >
+            {showAdvanced
+              ? t("onboardingActivation.hideAdvanced")
+              : t("onboardingActivation.advancedOptions")}
+          </button>
+          {showAdvanced && (
+            <div className="mt-4 space-y-4">
+              {embeddedLive && (
+                <WhatsappConnectPathPicker value={connectPath} onChange={setConnectPath} />
+              )}
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {t("onboardingActivation.advancedHint")}{" "}
+                <Link
+                  href="/dashboard/settings?tab=whatsapp"
+                  className="font-medium text-accent hover:underline"
+                >
+                  {t("onboardingActivation.settingsLink")}
+                </Link>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
+      <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1877F2]/15 text-[#1877F2]">
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+            </svg>
           </div>
-        )
-      ) : (
-        <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-6">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1877F2]/15 text-[#1877F2]">
-              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#1877F2]">
-                Recommended
-              </p>
-              <h3 className="text-lg font-semibold">One-click with Facebook</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Sign in with the Facebook account that manages your WhatsApp Business. Takes about
-                2 minutes.
-              </p>
-            </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#1877F2]">
+              Recommended
+            </p>
+            <h3 className="text-lg font-semibold">One-click with Facebook</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Sign in with the Facebook account that manages your WhatsApp Business. Takes about
+              2 minutes.
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
-      <div className={cn("space-y-5", isOnboarding ? "p-5 sm:p-6" : "space-y-4 px-6 py-6")}>
+      <div className="space-y-4 px-6 py-6">
         {error && (
           <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <p>{error}</p>
@@ -513,41 +570,37 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
                 Tip: After Facebook login, Meta should show WhatsApp setup screens (pick business →
                 phone → Finish). If the popup closes right after login, try the &quot;I use WhatsApp
                 API already&quot; path, allow popups, and confirm{" "}
-                <code className="rounded bg-destructive/10 px-1">{typeof window !== "undefined" ? window.location.hostname : "your domain"}</code>{" "}
+                <code className="rounded bg-destructive/10 px-1">
+                  {typeof window !== "undefined" ? window.location.hostname : "your domain"}
+                </code>{" "}
                 is in Meta → Facebook Login for Business → Allowed Domains.
               </p>
             ) : null}
           </div>
         )}
 
-        {(connectMode === "facebook" || !isOnboarding) && embeddedLive && (
+        {embeddedLive && (
           <>
             <WhatsappConnectPathPicker value={connectPath} onChange={setConnectPath} />
 
-            {!isOnboarding && (
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[
-                  { icon: Smartphone, title: "Business account", text: "Use your Meta Business login" },
-                  { icon: ShieldCheck, title: "Pick your number", text: "Select your WhatsApp line" },
-                  { icon: MessageCircle, title: "Go live", text: "Messages flow to Inbox" },
-                ].map((step, i) => (
-                  <div key={step.title} className="rounded-lg bg-muted/40 p-3">
-                    <p className="text-xs font-bold text-primary">Step {i + 1}</p>
-                    <step.icon className="mb-1 mt-2 h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">{step.title}</p>
-                    <p className="text-xs text-muted-foreground">{step.text}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { icon: Smartphone, title: "Business account", text: "Use your Meta Business login" },
+                { icon: ShieldCheck, title: "Pick your number", text: "Select your WhatsApp line" },
+                { icon: MessageCircle, title: "Go live", text: "Messages flow to Inbox" },
+              ].map((step, i) => (
+                <div key={step.title} className="rounded-lg bg-muted/40 p-3">
+                  <p className="text-xs font-bold text-primary">Step {i + 1}</p>
+                  <step.icon className="mb-1 mt-2 h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">{step.title}</p>
+                  <p className="text-xs text-muted-foreground">{step.text}</p>
+                </div>
+              ))}
+            </div>
 
             <Button
               size="lg"
-              className={cn(
-                "h-12 w-full gap-2 text-base font-semibold rounded-xl",
-                "bg-[#1877F2] hover:bg-[#166FE0]",
-                isOnboarding && "sm:max-w-md",
-              )}
+              className="h-12 w-full gap-2 rounded-xl bg-[#1877F2] text-base font-semibold hover:bg-[#166FE0]"
               disabled={phase === "waiting_meta" || phase === "saving"}
               onClick={() => void handleConnect()}
             >
@@ -564,20 +617,10 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             </Button>
 
             <p className="text-xs text-muted-foreground">
-              {t("whatsappConnect.secureNote")}{" "}
-              {t("whatsappConnect.metaFinishHint")}
+              {t("whatsappConnect.secureNote")} {t("whatsappConnect.metaFinishHint")}
             </p>
-            {!isOnboarding && <WhatsappEmbeddedSignupDiagnostics />}
+            <WhatsappEmbeddedSignupDiagnostics />
           </>
-        )}
-
-        {isOnboarding && (connectMode === "token" || !embeddedLive) && (
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">
-              Paste the temporary token from Meta API Setup while App Review is in progress.
-            </p>
-            <WhatsappConnectWizard />
-          </div>
         )}
       </div>
     </div>

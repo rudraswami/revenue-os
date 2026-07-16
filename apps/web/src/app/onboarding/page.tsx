@@ -2,54 +2,42 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Bot,
-  CheckCircle2,
-  Inbox,
-  Kanban,
-  Shield,
-  Users,
-} from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
+import { ActivationSuccess } from "@/components/onboarding/activation-success";
+import { ConnectionProgress } from "@/components/onboarding/connection-progress";
 import { OnboardingStepper } from "@/components/onboarding/onboarding-stepper";
+import { OnboardingWelcome } from "@/components/onboarding/onboarding-welcome";
 import { Button } from "@/components/ui/button";
-import WhatsappConnect from "@/components/settings/whatsapp-connect";
-import { WhatsappGoLiveChecklist } from "@/components/settings/whatsapp-go-live-checklist";
-import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding-faq";
-import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
-import { formatMessage } from "@/lib/i18n/format-message";
+import WhatsappConnect, {
+  type WhatsappConnectPhase,
+} from "@/components/settings/whatsapp-connect";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { apiFetch } from "@/lib/api-client";
-import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
+import { cn } from "@/lib/utils";
 
-const VALUE_PROP_KEYS = [
-  { icon: Bot, key: "ai" },
-  { icon: Kanban, key: "pipeline" },
-  { icon: Users, key: "team" },
-  { icon: Shield, key: "india" },
-] as const;
-
-const AFTER_CONNECT_KEYS = ["step1", "step2", "step3", "step4"] as const;
+type Screen = "welcome" | "connect" | "connecting" | "success";
 
 function OnboardingPageContent() {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromAgency = searchParams.get("from") === "agency";
-  const queryClient = useQueryClient();
   const token = useAuthStore((s) => s.accessToken);
-  const user = useAuthStore((s) => s.user);
   const organization = useAuthStore((s) => s.organization);
   const patchOnboarding = useAuthStore((s) => s.patchOnboarding);
   const dismissOnboarding = useAuthStore((s) => s.dismissOnboarding);
 
-  function goToDashboard() {
+  const [screen, setScreen] = useState<Screen>("welcome");
+  const [connectPhase, setConnectPhase] = useState<WhatsappConnectPhase>("idle");
+  /** Once true, keep WhatsappConnect mounted for the rest of the session so ES cannot remount mid-popup. */
+  const [connectMounted, setConnectMounted] = useState(false);
+
+  function exploreDashboard() {
     dismissOnboarding();
     router.push(fromAgency ? "/dashboard/agency" : "/dashboard");
   }
@@ -64,69 +52,76 @@ function OnboardingPageContent() {
     enabled: !!token,
     staleTime: 60_000,
     placeholderData: (prev) => prev,
-    // Poll only after connect — while waiting for the first inbound test message.
-    refetchInterval: (query) => {
-      const rows = query.state.data;
-      const connected = rows?.some((a) => a.isActive) ?? false;
-      return connected ? 10_000 : false;
-    },
-  });
-
-  const { data: convStats } = useQuery({
-    queryKey: ["conversation-stats"],
-    queryFn: () =>
-      apiFetch<{ inboundMessages: number }>("/conversations/stats", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: 30_000,
-    placeholderData: (prev) => prev,
-    refetchInterval: (query) => {
-      const hasInbound = (query.state.data?.inboundMessages ?? 0) > 0;
-      if (hasInbound) return false;
-      const rows = queryClient.getQueryData<Array<{ isActive: boolean }>>(["whatsapp-accounts"]);
-      return rows?.some((a) => a.isActive) ? 10_000 : false;
-    },
   });
 
   const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;
-  const firstMessageReceived = (convStats?.inboundMessages ?? 0) > 0;
   const activeAccount = accounts?.find((a) => a.isActive);
+  const esInFlight = connectPhase === "waiting_meta" || connectPhase === "saving";
 
   useEffect(() => {
-    if (whatsappConnected) {
-      patchOnboarding({
-        whatsappConnected: true,
-        firstMessageReceived,
-        complete: true,
-      });
+    if (!whatsappConnected) return;
+    // Never yank UI away while Meta popup / complete API is still running.
+    if (esInFlight) return;
+    patchOnboarding({
+      whatsappConnected: true,
+      firstMessageReceived: false,
+      complete: true,
+    });
+    setScreen("success");
+    setConnectPhase((p) => (p === "done" ? p : "done"));
+  }, [whatsappConnected, esInFlight, patchOnboarding]);
+
+  function handlePhaseChange(phase: WhatsappConnectPhase) {
+    setConnectPhase(phase);
+    if (phase === "waiting_meta" || phase === "saving") {
+      setScreen("connecting");
+    } else if (phase === "error" || phase === "idle") {
+      setScreen("connect");
+    } else if (phase === "done") {
+      setScreen("success");
     }
-  }, [whatsappConnected, firstMessageReceived, patchOnboarding]);
+  }
+
+  function enterConnect() {
+    setConnectMounted(true);
+    setScreen("connect");
+  }
+
+  const activeScreen: Screen =
+    whatsappConnected && !esInFlight ? "success" : screen;
 
   const stepperSteps = [
-    { id: "account", label: t("onboardingPage.stepperWorkspace"), done: true, current: false },
-    { id: "whatsapp", label: t("onboardingPage.stepperConnect"), done: whatsappConnected, current: !whatsappConnected },
     {
-      id: "live",
-      label: t("onboardingPage.stepperGoLive"),
-      done: firstMessageReceived,
-      current: whatsappConnected && !firstMessageReceived,
+      id: "welcome",
+      label: t("onboardingActivation.stepWelcome"),
+      done: activeScreen !== "welcome",
+      current: activeScreen === "welcome",
+    },
+    {
+      id: "connect",
+      label: t("onboardingActivation.stepConnect"),
+      done: activeScreen === "success",
+      current: activeScreen === "connect" || activeScreen === "connecting",
+    },
+    {
+      id: "ready",
+      label: t("onboardingActivation.stepReady"),
+      done: activeScreen === "success",
+      current: activeScreen === "success",
     },
   ];
 
-  const progressPct = Math.round(
-    ((stepperSteps.filter((s) => s.done).length + (whatsappConnected && !firstMessageReceived ? 0.5 : 0)) /
-      stepperSteps.length) *
-      100,
-  );
+  const hideConnectUi =
+    activeScreen === "connecting" ||
+    activeScreen === "success" ||
+    activeScreen === "welcome";
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
-      {/* Header */}
       <header className="sticky top-0 z-20 border-b border-border/60 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
           <Logo href="/dashboard" />
-          <div className="hidden flex-1 justify-center md:flex">
+          <div className="hidden flex-1 justify-center sm:flex">
             <OnboardingStepper steps={stepperSteps} />
           </div>
           <div className="flex items-center gap-2">
@@ -138,193 +133,112 @@ function OnboardingPageContent() {
                 </Link>
               </Button>
             ) : (
-              <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
-                <Link href="/dashboard">
-                  <ArrowLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline">Dashboard</span>
-                </Link>
-              </Button>
-            )}
-            {whatsappConnected ? (
-              fromAgency ? (
-                <Button size="sm" className="rounded-xl" onClick={goToDashboard}>
-                  Back to agency
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  className="rounded-xl"
-                  onClick={() => router.push("/dashboard/inbox")}
-                >
-                  Open Conversations
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              )
-            ) : (
-              <Button variant="outline" size="sm" className="rounded-xl" onClick={goToDashboard}>
-                {fromAgency ? "Back to agency" : "Skip for now"}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={exploreDashboard}
+                disabled={esInFlight}
+              >
+                {t("onboardingActivation.exploreDashboard")}
               </Button>
             )}
           </div>
         </div>
-        <div className="border-t border-border/40 px-5 py-2.5 md:hidden">
+        <div className="border-t border-border/40 px-5 py-2.5 sm:hidden">
           <OnboardingStepper steps={stepperSteps} className="justify-center" />
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        {fromAgency && (
-          <div className="mb-8 flex items-start gap-3 rounded-2xl border border-[#dce9ff] bg-white px-4 py-3.5 shadow-sm">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent text-xs font-bold">
-              A
-            </div>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Setting up WhatsApp for{" "}
-              <strong className="text-foreground">{organization?.name ?? "this client"}</strong>.
-              {t("onboardingPage.agencyBanner")}
-            </p>
+      <main className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
+        {fromAgency && activeScreen !== "success" && (
+          <div className="mb-8 rounded-2xl border border-[#dce9ff] bg-white px-4 py-3.5 text-sm text-muted-foreground shadow-sm">
+            {t("onboardingActivation.agencyBanner")}{" "}
+            <strong className="text-foreground">{organization?.name ?? "this client"}</strong>
           </div>
         )}
 
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-14">
-          {/* Primary column */}
-          <div className="min-w-0">
+        <AnimatePresence mode="sync">
+          {activeScreen === "welcome" && (
             <motion.div
+              key="welcome"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
+              exit={{ opacity: 0, y: -8 }}
             >
-              <p className="text-xs font-semibold uppercase tracking-widest text-accent">
-                {whatsappConnected ? t("onboardingPage.almostThere") : t("onboardingPage.step2")}
-              </p>
-              <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#0b1c30] sm:text-3xl">
-                {whatsappConnected
-                  ? t("onboardingPage.goLiveHeadline")
-                  : formatMessage(t("onboardingPage.connectHeadline"), {
-                      greeting: timeGreeting(user?.name).replace(/[!?.]+$/, ""),
-                    })}
-              </h1>
-              <p className="mt-2 max-w-xl text-base leading-relaxed text-muted-foreground">
-                {whatsappConnected ? t("onboardingPage.goLiveSub") : t("onboardingPage.connectSub")}
-              </p>
-              <div className="mt-5 flex items-center gap-3">
-                <div className="h-1.5 flex-1 max-w-xs overflow-hidden rounded-full bg-border">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-accent to-[#128C7E]"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.max(progressPct, whatsappConnected ? 66 : 33)}%` }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                  />
-                </div>
-                <span className="text-xs font-semibold tabular-nums text-muted-foreground">
-                  {Math.max(progressPct, whatsappConnected ? 66 : 33)}%
-                </span>
+              <OnboardingWelcome onContinue={enterConnect} onExplore={exploreDashboard} />
+            </motion.div>
+          )}
+
+          {activeScreen === "connecting" &&
+            (connectPhase === "waiting_meta" || connectPhase === "saving") && (
+              <motion.div
+                key="connecting"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <ConnectionProgress phase={connectPhase} />
+              </motion.div>
+            )}
+
+          {activeScreen === "connect" && (
+            <motion.div
+              key="connect-copy"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="mx-auto max-w-lg"
+            >
+              <div className="mb-8 text-center">
+                <h1 className="text-2xl font-bold tracking-tight text-[#0b1c30] sm:text-3xl">
+                  {t("onboardingActivation.connectHeadline")}
+                </h1>
+                <p className="mt-3 text-base text-muted-foreground">
+                  {t("onboardingActivation.connectSub")}
+                </p>
               </div>
             </motion.div>
+          )}
 
-            <AnimatePresence mode="wait">
-              {!whatsappConnected ? (
-                <motion.div
-                  key="connect"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                >
-                  <WhatsappConnect variant="onboarding" />
-                  <p className="mt-6 text-center text-sm text-muted-foreground">
-                    Not ready?{" "}
-                    <button
-                      type="button"
-                      className="font-medium text-accent hover:underline"
-                      onClick={goToDashboard}
-                    >
-                      {t("onboardingPage.exploreFirst")}
-                    </button>
-                    <span className="hidden sm:inline">{t("onboardingPage.exploreHint")}</span>
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="connected"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className="space-y-6"
-                >
-                  <div className="flex items-center gap-4 rounded-2xl border border-[#6cf8bb]/40 bg-white p-5 shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#25D366]/15 text-[#128C7E]">
-                      <CheckCircle2 className="h-6 w-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-[#0b1c30]">{t("onboardingPage.connectedBanner")}</p>
-                      <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                        {activeAccount?.verifiedName ?? "Business line"}
-                        {activeAccount?.displayPhoneNumber
-                          ? ` · ${activeAccount.displayPhoneNumber}`
-                          : ""}
-                      </p>
-                    </div>
-                  </div>
+          {activeScreen === "success" && (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              <ActivationSuccess
+                businessName={
+                  activeAccount?.verifiedName ??
+                  organization?.name ??
+                  t("onboardingActivation.yourBusiness")
+                }
+                phoneNumber={activeAccount?.displayPhoneNumber}
+                onOpenInbox={() => {
+                  dismissOnboarding();
+                  router.push("/dashboard/inbox");
+                }}
+                onExploreDashboard={exploreDashboard}
+                showAgencyReturn={fromAgency}
+                onAgencyReturn={exploreDashboard}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-                  {activeAccount?.displayPhoneNumber && <WhatsappGoLiveChecklist />}
-                  <WhatsappOnboardingFaq />
-                </motion.div>
-              )}
-            </AnimatePresence>
+        {/*
+          Single stable mount for Embedded Signup. Must stay alive from Continue → Meta popup
+          → complete API so FB.login + WA_EMBEDDED_SIGNUP postMessage are never torn down.
+        */}
+        {connectMounted && (
+          <div
+            className={cn("mx-auto max-w-lg", hideConnectUi && "sr-only")}
+            aria-hidden={hideConnectUi}
+          >
+            <WhatsappConnect variant="onboarding" onPhaseChange={handlePhaseChange} />
           </div>
-
-          {/* Sidebar */}
-          <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-            <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
-              <p className="text-sm font-bold text-[#0b1c30]">{t("onboardingPage.unlockTitle")}</p>
-              <ul className="mt-4 space-y-4">
-                {VALUE_PROP_KEYS.map((vp) => (
-                  <li key={vp.key} className="flex gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
-                      <vp.icon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {t(`onboardingPage.valueProps.${vp.key}.title`)}
-                      </p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                        {t(`onboardingPage.valueProps.${vp.key}.desc`)}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-2xl border border-border/60 bg-white p-5">
-              <div className="flex items-center gap-2">
-                <Inbox className="h-4 w-4 text-accent" />
-                <p className="text-sm font-bold text-[#0b1c30]">{t("onboardingPage.afterConnectTitle")}</p>
-              </div>
-              <ol className="mt-4 space-y-3">
-                {AFTER_CONNECT_KEYS.map((key, i) => (
-                  <li key={key} className="flex gap-3 text-sm text-muted-foreground">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f1f5f9] text-[11px] font-bold text-[#0b1c30]">
-                      {i + 1}
-                    </span>
-                    <span className="pt-0.5 leading-snug">{t(`onboardingPage.afterConnect.${key}`)}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-accent to-[#128C7E] p-5 text-white">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/60">
-                {t("onboardingPage.trialBadge")}
-              </p>
-              <p className="mt-2 text-lg font-bold">{t("onboardingPage.trialTitle")}</p>
-              <p className="mt-1 text-sm text-white/65">{t("onboardingPage.trialSub")}</p>
-            </div>
-
-            <WhatsappOnboardingHelp compact />
-          </aside>
-        </div>
+        )}
       </main>
     </div>
   );
