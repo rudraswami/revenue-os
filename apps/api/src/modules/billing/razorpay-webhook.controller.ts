@@ -1,9 +1,11 @@
 import { BadRequestException, Controller, Headers, Post, Req } from "@nestjs/common";
 import type { RawBodyRequest } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { BillingService } from "./billing.service";
 import { RazorpayService } from "./razorpay.service";
 
+@SkipThrottle()
 @Controller("webhooks/razorpay")
 export class RazorpayWebhookController {
   constructor(

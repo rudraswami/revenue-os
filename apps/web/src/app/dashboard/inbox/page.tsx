@@ -55,6 +55,7 @@ interface ConversationDetail {
   contactName: string | null;
   contactPhone: string;
   unreadCount: number;
+  lastInboundAt?: string | null;
   aiEnabled: boolean;
   requiresHuman?: boolean;
   handoffReason?: string | null;
@@ -420,6 +421,15 @@ export default function InboxPage() {
     sendMutation.mutate(text);
   }
 
+  const withinMessagingWindow = (() => {
+    if (!thread?.lastInboundAt) return false;
+    const last = new Date(thread.lastInboundAt).getTime();
+    if (Number.isNaN(last)) return false;
+    return Date.now() - last < 24 * 60 * 60 * 1000;
+  })();
+
+  const windowClosed = !!thread && !withinMessagingWindow;
+
   return (
     <>
     <div className="flex min-h-0 flex-1 flex-row overflow-hidden rounded-xl border border-border/80 bg-white shadow-[0_2px_16px_rgb(11_28_48/0.05)] max-lg:rounded-none max-lg:border-0 lg:mx-4 lg:mb-4 lg:mt-2">
@@ -751,15 +761,31 @@ export default function InboxPage() {
 
             <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-6">
               <div className="mx-auto w-full max-w-3xl">
+                {windowClosed && (
+                  <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
+                    <p className="font-semibold">24-hour reply window closed</p>
+                    <p className="mt-0.5 text-amber-900/90">
+                      Free-text replies need a recent customer message. Use{" "}
+                      <button
+                        type="button"
+                        className="font-semibold underline"
+                        onClick={() => setShowOutbound(true)}
+                      >
+                        New message
+                      </button>{" "}
+                      with an approved WhatsApp template to re-engage.
+                    </p>
+                  </div>
+                )}
                 {showComposer ? (
                   <InboxComposer
                     draft={draft}
                     onDraftChange={setDraft}
                     onSend={handleSend}
                     sendPending={sendMutation.isPending}
-                    sendDisabled={!thread.whatsappAccount.isActive}
+                    sendDisabled={!thread.whatsappAccount.isActive || windowClosed || !canSend}
                     sendError={sendError}
-                    showAiSuggest={!!capabilities?.aiSuggestReply}
+                    showAiSuggest={!!capabilities?.aiSuggestReply && !windowClosed}
                     suggestPending={suggestMutation.isPending}
                     onSuggest={() => suggestMutation.mutate()}
                     templates={replyTemplates?.templates}

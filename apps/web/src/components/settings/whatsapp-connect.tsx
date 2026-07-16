@@ -564,7 +564,8 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
             </Button>
 
             <p className="text-xs text-muted-foreground">
-              Secure connection powered by Meta. Growvisi never sees your Facebook password.
+              {t("whatsappConnect.secureNote")}{" "}
+              {t("whatsappConnect.metaFinishHint")}
             </p>
             {!isOnboarding && <WhatsappEmbeddedSignupDiagnostics />}
           </>

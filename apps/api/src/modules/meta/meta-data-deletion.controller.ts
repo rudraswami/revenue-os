@@ -8,6 +8,7 @@ import {
   Query,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { SkipThrottle } from "@nestjs/throttler";
 import { randomBytes } from "crypto";
 import { GROWVISI_WEB_URL } from "@growvisi/shared";
 import { parseMetaSignedRequest } from "../../common/meta/parse-signed-request";
@@ -16,6 +17,7 @@ import { PrismaService } from "../prisma/prisma.service";
 
 import { MetaDataDeletionService } from "./meta-data-deletion.service";
 
+@SkipThrottle()
 @Controller("webhooks/meta")
 export class MetaDataDeletionController {
   constructor(

@@ -65,6 +65,8 @@ export const messages = {
         connectToken: "Connect with token",
         tokenError: "Connection failed.",
         discoverError: "Could not find a number on this token.",
+        metaFinishHint:
+          "On the last Meta screen click Complete — skip Add payment for now.",
       },
     },
     whatsappGoLive: {
@@ -198,6 +200,9 @@ export const messages = {
             "You already have a business line on Meta Cloud API — or you're migrating from another WhatsApp tool.",
         },
       },
+      metaFinishHint:
+        "On the last Meta screen click Complete — skip Add payment for now (add a card later in WhatsApp Manager).",
+      secureNote: "Secure connection powered by Meta. Growvisi never sees your Facebook password.",
     },
     whatsappOnboardingHelp: {
       needHand: "Need a hand?",
@@ -558,6 +563,8 @@ export const messages = {
         connectToken: "टोकन से कनेक्ट करें",
         tokenError: "कनेक्शन विफल।",
         discoverError: "इस टोकन पर कोई नंबर नहीं मिला।",
+        metaFinishHint:
+          "आखिरी Meta स्क्रीन पर Complete दबाएँ — अभी Add payment छोड़ दें।",
       },
     },
     whatsappGoLive: {
@@ -691,6 +698,9 @@ export const messages = {
             "आपका नंबर पहले से Meta Cloud API पर है — या आप दूसरे WhatsApp टूल से आ रहे हैं।",
         },
       },
+      metaFinishHint:
+        "आखिरी Meta स्क्रीन पर Complete दबाएँ — अभी Add payment छोड़ दें (बाद में WhatsApp Manager में कार्ड जोड़ें)।",
+      secureNote: "Meta से सुरक्षित कनेक्शन। Growvisi आपका Facebook पासवर्ड नहीं देखता।",
     },
     whatsappOnboardingHelp: {
       needHand: "मदद चाहिए?",

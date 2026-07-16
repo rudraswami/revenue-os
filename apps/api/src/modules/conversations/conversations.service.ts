@@ -383,6 +383,22 @@ export class ConversationsService {
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
 
+    if (!conversation.whatsappAccount.isActive) {
+      throw new BadRequestException("This WhatsApp number is disconnected. Reconnect it in Settings.");
+    }
+
+    const withinWindow =
+      !!conversation.lastInboundAt &&
+      Date.now() - conversation.lastInboundAt.getTime() < 24 * 60 * 60 * 1000;
+
+    if (!withinWindow) {
+      throw new BadRequestException(
+        conversation.lastInboundAt
+          ? "The 24-hour WhatsApp reply window has expired. Start a new outbound message with an approved template."
+          : "Customers must message you first before free-text replies. Use New message with an approved template to reach them.",
+      );
+    }
+
     const waMessageId = await this.whatsapp.sendText(
       conversation.whatsappAccount,
       conversation.contactPhone,

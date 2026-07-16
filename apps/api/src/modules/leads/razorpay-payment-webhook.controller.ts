@@ -7,12 +7,14 @@ import {
   Req,
 } from "@nestjs/common";
 import type { RawBodyRequest } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import { createHmac, timingSafeEqual } from "crypto";
 import type { Request } from "express";
 import { PrismaService } from "../prisma/prisma.service";
 import { normalizePaymentIntegration } from "../organizations/payment-integration";
 import { LeadsService } from "./leads.service";
 
+@SkipThrottle()
 @Controller("webhooks/payments")
 export class RazorpayPaymentWebhookController {
   constructor(

@@ -7,7 +7,7 @@ import { sanitizeEnvValue } from "../../config/cors-origins";
 import { isProductionDeploy } from "../../config/production";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { exchangeForLongLivedToken } from "./meta-token.util";
+import { exchangeForLongLivedToken, debugMetaAccessToken } from "./meta-token.util";
 import { WhatsappAccountSafe, WhatsappAccountsService } from "./whatsapp-accounts.service";
 
 @Injectable()
@@ -197,13 +197,19 @@ export class EmbeddedSignupService {
       );
     }
 
-    const businessToken = await this.exchangeCode(input.code.trim());
-    const longLived = await this.tryLongLived(businessToken);
-    const tokenToStore = longLived ?? businessToken;
+    const exchanged = await this.exchangeCode(input.code.trim());
+    const longLived = await this.tryLongLived(exchanged);
+    if (!longLived) {
+      this.logger.warn(
+        `Long-lived token exchange failed for org=${organizationId} — storing short-lived token; refresh soon`,
+      );
+    }
+    const tokenToStore = longLived ?? exchanged;
     await this.subscribeWebhooks(wabaId, tokenToStore);
     await this.tryRegisterPhone(phoneNumberId, tokenToStore);
 
     const details = await this.fetchPhoneDetails(phoneNumberId, tokenToStore);
+    const tokenMeta = await this.tokenExpiryMeta(tokenToStore);
 
     const account = await this.prisma.whatsappAccount.create({
       data: {
@@ -215,6 +221,8 @@ export class EmbeddedSignupService {
         accessTokenEnc: encryptSecret(tokenToStore),
         metadata: {
           tokenUpdatedAt: new Date().toISOString(),
+          tokenExpiresAt: tokenMeta.expiresAt,
+          tokenLongLived: !!longLived,
           connectMethod: input.connectMethod ?? "embedded",
           finishEvent: input.finishEvent ?? null,
           ...(opts?.targetOrganizationId
@@ -256,9 +264,14 @@ export class EmbeddedSignupService {
     const body = (await res.json()) as { access_token?: string; error?: { message?: string } };
 
     if (!res.ok || !body.access_token) {
+      const msg = body.error?.message ?? "";
+      if (/code|expired|invalid|oauth/i.test(msg)) {
+        throw new BadRequestException(
+          "Facebook authorization expired (codes last ~30 seconds). Click Continue with Facebook again and finish quickly with Complete.",
+        );
+      }
       throw new BadRequestException(
-        body.error?.message ??
-          "Could not complete Facebook authorization. Please try connecting again.",
+        msg || "Could not complete Facebook authorization. Please try connecting again.",
       );
     }
 
@@ -343,5 +356,18 @@ export class EmbeddedSignupService {
     if (!appId || !appSecret) return null;
     const result = await exchangeForLongLivedToken(token, appId, appSecret, this.apiVersion());
     return result?.accessToken ?? null;
+  }
+
+  private async tokenExpiryMeta(token: string): Promise<{ expiresAt: string | null }> {
+    const appId = sanitizeEnvValue(this.config.get<string>("META_APP_ID"));
+    const appSecret = this.appSecret();
+    if (!appId || !appSecret) return { expiresAt: null };
+    try {
+      const health = await debugMetaAccessToken(token, appId, appSecret, this.apiVersion());
+      return { expiresAt: health.expiresAt };
+    } catch (e) {
+      this.logger.warn(`debug_token after ES failed: ${e instanceof Error ? e.message : e}`);
+      return { expiresAt: null };
+    }
   }
 }

@@ -1,11 +1,11 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
-import { Throttle } from "@nestjs/throttler";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { ApiKeyAuth, type ApiKeyAuthContext } from "../../common/decorators/api-key-auth.decorator";
 import { ApiKeyGuard } from "../../common/guards/api-key.guard";
 import { ExternalApiService } from "./external-api.service";
 
 @Controller("external")
-@UseGuards(ApiKeyGuard)
+@UseGuards(ApiKeyGuard, ThrottlerGuard)
 @Throttle({ default: { limit: 120, ttl: 60_000 } })
 export class ExternalApiController {
   constructor(private readonly external: ExternalApiService) {}

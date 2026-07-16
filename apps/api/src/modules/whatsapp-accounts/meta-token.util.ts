@@ -51,3 +51,42 @@ export async function exchangeForLongLivedToken(
     expiresIn: typeof body.expires_in === "number" ? body.expires_in : null,
   };
 }
+
+/** Resolve expiry metadata for a Meta user/system token via debug_token. */
+export async function debugMetaAccessToken(
+  accessToken: string,
+  appId: string,
+  appSecret: string,
+  apiVersion: string,
+): Promise<{ valid: boolean; expiresAt: string | null; hoursRemaining: number | null }> {
+  const url = new URL(`https://graph.facebook.com/${apiVersion}/debug_token`);
+  url.searchParams.set("input_token", accessToken);
+  url.searchParams.set("access_token", `${appId}|${appSecret}`);
+
+  const res = await fetchWithTimeout(url);
+  const body = (await res.json()) as {
+    data?: { is_valid?: boolean; expires_at?: number };
+    error?: { message?: string };
+  };
+
+  if (!res.ok || !body.data) {
+    return { valid: false, expiresAt: null, hoursRemaining: null };
+  }
+
+  const expiresAtUnix = body.data.expires_at ?? 0;
+  if (!expiresAtUnix) {
+    return {
+      valid: body.data.is_valid !== false,
+      expiresAt: null,
+      hoursRemaining: null,
+    };
+  }
+
+  const expiresAt = new Date(expiresAtUnix * 1000);
+  const hoursRemaining = Math.max(0, (expiresAt.getTime() - Date.now()) / 3_600_000);
+  return {
+    valid: body.data.is_valid !== false,
+    expiresAt: expiresAt.toISOString(),
+    hoursRemaining,
+  };
+}

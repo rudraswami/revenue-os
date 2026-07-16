@@ -1,5 +1,6 @@
 import { ForbiddenException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PLAN_LIMITS, resolveSubscriptionAccess, type GrowvisiPlanId, type SubscriptionAccess } from "@growvisi/shared";
+import { isProductionDeploy } from "../../config/production";
 import { metaReviewerEmail } from "../../config/meta-reviewer";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -7,8 +8,16 @@ import { PrismaService } from "../prisma/prisma.service";
 export class EntitlementsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Meta App Review workspace — full Pro access, never trial-gated. */
+  /**
+   * Meta App Review workspace — full Pro access when explicitly enabled.
+   * In production, requires META_REVIEWER_BYPASS=true so a leaked demo password
+   * cannot permanently unlock Pro.
+   */
   private async metaReviewerAccess(organizationId: string): Promise<SubscriptionAccess | null> {
+    if (isProductionDeploy() && process.env.META_REVIEWER_BYPASS !== "true") {
+      return null;
+    }
+
     const reviewer = metaReviewerEmail();
     const owner = await this.prisma.organizationMember.findFirst({
       where: {

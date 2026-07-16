@@ -1,10 +1,12 @@
 import { Controller, Get, UseGuards } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import { CronSecretGuard } from "../../common/guards/cron-secret.guard";
 import { AutomationsService } from "../automations/automations.service";
 import { CampaignsService } from "../campaigns/campaigns.service";
 import { DigestService } from "../digest/digest.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 
+@SkipThrottle()
 @Controller("internal/cron")
 export class InternalCronController {
   constructor(

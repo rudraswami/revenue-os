@@ -146,13 +146,16 @@ function buildExtras(featureType?: string, solutionId?: string): Record<string, 
   }
 
   // Meta Embedded Signup v4: extras is { setup: {} } — config_id drives the flow.
-  // sessionInfoVersion / featureType only for custom flows (e.g. coex, waba-only).
-  const extras: Record<string, unknown> = { setup };
+  // sessionInfoVersion: "3" ensures reliable WA_EMBEDDED_SIGNUP postMessage events
+  // (required for CoEx; safe/recommended for Cloud API too).
+  const extras: Record<string, unknown> = {
+    setup,
+    sessionInfoVersion: "3",
+  };
 
   const feature = featureType?.trim();
   if (feature) {
     extras.featureType = feature;
-    extras.sessionInfoVersion = "3";
   }
 
   return extras;
@@ -238,6 +241,11 @@ export function getEmbeddedSignupLoginPayload(
 /**
  * Meta WhatsApp Embedded Signup — matches Chatwoot `useWhatsappEmbeddedSignup`.
  * Auth code and WABA payload arrive separately; resolve when both are present.
+ *
+ * Important race: when the Meta popup closes (Complete / Add payment), FB.login
+ * often fires with empty authResponse a few ms BEFORE the WA_EMBEDDED_SIGNUP
+ * FINISH postMessage. Treating empty authResponse as cancel immediately drops
+ * the listener and Growvisi never saves the number.
  */
 export function runEmbeddedSignup(
   appId: string,
@@ -263,9 +271,11 @@ export function runEmbeddedSignup(
     } | null = null;
     let settled = false;
     let loginTimer: ReturnType<typeof setTimeout> | null = null;
+    let emptyAuthTimer: ReturnType<typeof setTimeout> | null = null;
 
     const cleanup = () => {
       if (loginTimer) clearTimeout(loginTimer);
+      if (emptyAuthTimer) clearTimeout(emptyAuthTimer);
       window.removeEventListener("message", onMessage);
     };
 
@@ -287,23 +297,27 @@ export function runEmbeddedSignup(
       if (authCode && !businessPayload) {
         return (
           "Facebook login succeeded but WhatsApp setup did not finish. " +
-          "Keep the Meta popup open until you pick your business and phone number, then click Finish."
+          "On the last Meta screen click Complete (not Add payment). Payment can be added later in WhatsApp Manager."
         );
       }
       if (!authCode && businessPayload) {
         return (
           "Meta returned WhatsApp account details but not an authorization code. " +
-          "Retry connect — if it persists, check Facebook Login for Business allowed domains for this site."
+          "Click Complete quickly on the last screen — the auth code expires in ~30 seconds. Try again."
         );
       }
       return (
-        "Facebook login timed out. The popup may have closed before setup finished. " +
-        "Allow popups, complete every Meta step (business → phone → Finish), and try again."
+        "Facebook login timed out. Keep the Meta popup open through phone verification, " +
+        "then click Complete (payment is optional and can be done later)."
       );
     };
 
     const resolveIfReady = () => {
       if (!authCode || !businessPayload) return;
+      if (emptyAuthTimer) {
+        clearTimeout(emptyAuthTimer);
+        emptyAuthTimer = null;
+      }
       if (!businessPayload.phone_number_id) {
         settleReject(
           new Error("Meta did not return a phone number. Add your WhatsApp number in the popup."),
@@ -350,7 +364,8 @@ export function runEmbeddedSignup(
 
       if (
         payload.event === "FINISH" ||
-        payload.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
+        payload.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" ||
+        payload.event === "FINISH_ONLY_WABA"
       ) {
         if (!isValidBusinessData(payload.data)) {
           settleReject(
@@ -375,12 +390,17 @@ export function runEmbeddedSignup(
           settleReject(new Error(err));
           return;
         }
+        // Payment / intermediate screens sometimes emit CANCEL with a step — don't drop
+        // a successful finish that may still be in flight.
+        if (step && /PAYMENT|BILLING/i.test(step) && (authCode || businessPayload)) {
+          return;
+        }
         if (authCode || businessPayload) {
           settleReject(
             new Error(
               step
-                ? `Meta setup was cancelled at step “${step}”. Complete every screen in the popup.`
-                : "Meta setup was cancelled before finishing. Complete business and phone selection in the popup.",
+                ? `Meta setup was cancelled at step “${step}”. On the last screen click Complete.`
+                : "Meta setup was cancelled before finishing. On the last screen click Complete (not Add payment).",
             ),
           );
           return;
@@ -426,7 +446,34 @@ export function runEmbeddedSignup(
             }
 
             if (!response.authResponse) {
-              settleResolve(null);
+              // Grace period: popup close often races ahead of FINISH postMessage.
+              if (emptyAuthTimer) clearTimeout(emptyAuthTimer);
+              emptyAuthTimer = setTimeout(() => {
+                if (settled) return;
+                if (authCode && businessPayload) {
+                  resolveIfReady();
+                  return;
+                }
+                if (businessPayload && !authCode) {
+                  settleReject(
+                    new Error(
+                      "Meta finished WhatsApp setup but the login code was missing. " +
+                        "Click Complete (not Add payment) and try again immediately.",
+                    ),
+                  );
+                  return;
+                }
+                if (authCode && !businessPayload) {
+                  settleReject(
+                    new Error(
+                      "Meta closed before sending WhatsApp account details. " +
+                        "Click Complete on the last screen — skip Add payment for now.",
+                    ),
+                  );
+                  return;
+                }
+                settleResolve(null);
+              }, 2500);
               return;
             }
 

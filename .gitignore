@@ -21,3 +21,16 @@ apps/api/dist
 packages/database/prisma/migrations/**/migration_lock.toml
 .vercel
 .env*.local
+# Local/Vercel env dumps — never commit secrets or OIDC tokens
+.env.vercel*
+.env.api.*
+.env.*.check
+.env.*.audit
+.env.*.pull
+.env.*.prod
+apps/**/.env.vercel*
+apps/**/.env.api.*
+apps/**/.env.*.check
+apps/**/.env.*.audit
+apps/**/login.json
+login*.json

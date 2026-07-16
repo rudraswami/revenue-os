@@ -57,6 +57,12 @@ export function InboxComposer({
               Refresh WhatsApp token →
             </a>
           )}
+          {(sendError.toLowerCase().includes("24-hour") ||
+            sendError.toLowerCase().includes("template")) && (
+            <a href="/dashboard/inbox" className="mt-1 inline-block font-semibold underline">
+              Use New message with a template →
+            </a>
+          )}
         </div>
       )}
 

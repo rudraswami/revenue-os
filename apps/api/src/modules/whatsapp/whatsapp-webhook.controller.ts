@@ -9,10 +9,12 @@ import {
   Req,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { SkipThrottle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { WhatsappService, type WhatsappWebhookPayload } from "./whatsapp.service";
 import { sanitizeEnvValue } from "../../config/cors-origins";
 
+@SkipThrottle()
 @Controller("webhooks/whatsapp")
 export class WhatsappWebhookController {
   constructor(

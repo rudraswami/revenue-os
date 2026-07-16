@@ -468,8 +468,8 @@ export class WhatsappAccountsService {
       },
       {
         id: "webhook_url",
-        ok: technical.webhookUrl.includes("growvisi.in"),
-        detail: technical.webhookUrl.includes("growvisi.in")
+        ok: /growvisi\.(in|com)/i.test(technical.webhookUrl) || /^https:\/\//i.test(technical.webhookUrl),
+        detail: /growvisi\.(in|com)/i.test(technical.webhookUrl)
           ? "Growvisi is ready to receive customer messages"
           : "Message routing needs configuration",
       },
@@ -862,7 +862,9 @@ export class WhatsappAccountsService {
     const checks = [
       {
         id: "webhook_url",
-        ok: isProd ? technical.webhookUrl.includes("growvisi.in") : !!technical.webhookUrl,
+        ok: isProd
+          ? /growvisi\.(in|com)/i.test(technical.webhookUrl) || /^https:\/\//i.test(technical.webhookUrl)
+          : !!technical.webhookUrl,
         detail: `Webhook: ${technical.webhookUrl}`,
       },
       {
@@ -1280,7 +1282,7 @@ export class WhatsappAccountsService {
   }
 
   private apiVersion() {
-    return this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+    return this.config.get<string>("WHATSAPP_API_VERSION")?.trim() || "v22.0";
   }
 
   private async fetchPhoneDetails(phoneNumberId: string, accessToken: string) {

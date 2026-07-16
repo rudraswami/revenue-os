@@ -286,6 +286,7 @@ export function AgencyClientConnectDialog({
                           ? t("agency.connect.saving")
                           : t("agency.connect.continueFacebook")}
                     </Button>
+                    <p className="text-[11px] text-muted-foreground">{t("agency.connect.metaFinishHint")}</p>
                   </>
                 )
               ) : (
