@@ -420,7 +420,14 @@ export default function WhatsappConnect({
         {error && (
           <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <p>{error}</p>
-            <p className="mt-2 text-xs text-destructive/90">{t("onboardingActivation.connectErrorHint")}</p>
+            {(error.toLowerCase().includes("timed out") ||
+              error.toLowerCase().includes("cancelled") ||
+              error.toLowerCase().includes("popup") ||
+              error.toLowerCase().includes("facebook")) && (
+              <p className="mt-2 text-xs text-destructive/90">
+                {t("onboardingActivation.connectErrorHint")}
+              </p>
+            )}
           </div>
         )}
 

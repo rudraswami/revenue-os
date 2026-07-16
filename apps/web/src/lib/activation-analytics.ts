@@ -7,6 +7,7 @@ export type ActivationEvent =
   | "onboarding_welcome_view"
   | "onboarding_welcome_continue"
   | "onboarding_welcome_skip"
+  | "onboarding_connect_later"
   | "onboarding_connect_view"
   | "onboarding_meta_started"
   | "onboarding_meta_cancelled"

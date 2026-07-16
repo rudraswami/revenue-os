@@ -40,8 +40,10 @@ function OnboardingPageContent() {
   const [connectMounted, setConnectMounted] = useState(false);
   const connectViewTracked = useRef(false);
 
-  function exploreDashboard() {
-    trackActivation("onboarding_welcome_skip");
+  function exploreDashboard(from: "welcome" | "connect" | "success" = "welcome") {
+    trackActivation(from === "connect" ? "onboarding_connect_later" : "onboarding_welcome_skip", {
+      from,
+    });
     dismissOnboarding();
     router.push(fromAgency ? "/dashboard/agency" : "/dashboard");
   }
@@ -73,7 +75,8 @@ function OnboardingPageContent() {
       complete: false,
     });
     setScreen("success");
-    setConnectPhase((p) => (p === "done" ? p : "done"));
+    connectPhaseRef.current = "done";
+    setConnectPhase("done");
   }, [whatsappConnected, esInFlight, patchOnboarding]);
 
   function handlePhaseChange(phase: WhatsappConnectPhase) {
@@ -179,7 +182,10 @@ function OnboardingPageContent() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.25 }}
             >
-              <OnboardingWelcome onContinue={enterConnect} onExplore={exploreDashboard} />
+              <OnboardingWelcome
+                onContinue={enterConnect}
+                onExplore={() => exploreDashboard("welcome")}
+              />
             </motion.div>
           )}
 
@@ -238,9 +244,9 @@ function OnboardingPageContent() {
                   dismissOnboarding();
                   router.push("/dashboard/inbox");
                 }}
-                onExploreDashboard={exploreDashboard}
+                onExploreDashboard={() => exploreDashboard("success")}
                 showAgencyReturn={fromAgency}
-                onAgencyReturn={exploreDashboard}
+                onAgencyReturn={() => exploreDashboard("success")}
               />
             </motion.div>
           )}
@@ -251,11 +257,28 @@ function OnboardingPageContent() {
             className={cn(
               "mx-auto max-w-md",
               hideConnectUi && "sr-only",
-              activeScreen === "connect" && "-mt-2 pb-16",
+              activeScreen === "connect" && "-mt-2",
             )}
             aria-hidden={hideConnectUi}
           >
             <WhatsappConnect variant="onboarding" onPhaseChange={handlePhaseChange} />
+          </div>
+        )}
+
+        {activeScreen === "connect" && !esInFlight && (
+          <div className="mx-auto max-w-md pb-16 pt-6 text-center">
+            <button
+              type="button"
+              className="group inline-flex flex-col items-center gap-1 text-sm transition-colors"
+              onClick={() => exploreDashboard("connect")}
+            >
+              <span className="font-medium text-foreground/75 underline-offset-4 group-hover:text-foreground group-hover:underline">
+                {t("onboardingActivation.connectLater")}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t("onboardingActivation.connectLaterHint")}
+              </span>
+            </button>
           </div>
         )}
       </main>
