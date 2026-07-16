@@ -3,7 +3,7 @@
 Use this when **Continue with Facebook** shows **Feature Unavailable**, **JSSDK unknown error**, or login fails.
 
 **App ID:** `1694805491426991`  
-**Config ID (env):** `1331710591627115` → `META_EMBEDDED_SIGNUP_CONFIG_ID`
+**Config ID (env):** `1529235155408813` (**ES Config** — Login variation must be **WhatsApp Embedded Signup**, not General) → `META_EMBEDDED_SIGNUP_CONFIG_ID`
 
 ## Vercel env corruption (Windows — fixed)
 
@@ -122,10 +122,11 @@ Click **Save changes**.
 ### Step 5 — Embedded Signup configuration
 
 1. **Facebook Login for Business → Configurations**
-2. Open your config (ID should match `1331710591627115`) or create new:
-   - Login variation: **WhatsApp Embedded Signup**
+2. Open your config (ID should match `1529235155408813` / **ES Config**) or create new from template:
+   - Login variation: **WhatsApp Embedded Signup** (not General — General only does Facebook Login and closes the popup)
+   - Access token: **System-user** (60-day / never-expire template)
    - Assets: **WhatsApp accounts**
-   - Permissions: `whatsapp_business_management` (and messaging if offered)
+   - Permissions: `whatsapp_business_management` + `whatsapp_business_messaging`
 3. Copy **Configuration ID** → Vercel API env `META_EMBEDDED_SIGNUP_CONFIG_ID`
 4. Redeploy API
 
@@ -154,7 +155,7 @@ Until Live + App Review, only **app roles** (Step 1) can use Facebook Login.
 ```env
 META_APP_ID=1694805491426991
 META_APP_SECRET=<from Meta Basic → Show>
-META_EMBEDDED_SIGNUP_CONFIG_ID=1331710591627115
+META_EMBEDDED_SIGNUP_CONFIG_ID=1529235155408813
 WEBHOOK_PUBLIC_URL=https://api.growvisi.in
 NEXT_PUBLIC_APP_URL=https://www.growvisi.in
 CORS_ORIGINS=https://growvisi.in,https://www.growvisi.in
@@ -204,7 +205,7 @@ While logged into Growvisi, API should return (with auth cookie):
 {
   "enabled": true,
   "appId": "1694805491426991",
-  "configId": "1331710591627115",
+  "configId": "1529235155408813",
   "graphApiVersion": "v21.0"
 }
 ```

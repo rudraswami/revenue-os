@@ -24,7 +24,7 @@ function Set-CleanVercelEnv {
 
 Write-Host "Cleaning revenue-os-api production Meta env..."
 Set-CleanVercelEnv $apiDir "META_APP_ID" "1694805491426991"
-Set-CleanVercelEnv $apiDir "META_EMBEDDED_SIGNUP_CONFIG_ID" "1331710591627115"
+Set-CleanVercelEnv $apiDir "META_EMBEDDED_SIGNUP_CONFIG_ID" "1529235155408813"
 Set-CleanVercelEnv $apiDir "WHATSAPP_EMBEDDED_SIGNUP_LIVE" "true"
 Set-CleanVercelEnv $apiDir "WHATSAPP_API_VERSION" "v21.0"
 Set-CleanVercelEnv $apiDir "WEBHOOK_PUBLIC_URL" "https://api.growvisi.in"
@@ -37,6 +37,6 @@ Set-CleanVercelEnv $webDir "NEXT_PUBLIC_APP_URL" "https://www.growvisi.in"
 Set-CleanVercelEnv $webDir "NEXT_PUBLIC_API_URL" "https://api.growvisi.in/api/v1"
 Set-CleanVercelEnv $webDir "NEXT_PUBLIC_WS_URL" "wss://api.growvisi.in"
 Set-CleanVercelEnv $webDir "NEXT_PUBLIC_META_APP_ID" "1694805491426991"
-Set-CleanVercelEnv $webDir "NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID" "1331710591627115"
+Set-CleanVercelEnv $webDir "NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID" "1529235155408813"
 
 Write-Host "Done. Redeploy API + Web."

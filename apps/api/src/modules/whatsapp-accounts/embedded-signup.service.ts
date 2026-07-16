@@ -94,7 +94,8 @@ export class EmbeddedSignupService {
     );
     push(
       "meta_config_id",
-      configId === "1331710591627115",
+      // Must be Facebook Login for Business → WhatsApp Embedded Signup variation (not "General")
+      configId === "1529235155408813",
       configId ? `META_EMBEDDED_SIGNUP_CONFIG_ID=${configId}` : "CONFIG_ID missing",
     );
     push("meta_app_secret", !!secret, secret ? "META_APP_SECRET set" : "META_APP_SECRET missing on API");

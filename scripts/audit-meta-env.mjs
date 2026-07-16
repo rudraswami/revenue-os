@@ -38,7 +38,7 @@ function ok(id, pass, detail) {
 ok("meta_app_id", appId === "1694805491426991", `META_APP_ID=${appId || "(missing)"}`);
 ok(
   "meta_config_id",
-  configId === "1331710591627115",
+  configId === "1529235155408813",
   `META_EMBEDDED_SIGNUP_CONFIG_ID=${configId || "(missing)"}`,
 );
 ok("meta_app_secret", secret.length > 10, secret ? "META_APP_SECRET set" : "META_APP_SECRET missing");

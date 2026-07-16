@@ -29,7 +29,7 @@ function Set-VercelEnv {
 
 Write-Host "Updating revenue-os-api (production)..."
 Set-VercelEnv $apiDir "META_APP_ID" "1694805491426991"
-Set-VercelEnv $apiDir "META_EMBEDDED_SIGNUP_CONFIG_ID" "1331710591627115"
+Set-VercelEnv $apiDir "META_EMBEDDED_SIGNUP_CONFIG_ID" "1529235155408813"
 Set-VercelEnv $apiDir "WHATSAPP_VERIFY_TOKEN" "growvisi-webhook-verify-2026"
 Set-VercelEnv $apiDir "WHATSAPP_API_VERSION" "v21.0"
 Set-VercelEnv $apiDir "WEBHOOK_PUBLIC_URL" "https://api.growvisi.in"
@@ -49,6 +49,6 @@ Set-VercelEnv $webDir "NEXT_PUBLIC_APP_URL" "https://www.growvisi.in"
 Set-VercelEnv $webDir "NEXT_PUBLIC_API_URL" "https://api.growvisi.in/api/v1"
 Set-VercelEnv $webDir "NEXT_PUBLIC_WS_URL" "wss://api.growvisi.in"
 Set-VercelEnv $webDir "NEXT_PUBLIC_META_APP_ID" "1694805491426991"
-Set-VercelEnv $webDir "NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID" "1331710591627115"
+Set-VercelEnv $webDir "NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID" "1529235155408813"
 
 Write-Host "Done. Redeploy API + Web for changes to apply."
