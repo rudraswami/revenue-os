@@ -13,7 +13,8 @@ export const DEFAULT_AUTOMATIONS: Record<AutomationId, boolean> = {
   welcome: true,
   followup: true,
   stage: true,
-  notify: false,
+  /** Return-to-work: hot-lead email on by default (mirrors API defaults). */
+  notify: true,
   handoff: true,
   staleDeal: false,
   stageNotify: false,

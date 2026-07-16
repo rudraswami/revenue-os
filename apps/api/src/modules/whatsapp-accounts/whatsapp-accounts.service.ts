@@ -404,7 +404,7 @@ export class WhatsappAccountsService {
       orderBy: { createdAt: "desc" },
     });
 
-    const [conversationCount, inboundCount, recentWebhooks] = await Promise.all([
+    const [conversationCount, inboundCount, recentWebhooks, reliability] = await Promise.all([
       this.prisma.conversation.count({ where: { organizationId } }),
       this.prisma.message.count({
         where: { organizationId, direction: "INBOUND" },
@@ -422,8 +422,10 @@ export class WhatsappAccountsService {
           error: true,
           createdAt: true,
           payload: true,
+          organizationId: true,
         },
       }),
+      this.getReliabilitySnapshot(organizationId),
     ]);
 
     const phoneIds = new Set(accounts.map((a) => a.phoneNumberId));
@@ -515,6 +517,7 @@ export class WhatsappAccountsService {
         isActive: a.isActive,
       })),
       stats: { conversationCount, inboundCount },
+      reliability,
       tokenHealth: await this.tokenHealthForOrg(accounts),
       // Only expose webhook events that belong to this org's numbers. Never leak
       // other tenants' phone_number_id / waba_id through the diagnostics panel.
@@ -527,6 +530,113 @@ export class WhatsappAccountsService {
         testTip:
           "Meta's \"Send test message\" in API Setup sends from your business to your phone — it won't appear in Conversations. Message your business number from your personal phone instead.",
       },
+    };
+  }
+
+  /** 48h ingest + classify health for Trust & Reliability Floor. */
+  async getReliabilitySnapshot(organizationId: string) {
+    const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+    const [
+      webhookTotal,
+      webhookFailed,
+      classifyTotal,
+      classifyFailed,
+      lastInbound,
+      lastClassified,
+    ] = await Promise.all([
+      this.prisma.webhookEvent.count({
+        where: {
+          organizationId,
+          source: "whatsapp",
+          createdAt: { gte: since },
+        },
+      }),
+      this.prisma.webhookEvent.count({
+        where: {
+          organizationId,
+          source: "whatsapp",
+          createdAt: { gte: since },
+          OR: [
+            { error: { not: null } },
+            {
+              AND: [
+                { processedAt: null },
+                { createdAt: { lt: new Date(Date.now() - 10 * 60 * 1000) } },
+              ],
+            },
+          ],
+        },
+      }),
+      this.prisma.aiRun.count({
+        where: {
+          organizationId,
+          type: "classify",
+          createdAt: { gte: since },
+        },
+      }),
+      this.prisma.aiRun.count({
+        where: {
+          organizationId,
+          type: "classify",
+          status: "FAILED",
+          createdAt: { gte: since },
+        },
+      }),
+      this.prisma.message.findFirst({
+        where: { organizationId, direction: "INBOUND" },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      }),
+      this.prisma.lead.findFirst({
+        where: { organizationId, lastClassifiedAt: { not: null } },
+        orderBy: { lastClassifiedAt: "desc" },
+        select: { lastClassifiedAt: true },
+      }),
+    ]);
+
+    const webhookSuccessRate48h =
+      webhookTotal > 0
+        ? Math.round(((webhookTotal - webhookFailed) / webhookTotal) * 100)
+        : null;
+    const classifySuccessRate48h =
+      classifyTotal > 0
+        ? Math.round(((classifyTotal - classifyFailed) / classifyTotal) * 100)
+        : null;
+
+    const issues: string[] = [];
+    if (webhookFailed > 0) {
+      issues.push(`${webhookFailed} WhatsApp webhook event${webhookFailed === 1 ? "" : "s"} failed or stuck (48h)`);
+    }
+    if (classifyFailed > 0) {
+      issues.push(`${classifyFailed} AI classification${classifyFailed === 1 ? "" : "s"} failed (48h)`);
+    }
+    if (
+      lastInbound &&
+      !lastClassified?.lastClassifiedAt &&
+      lastInbound.createdAt.getTime() < Date.now() - 15 * 60 * 1000
+    ) {
+      issues.push("Inbound messages received but no leads classified yet — check AI / plan access");
+    } else if (
+      lastInbound &&
+      lastClassified?.lastClassifiedAt &&
+      lastClassified.lastClassifiedAt.getTime() < lastInbound.createdAt.getTime() - 30 * 60 * 1000
+    ) {
+      issues.push("Latest inbound is older than the last successful classification — classify may be lagging");
+    }
+
+    return {
+      windowHours: 48,
+      webhookTotal48h: webhookTotal,
+      webhookFailed48h: webhookFailed,
+      webhookSuccessRate48h,
+      classifyTotal48h: classifyTotal,
+      classifyFailed48h: classifyFailed,
+      classifySuccessRate48h,
+      lastInboundAt: lastInbound?.createdAt?.toISOString() ?? null,
+      lastClassifiedAt: lastClassified?.lastClassifiedAt?.toISOString() ?? null,
+      issues,
+      needsAttention: issues.length > 0 || (webhookSuccessRate48h != null && webhookSuccessRate48h < 90) || (classifySuccessRate48h != null && classifySuccessRate48h < 90),
     };
   }
 

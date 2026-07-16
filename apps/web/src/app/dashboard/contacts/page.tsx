@@ -33,7 +33,7 @@ import {
   STAGE_LABELS,
   type CrmTag,
 } from "@/lib/crm";
-import type { LeadStage } from "@growvisi/shared";
+import { HOT_LEAD_SCORE_THRESHOLD, type LeadStage } from "@growvisi/shared";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/locale-provider";
 
@@ -186,7 +186,10 @@ export default function ContactsPage() {
   });
 
   const total = contactPage?.total ?? 0;
-  const hot = useMemo(() => contacts.filter((c) => c.score >= 80).length, [contacts]);
+  const hot = useMemo(
+    () => contacts.filter((c) => c.score >= HOT_LEAD_SCORE_THRESHOLD).length,
+    [contacts],
+  );
   const filtersActive = !!(q.trim() || stage || tagId);
 
   return (
@@ -361,7 +364,7 @@ export default function ContactsPage() {
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <StatCard label="Total contacts" value={total} />
-        <StatCard label="Hot leads (80+)" value={hot} accent />
+        <StatCard label={`Hot leads (${HOT_LEAD_SCORE_THRESHOLD}+)`} value={hot} accent />
         <StatCard label="Tags" value={tags?.length ?? 0} />
       </div>
 
@@ -492,7 +495,7 @@ export default function ContactsPage() {
                       <span
                         className={cn(
                           "font-semibold",
-                          c.score >= 80 ? "text-success" : "text-muted-foreground",
+                          c.score >= HOT_LEAD_SCORE_THRESHOLD ? "text-success" : "text-muted-foreground",
                         )}
                       >
                         {c.score}

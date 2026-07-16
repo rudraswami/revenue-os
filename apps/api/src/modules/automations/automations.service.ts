@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
-import { GROWVISI_WEB_URL } from "@growvisi/shared";
+import { GROWVISI_WEB_URL, HOT_LEAD_SCORE_THRESHOLD } from "@growvisi/shared";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -105,7 +105,7 @@ export class AutomationsService {
         `AI moved lead to ${opts.newStage}`, opts.leadId);
     }
 
-    if (prefs.notify && opts.score >= 80) {
+    if (prefs.notify && opts.score >= HOT_LEAD_SCORE_THRESHOLD) {
       await this.maybeSendHotLeadAlert(opts.organizationId, opts);
       await this.logExecution(opts.organizationId, "notify", "score_threshold",
         `Hot lead alert sent (score: ${opts.score})`, opts.leadId);
@@ -497,7 +497,7 @@ export class AutomationsService {
           ]
             .filter(Boolean)
             .join(" · "),
-          priority: lead.score >= 80 ? "HIGH" : "MEDIUM",
+          priority: lead.score >= HOT_LEAD_SCORE_THRESHOLD ? "HIGH" : "MEDIUM",
           status: "OPEN",
           assignedToId: lead.ownerId ?? undefined,
         },

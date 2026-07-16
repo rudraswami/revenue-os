@@ -32,6 +32,16 @@ type ConnectionHealthData = {
     isActive: boolean;
   }>;
   stats: { conversationCount: number; inboundCount: number };
+  reliability?: {
+    needsAttention: boolean;
+    issues: string[];
+    webhookSuccessRate48h: number | null;
+    classifySuccessRate48h: number | null;
+    webhookTotal48h: number;
+    classifyTotal48h: number;
+    lastInboundAt: string | null;
+    lastClassifiedAt: string | null;
+  };
   tokenHealth?: {
     valid: boolean;
     level?: "ok" | "soon" | "urgent";
@@ -162,6 +172,44 @@ export function WhatsappConnectionHealth() {
                 ? "Your Meta access token has expired or is about to. Refresh it above to avoid missing customer messages."
                 : (data.tokenHealth.hint ?? "Review your Meta access token in the section above.")}
             </p>
+          </div>
+        )}
+
+        {data.reliability && (data.reliability.needsAttention || data.reliability.webhookTotal48h > 0 || data.reliability.classifyTotal48h > 0) && (
+          <div
+            className={cn(
+              "rounded-xl border px-4 py-3.5",
+              data.reliability.needsAttention
+                ? "border-amber-200/80 bg-amber-50/60"
+                : "border-[#dce9ff] bg-[#f8f9ff]/50",
+            )}
+          >
+            <p className="text-sm font-semibold text-foreground">Reliability (last 48h)</p>
+            <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <span>
+                Webhooks:{" "}
+                <strong className="text-foreground">
+                  {data.reliability.webhookSuccessRate48h != null
+                    ? `${data.reliability.webhookSuccessRate48h}%`
+                    : "—"}
+                </strong>
+              </span>
+              <span>
+                Classify:{" "}
+                <strong className="text-foreground">
+                  {data.reliability.classifySuccessRate48h != null
+                    ? `${data.reliability.classifySuccessRate48h}%`
+                    : "—"}
+                </strong>
+              </span>
+            </div>
+            {data.reliability.issues.length > 0 && (
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-amber-900/90">
+                {data.reliability.issues.map((issue) => (
+                  <li key={issue}>{issue}</li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 

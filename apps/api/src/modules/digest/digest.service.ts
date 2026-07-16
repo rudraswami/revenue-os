@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { GROWVISI_WEB_URL } from "@growvisi/shared";
+import { GROWVISI_WEB_URL, HOT_LEAD_SCORE_THRESHOLD } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
@@ -206,7 +206,7 @@ export class DigestService {
       this.prisma.lead.findMany({
         where: {
           organizationId,
-          score: { gte: 70 },
+          score: { gte: HOT_LEAD_SCORE_THRESHOLD },
           stage: { notIn: ["WON", "LOST"] },
         },
         orderBy: { score: "desc" },

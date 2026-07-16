@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { LEAD_STAGES, STAGE_BADGE, formatInr } from "@/lib/crm";
-import type { LeadStage } from "@growvisi/shared";
+import { HOT_LEAD_SCORE_THRESHOLD, type LeadStage } from "@growvisi/shared";
 import {
   useConversationsCopy,
   type InboxListFilter,
@@ -597,13 +597,13 @@ export default function InboxPage() {
                     <span
                       className={cn(
                         "rounded-full px-2 py-0.5 text-[10px] font-bold",
-                        thread.lead.score >= 80
+                        thread.lead.score >= HOT_LEAD_SCORE_THRESHOLD
                           ? "bg-accent text-white"
                           : "bg-[#ecfdf5] text-accent",
                       )}
                       title="Lead score from AI"
                     >
-                      {thread.lead.score >= 80
+                      {thread.lead.score >= HOT_LEAD_SCORE_THRESHOLD
                         ? copy.scoreHot(thread.lead.score)
                         : copy.scoreWarm(thread.lead.score)}
                     </span>

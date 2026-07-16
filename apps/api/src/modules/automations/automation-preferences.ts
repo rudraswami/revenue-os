@@ -13,7 +13,8 @@ export const DEFAULT_AUTOMATION_PREFERENCES: AutomationPreferences = {
   welcome: true,
   followup: true,
   stage: true,
-  notify: false,
+  /** Return-to-work: hot-lead email on by default for new workspaces. */
+  notify: true,
   handoff: true,
   staleDeal: false,
   stageNotify: false,

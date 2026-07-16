@@ -15,6 +15,9 @@ import { HomeRecommendationsPanel } from "@/components/dashboard/home-recommenda
 import { HomeConnectionHealthBanner } from "@/components/dashboard/home-connection-health-banner";
 import { HomeGoLiveBanner } from "@/components/dashboard/home-go-live-banner";
 import { HomeAgencyPortfolioBanner } from "@/components/dashboard/home-agency-portfolio-banner";
+import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
+import { RevenueSetupStrip } from "@/components/dashboard/revenue-setup-strip";
+import { ReturnToWorkBanner } from "@/components/dashboard/return-to-work-banner";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
 import { Button } from "@/components/ui/button";
@@ -129,6 +132,18 @@ export default function DashboardPage() {
     placeholderData: (prev) => prev,
   });
 
+  const { data: onboardingProgress } = useQuery({
+    queryKey: ["onboarding-progress"],
+    queryFn: () =>
+      apiFetch<{
+        whatsappConnected: boolean;
+        allComplete: boolean;
+      }>("/organizations/onboarding-progress", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: STALE.dashboard,
+    placeholderData: (prev) => prev,
+  });
+
   const isLoading = funnelLoading || convLoading;
   const dashboardError = funnelErrorObj ?? convErrorObj;
   const trialOrPlanBlocked =
@@ -182,8 +197,13 @@ export default function DashboardPage() {
       )}
 
       <HomeAgencyPortfolioBanner />
+      <GettingStartedCard />
+      <ReturnToWorkBanner />
       <HomeGoLiveBanner />
       <HomeConnectionHealthBanner />
+      {onboardingProgress?.whatsappConnected ? (
+        <RevenueSetupStrip hasWhatsapp={onboardingProgress.whatsappConnected} />
+      ) : null}
 
       <HomeCommandCenter
         isLoading={isLoading}

@@ -8,6 +8,9 @@ export const QUEUES = {
   ANALYTICS: "analytics.aggregate",
 } as const;
 
+/** Align digest, Home hot leads, and hot-lead email alerts on one threshold. */
+export const HOT_LEAD_SCORE_THRESHOLD = 70;
+
 export const DOMAIN_EVENTS = {
   MESSAGE_RECEIVED: "message.received",
   MESSAGE_SENT: "message.sent",

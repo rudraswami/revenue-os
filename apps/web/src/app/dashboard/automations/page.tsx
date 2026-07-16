@@ -49,7 +49,7 @@ const SERVER_AUTOMATIONS: Array<{
     id: "notify",
     icon: Bell,
     title: "Hot lead alert",
-    description: "Email owners when a lead score hits 80 or higher.",
+    description: "Email owners when a lead score hits 70 or higher.",
     impact: "Close faster",
     serverNote: "Email alert when enabled",
   },

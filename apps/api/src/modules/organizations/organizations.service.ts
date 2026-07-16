@@ -7,7 +7,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
-import { GROWVISI_WEB_URL } from "@growvisi/shared";
+import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone } from "@growvisi/shared";
 import { AuthService } from "../auth/auth.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -423,22 +423,29 @@ export class OrganizationsService {
 
   async getOnboardingProgress(organizationId: string) {
     const [
-      whatsappConnected,
-      inboundMessages,
-      classifiedLeads,
-      pipelineMoved,
+      whatsappAccount,
+      firstInbound,
+      firstClassified,
+      pipelineMovedLead,
       goLive,
+      org,
     ] = await Promise.all([
-      this.prisma.whatsappAccount.count({
+      this.prisma.whatsappAccount.findFirst({
         where: { organizationId, isActive: true },
+        orderBy: { createdAt: "asc" },
+        select: { createdAt: true },
       }),
-      this.prisma.message.count({
+      this.prisma.message.findFirst({
         where: { organizationId, direction: "INBOUND" },
+        orderBy: { createdAt: "asc" },
+        select: { createdAt: true },
       }),
-      this.prisma.lead.count({
+      this.prisma.lead.findFirst({
         where: { organizationId, lastClassifiedAt: { not: null } },
+        orderBy: { lastClassifiedAt: "asc" },
+        select: { lastClassifiedAt: true },
       }),
-      this.prisma.lead.count({
+      this.prisma.lead.findFirst({
         where: {
           organizationId,
           OR: [
@@ -446,25 +453,94 @@ export class OrganizationsService {
             { stageHistory: { some: { changedBy: { not: null } } } },
           ],
         },
+        orderBy: { updatedAt: "asc" },
+        select: { updatedAt: true },
       }),
       this.whatsappAccounts.getGoLiveProgress(organizationId),
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { settings: true },
+      }),
     ]);
 
     const steps = {
-      whatsappConnected: whatsappConnected > 0,
-      firstInbound: inboundMessages > 0,
-      aiClassified: classifiedLeads > 0,
-      pipelineMoved: pipelineMoved > 0,
+      whatsappConnected: !!whatsappAccount,
+      firstInbound: !!firstInbound,
+      aiClassified: !!firstClassified,
+      pipelineMoved: !!pipelineMovedLead,
     };
 
     const values = Object.values(steps);
     const completedCount = values.filter(Boolean).length;
+    const allComplete = activationAllComplete(steps);
+    const next = activationNextMilestone(steps);
+
+    const milestones = {
+      whatsappConnectedAt: whatsappAccount?.createdAt?.toISOString() ?? null,
+      firstInboundAt: firstInbound?.createdAt?.toISOString() ?? null,
+      aiClassifiedAt: firstClassified?.lastClassifiedAt?.toISOString() ?? null,
+      pipelineMovedAt: pipelineMovedLead?.updatedAt?.toISOString() ?? null,
+      completedAt: allComplete
+        ? ([
+            whatsappAccount?.createdAt,
+            firstInbound?.createdAt,
+            firstClassified?.lastClassifiedAt,
+            pipelineMovedLead?.updatedAt,
+          ]
+            .filter((d): d is Date => !!d)
+            .sort((a, b) => b.getTime() - a.getTime())[0]
+            ?.toISOString() ?? null)
+        : null,
+    };
+
+    // Persist activation snapshot for CS / funnel analytics (never wipe prior keys).
+    const prevSettings =
+      org?.settings && typeof org.settings === "object"
+        ? (org.settings as Record<string, unknown>)
+        : {};
+    const prevActivation =
+      prevSettings.activation && typeof prevSettings.activation === "object"
+        ? (prevSettings.activation as Record<string, unknown>)
+        : {};
+    const nextActivation = {
+      ...prevActivation,
+      ...Object.fromEntries(
+        Object.entries(milestones).filter(([, v]) => v != null),
+      ),
+      completedCount,
+      allComplete,
+      updatedAt: new Date().toISOString(),
+    };
+    const activationChanged =
+      JSON.stringify(prevActivation) !==
+      JSON.stringify({
+        ...prevActivation,
+        ...Object.fromEntries(
+          Object.entries(milestones).filter(([, v]) => v != null),
+        ),
+        completedCount,
+        allComplete,
+      });
+
+    if (activationChanged) {
+      await this.prisma.organization.update({
+        where: { id: organizationId },
+        data: {
+          settings: {
+            ...prevSettings,
+            activation: nextActivation,
+          },
+        },
+      });
+    }
 
     return {
       ...steps,
       completedCount,
       totalSteps: values.length,
-      allComplete: completedCount === values.length,
+      allComplete,
+      milestones,
+      nextAction: next,
       goLive,
     };
   }

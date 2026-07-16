@@ -26,7 +26,7 @@ import {
   type TaskPriority,
   type TeamMember,
 } from "@/lib/crm";
-import type { LeadStage } from "@growvisi/shared";
+import { HOT_LEAD_SCORE_THRESHOLD, type LeadStage } from "@growvisi/shared";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -310,7 +310,7 @@ export function ContactDetailDrawer({
                     <div
                       className={cn(
                         "flex h-9 items-center justify-center rounded-lg text-sm font-bold",
-                        contact.score >= 80
+                        contact.score >= HOT_LEAD_SCORE_THRESHOLD
                           ? "bg-success/10 text-success"
                           : "bg-muted text-muted-foreground",
                       )}

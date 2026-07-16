@@ -1,5 +1,6 @@
 import {
   activationAllComplete,
+  activationNextMilestone,
   computeGoLiveProgressPct,
   deriveAgencyConnectionStatus,
 } from "./whatsapp-go-live";
@@ -86,5 +87,29 @@ describe("activationAllComplete", () => {
         pipelineMoved: true,
       }),
     ).toBe(true);
+  });
+});
+
+describe("activationNextMilestone", () => {
+  it("returns the first incomplete milestone", () => {
+    expect(
+      activationNextMilestone({
+        whatsappConnected: true,
+        firstInbound: false,
+        aiClassified: false,
+        pipelineMoved: false,
+      }).id,
+    ).toBe("firstInbound");
+  });
+
+  it("returns complete when all milestones are done", () => {
+    expect(
+      activationNextMilestone({
+        whatsappConnected: true,
+        firstInbound: true,
+        aiClassified: true,
+        pipelineMoved: true,
+      }).id,
+    ).toBe("complete");
   });
 });

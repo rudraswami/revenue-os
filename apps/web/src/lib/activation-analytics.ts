@@ -1,7 +1,7 @@
 /**
  * Client-side activation funnel events.
  * Emits to dataLayer when present; always safe no-op otherwise.
- * North-star candidates: whatsapp_connected, first_inbound, first_classified.
+ * North-star: whatsapp_connected → first_inbound → first_classified → pipeline_moved.
  */
 export type ActivationEvent =
   | "onboarding_welcome_view"
@@ -15,7 +15,13 @@ export type ActivationEvent =
   | "onboarding_whatsapp_connected"
   | "onboarding_first_inbound"
   | "onboarding_open_conversations"
-  | "onboarding_optional_setup_open";
+  | "onboarding_optional_setup_open"
+  | "activation_first_classified"
+  | "activation_pipeline_moved"
+  | "activation_complete"
+  | "activation_home_card_view"
+  | "activation_home_card_dismiss"
+  | "activation_next_step_click";
 
 declare global {
   interface Window {
@@ -32,7 +38,9 @@ export function trackActivation(
   const payload = {
     event,
     product: "growvisi",
-    surface: "onboarding",
+    surface:
+      props?.surface ??
+      (event.startsWith("onboarding_") ? "onboarding" : "activation"),
     ...props,
     ts: Date.now(),
   };

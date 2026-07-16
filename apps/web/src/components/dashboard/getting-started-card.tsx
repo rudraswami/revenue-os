@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Bot, CheckCircle2, Circle, Kanban, MessageSquare, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { trackActivation } from "@/lib/activation-analytics";
 import { CTA, NAV } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "growvisi-getting-started-dismissed";
+const MILESTONE_TRACKED_KEY = "growvisi-activation-milestones-tracked";
 
 interface OnboardingProgress {
   whatsappConnected: boolean;
@@ -21,12 +23,19 @@ interface OnboardingProgress {
   completedCount: number;
   totalSteps: number;
   allComplete: boolean;
+  nextAction?: {
+    id: string;
+    href: string;
+    title: string;
+    description: string;
+  };
 }
 
 export function GettingStartedCard() {
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const [dismissed, setDismissed] = useState(true);
+  const viewedRef = useRef(false);
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
@@ -42,6 +51,42 @@ export function GettingStartedCard() {
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
+
+  useEffect(() => {
+    if (!progress || dismissed || progress.allComplete || viewedRef.current) return;
+    viewedRef.current = true;
+    trackActivation("activation_home_card_view", {
+      surface: "home",
+      completedCount: progress.completedCount,
+      next: progress.nextAction?.id,
+    });
+  }, [progress, dismissed]);
+
+  useEffect(() => {
+    if (!progress) return;
+    let tracked: Record<string, boolean> = {};
+    try {
+      tracked = JSON.parse(localStorage.getItem(MILESTONE_TRACKED_KEY) || "{}") as Record<
+        string,
+        boolean
+      >;
+    } catch {
+      tracked = {};
+    }
+
+    const mark = (key: string, event: Parameters<typeof trackActivation>[0]) => {
+      if (!tracked[key]) {
+        trackActivation(event, { surface: "home" });
+        tracked[key] = true;
+      }
+    };
+
+    if (progress.aiClassified) mark("aiClassified", "activation_first_classified");
+    if (progress.pipelineMoved) mark("pipelineMoved", "activation_pipeline_moved");
+    if (progress.allComplete) mark("allComplete", "activation_complete");
+
+    localStorage.setItem(MILESTONE_TRACKED_KEY, JSON.stringify(tracked));
+  }, [progress]);
 
   if (dismissed || !progress || progress.allComplete) return null;
 
@@ -89,6 +134,10 @@ export function GettingStartedCard() {
   function dismiss() {
     localStorage.setItem(DISMISS_KEY, "1");
     setDismissed(true);
+    trackActivation("activation_home_card_dismiss", {
+      surface: "home",
+      completedCount: progress?.completedCount,
+    });
   }
 
   return (
@@ -150,7 +199,15 @@ export function GettingStartedCard() {
               </div>
               {!step.done && (
                 <Button asChild variant="outline" size="sm" className="shrink-0 gap-1 rounded-xl">
-                  <Link href={step.href}>
+                  <Link
+                    href={step.href}
+                    onClick={() =>
+                      trackActivation("activation_next_step_click", {
+                        surface: "home",
+                        step: step.id,
+                      })
+                    }
+                  >
                     {step.action}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>

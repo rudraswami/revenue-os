@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
+import { HOT_LEAD_SCORE_THRESHOLD, activationNextMilestone } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
@@ -850,23 +851,61 @@ export class LeadsService {
         actions: [{ type: "link", label: "View Analytics", href: "/dashboard/analytics" }],
       });
     }
-    if (funnel.total === 0 && !this.isDismissed(dismissed, "getting_started")) {
+
+    const [waConnected, hasInbound, hasClassified, hasPipelineMove] = await Promise.all([
+      this.prisma.whatsappAccount.count({
+        where: { organizationId: orgId, isActive: true },
+      }),
+      this.prisma.message.count({
+        where: { organizationId: orgId, direction: "INBOUND" },
+      }),
+      this.prisma.lead.count({
+        where: { organizationId: orgId, lastClassifiedAt: { not: null } },
+      }),
+      this.prisma.lead.count({
+        where: {
+          organizationId: orgId,
+          OR: [
+            { stage: { not: "NEW" } },
+            { stageHistory: { some: { changedBy: { not: null } } } },
+          ],
+        },
+      }),
+    ]);
+
+    const activationSteps = {
+      whatsappConnected: waConnected > 0,
+      firstInbound: hasInbound > 0,
+      aiClassified: hasClassified > 0,
+      pipelineMoved: hasPipelineMove > 0,
+    };
+    const nextMilestone = activationNextMilestone(activationSteps);
+
+    if (
+      nextMilestone.id !== "complete" &&
+      !this.isDismissed(dismissed, "getting_started") &&
+      !this.isDismissed(dismissed, `activation_${nextMilestone.id}`)
+    ) {
       items.push({
         id: "getting_started",
         type: "Getting started",
-        title: "No leads tracked yet",
-        body: "Connect WhatsApp and send a test message to see your first classified lead.",
-        href: "/onboarding",
-        actionLabel: "Connect WhatsApp",
-        priority: 5,
-        actions: [{ type: "link", label: "Connect WhatsApp", href: "/onboarding" }],
+        title: nextMilestone.title,
+        body: nextMilestone.description,
+        href: nextMilestone.href,
+        actionLabel: nextMilestone.title,
+        priority: handoffs > 0 || unread > 0 ? 5 : 0,
+        actions: [{ type: "link", label: nextMilestone.title, href: nextMilestone.href }],
       });
     }
 
     items.sort((a, b) => a.priority - b.priority);
 
     const hotLeads = await this.prisma.lead.findMany({
-      where: { organizationId: orgId, score: { gte: 70 }, stage: { notIn: ["WON", "LOST"] } },
+      where: {
+        organizationId: orgId,
+        score: { gte: HOT_LEAD_SCORE_THRESHOLD },
+        stage: { notIn: ["WON", "LOST"] },
+      },
       orderBy: { score: "desc" },
       take: 5,
       select: {

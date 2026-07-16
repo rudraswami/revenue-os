@@ -34,3 +34,61 @@ export function activationAllComplete(steps: {
     steps.pipelineMoved
   );
 }
+
+export type ActivationMilestoneId =
+  | "whatsappConnected"
+  | "firstInbound"
+  | "aiClassified"
+  | "pipelineMoved";
+
+/** Next incomplete activation step — drives Home / CS interventions. */
+export function activationNextMilestone(steps: {
+  whatsappConnected: boolean;
+  firstInbound: boolean;
+  aiClassified: boolean;
+  pipelineMoved: boolean;
+}): {
+  id: ActivationMilestoneId | "complete";
+  href: string;
+  title: string;
+  description: string;
+} {
+  if (!steps.whatsappConnected) {
+    return {
+      id: "whatsappConnected",
+      href: "/dashboard/settings?tab=whatsapp",
+      title: "Connect WhatsApp",
+      description: "Link your business number so conversations can flow into Growvisi.",
+    };
+  }
+  if (!steps.firstInbound) {
+    return {
+      id: "firstInbound",
+      href: "/dashboard/inbox",
+      title: "Get your first customer message",
+      description: "Message your business number from your phone to confirm ingest.",
+    };
+  }
+  if (!steps.aiClassified) {
+    return {
+      id: "aiClassified",
+      href: "/dashboard/inbox",
+      title: "See AI classify a lead",
+      description: "Open Conversations — intent score and suggested stage appear on the thread.",
+    };
+  }
+  if (!steps.pipelineMoved) {
+    return {
+      id: "pipelineMoved",
+      href: "/dashboard/pipeline",
+      title: "Move a deal on Pipeline",
+      description: "Drag a card past New — your revenue board is live.",
+    };
+  }
+  return {
+    id: "complete",
+    href: "/dashboard",
+    title: "Activation complete",
+    description: "WhatsApp → classify → pipeline is working in this workspace.",
+  };
+}

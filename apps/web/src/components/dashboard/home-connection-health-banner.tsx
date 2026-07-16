@@ -16,6 +16,12 @@ type ConnectionHealthData = {
   checks: HealthCheck[];
   accounts: Array<{ displayPhoneNumber: string; isActive: boolean }>;
   stats: { inboundCount: number };
+  reliability?: {
+    needsAttention: boolean;
+    issues: string[];
+    webhookSuccessRate48h: number | null;
+    classifySuccessRate48h: number | null;
+  };
   tokenHealth?: {
     valid?: boolean;
     needsRefresh: boolean;
@@ -67,10 +73,14 @@ export function HomeConnectionHealthBanner() {
   const needsAttention =
     health.tokenHealth?.needsAttention ||
     health.tokenHealth?.needsRefresh ||
+    health.reliability?.needsAttention ||
     summary.tone === "warning" ||
     healthPct < 100;
 
   if (!needsAttention) return null;
+
+  const reliabilityIssue = health.reliability?.issues?.[0];
+  const subtitle = reliabilityIssue ?? summary.subtitle;
 
   return (
     <div
@@ -91,7 +101,7 @@ export function HomeConnectionHealthBanner() {
           <p className="text-sm font-semibold text-foreground">
             {formatMessage(t("homeBanners.connectionTitle"), { pct: healthPct })}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{summary.subtitle}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
         </div>
       </div>
       <Button asChild size="sm" variant="outline" className="h-8 shrink-0 gap-1.5 rounded-xl">
