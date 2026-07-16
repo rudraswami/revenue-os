@@ -143,9 +143,10 @@ export const messages = {
     },
     onboardingActivation: {
       welcomeEyebrow: "AI revenue for WhatsApp",
-      welcomeHeadline: "Turn every WhatsApp chat into revenue you can track.",
+      welcomeHeadline: "Turn WhatsApp chats into revenue you can track.",
       welcomeSub:
-        "Growvisi captures leads, scores intent, and updates Pipeline automatically. Your team still replies — we never auto-reply customers.",
+        "Capture leads. Score intent. Update Pipeline. Your team replies — we never auto-reply.",
+      welcomePillarsLine: "Capture  ·  Classify  ·  Pipeline",
       pillars: {
         capture: {
           title: "Every message becomes a lead",
@@ -164,12 +165,14 @@ export const messages = {
         "Not another WhatsApp CRM — the revenue layer on top of the chats you already have.",
       continue: "Connect WhatsApp",
       exploreDashboard: "Explore dashboard first",
+      exploreShort: "Explore dashboard",
       stepWelcome: "Why Growvisi",
+      stepWelcomeShort: "Why",
       stepConnect: "Connect",
       stepReady: "First win",
-      connectHeadline: "Connect the number customers already message",
-      connectSub:
-        "One secure Meta login. Then we’ll help you get your first scored conversation — that’s when Growvisi becomes real.",
+      stepReadyShort: "Live",
+      connectHeadline: "Connect your business WhatsApp",
+      connectSub: "Secure Meta login. About two minutes — then your first scored chat.",
       connectDiff:
         "Growvisi classifies and tracks revenue. Your team replies. Meta handles optional in-chat FAQ if you use it.",
       continueWithMeta: "Continue with Meta",
@@ -707,9 +710,10 @@ export const messages = {
     },
     onboardingActivation: {
       welcomeEyebrow: "WhatsApp के लिए AI राजस्व",
-      welcomeHeadline: "हर WhatsApp चैट को ट्रैक होने वाले राजस्व में बदलें।",
+      welcomeHeadline: "WhatsApp चैट को ट्रैक होने वाले राजस्व में बदलें।",
       welcomeSub:
-        "Growvisi लीड कैप्चर करता है, इरादा स्कोर करता है, और Pipeline अपने आप अपडेट करता है। जवाब आपकी टीम देती है — हम ग्राहकों को ऑटो-रिप्लाई नहीं करते।",
+        "लीड कैप्चर। इरादा स्कोर। Pipeline अपडेट। जवाब आपकी टीम — हम ऑटो-रिप्लाई नहीं करते।",
+      welcomePillarsLine: "कैप्चर  ·  वर्गीकरण  ·  Pipeline",
       pillars: {
         capture: {
           title: "हर संदेश एक लीड बनता है",
@@ -728,12 +732,14 @@ export const messages = {
         "एक और WhatsApp CRM नहीं — आपके मौजूदा चैट के ऊपर राजस्व लेयर।",
       continue: "WhatsApp कनेक्ट करें",
       exploreDashboard: "पहले डैशबोर्ड देखें",
+      exploreShort: "डैशबोर्ड देखें",
       stepWelcome: "क्यों Growvisi",
+      stepWelcomeShort: "क्यों",
       stepConnect: "कनेक्ट",
       stepReady: "पहली जीत",
-      connectHeadline: "वही नंबर कनेक्ट करें जिस पर ग्राहक मैसेज करते हैं",
-      connectSub:
-        "एक सुरक्षित Meta लॉगिन। फिर पहली स्कोर वाली बातचीत — तभी Growvisi असली लगता है।",
+      stepReadyShort: "लाइव",
+      connectHeadline: "अपना बिज़नेस WhatsApp कनेक्ट करें",
+      connectSub: "सुरक्षित Meta लॉगिन। लगभग दो मिनट — फिर पहली स्कोर वाली चैट।",
       connectDiff:
         "Growvisi वर्गीकृत करता है और राजस्व ट्रैक करता है। जवाब आपकी टीम देती है। वैकल्पिक FAQ Meta Business Agent संभाल सकता है।",
       continueWithMeta: "Meta से जारी रखें",

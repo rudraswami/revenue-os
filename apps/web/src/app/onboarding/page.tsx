@@ -116,7 +116,7 @@ function OnboardingPageContent() {
   const stepperSteps = [
     {
       id: "welcome",
-      label: t("onboardingActivation.stepWelcome"),
+      label: t("onboardingActivation.stepWelcomeShort"),
       done: activeScreen !== "welcome",
       current: activeScreen === "welcome",
     },
@@ -128,7 +128,7 @@ function OnboardingPageContent() {
     },
     {
       id: "ready",
-      label: t("onboardingActivation.stepReady"),
+      label: t("onboardingActivation.stepReadyShort"),
       done: activeScreen === "success",
       current: activeScreen === "success",
     },
@@ -140,54 +140,44 @@ function OnboardingPageContent() {
     activeScreen === "welcome";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
-          <Logo href="/dashboard" />
-          <div className="hidden flex-1 justify-center sm:flex">
-            <OnboardingStepper steps={stepperSteps} />
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f7faf8_0%,#f8fafc_40%,#ffffff_100%)]">
+      <header className="sticky top-0 z-20 border-b border-border/40 bg-white/80 backdrop-blur-xl">
+        <div className="mx-auto grid h-14 max-w-3xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 sm:px-8">
+          <div className="justify-self-start">
+            <Logo href="/dashboard" />
           </div>
-          <div className="flex items-center gap-2">
+          <OnboardingStepper steps={stepperSteps} className="justify-self-center" />
+          <div className="justify-self-end">
             {fromAgency ? (
-              <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
+              <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" asChild>
                 <Link href="/dashboard/agency">
                   <ArrowLeft className="h-4 w-4" />
                   <span className="hidden sm:inline">Agency</span>
                 </Link>
               </Button>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                onClick={exploreDashboard}
-                disabled={esInFlight}
-              >
-                {t("onboardingActivation.exploreDashboard")}
-              </Button>
+              <span className="inline-block w-8" aria-hidden />
             )}
           </div>
         </div>
-        <div className="border-t border-border/40 px-5 py-2.5 sm:hidden">
-          <OnboardingStepper steps={stepperSteps} className="justify-center" />
-        </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
+      <main className="mx-auto max-w-3xl px-5 sm:px-8">
         {fromAgency && activeScreen !== "success" && (
-          <div className="mb-8 rounded-2xl border border-[#dce9ff] bg-white px-4 py-3.5 text-sm text-muted-foreground shadow-sm">
+          <div className="mb-6 mt-6 rounded-2xl border border-[#dce9ff] bg-white/90 px-4 py-3 text-sm text-muted-foreground shadow-sm">
             {t("onboardingActivation.agencyBanner")}{" "}
             <strong className="text-foreground">{organization?.name ?? "this client"}</strong>
           </div>
         )}
 
-        <AnimatePresence mode="sync">
+        <AnimatePresence mode="wait">
           {activeScreen === "welcome" && (
             <motion.div
               key="welcome"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
             >
               <OnboardingWelcome onContinue={enterConnect} onExplore={exploreDashboard} />
             </motion.div>
@@ -197,9 +187,10 @@ function OnboardingPageContent() {
             (connectPhase === "waiting_meta" || connectPhase === "saving") && (
               <motion.div
                 key="connecting"
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
+                className="py-14"
               >
                 <ConnectionProgress phase={connectPhase} />
               </motion.div>
@@ -208,20 +199,18 @@ function OnboardingPageContent() {
           {activeScreen === "connect" && (
             <motion.div
               key="connect-copy"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="mx-auto max-w-lg"
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="mx-auto max-w-md py-14"
             >
               <div className="mb-8 text-center">
-                <h1 className="text-2xl font-bold tracking-tight text-[#0b1c30] sm:text-3xl">
+                <h1 className="text-2xl font-bold tracking-tight text-[#0b1c30] sm:text-[1.75rem]">
                   {t("onboardingActivation.connectHeadline")}
                 </h1>
-                <p className="mt-3 text-base text-muted-foreground">
+                <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
                   {t("onboardingActivation.connectSub")}
-                </p>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  {t("onboardingActivation.connectDiff")}
                 </p>
               </div>
             </motion.div>
@@ -230,9 +219,10 @@ function OnboardingPageContent() {
           {activeScreen === "success" && (
             <motion.div
               key="success"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
+              className="py-10"
             >
               <ActivationSuccess
                 businessName={
@@ -259,7 +249,11 @@ function OnboardingPageContent() {
         */}
         {connectMounted && (
           <div
-            className={cn("mx-auto max-w-lg", hideConnectUi && "sr-only")}
+            className={cn(
+              "mx-auto max-w-md",
+              hideConnectUi && "sr-only",
+              activeScreen === "connect" && "-mt-6 pb-16",
+            )}
             aria-hidden={hideConnectUi}
           >
             <WhatsappConnect variant="onboarding" onPhaseChange={handlePhaseChange} />
