@@ -1,9 +1,17 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Bot, Kanban, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackActivation } from "@/lib/activation-analytics";
 import { useI18n } from "@/lib/i18n/locale-provider";
+
+const PILLARS = [
+  { icon: MessageCircle, key: "capture" as const },
+  { icon: Bot, key: "classify" as const },
+  { icon: Kanban, key: "pipeline" as const },
+] as const;
 
 export function OnboardingWelcome({
   onContinue,
@@ -13,6 +21,10 @@ export function OnboardingWelcome({
   onExplore: () => void;
 }) {
   const { t } = useI18n();
+
+  useEffect(() => {
+    trackActivation("onboarding_welcome_view");
+  }, []);
 
   return (
     <motion.div
@@ -29,8 +41,41 @@ export function OnboardingWelcome({
       <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
         {t("onboardingActivation.welcomeSub")}
       </p>
-      <div className="mt-10 flex w-full max-w-sm flex-col gap-3">
-        <Button size="lg" className="h-12 w-full rounded-xl text-base" onClick={onContinue}>
+
+      <ul className="mt-8 w-full max-w-md space-y-3 text-left">
+        {PILLARS.map(({ icon: Icon, key }) => (
+          <li
+            key={key}
+            className="flex gap-3 rounded-xl border border-border/50 bg-white/80 px-4 py-3"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#ecfdf5] text-accent">
+              <Icon className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-[#0b1c30]">
+                {t(`onboardingActivation.pillars.${key}.title`)}
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                {t(`onboardingActivation.pillars.${key}.desc`)}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-6 max-w-md text-sm text-muted-foreground">
+        {t("onboardingActivation.welcomeDiff")}
+      </p>
+
+      <div className="mt-8 flex w-full max-w-sm flex-col gap-3">
+        <Button
+          size="lg"
+          className="h-12 w-full rounded-xl text-base"
+          onClick={() => {
+            trackActivation("onboarding_welcome_continue");
+            onContinue();
+          }}
+        >
           {t("onboardingActivation.continue")}
           <ArrowRight className="h-4 w-4" />
         </Button>

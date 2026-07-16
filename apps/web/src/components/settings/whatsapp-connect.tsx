@@ -157,7 +157,7 @@ export default function WhatsappConnect({
       patchOnboarding({
         whatsappConnected: true,
         firstMessageReceived: onboarding?.firstMessageReceived ?? false,
-        complete: true,
+        complete: onboarding?.firstMessageReceived ?? false,
       });
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
       void queryClient.invalidateQueries({ queryKey: ["onboarding-progress"] });

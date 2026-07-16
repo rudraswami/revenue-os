@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
@@ -17,6 +17,7 @@ import WhatsappConnect, {
 } from "@/components/settings/whatsapp-connect";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { apiFetch } from "@/lib/api-client";
+import { trackActivation } from "@/lib/activation-analytics";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +35,13 @@ function OnboardingPageContent() {
 
   const [screen, setScreen] = useState<Screen>("welcome");
   const [connectPhase, setConnectPhase] = useState<WhatsappConnectPhase>("idle");
+  const connectPhaseRef = useRef<WhatsappConnectPhase>("idle");
   /** Once true, keep WhatsappConnect mounted for the rest of the session so ES cannot remount mid-popup. */
   const [connectMounted, setConnectMounted] = useState(false);
+  const connectViewTracked = useRef(false);
 
   function exploreDashboard() {
+    trackActivation("onboarding_welcome_skip");
     dismissOnboarding();
     router.push(fromAgency ? "/dashboard/agency" : "/dashboard");
   }
@@ -65,14 +69,26 @@ function OnboardingPageContent() {
     patchOnboarding({
       whatsappConnected: true,
       firstMessageReceived: false,
-      complete: true,
+      // Activation complete only after first inbound (Success first-win coach).
+      complete: false,
     });
     setScreen("success");
     setConnectPhase((p) => (p === "done" ? p : "done"));
   }, [whatsappConnected, esInFlight, patchOnboarding]);
 
   function handlePhaseChange(phase: WhatsappConnectPhase) {
+    const prev = connectPhaseRef.current;
+    connectPhaseRef.current = phase;
     setConnectPhase(phase);
+
+    if (phase === "waiting_meta") {
+      trackActivation("onboarding_meta_started");
+    } else if (phase === "error") {
+      trackActivation("onboarding_meta_failed");
+    } else if (phase === "idle" && (prev === "waiting_meta" || prev === "saving")) {
+      trackActivation("onboarding_meta_cancelled");
+    }
+
     if (phase === "waiting_meta" || phase === "saving") {
       setScreen("connecting");
     } else if (phase === "error" || phase === "idle") {
@@ -86,6 +102,13 @@ function OnboardingPageContent() {
     setConnectMounted(true);
     setScreen("connect");
   }
+
+  useEffect(() => {
+    if (screen === "connect" && connectMounted && !connectViewTracked.current) {
+      connectViewTracked.current = true;
+      trackActivation("onboarding_connect_view");
+    }
+  }, [screen, connectMounted]);
 
   const activeScreen: Screen =
     whatsappConnected && !esInFlight ? "success" : screen;
@@ -196,6 +219,9 @@ function OnboardingPageContent() {
                 </h1>
                 <p className="mt-3 text-base text-muted-foreground">
                   {t("onboardingActivation.connectSub")}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  {t("onboardingActivation.connectDiff")}
                 </p>
               </div>
             </motion.div>

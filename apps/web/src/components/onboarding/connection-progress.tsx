@@ -6,34 +6,25 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/locale-provider";
 
-const STEP_KEYS = [
-  "verifyingBusiness",
-  "connectingWhatsapp",
-  "creatingWorkspace",
-  "preparingInbox",
-  "activatingPipeline",
-] as const;
+/** Honest wait states — tied to Meta popup vs save, plus what Growvisi will do next. */
+const WAITING_META_KEYS = ["waitingMeta", "secureLink"] as const;
+const SAVING_KEYS = ["savingNumber", "readyToScore"] as const;
 
 type Phase = "waiting_meta" | "saving";
 
 export function ConnectionProgress({ phase }: { phase: Phase }) {
   const { t } = useI18n();
+  const keys = phase === "waiting_meta" ? WAITING_META_KEYS : SAVING_KEYS;
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
+    setActiveIndex(0);
     if (phase === "waiting_meta") {
-      setActiveIndex(0);
-      const t1 = window.setTimeout(() => setActiveIndex(1), 2200);
+      const t1 = window.setTimeout(() => setActiveIndex(1), 2800);
       return () => window.clearTimeout(t1);
     }
-
-    setActiveIndex(2);
-    const t2 = window.setTimeout(() => setActiveIndex(3), 900);
-    const t3 = window.setTimeout(() => setActiveIndex(4), 1800);
-    return () => {
-      window.clearTimeout(t2);
-      window.clearTimeout(t3);
-    };
+    const t2 = window.setTimeout(() => setActiveIndex(1), 1200);
+    return () => window.clearTimeout(t2);
   }, [phase]);
 
   return (
@@ -43,7 +34,9 @@ export function ConnectionProgress({ phase }: { phase: Phase }) {
           <Loader2 className="h-7 w-7 animate-spin" />
         </div>
         <h2 className="text-xl font-bold tracking-tight text-[#0b1c30]">
-          {t("onboardingActivation.progressTitle")}
+          {phase === "waiting_meta"
+            ? t("onboardingActivation.progressTitleMeta")
+            : t("onboardingActivation.progressTitleSaving")}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           {phase === "waiting_meta"
@@ -53,7 +46,7 @@ export function ConnectionProgress({ phase }: { phase: Phase }) {
       </div>
 
       <ul className="space-y-3">
-        {STEP_KEYS.map((key, i) => {
+        {keys.map((key, i) => {
           const done = i < activeIndex;
           const current = i === activeIndex;
           return (
@@ -95,6 +88,10 @@ export function ConnectionProgress({ phase }: { phase: Phase }) {
           );
         })}
       </ul>
+
+      <p className="mt-8 rounded-xl bg-[#f8fafc] px-4 py-3 text-center text-xs leading-relaxed text-muted-foreground">
+        {t("onboardingActivation.progressEducation")}
+      </p>
     </div>
   );
 }
