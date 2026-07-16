@@ -415,7 +415,7 @@ export default function WhatsappConnect({
           : t("onboardingActivation.continueWithMeta");
 
   const facebookConnectCard = isOnboarding ? (
-    <div className="mx-auto max-w-md overflow-hidden rounded-2xl border border-border/60 bg-white shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
+    <div className="mx-auto max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
       <div className="space-y-5 p-6 sm:p-8">
         {error && (
           <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -428,7 +428,7 @@ export default function WhatsappConnect({
           <>
             <Button
               size="lg"
-              className="h-12 w-full gap-2 rounded-xl bg-[#1877F2] text-base font-semibold hover:bg-[#166FE0]"
+              className="h-12 w-full gap-2 bg-[#1877F2] text-base hover:bg-[#166FE0]"
               disabled={phase === "waiting_meta" || phase === "saving"}
               onClick={() => void handleConnect()}
             >
@@ -437,7 +437,7 @@ export default function WhatsappConnect({
               )}
               {metaCtaLabel}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs leading-relaxed text-muted-foreground">
               {t("onboardingActivation.connectTrust")}
             </p>
           </>

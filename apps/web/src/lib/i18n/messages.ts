@@ -190,14 +190,14 @@ export const messages = {
       connectErrorHint:
         "Allow popups, finish every screen in the Meta window, then try again.",
       progressTitleMeta: "Finish in the Meta window",
-      progressTitleSaving: "Linking your number",
-      progressMetaHint: "Pick your business and phone, then click Complete — we’ll take it from there.",
-      progressSavingHint: "Saving your WhatsApp line to Growvisi…",
+      progressTitleSaving: "Activating Growvisi",
+      progressMetaHint: "Pick your business and phone, then click Complete.",
+      progressSavingHint: "Linking your number — Conversations and Pipeline come next.",
       progressSteps: {
         waitingMeta: "Waiting for Meta setup",
         secureLink: "Securing your business line",
         savingNumber: "Saving your WhatsApp number",
-        readyToScore: "Getting ready to score messages",
+        readyToScore: "Preparing to score messages",
         verifyingBusiness: "Verifying business",
         connectingWhatsapp: "Connecting WhatsApp",
         creatingWorkspace: "Creating AI workspace",
@@ -205,7 +205,7 @@ export const messages = {
         activatingPipeline: "Activating Pipeline",
       },
       progressEducation:
-        "Next: send one WhatsApp to your business number. Growvisi will classify it and show it in Conversations.",
+        "Next: message your business number once. Growvisi classifies it in Conversations.",
       successTitle: "WhatsApp is connected.",
       successSub: "One more step to see Growvisi work — get your first message in.",
       successLiveTitle: "You're live.",
@@ -757,9 +757,9 @@ export const messages = {
       connectErrorHint:
         "पॉपअप अनुमति दें, Meta विंडो की हर स्क्रीन पूरी करें, फिर फिर कोशिश करें।",
       progressTitleMeta: "Meta विंडो में पूरा करें",
-      progressTitleSaving: "नंबर लिंक हो रहा है",
-      progressMetaHint: "बिज़नेस और फोन चुनें, फिर Complete दबाएँ — बाकी हम संभालते हैं।",
-      progressSavingHint: "आपकी WhatsApp लाइन Growvisi में सेव हो रही है…",
+      progressTitleSaving: "Growvisi सक्रिय हो रहा है",
+      progressMetaHint: "बिज़नेस और फोन चुनें, फिर Complete दबाएँ।",
+      progressSavingHint: "नंबर लिंक हो रहा है — आगे Conversations और Pipeline।",
       progressSteps: {
         waitingMeta: "Meta सेटअप का इंतज़ार",
         secureLink: "बिज़नेस लाइन सुरक्षित हो रही है",
@@ -772,7 +772,7 @@ export const messages = {
         activatingPipeline: "Pipeline सक्रिय हो रहा है",
       },
       progressEducation:
-        "अगला: अपने बिज़नेस नंबर पर एक WhatsApp भेजें। Growvisi उसे वर्गीकृत करके Conversations में दिखाएगा।",
+        "अगला: बिज़नेस नंबर पर एक बार मैसेज करें। Growvisi Conversations में वर्गीकृत करेगा।",
       successTitle: "WhatsApp कनेक्ट हो गया।",
       successSub: "Growvisi देखने के लिए एक और कदम — पहला संदेश आने दें।",
       successLiveTitle: "आप लाइव हैं।",

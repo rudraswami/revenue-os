@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { trackActivation } from "@/lib/activation-analytics";
 import { useI18n } from "@/lib/i18n/locale-provider";
 
+const ease = [0.22, 1, 0.36, 1] as const;
+
 const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
+  hidden: { opacity: 0, y: 14 },
   show: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: 0.08 * i, duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+    transition: { delay: 0.07 * i, duration: 0.48, ease },
   }),
 };
 
@@ -30,13 +32,13 @@ export function OnboardingWelcome({
   }, []);
 
   return (
-    <div className="relative mx-auto flex min-h-[calc(100vh-4.5rem)] max-w-lg flex-col items-center justify-center px-1 py-10 text-center">
+    <div className="relative mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-lg flex-col items-center justify-center px-1 py-12 text-center">
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-1/4 -z-10 mx-auto h-64 w-64 rounded-full bg-[#25D366]/10 blur-3xl"
-        initial={{ opacity: 0, scale: 0.8 }}
+        className="pointer-events-none absolute inset-x-0 top-[18%] -z-10 mx-auto h-72 w-72 rounded-full bg-accent/10 blur-3xl"
+        initial={{ opacity: 0, scale: 0.85 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1.2, ease: "easeOut" }}
+        transition={{ duration: 1.1, ease: "easeOut" }}
       />
 
       <motion.p
@@ -44,7 +46,7 @@ export function OnboardingWelcome({
         variants={fadeUp}
         initial="hidden"
         animate="show"
-        className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent"
+        className="section-label"
       >
         Growvisi
       </motion.p>
@@ -54,7 +56,7 @@ export function OnboardingWelcome({
         variants={fadeUp}
         initial="hidden"
         animate="show"
-        className="mt-5 text-[1.75rem] font-bold leading-tight tracking-tight text-[#0b1c30] sm:text-4xl sm:leading-[1.15]"
+        className="display-lg mt-5 max-w-md text-foreground"
       >
         {t("onboardingActivation.welcomeHeadline")}
       </motion.h1>
@@ -74,7 +76,7 @@ export function OnboardingWelcome({
         variants={fadeUp}
         initial="hidden"
         animate="show"
-        className="mt-8 text-sm font-medium tracking-wide text-[#0b1c30]/55"
+        className="mt-8 text-sm font-semibold tracking-wide text-foreground/50"
       >
         {t("onboardingActivation.welcomePillarsLine")}
       </motion.p>
@@ -84,11 +86,11 @@ export function OnboardingWelcome({
         variants={fadeUp}
         initial="hidden"
         animate="show"
-        className="mt-10 flex w-full max-w-xs flex-col gap-3"
+        className="mt-10 flex w-full max-w-xs flex-col items-center gap-3"
       >
         <Button
           size="lg"
-          className="h-12 w-full rounded-2xl text-base shadow-lg shadow-[#0b1c30]/10 transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          className="h-12 w-full shadow-[0_8px_24px_rgb(11_28_48/0.12)] transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
           onClick={() => {
             trackActivation("onboarding_welcome_continue");
             onContinue();
@@ -99,7 +101,7 @@ export function OnboardingWelcome({
         </Button>
         <button
           type="button"
-          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           onClick={onExplore}
         >
           {t("onboardingActivation.exploreShort")}

@@ -140,8 +140,8 @@ function OnboardingPageContent() {
     activeScreen === "welcome";
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f7faf8_0%,#f8fafc_40%,#ffffff_100%)]">
-      <header className="sticky top-0 z-20 border-b border-border/40 bg-white/80 backdrop-blur-xl">
+    <div className="app-shell !h-auto !max-h-none min-h-screen overflow-y-auto">
+      <header className="sticky top-0 z-20 border-b border-border/50 bg-white/85 backdrop-blur-xl">
         <div className="mx-auto grid h-14 max-w-3xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 sm:px-8">
           <div className="justify-self-start">
             <Logo href="/dashboard" />
@@ -164,7 +164,7 @@ function OnboardingPageContent() {
 
       <main className="mx-auto max-w-3xl px-5 sm:px-8">
         {fromAgency && activeScreen !== "success" && (
-          <div className="mb-6 mt-6 rounded-2xl border border-[#dce9ff] bg-white/90 px-4 py-3 text-sm text-muted-foreground shadow-sm">
+          <div className="mb-6 mt-6 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground shadow-sm">
             {t("onboardingActivation.agencyBanner")}{" "}
             <strong className="text-foreground">{organization?.name ?? "this client"}</strong>
           </div>
@@ -183,13 +183,15 @@ function OnboardingPageContent() {
             </motion.div>
           )}
 
+          {/* Same key across Meta wait → save so the progress UI never remounts/blinks */}
           {activeScreen === "connecting" &&
             (connectPhase === "waiting_meta" || connectPhase === "saving") && (
               <motion.div
                 key="connecting"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                 className="py-14"
               >
                 <ConnectionProgress phase={connectPhase} />
@@ -203,10 +205,10 @@ function OnboardingPageContent() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="mx-auto max-w-md py-14"
+              className="mx-auto max-w-md pt-14"
             >
               <div className="mb-8 text-center">
-                <h1 className="text-2xl font-bold tracking-tight text-[#0b1c30] sm:text-[1.75rem]">
+                <h1 className="display-lg text-foreground">
                   {t("onboardingActivation.connectHeadline")}
                 </h1>
                 <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
@@ -219,9 +221,10 @@ function OnboardingPageContent() {
           {activeScreen === "success" && (
             <motion.div
               key="success"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               className="py-10"
             >
               <ActivationSuccess
@@ -243,16 +246,12 @@ function OnboardingPageContent() {
           )}
         </AnimatePresence>
 
-        {/*
-          Single stable mount for Embedded Signup. Must stay alive from Continue → Meta popup
-          → complete API so FB.login + WA_EMBEDDED_SIGNUP postMessage are never torn down.
-        */}
         {connectMounted && (
           <div
             className={cn(
               "mx-auto max-w-md",
               hideConnectUi && "sr-only",
-              activeScreen === "connect" && "-mt-6 pb-16",
+              activeScreen === "connect" && "-mt-2 pb-16",
             )}
             aria-hidden={hideConnectUi}
           >
