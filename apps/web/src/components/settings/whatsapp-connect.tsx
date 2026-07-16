@@ -507,7 +507,16 @@ export default function WhatsappConnect({ variant = "default" }: { variant?: "de
       <div className={cn("space-y-5", isOnboarding ? "p-5 sm:p-6" : "space-y-4 px-6 py-6")}>
         {error && (
           <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error}
+            <p>{error}</p>
+            {error.toLowerCase().includes("timed out") || error.toLowerCase().includes("cancelled") ? (
+              <p className="mt-2 text-xs text-destructive/90">
+                Tip: After Facebook login, Meta should show WhatsApp setup screens (pick business →
+                phone → Finish). If the popup closes right after login, try the &quot;I use WhatsApp
+                API already&quot; path, allow popups, and confirm{" "}
+                <code className="rounded bg-destructive/10 px-1">{typeof window !== "undefined" ? window.location.hostname : "your domain"}</code>{" "}
+                is in Meta → Facebook Login for Business → Allowed Domains.
+              </p>
+            ) : null}
           </div>
         )}
 

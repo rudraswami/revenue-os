@@ -16,7 +16,7 @@ interface EmbeddedConfig {
   featureType?: string;
 }
 
-const SHOW_EMBEDDED_DIAGNOSTICS = process.env.NODE_ENV !== "production";
+const SHOW_EMBEDDED_DIAGNOSTICS = true;
 
 export function WhatsappEmbeddedSignupDiagnostics() {
   const token = useAuthStore((s) => s.accessToken);

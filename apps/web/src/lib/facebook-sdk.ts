@@ -123,7 +123,8 @@ export async function initializeFacebook(appId: string, graphApiVersion: string)
 
 function isFacebookOrigin(origin: string): boolean {
   try {
-    return new URL(origin).hostname.endsWith("facebook.com");
+    const host = new URL(origin).hostname;
+    return host.endsWith("facebook.com") || host.endsWith("meta.com");
   } catch {
     return false;
   }
@@ -229,7 +230,6 @@ export function getEmbeddedSignupLoginPayload(
       config_id: cfg,
       response_type: "code",
       override_default_response_type: true,
-      auth_type: "rerequest",
       extras: buildExtras(options?.featureType, options?.solutionId),
     },
   };
@@ -283,6 +283,25 @@ export function runEmbeddedSignup(
       reject(error);
     };
 
+    const timeoutMessage = () => {
+      if (authCode && !businessPayload) {
+        return (
+          "Facebook login succeeded but WhatsApp setup did not finish. " +
+          "Keep the Meta popup open until you pick your business and phone number, then click Finish."
+        );
+      }
+      if (!authCode && businessPayload) {
+        return (
+          "Meta returned WhatsApp account details but not an authorization code. " +
+          "Retry connect — if it persists, check Facebook Login for Business allowed domains for this site."
+        );
+      }
+      return (
+        "Facebook login timed out. The popup may have closed before setup finished. " +
+        "Allow popups, complete every Meta step (business → phone → Finish), and try again."
+      );
+    };
+
     const resolveIfReady = () => {
       if (!authCode || !businessPayload) return;
       if (!businessPayload.phone_number_id) {
@@ -311,6 +330,7 @@ export function runEmbeddedSignup(
           waba_id?: string;
           business_id?: string;
           error_message?: string;
+          current_step?: string;
         };
       };
 
@@ -349,6 +369,22 @@ export function runEmbeddedSignup(
       }
 
       if (payload.event === "CANCEL") {
+        const step = payload.data?.current_step?.trim();
+        const err = payload.data?.error_message?.trim();
+        if (err) {
+          settleReject(new Error(err));
+          return;
+        }
+        if (authCode || businessPayload) {
+          settleReject(
+            new Error(
+              step
+                ? `Meta setup was cancelled at step “${step}”. Complete every screen in the popup.`
+                : "Meta setup was cancelled before finishing. Complete business and phone selection in the popup.",
+            ),
+          );
+          return;
+        }
         settleResolve(null);
         return;
       }
@@ -371,12 +407,10 @@ export function runEmbeddedSignup(
         }
 
         loginTimer = setTimeout(() => {
-          settleReject(
-            new Error("Facebook login timed out. Complete every step in the Meta popup."),
-          );
+          settleReject(new Error(timeoutMessage()));
         }, LOGIN_TIMEOUT_MS);
 
-        // Chatwoot: no auth_type — keep options minimal; v4 config drives the flow.
+        // Meta v4 Embedded Signup: config_id drives permissions — keep options minimal.
         window.FB.login(
           (response) => {
             const code = response.authResponse?.code;
@@ -402,7 +436,6 @@ export function runEmbeddedSignup(
             config_id: cfg,
             response_type: "code",
             override_default_response_type: true,
-            auth_type: "rerequest",
             extras: buildExtras(options?.featureType, options?.solutionId),
           },
         );
