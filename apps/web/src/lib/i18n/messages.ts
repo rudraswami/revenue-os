@@ -43,28 +43,21 @@ export const messages = {
       emptyHint: "Add a client to provision a isolated Growvisi workspace you can switch into.",
       proRequired: "Agency mode requires the Pro plan.",
       clientsUsed: "clients",
-      connectFacebook: "Connect here (Facebook)",
-      connectToken: "Connect with token",
-      switchUseToken: "Switch & use token",
+      connectFacebook: "Connect with Meta",
+      switchUseOnboarding: "Open client onboarding",
       continueSetup: "Continue setup",
-      tokenNeedsRefresh: "Meta token needs refresh in client workspace.",
+      tokenNeedsRefresh: "Meta connection needs attention in client workspace.",
       connect: {
         title: "Connect WhatsApp for {name}",
         subtitle: "Stay in your agency hub — links the client number without switching workspaces.",
-        facebookTab: "Facebook",
-        tokenTab: "Meta API token",
         done: "WhatsApp connected for {name}.",
         doneBtn: "Done",
         embeddedNotLive:
-          "Embedded Signup is not live yet. Use a Meta API Setup token below, or switch into the client workspace.",
-        continueFacebook: "Continue with Facebook",
-        waitingMeta: "Complete setup in Facebook…",
+          "Continue with Meta is not available yet for this environment. Switch into the client workspace or try again shortly.",
+        continueFacebook: "Continue with Meta",
+        waitingMeta: "Complete setup in Meta…",
         saving: "Saving to client workspace…",
-        tokenHint: "Paste the temporary token from Meta API Setup (App Review).",
-        tokenLabel: "Access token",
-        connectToken: "Connect with token",
         tokenError: "Connection failed.",
-        discoverError: "Could not find a number on this token.",
         metaFinishHint:
           "On the last Meta screen click Complete — skip Add payment for now.",
       },
@@ -167,13 +160,14 @@ export const messages = {
       tryAgain: "Try again",
       connectTrust: "Secure connection via Meta. We never auto-reply to your customers.",
       metaUnavailable:
-        "One-click connect isn't available right now. Use Advanced options to finish in Settings.",
+        "One-click connect isn't available right now. Please try again shortly.",
       advancedOptions: "Advanced options",
       hideAdvanced: "Hide advanced options",
-      advancedHint: "Developer tools and API tokens live in",
+      advancedHint:
+        "Choose how you reply to customers today — phone app or an existing WhatsApp API line. Meta detects your business automatically.",
       settingsLink: "Settings → WhatsApp",
       connectErrorHint:
-        "Allow popups, finish every screen in the Meta window, then try again. Still stuck? Open Advanced options.",
+        "Allow popups, finish every screen in the Meta window, then try again.",
       progressTitle: "Setting up your workspace",
       progressMetaHint: "Finish the steps in the Meta window — we'll take it from there.",
       progressSavingHint: "Almost done. Activating your sales workspace…",
@@ -203,34 +197,25 @@ export const messages = {
         },
         "before-connect": {
           q: "What do I need before connecting?",
-          a: "Your WhatsApp Business number and access to Meta. With token connect, paste one access token — Growvisi finds your number automatically.",
+          a: "Your WhatsApp Business number and a Meta login that manages it. Click Continue with Meta — Growvisi links the number automatically.",
         },
         "test-message": {
           q: "My test message doesn't show in Conversations",
           a: 'Meta\'s "Send test message" is outbound only. From your personal phone, send a WhatsApp to your business number. If you use a Meta test line, add your phone as a test recipient first.',
         },
-        "token-expiry": {
-          q: "Do I need to reconnect every day?",
-          a: "Meta temporary tokens expire in about 24 hours. Go to Settings → Refresh access token and paste a new one — you don't need to disconnect your number.",
-        },
         "multi-number": {
           q: "I have more than one business number",
-          a: "After pasting your token, pick the correct line from the list, then click Connect my number.",
+          a: "During Meta setup, pick the correct business line. You can add another number later from Settings → WhatsApp on eligible plans.",
         },
-        "facebook-vs-token": {
-          q: "One-click Facebook vs token paste?",
-          a: "Recommended: Continue with Facebook (Embedded Signup). If Meta shows an error, use the Meta API token tab and paste your temporary token from Meta API Setup.",
+        "how-connect": {
+          q: "How do I connect WhatsApp?",
+          a: "Use Continue with Meta. Sign in, pick your business and phone, then click Complete. Growvisi never needs you to paste API tokens.",
         },
       },
     },
     whatsappConnect: {
       pathQuestion: "Where do you reply to customers today?",
       pathHint: "Pick the option that matches how you use WhatsApp — we'll open the right Meta setup.",
-      facebookTab: "Facebook (recommended)",
-      tokenTab: "Meta API token",
-      tokenOnlyTitle: "Connect with Meta API token",
-      tokenOnlyHint:
-        "Facebook one-click unlocks after App Review. Use your Meta API Setup token for now.",
       paths: {
         business_app: {
           title: "I reply from my phone",
@@ -252,11 +237,11 @@ export const messages = {
     },
     whatsappOnboardingHelp: {
       needHand: "Need a hand?",
-      compactDesc: "Free 15-min setup call — we walk through Meta API Setup together.",
+      compactDesc: "Free 15-min setup call — we walk through Meta connect together.",
       bookCallLink: "Book setup call →",
       guidedTitle: "Prefer a guided setup?",
       guidedDesc:
-        "Book a free 15-minute call — we'll walk you through Meta API Setup and connect your number together.",
+        "Book a free 15-minute call — we'll connect your WhatsApp with Meta together.",
       bookCallBtn: "Book setup call",
     },
     setupHelp: {
@@ -273,10 +258,10 @@ export const messages = {
       tabAsk: "AI chat",
       chatOffline: "AI chat is temporarily unavailable. Use FAQ below or book a call.",
       chatIntroTitle: "Ask about WhatsApp setup",
-      chatIntroBody: "I know Growvisi onboarding, tokens, and go-live — not your customer chats.",
+      chatIntroBody: "I know Growvisi onboarding, Meta connect, and go-live — not your customer chats.",
       chatExample1: "Which option — phone or API?",
       chatExample2: "My test message isn't showing",
-      chatExample3: "Token expired — what now?",
+      chatExample3: "Can I skip and connect later?",
       chatPlaceholder: "Ask a setup question…",
       chatSend: "Send",
       chatThinking: "Thinking…",
@@ -286,8 +271,8 @@ export const messages = {
       supportEmailLabel: "Email",
       contactForm: "Contact form",
       faqIds: {
-        onboarding: ["which-option", "facebook-vs-token", "test-message", "skip"],
-        connection: ["token-expiry", "no-number", "which-option", "facebook-vs-token"],
+        onboarding: ["which-option", "how-connect", "test-message", "skip"],
+        connection: ["how-connect", "no-number", "which-option", "test-message"],
         general: ["growvisi-replies", "pricing"],
       },
       faqs: {
@@ -295,9 +280,9 @@ export const messages = {
           q: "Which option should I pick — phone or API?",
           a: "Most Indian businesses reply from the WhatsApp Business app on their phone. Choose “I reply from my phone”. Pick “I use WhatsApp API already” only if you already use Cloud API, WATI, Interakt, or similar.",
         },
-        "facebook-vs-token": {
-          q: "Facebook button vs Meta API token?",
-          a: "Facebook one-click is fastest when available. During Meta App Review, use the Meta API token tab — paste the temporary token from Meta API Setup in the Facebook Developer console.",
+        "how-connect": {
+          q: "How do I connect WhatsApp?",
+          a: "Click Continue with Meta. Sign in, choose your business and phone number, then Complete. You never need to paste API tokens.",
         },
         "test-message": {
           q: "Why doesn't my test message show up?",
@@ -307,13 +292,9 @@ export const messages = {
           q: "Can I skip and connect later?",
           a: "Yes. Skip for now and explore the dashboard. Connect anytime from Connection in the sidebar — your trial keeps running.",
         },
-        "token-expiry": {
-          q: "My token expired — what do I do?",
-          a: "Paste a fresh token from Meta API Setup under Refresh access token. You don't need to disconnect your number.",
-        },
         "no-number": {
-          q: "No number found on my token",
-          a: "Regenerate the token while logged in as the Meta user who owns the WhatsApp Business Account. The token needs WhatsApp permissions for that business.",
+          q: "Meta doesn't show my number",
+          a: "Use the Meta login that owns the WhatsApp Business Account. If the number is on another platform, pick “I use WhatsApp API already” in Advanced options during connect.",
         },
         "growvisi-replies": {
           q: "Does Growvisi auto-reply to my customers?",
@@ -333,7 +314,7 @@ export const messages = {
       tabs: {
         whatsapp: {
           label: "WhatsApp",
-          description: "Business line, token health, and Meta connection.",
+          description: "Business line and Meta connection.",
         },
         billing: {
           label: "Billing",
@@ -587,28 +568,21 @@ export const messages = {
       emptyHint: "क्लाइंट जोड़ें — अलग Growvisi वर्कस्पेस बनेगा जिसमें आप स्विच कर सकते हैं।",
       proRequired: "एजेंसी मोड के लिए Pro प्लान जरूरी है।",
       clientsUsed: "क्लाइंट",
-      connectFacebook: "यहाँ कनेक्ट करें (Facebook)",
-      connectToken: "टोकन से कनेक्ट करें",
-      switchUseToken: "स्विच करें और टोकन उपयोग करें",
+      connectFacebook: "Meta से कनेक्ट करें",
+      switchUseOnboarding: "क्लाइंट ऑनबोर्डिंग खोलें",
       continueSetup: "सेटअप जारी रखें",
-      tokenNeedsRefresh: "क्लाइंट वर्कस्पेस में Meta टोकन रिफ्रेश चाहिए।",
+      tokenNeedsRefresh: "क्लाइंट वर्कस्पेस में Meta कनेक्शन पर ध्यान दें।",
       connect: {
         title: "{name} के लिए WhatsApp कनेक्ट करें",
         subtitle: "एजेंसी हब में रहें — वर्कस्पेस स्विच किए बिना क्लाइंट नंबर लिंक करें।",
-        facebookTab: "Facebook",
-        tokenTab: "Meta API टोकन",
         done: "{name} के लिए WhatsApp कनेक्ट हो गया।",
         doneBtn: "हो गया",
         embeddedNotLive:
-          "Embedded Signup अभी लाइव नहीं है। नीचे Meta API Setup टोकन उपयोग करें, या क्लाइंट वर्कस्पेस में जाएं।",
-        continueFacebook: "Facebook से जारी रखें",
-        waitingMeta: "Facebook में सेटअप पूरा करें…",
+          "Continue with Meta इस वातावरण में अभी उपलब्ध नहीं है। क्लाइंट वर्कस्पेस में जाएं या थोड़ी देर बाद फिर कोशिश करें।",
+        continueFacebook: "Meta से जारी रखें",
+        waitingMeta: "Meta में सेटअप पूरा करें…",
         saving: "क्लाइंट वर्कस्पेस में सेव हो रहा है…",
-        tokenHint: "Meta API Setup से अस्थायी टोकन पेस्ट करें (App Review)।",
-        tokenLabel: "एक्सेस टोकन",
-        connectToken: "टोकन से कनेक्ट करें",
         tokenError: "कनेक्शन विफल।",
-        discoverError: "इस टोकन पर कोई नंबर नहीं मिला।",
         metaFinishHint:
           "आखिरी Meta स्क्रीन पर Complete दबाएँ — अभी Add payment छोड़ दें।",
       },
@@ -711,13 +685,14 @@ export const messages = {
       tryAgain: "फिर कोशिश करें",
       connectTrust: "Meta के ज़रिए सुरक्षित कनेक्शन। हम ग्राहकों को ऑटो-रिप्लाई नहीं करते।",
       metaUnavailable:
-        "वन-क्लिक कनेक्ट अभी उपलब्ध नहीं है। Advanced options से Settings में पूरा करें।",
+        "वन-क्लिक कनेक्ट अभी उपलब्ध नहीं है। थोड़ी देर बाद फिर कोशिश करें।",
       advancedOptions: "उन्नत विकल्प",
       hideAdvanced: "उन्नत विकल्प छिपाएँ",
-      advancedHint: "डेवलपर टूल और API टोकन यहाँ हैं:",
+      advancedHint:
+        "आज आप ग्राहकों को कैसे जवाब देते हैं चुनें — फोन ऐप या मौजूदा WhatsApp API लाइन। Meta आपका बिज़नेस अपने आप पहचानता है।",
       settingsLink: "Settings → WhatsApp",
       connectErrorHint:
-        "पॉपअप अनुमति दें, Meta विंडो की हर स्क्रीन पूरी करें, फिर फिर कोशिश करें। समस्या हो तो Advanced options खोलें।",
+        "पॉपअप अनुमति दें, Meta विंडो की हर स्क्रीन पूरी करें, फिर फिर कोशिश करें।",
       progressTitle: "वर्कस्पेस सेट हो रहा है",
       progressMetaHint: "Meta विंडो के स्टेप पूरे करें — बाकी हम संभालते हैं।",
       progressSavingHint: "लगभग हो गया। आपका सेल्स वर्कस्पेस सक्रिय हो रहा है…",
@@ -747,34 +722,25 @@ export const messages = {
         },
         "before-connect": {
           q: "कनेक्ट करने से पहले क्या चाहिए?",
-          a: "आपका WhatsApp Business नंबर और Meta एक्सेस। टोकन से कनेक्ट करते समय एक टोकन पेस्ट करें — Growvisi नंबर अपने आप ढूँढ लेगा।",
+          a: "आपका WhatsApp Business नंबर और उसे मैनेज करने वाला Meta लॉगिन। Continue with Meta पर क्लिक करें — Growvisi नंबर अपने आप लिंक करता है।",
         },
         "test-message": {
           q: "मेरा टेस्ट संदेश Conversations में नहीं दिखता",
           a: "Meta का “Send test message” केवल आउटबाउंड है। अपने फोन से बिज़नेस नंबर पर WhatsApp भेजें। Meta टेस्ट लाइन हो तो पहले अपना फोन टेस्ट रिसिपिएंट के रूप में जोड़ें।",
         },
-        "token-expiry": {
-          q: "क्या हर दिन दोबारा कनेक्ट करना होगा?",
-          a: "Meta का अस्थायी टोकन लगभग 24 घंटे में एक्सपायर होता है। Settings → Refresh access token से नया टोकन पेस्ट करें — नंबर डिस्कनेक्ट करने की जरूरत नहीं।",
-        },
         "multi-number": {
           q: "मेरे पास एक से ज़्यादा बिज़नेस नंबर हैं",
-          a: "टोकन पेस्ट करने के बाद सही लाइन सूची से चुनें, फिर Connect my number पर क्लिक करें।",
+          a: "Meta सेटअप के दौरान सही बिज़नेस लाइन चुनें। बाद में Settings → WhatsApp से योग्य प्लान पर और नंबर जोड़ सकते हैं।",
         },
-        "facebook-vs-token": {
-          q: "Facebook one-click या टोकन पेस्ट?",
-          a: "सुझाया: Continue with Facebook (Embedded Signup)। Meta एरर दिखे तो Meta API token टैब से Meta API Setup का अस्थायी टोकन पेस्ट करें।",
+        "how-connect": {
+          q: "WhatsApp कैसे कनेक्ट करें?",
+          a: "Continue with Meta उपयोग करें। साइन इन करें, बिज़नेस और फोन चुनें, फिर Complete दबाएँ। API टोकन पेस्ट करने की जरूरत नहीं।",
         },
       },
     },
     whatsappConnect: {
       pathQuestion: "आप ग्राहकों को कहाँ जवाब देते हैं?",
       pathHint: "अपने WhatsApp उपयोग के अनुसार विकल्प चुनें — हम सही Meta सेटअप खोलेंगे।",
-      facebookTab: "Facebook (सुझाया)",
-      tokenTab: "Meta API टोकन",
-      tokenOnlyTitle: "Meta API टोकन से कनेक्ट करें",
-      tokenOnlyHint:
-        "App Review के बाद Facebook one-click चालू होगा। अभी Meta API Setup टोकन उपयोग करें।",
       paths: {
         business_app: {
           title: "मैं फोन से जवाब देता/देती हूँ",
@@ -796,11 +762,11 @@ export const messages = {
     },
     whatsappOnboardingHelp: {
       needHand: "मदद चाहिए?",
-      compactDesc: "मुफ्त 15-मिनट सेटअप कॉल — Meta API Setup साथ में करेंगे।",
+      compactDesc: "मुफ्त 15-मिनट सेटअप कॉल — Meta कनेक्ट साथ में करेंगे।",
       bookCallLink: "सेटअप कॉल बुक करें →",
       guidedTitle: "गाइडेड सेटअप पसंद है?",
       guidedDesc:
-        "मुफ्त 15-मिनट कॉल बुक करें — Meta API Setup और नंबर कनेक्ट साथ में करेंगे।",
+        "मुफ्त 15-मिनट कॉल बुक करें — Meta से WhatsApp कनेक्ट साथ में करेंगे।",
       bookCallBtn: "सेटअप कॉल बुक करें",
     },
     setupHelp: {
@@ -817,10 +783,10 @@ export const messages = {
       tabAsk: "AI chat",
       chatOffline: "AI chat अस्थायी रूप से उपलब्ध नहीं है। नीचे FAQ देखें या कॉल बुक करें।",
       chatIntroTitle: "WhatsApp सेटअप के बारे में पूछें",
-      chatIntroBody: "मुझे Growvisi onboarding, tokens और go-live पता है — आपके ग्राहक चैट नहीं।",
+      chatIntroBody: "मुझे Growvisi onboarding, Meta कनेक्ट और go-live पता है — आपके ग्राहक चैट नहीं।",
       chatExample1: "फोन या API — कौन सा?",
       chatExample2: "मेरा टेस्ट संदेश नहीं दिख रहा",
-      chatExample3: "टोकन एक्सपायर — अब क्या?",
+      chatExample3: "क्या बाद में कनेक्ट कर सकते हैं?",
       chatPlaceholder: "सेटअप से जुड़ा सवाल पूछें…",
       chatSend: "भेजें",
       chatThinking: "सोच रहा हूँ…",
@@ -830,8 +796,8 @@ export const messages = {
       supportEmailLabel: "ईमेल",
       contactForm: "संपर्क फॉर्म",
       faqIds: {
-        onboarding: ["which-option", "facebook-vs-token", "test-message", "skip"],
-        connection: ["token-expiry", "no-number", "which-option", "facebook-vs-token"],
+        onboarding: ["which-option", "how-connect", "test-message", "skip"],
+        connection: ["how-connect", "no-number", "which-option", "test-message"],
         general: ["growvisi-replies", "pricing"],
       },
       faqs: {
@@ -839,9 +805,9 @@ export const messages = {
           q: "फोन या API — कौन सा विकल्प चुनूँ?",
           a: "ज़्यादातर भारतीय व्यवसाय WhatsApp Business ऐप से फोन पर जवाब देते हैं — “मैं फोन से जवाब देता/देती हूँ” चुनें। Cloud API, WATI, Interakt आदि पहले से उपयोग करते हैं तो “WhatsApp API” विकल्प चुनें।",
         },
-        "facebook-vs-token": {
-          q: "Facebook बटन या Meta API टोकन?",
-          a: "Facebook one-click सबसे तेज़ है जब उपलब्ध हो। App Review के दौरान Meta API token टैब उपयोग करें — Facebook Developer console के Meta API Setup से अस्थायी टोकन पेस्ट करें।",
+        "how-connect": {
+          q: "WhatsApp कैसे कनेक्ट करें?",
+          a: "Continue with Meta पर क्लिक करें। साइन इन करें, बिज़नेस और फोन चुनें, फिर Complete। API टोकन पेस्ट करने की जरूरत नहीं।",
         },
         "test-message": {
           q: "मेरा टेस्ट संदेश क्यों नहीं दिखता?",
@@ -851,13 +817,9 @@ export const messages = {
           q: "क्या मैं बाद में कनेक्ट कर सकता/सकती हूँ?",
           a: "हाँ। अभी Skip करें और डैशबोर्ड देखें। Sidebar में Connection से कभी भी कनेक्ट करें — ट्रायल चलता रहेगा।",
         },
-        "token-expiry": {
-          q: "मेरा टोकन एक्सपायर हो गया — क्या करूँ?",
-          a: "Refresh access token के तहत Meta API Setup से नया टोकन पेस्ट करें। नंबर डिस्कनेक्ट करने की जरूरत नहीं।",
-        },
         "no-number": {
-          q: "टोकन पर कोई नंबर नहीं मिला",
-          a: "उस Meta यूज़र से लॉग इन करके टोकन बनाएं जो WhatsApp Business Account का मालिक है। टोकन में उस बिज़नेस की WhatsApp अनुमति होनी चाहिए।",
+          q: "Meta मेरा नंबर नहीं दिखाता",
+          a: "उस Meta लॉगिन से कनेक्ट करें जो WhatsApp Business Account का मालिक है। नंबर दूसरे प्लेटफॉर्म पर हो तो कनेक्ट के दौरान Advanced options में “WhatsApp API” चुनें।",
         },
         "growvisi-replies": {
           q: "क्या Growvisi ग्राहकों को ऑटो-रिप्लाई करता है?",
@@ -877,7 +839,7 @@ export const messages = {
       tabs: {
         whatsapp: {
           label: "WhatsApp",
-          description: "बिज़नेस लाइन, टोकन स्वास्थ्य और Meta कनेक्शन।",
+          description: "बिज़नेस लाइन और Meta कनेक्शन।",
         },
         billing: {
           label: "बिलिंग",

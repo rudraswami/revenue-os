@@ -13,8 +13,8 @@ export type SetupHelpItem = {
 };
 
 const FAQ_CONTEXT_IDS: Record<HelpFabContext, readonly string[]> = {
-  onboarding: ["which-option", "facebook-vs-token", "test-message", "skip"],
-  connection: ["token-expiry", "no-number", "which-option", "facebook-vs-token"],
+  onboarding: ["which-option", "how-connect", "test-message", "skip"],
+  connection: ["how-connect", "no-number", "which-option", "test-message"],
   general: ["growvisi-replies", "pricing"],
 };
 

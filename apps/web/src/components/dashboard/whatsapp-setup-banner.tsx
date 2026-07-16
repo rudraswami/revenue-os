@@ -48,7 +48,7 @@ export function WhatsappSetupBanner() {
               Connect WhatsApp to start receiving customer messages
             </p>
             <p className="text-xs text-muted-foreground">
-              ~2 min guided setup — paste token, we find your number automatically.
+              ~2 minutes — connect with Meta and start receiving customer messages.
             </p>
           </div>
         </div>

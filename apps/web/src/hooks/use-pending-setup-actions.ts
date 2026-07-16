@@ -106,8 +106,8 @@ export function usePendingSetupActions() {
       if (connected && th && (!th.valid || th.needsRefresh)) {
         actions.push({
           id: "token-refresh",
-          title: "Refresh WhatsApp token",
-          description: "Meta access token expired or invalid — paste a new one in Settings.",
+          title: "Reconnect WhatsApp",
+          description: "Meta access expired or invalid — reconnect with Meta in Settings.",
           href: "/dashboard/settings?tab=whatsapp",
           priority: "critical",
           order: 11,

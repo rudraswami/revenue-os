@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
@@ -28,12 +28,10 @@ import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useToast } from "@/components/ui/toast";
-import { WhatsappConnectWizard } from "@/components/settings/whatsapp-connect-wizard";
+import { WhatsappEmbeddedSignupDiagnostics } from "@/components/settings/whatsapp-embedded-signup-diagnostics";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 import { WhatsappGoLiveChecklist } from "@/components/settings/whatsapp-go-live-checklist";
-import { WhatsappEmbeddedSignupDiagnostics } from "@/components/settings/whatsapp-embedded-signup-diagnostics";
 import { WhatsappOnboardingHelp } from "@/components/settings/whatsapp-onboarding-help";
-import { WhatsappTokenRefresh } from "@/components/settings/whatsapp-token-refresh";
 
 interface WhatsappAccount {
   id: string;
@@ -88,10 +86,9 @@ export default function WhatsappConnect({
   };
   const [error, setError] = useState<string | null>(null);
   const [connectedAccount, setConnectedAccount] = useState<WhatsappAccount | null>(null);
-  /** Same default as Settings — do not change ES featureType for onboarding. */
+  /** Same default as Settings — ES featureType unchanged; no path UI on onboarding. */
   const [connectPath, setConnectPath] = useState<WhatsappConnectPath>(DEFAULT_WHATSAPP_CONNECT_PATH);
   const [addingAnother, setAddingAnother] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const { t } = useI18n();
   const { success, error: toastError } = useToast();
 
@@ -120,39 +117,6 @@ export default function WhatsappConnect({
   // Only block the connect UI on the first fetch — never replace tabs/input on background refetch.
   const initialConnectLoading =
     (!accounts && accountsLoading) || (!config && configLoading);
-
-  useEffect(() => {
-    if (isOnboarding && config && !config.embeddedSignupLive) {
-      setShowAdvanced(true);
-    }
-  }, [isOnboarding, config]);
-
-  const { data: readiness } = useQuery({
-    queryKey: ["whatsapp-onboarding-readiness"],
-    queryFn: () =>
-      apiFetch<{ metaApiSetupUrl: string }>("/whatsapp-accounts/onboarding-readiness", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
-
-  const { data: connectionHealth } = useQuery({
-    queryKey: ["whatsapp-connection-health"],
-    queryFn: () =>
-      apiFetch<{
-        tokenHealth?: {
-          valid: boolean;
-          level?: "ok" | "soon" | "urgent";
-          needsRefresh: boolean;
-          needsAttention?: boolean;
-          hoursRemaining: number | null;
-          expiresAt: string | null;
-        };
-      }>("/whatsapp-accounts/connection-health", { token: token ?? undefined }),
-    enabled: !!token && (accounts?.some((a) => a.isActive) ?? false),
-    staleTime: 30_000,
-  });
 
   const { data: billing } = useQuery({
     queryKey: QUERY_KEYS.billing,
@@ -372,16 +336,6 @@ export default function WhatsappConnect({
           </div>
         </div>
 
-        <WhatsappTokenRefresh
-          accountId={displayAccount.id}
-          metaApiSetupUrl={readiness?.metaApiSetupUrl ?? "https://developers.facebook.com/apps/"}
-          level={connectionHealth?.tokenHealth?.level}
-          needsRefresh={connectionHealth?.tokenHealth?.needsRefresh}
-          needsAttention={connectionHealth?.tokenHealth?.needsAttention}
-          hoursRemaining={connectionHealth?.tokenHealth?.hoursRemaining}
-          expiresAt={connectionHealth?.tokenHealth?.expiresAt}
-        />
-
         <WhatsappConnectionHealth />
 
         <div className="flex flex-wrap gap-2">
@@ -436,36 +390,17 @@ export default function WhatsappConnect({
   }
 
   if (!config?.enabled) {
-    if (isOnboarding) {
-      return (
-        <div className="mx-auto max-w-md space-y-4 rounded-2xl border border-border/60 bg-white p-6 text-center shadow-sm">
-          {trialUpgradeBanner}
-          <p className="text-sm text-muted-foreground">{t("onboardingActivation.metaUnavailable")}</p>
-          <Button asChild variant="outline" className="rounded-xl">
-            <Link href="/dashboard/settings?tab=whatsapp">{t("onboardingActivation.settingsLink")}</Link>
-          </Button>
-        </div>
-      );
-    }
     return (
       <div className="space-y-6">
         {trialUpgradeBanner}
-        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">
-            Connect your <strong className="text-foreground">WhatsApp Business number</strong> with a
-            Meta API Setup token. Growvisi ingests messages, classifies intent, and tracks pipeline — your
-            team replies from Inbox when customers need a human.
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+          <p className="font-semibold">WhatsApp connect is temporarily unavailable</p>
+          <p className="mt-1 text-amber-900/90">
+            One-click Meta connection is not configured for this workspace yet. Please try again
+            shortly or contact support.
           </p>
         </div>
-        {canConnect ? (
-          <WhatsappConnectWizard />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Only workspace admins can connect WhatsApp. You can view connection status once a number
-            is linked.
-          </p>
-        )}
-        <WhatsappOnboardingHelp />
+        {!isOnboarding && <WhatsappOnboardingHelp />}
       </div>
     );
   }
@@ -509,34 +444,6 @@ export default function WhatsappConnect({
         ) : (
           <p className="text-sm text-muted-foreground">{t("onboardingActivation.metaUnavailable")}</p>
         )}
-
-        <div className="border-t border-border/60 pt-4">
-          <button
-            type="button"
-            className="text-xs font-medium text-muted-foreground hover:text-foreground"
-            onClick={() => setShowAdvanced((v) => !v)}
-          >
-            {showAdvanced
-              ? t("onboardingActivation.hideAdvanced")
-              : t("onboardingActivation.advancedOptions")}
-          </button>
-          {showAdvanced && (
-            <div className="mt-4 space-y-4">
-              {embeddedLive && (
-                <WhatsappConnectPathPicker value={connectPath} onChange={setConnectPath} />
-              )}
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {t("onboardingActivation.advancedHint")}{" "}
-                <Link
-                  href="/dashboard/settings?tab=whatsapp"
-                  className="font-medium text-accent hover:underline"
-                >
-                  {t("onboardingActivation.settingsLink")}
-                </Link>
-              </p>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   ) : (
@@ -660,42 +567,36 @@ export default function WhatsappConnect({
 
       {embeddedLive ? (
         <>
-        {canConnect ? (
-          facebookConnectCard
-        ) : (
-          <p className="rounded-xl border border-border/80 bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
-            Only workspace admins can connect WhatsApp. Ask an owner or admin to link your business
-            line.
-          </p>
-        )}
-
-        {canConnect && !isOnboarding && (
-        <details className="rounded-2xl border border-border/80 bg-white">
-          <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-muted-foreground hover:text-foreground">
-            During App Review: connect with Meta API Setup token
-          </summary>
-          <div className="border-t border-border/80 px-6 py-6">
-            <WhatsappConnectWizard />
-          </div>
-        </details>
-        )}
+          {canConnect ? (
+            facebookConnectCard
+          ) : (
+            <p className="rounded-xl border border-border/80 bg-muted/30 px-5 py-4 text-sm text-muted-foreground">
+              Only workspace admins can connect WhatsApp. Ask an owner or admin to link your business
+              line.
+            </p>
+          )}
         </>
       ) : (
-        <>
+        <div className="space-y-4">
           {canConnect ? (
             isOnboarding ? (
               facebookConnectCard
             ) : (
-              <WhatsappConnectWizard />
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+                <p className="font-semibold">Continue with Meta is not live yet</p>
+                <p className="mt-1 text-amber-900/90">
+                  Embedded Signup must be enabled for this environment. Contact support if this
+                  persists.
+                </p>
+              </div>
             )
           ) : (
             <p className="text-sm text-muted-foreground">
               Only workspace admins can connect WhatsApp numbers.
             </p>
           )}
-
           {!isOnboarding && <WhatsappOnboardingHelp />}
-        </>
+        </div>
       )}
     </div>
   );

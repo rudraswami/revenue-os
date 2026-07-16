@@ -4,12 +4,11 @@ import { HelpCircle } from "lucide-react";
 import { useI18n } from "@/lib/i18n/locale-provider";
 
 const FAQ_IDS = [
+  "how-connect",
   "which-option",
   "before-connect",
   "test-message",
-  "token-expiry",
   "multi-number",
-  "facebook-vs-token",
 ] as const;
 
 export function WhatsappOnboardingFaq() {

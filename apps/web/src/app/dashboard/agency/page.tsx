@@ -59,7 +59,6 @@ export default function AgencyPage() {
   const [clientName, setClientName] = useState("");
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [connectClient, setConnectClient] = useState<AgencyClientRow | null>(null);
-  const [connectMode, setConnectMode] = useState<"facebook" | "token">("facebook");
   const qc = useQueryClient();
 
   const { data: status, isLoading: statusLoading } = useQuery({
@@ -304,24 +303,10 @@ export default function AgencyPage() {
                         <Button
                           size="sm"
                           className="w-full gap-1.5 rounded-xl"
-                          onClick={() => {
-                            setConnectMode("facebook");
-                            setConnectClient(c);
-                          }}
+                          onClick={() => setConnectClient(c)}
                         >
                           <Wifi className="h-3.5 w-3.5" />
                           {t("agency.connectFacebook")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full gap-1.5 rounded-xl"
-                          onClick={() => {
-                            setConnectMode("token");
-                            setConnectClient(c);
-                          }}
-                        >
-                          {t("agency.connectToken")}
                         </Button>
                         <Button
                           size="sm"
@@ -332,7 +317,7 @@ export default function AgencyPage() {
                             void switchToClient(c.organizationId, "/onboarding?from=agency")
                           }
                         >
-                          {t("agency.switchUseToken")}
+                          {t("agency.switchUseOnboarding")}
                         </Button>
                       </>
                     )}
@@ -374,7 +359,6 @@ export default function AgencyPage() {
           clientOrganizationId={connectClient.organizationId}
           clientName={connectClient.displayName}
           open={!!connectClient}
-          initialMode={connectMode}
           onOpenChange={(open) => {
             if (!open) setConnectClient(null);
           }}
