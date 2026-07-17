@@ -205,7 +205,7 @@ function RegisterForm() {
           </p>
         )}
 
-        <Button type="submit" variant="accent" className="auth-submit" disabled={loading}>
+        <Button type="submit" className="auth-submit" disabled={loading}>
           {loading
             ? isInvite
               ? t("auth.joinTeam")

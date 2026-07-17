@@ -25,7 +25,7 @@ export function RevenueSetupStrip({ hasWhatsapp }: { hasWhatsapp: boolean }) {
   const digestOn = ops?.digest.enabled ?? false;
 
   return (
-    <div className="mb-6 rounded-2xl border border-[#dce9ff] bg-gradient-to-r from-[#f8f9ff] to-white p-4">
+    <div className="mb-6 rounded-2xl border border-border bg-gradient-to-r from-[#f8f9ff] to-white p-4">
       <p className="mb-3 text-xs font-bold uppercase tracking-wider text-accent">
         Complete your revenue setup
       </p>

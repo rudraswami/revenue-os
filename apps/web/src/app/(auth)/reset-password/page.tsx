@@ -44,7 +44,7 @@ function ResetPasswordForm() {
     return (
       <div className="space-y-5 text-center">
         <p className="text-sm text-destructive">This reset link is invalid or missing.</p>
-        <Button variant="accent" className="auth-submit" asChild>
+        <Button className="auth-submit" asChild>
           <Link href="/forgot-password">Request a new link</Link>
         </Button>
       </div>
@@ -71,7 +71,7 @@ function ResetPasswordForm() {
           {error}
         </p>
       )}
-      <Button type="submit" variant="accent" className="auth-submit" disabled={loading}>
+      <Button type="submit" className="auth-submit" disabled={loading}>
         {loading ? "Updating…" : "Update password"}
       </Button>
     </form>

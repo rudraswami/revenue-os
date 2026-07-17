@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
             If an account exists for that email, we sent a reset link. Check your inbox and spam
             folder.
           </p>
-          <Button variant="accent" className="auth-submit" asChild>
+          <Button className="auth-submit" asChild>
             <Link href="/login">Back to sign in</Link>
           </Button>
         </div>
@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
               {error}
             </p>
           )}
-          <Button type="submit" variant="accent" className="auth-submit" disabled={loading}>
+          <Button type="submit" className="auth-submit" disabled={loading}>
             {loading ? "Sending…" : "Send reset link"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">

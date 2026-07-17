@@ -46,7 +46,7 @@ export function CompetitorComparison() {
         />
 
         <motion.div
-          className="mt-12 overflow-hidden rounded-3xl border border-[#dce9ff] bg-white shadow-[0_16px_48px_rgb(11_28_48/0.06)]"
+          className="mt-12 overflow-hidden rounded-3xl border border-border bg-white shadow-[0_16px_48px_rgb(11_28_48/0.06)]"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}

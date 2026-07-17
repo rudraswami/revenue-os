@@ -77,7 +77,7 @@ export function WhatsappConnectionHealth() {
 
   if (isLoading || !data) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-[#dce9ff] bg-white px-5 py-6 text-sm text-muted-foreground shadow-sm">
+      <div className="flex items-center gap-2 rounded-2xl border border-border bg-white px-5 py-6 text-sm text-muted-foreground shadow-sm">
         <Loader2 className="h-4 w-4 animate-spin text-accent" />
         Loading connection status…
       </div>
@@ -99,8 +99,8 @@ export function WhatsappConnectionHealth() {
     : pillars.filter((p) => !["messages_ingested", "meta_webhooks"].includes(p.id));
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dce9ff] px-5 py-4 sm:px-6">
+    <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-accent">Connection status</p>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -111,7 +111,7 @@ export function WhatsappConnectionHealth() {
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 gap-1.5 rounded-xl border-[#dce9ff]"
+          className="h-9 gap-1.5 rounded-xl border-border"
           disabled={isFetching}
           onClick={() => void refetch()}
         >
@@ -125,7 +125,7 @@ export function WhatsappConnectionHealth() {
           className={cn(
             "flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between",
             summary.tone === "success" && "border-[#6cf8bb]/40 bg-gradient-to-br from-[#ecfdf5] to-white",
-            summary.tone === "pending" && "border-[#dce9ff] bg-gradient-to-br from-[#f8f9ff] to-white",
+            summary.tone === "pending" && "border-border bg-gradient-to-br from-[#f8f9ff] to-white",
             summary.tone === "warning" && "border-amber-200/80 bg-gradient-to-br from-amber-50/80 to-white",
           )}
         >
@@ -155,7 +155,7 @@ export function WhatsappConnectionHealth() {
           </div>
 
           <div className="flex shrink-0 gap-3 sm:flex-col sm:items-end">
-            <div className="rounded-xl border border-[#dce9ff] bg-white px-4 py-2.5 text-center min-w-[88px]">
+            <div className="rounded-xl border border-border bg-white px-4 py-2.5 text-center min-w-[88px]">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Health
               </p>
@@ -181,7 +181,7 @@ export function WhatsappConnectionHealth() {
               "rounded-xl border px-4 py-3.5",
               data.reliability.needsAttention
                 ? "border-amber-200/80 bg-amber-50/60"
-                : "border-[#dce9ff] bg-[#f8f9ff]/50",
+                : "border-border bg-[#f8f9ff]/50",
             )}
           >
             <p className="text-sm font-semibold text-foreground">Reliability (last 48h)</p>
@@ -229,7 +229,7 @@ export function WhatsappConnectionHealth() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="rounded-xl border border-[#dce9ff] bg-[#f8f9ff]/50 px-4 py-3"
+              className="rounded-xl border border-border bg-[#f8f9ff]/50 px-4 py-3"
             >
               <p className="text-xs text-muted-foreground">{stat.label}</p>
               <p
@@ -259,7 +259,7 @@ export function WhatsappConnectionHealth() {
                     pillar.status === "complete"
                       ? "border-[#6cf8bb]/30 bg-[#ecfdf5]/40"
                       : pillar.status === "pending"
-                        ? "border-[#dce9ff] bg-white"
+                        ? "border-border bg-white"
                         : "border-amber-200/60 bg-amber-50/40",
                   )}
                 >
@@ -300,7 +300,7 @@ export function WhatsappConnectionHealth() {
               outbound &quot;Send test message&quot; won&apos;t appear in Growvisi — only real
               customer messages count.
             </p>
-            <Button asChild size="sm" variant="accent" className="mt-4 gap-1.5 rounded-xl">
+            <Button asChild size="sm" className="mt-4 gap-1.5 rounded-xl">
               <Link href="/dashboard/inbox">
                 Open Conversations
                 <ArrowRight className="h-3.5 w-3.5" />

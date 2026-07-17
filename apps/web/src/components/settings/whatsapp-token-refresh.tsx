@@ -67,7 +67,7 @@ export function WhatsappTokenRefresh({
 
   if (!showWarning && !open) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dce9ff] bg-[#f8f9ff]/50 px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-[#f8f9ff]/50 px-5 py-4">
         <div>
           <p className="text-sm font-semibold text-foreground">Meta access token</p>
           <p className="mt-0.5 text-sm text-muted-foreground">Active — your connection is healthy.</p>
@@ -76,7 +76,7 @@ export function WhatsappTokenRefresh({
           type="button"
           variant="outline"
           size="sm"
-          className="rounded-xl border-[#dce9ff]"
+          className="rounded-xl border-border"
           onClick={() => setOpen(true)}
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -92,7 +92,7 @@ export function WhatsappTokenRefresh({
         "rounded-2xl border p-5",
         urgent
           ? "border-amber-200/80 bg-gradient-to-br from-amber-50/90 to-white"
-          : "border-[#dce9ff] bg-[#f8f9ff]/50",
+          : "border-border bg-[#f8f9ff]/50",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -133,7 +133,7 @@ export function WhatsappTokenRefresh({
       </div>
 
       {open && (
-        <div className="mt-5 space-y-3 border-t border-[#dce9ff] pt-5">
+        <div className="mt-5 space-y-3 border-t border-border pt-5">
           <p className="text-sm text-muted-foreground">
             Generate a new token in{" "}
             <a
@@ -151,7 +151,7 @@ export function WhatsappTokenRefresh({
             <Input
               type="password"
               placeholder="Paste your new access token"
-              className="rounded-xl border-[#dce9ff]"
+              className="rounded-xl border-border"
               value={accessToken}
               onChange={(e) => {
                 setAccessToken(e.target.value);
@@ -183,7 +183,7 @@ export function WhatsappTokenRefresh({
           <div className="flex gap-2">
             <Button
               type="button"
-              variant="accent"
+             
               size="sm"
               className="rounded-xl"
               disabled={!looksLikeMetaToken(accessToken) || mutation.isPending}

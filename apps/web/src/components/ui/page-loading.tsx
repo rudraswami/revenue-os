@@ -21,8 +21,8 @@ export function PanelRowsSkeleton({
 }) {
   return (
     <div className={cn("space-y-4", className)} aria-busy="true" aria-label="Loading">
-      <div className="overflow-hidden rounded-2xl border border-border/80 bg-white">
-        <div className="border-b border-border/60 bg-[#fafbfd] px-5 py-4">
+      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card elev-1">
+        <div className="border-b border-border/60 bg-background px-5 py-4">
           <Skeleton className="h-4 w-36" />
           <Skeleton className="mt-2 h-3 w-52" />
         </div>

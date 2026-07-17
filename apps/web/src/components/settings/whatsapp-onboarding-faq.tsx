@@ -15,8 +15,8 @@ export function WhatsappOnboardingFaq() {
   const { t } = useI18n();
 
   return (
-    <div className="rounded-2xl border border-[#dce9ff] bg-[#f8f9ff]/40">
-      <div className="flex items-center gap-2 border-b border-[#dce9ff] px-4 py-3">
+    <div className="rounded-2xl border border-border bg-[#f8f9ff]/40">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <HelpCircle className="h-4 w-4 text-accent" />
         <p className="text-sm font-semibold text-foreground">{t("whatsappOnboardingFaq.title")}</p>
       </div>

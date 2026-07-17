@@ -32,7 +32,7 @@ export default function DemoPage() {
                 </Link>
               </div>
             </div>
-            <div className="mt-14 elev-2 overflow-hidden rounded-2xl bg-white p-4 md:p-6">
+            <div className="mt-14 elev-interactive overflow-hidden rounded-2xl bg-card p-4 md:p-6">
               <ProductShowcase />
             </div>
           </div>

@@ -63,11 +63,11 @@ export function WhatsappEmbeddedSignupDiagnostics() {
   const failedChecks = diagnose?.checks.filter((c) => !c.ok && c.id !== "feature_unavailable_note") ?? [];
 
   return (
-    <details className="rounded-xl border border-[#dce9ff] bg-[#f8f9ff]/60 text-xs">
+    <details className="rounded-xl border border-border bg-[#f8f9ff]/60 text-xs">
       <summary className="cursor-pointer px-4 py-3 font-medium text-foreground">
         Embedded Signup diagnostics (for Meta support)
       </summary>
-      <div className="space-y-3 border-t border-[#dce9ff] px-4 py-3 text-muted-foreground">
+      <div className="space-y-3 border-t border-border px-4 py-3 text-muted-foreground">
         <p>
           <strong className="text-foreground">DevTools tip:</strong> Filter &quot;oauth&quot; on the
           main Growvisi tab shows <em>0 requests</em> — that is normal.{" "}

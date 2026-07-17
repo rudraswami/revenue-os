@@ -25,7 +25,7 @@ const STEPS = [
 export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: string }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-[#dce9ff] bg-[#f8f9ff]/80 px-4 py-3">
+      <div className="rounded-xl border border-border bg-[#f8f9ff]/80 px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-accent">
           Setup assist
         </p>
@@ -46,8 +46,8 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
         </a>
       </Button>
 
-      <div className="overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-sm">
-        <div className="border-b border-[#dce9ff] bg-gradient-to-r from-[#1877F2]/8 to-[#25D366]/5 px-4 py-3">
+      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+        <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/8 to-[#25D366]/5 px-4 py-3">
           <p className="text-xs font-semibold text-[#1877F2]">Where to find your token</p>
         </div>
 
@@ -71,7 +71,7 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
           ))}
         </div>
 
-        <div className="border-t border-[#dce9ff] bg-[#f8f9ff]/50 px-4 py-4">
+        <div className="border-t border-border bg-[#f8f9ff]/50 px-4 py-4">
           <div className="flex items-start gap-3 rounded-xl border border-dashed border-[#25D366]/35 bg-[#ecfdf5]/60 px-3.5 py-3">
             <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-[#128C7E]" />
             <div className="text-xs leading-relaxed text-muted-foreground">

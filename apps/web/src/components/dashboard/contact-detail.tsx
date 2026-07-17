@@ -562,7 +562,7 @@ export function ContactDetailDrawer({
 
             {contact?.conversation && (
               <div className="border-t border-border p-4">
-                <Button asChild className="w-full" variant="accent">
+                <Button asChild className="w-full">
                   <Link href={`/dashboard/inbox?c=${contact.conversation.id}`}>
                     <MessageCircle className="h-4 w-4" /> Open conversation
                   </Link>

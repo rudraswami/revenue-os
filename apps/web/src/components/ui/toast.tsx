@@ -86,12 +86,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={item.id}
             role="status"
             className={cn(
-              "pointer-events-auto flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm shadow-lg animate-in slide-in-from-bottom-2",
+              "pointer-events-auto flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm elev-2",
               item.variant === "success" &&
-                "border-emerald-200/80 bg-white text-foreground",
+                "border-accent/20 bg-card text-foreground",
               item.variant === "error" &&
-                "border-destructive/30 bg-white text-destructive",
-              item.variant === "info" && "border-accent/25 bg-white text-foreground",
+                "border-destructive/30 bg-card text-destructive",
+              item.variant === "info" && "border-accent/25 bg-card text-foreground",
             )}
           >
             {item.variant === "error" ? (

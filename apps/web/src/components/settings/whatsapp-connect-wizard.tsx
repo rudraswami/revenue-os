@@ -273,8 +273,8 @@ export function WhatsappConnectWizard({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#dce9ff] bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
-      <div className="border-b border-[#dce9ff] bg-gradient-to-r from-[#ecfdf5]/80 via-white to-[#f8f9ff] px-6 py-5">
+    <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
+      <div className="border-b border-border bg-gradient-to-r from-[#ecfdf5]/80 via-white to-[#f8f9ff] px-6 py-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-accent">
           Connect WhatsApp
         </p>
@@ -333,7 +333,7 @@ export function WhatsappConnectWizard({
             <div className="grid gap-6 lg:grid-cols-2">
               <WhatsappMetaSetupGuide metaApiSetupUrl={metaApiSetupUrl} />
 
-              <div className="flex flex-col rounded-2xl border border-[#dce9ff] bg-[#f8f9ff]/40 p-5">
+              <div className="flex flex-col rounded-2xl border border-border bg-[#f8f9ff]/40 p-5">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <label htmlFor="wa-access-token" className="text-sm font-semibold text-foreground">
@@ -393,7 +393,7 @@ export function WhatsappConnectWizard({
                 <Button
                   type="button"
                   disabled={connecting || !canConnect}
-                  variant="accent"
+                 
                   size="lg"
                   className="mt-5 h-12 w-full rounded-xl text-[15px] font-semibold"
                   onClick={handleConnect}
@@ -444,7 +444,7 @@ export function WhatsappConnectWizard({
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-[#dce9ff] bg-[#f8f9ff]/50 px-6 py-3 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 border-t border-border bg-[#f8f9ff]/50 px-6 py-3 text-xs text-muted-foreground">
         <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-accent" />
         Meta-compliant · Tokens encrypted · One-click Facebook connect after App Review
       </div>

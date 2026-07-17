@@ -54,7 +54,7 @@ function InviteAcceptForm() {
   if (!token) {
     return (
       <AuthShell title="Invalid invite" description="This invite link is missing a token.">
-        <Button asChild variant="accent" className="auth-submit">
+        <Button asChild className="auth-submit">
           <Link href="/login">Sign in</Link>
         </Button>
       </AuthShell>
@@ -72,7 +72,7 @@ function InviteAcceptForm() {
   if (isError || !preview) {
     return (
       <AuthShell title="Invite expired" description="This link is invalid or has expired.">
-        <Button asChild variant="accent" className="auth-submit">
+        <Button asChild className="auth-submit">
           <Link href="/login">Sign in</Link>
         </Button>
       </AuthShell>
@@ -86,7 +86,7 @@ function InviteAcceptForm() {
         description={`Invited as ${preview.role.toLowerCase()}. Use ${preview.email} to continue.`}
       >
         <div className="flex flex-col gap-3">
-          <Button asChild variant="accent" className="auth-submit">
+          <Button asChild className="auth-submit">
             <Link href={`/register?invite=${token}&email=${encodeURIComponent(preview.email)}`}>
               Create account
             </Link>
@@ -117,7 +117,7 @@ function InviteAcceptForm() {
         </Button>
       ) : (
         <Button
-          variant="accent"
+         
           className="auth-submit"
           disabled={acceptMutation.isPending}
           onClick={() => acceptMutation.mutate()}

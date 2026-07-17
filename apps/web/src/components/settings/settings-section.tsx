@@ -23,16 +23,16 @@ export function SettingsSection({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl border border-border/80 bg-white shadow-[0_4px_20px_rgb(11_28_48/0.04)]",
+        "overflow-hidden rounded-2xl border border-border/80 bg-card elev-1",
         className,
       )}
     >
       {(title || description || action) && (
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 bg-[#fafbfd] px-5 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 bg-background px-5 py-4">
           <div className="min-w-0">
-            {title && <h3 className="text-[15px] font-semibold text-foreground">{title}</h3>}
+            {title && <h3 className="text-sm font-semibold text-foreground">{title}</h3>}
             {description && (
-              <p className="mt-0.5 text-[13px] text-muted-foreground">{description}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
             )}
           </div>
           {action}
@@ -47,8 +47,8 @@ export function SettingsTabLoader({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-4" aria-busy="true" aria-label="Loading">
       <div className="h-5 w-40 animate-pulse rounded-md bg-muted" />
-      <div className="overflow-hidden rounded-2xl border border-border/80 bg-white">
-        <div className="border-b border-border/60 bg-[#fafbfd] px-5 py-4">
+      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card elev-1">
+        <div className="border-b border-border/60 bg-background px-5 py-4">
           <div className="h-4 w-32 animate-pulse rounded-md bg-muted" />
           <div className="mt-2 h-3 w-56 animate-pulse rounded-md bg-muted" />
         </div>

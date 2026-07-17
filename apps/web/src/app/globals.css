@@ -144,13 +144,52 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Design system type scale helpers */
 .text-caption {
-  font-size: 0.6875rem;
+  font-size: 0.75rem; /* 12px — was 11px micro; use text-xs in Tailwind */
   line-height: 1.35;
 }
 .text-label {
   font-size: 0.75rem;
   line-height: 1.4;
   font-weight: 600;
+}
+
+/**
+ * Surface system (Batch A)
+ * elev-0 = border only · elev-1 = panels · elev-2 = overlays (no hover lift)
+ * surface-panel = standard app card shell
+ */
+.surface-panel {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 3px rgb(11 28 48 / 0.08);
+  overflow: hidden;
+}
+
+.elev-0 {
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+.elev-1 {
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgb(11 28 48 / 0.08);
+}
+
+.elev-2 {
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 32px rgb(11 28 48 / 0.12);
+}
+
+/** Optional lift — marketing / interactive cards only, not dialogs */
+.elev-interactive {
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 12px rgb(11 28 48 / 0.06);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.elev-interactive:hover {
+  box-shadow: 0 8px 24px rgb(11 28 48 / 0.1);
+  transform: translateY(-2px);
 }
 
 /* Marketing + app primary CTA */
@@ -180,21 +219,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .marketing-container {
   @apply mx-auto max-w-[var(--width-marketing)] px-6 lg:px-8;
-}
-
-.elev-1 {
-  border: 1px solid var(--color-border);
-  box-shadow: 0 1px 3px rgb(11 28 48 / 0.08);
-}
-
-.elev-2 {
-  border: 1px solid var(--color-border);
-  box-shadow: 0 4px 12px rgb(11 28 48 / 0.06);
-  transition: box-shadow 0.25s, transform 0.25s;
-}
-.elev-2:hover {
-  box-shadow: 0 8px 24px rgb(11 28 48 / 0.1);
-  transform: translateY(-2px);
 }
 
 .product-frame {
@@ -331,7 +355,7 @@ h1, h2, h3, h4, h5, h6 {
   }
   .dashboard-quick-link:hover,
   .card-interactive:hover,
-  .elev-2:hover,
+  .elev-interactive:hover,
   .auth-submit:hover:not(:disabled),
   .btn-primary:hover {
     transform: none !important;

@@ -42,7 +42,7 @@ export function SettingsPageSkeleton() {
 
           <div className="min-h-[480px] space-y-4">
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-white">
-              <div className="border-b border-border/60 bg-[#fafbfd] px-5 py-4">
+              <div className="border-b border-border/60 bg-background px-5 py-4">
                 <Skeleton className="h-4 w-36" />
                 <Skeleton className="mt-2 h-3 w-52" />
               </div>

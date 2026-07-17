@@ -205,7 +205,7 @@ export default function ContactsPage() {
           <>
             <div className="hidden gap-2 sm:flex">
               {canEdit && (
-                <Button variant="accent" size="sm" className="gap-1.5" onClick={() => setShowAddContact(true)}>
+                <Button size="sm" className="gap-1.5" onClick={() => setShowAddContact(true)}>
                   <Plus className="h-3.5 w-3.5" /> Add contact
                 </Button>
               )}

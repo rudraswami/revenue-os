@@ -313,7 +313,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
   if (embedded) return body;
 
   return (
-    <div className="mt-6 border-t border-[#dce9ff] pt-5">
+    <div className="mt-6 border-t border-border pt-5">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bento-blue text-blue-700">
           <GitBranch className="h-5 w-5" />

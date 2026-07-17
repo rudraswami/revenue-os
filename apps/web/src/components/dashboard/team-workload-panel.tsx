@@ -60,7 +60,7 @@ export function TeamWorkloadPanel({ compact }: { compact?: boolean }) {
           "flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
           hasAlert
             ? "border-amber-200/80 bg-gradient-to-r from-amber-50/80 via-white to-white"
-            : "border-[#dce9ff] bg-white",
+            : "border-border bg-white",
         )}
       >
         <div className="flex flex-wrap items-center gap-4">
@@ -110,7 +110,7 @@ export function TeamWorkloadPanel({ compact }: { compact?: boolean }) {
   }
 
   return (
-    <div className="rounded-2xl border border-[#dce9ff] bg-white p-5">
+    <div className="rounded-2xl border border-border bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Team</p>

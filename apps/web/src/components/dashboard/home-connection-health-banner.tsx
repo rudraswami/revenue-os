@@ -88,7 +88,7 @@ export function HomeConnectionHealthBanner() {
         "mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3.5 sm:px-5",
         summary.tone === "warning" || health.tokenHealth?.needsRefresh
           ? "border-amber-200/80 bg-gradient-to-r from-amber-50/90 to-white"
-          : "border-[#dce9ff] bg-gradient-to-r from-[#f8f9ff] to-white",
+          : "border-border bg-gradient-to-r from-[#f8f9ff] to-white",
       )}
     >
       <div className="flex min-w-0 items-start gap-3">

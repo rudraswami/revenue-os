@@ -11,7 +11,7 @@ function LivePill({ children, delay = 0 }: { children: ReactNode; delay?: number
       initial={{ opacity: 0, x: delay < 0 ? -16 : 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: Math.abs(delay), duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-2xl border border-[#dce9ff]/80 bg-white/90 p-3.5 shadow-[0_12px_40px_rgb(11_28_48/0.08)] backdrop-blur-sm sm:p-4"
+      className="rounded-2xl border border-border/80 bg-white/90 p-3.5 shadow-[0_12px_40px_rgb(11_28_48/0.08)] backdrop-blur-sm sm:p-4"
     >
       {children}
     </motion.div>
@@ -86,7 +86,7 @@ export function HeroIllustration() {
       </motion.div>
 
       <div
-        className="relative rounded-3xl border border-[#dce9ff] bg-gradient-to-b from-[#f8f9ff] to-white p-4 sm:p-6 md:p-8"
+        className="relative rounded-3xl border border-border bg-gradient-to-b from-[#f8f9ff] to-white p-4 sm:p-6 md:p-8"
         style={{ minHeight: "clamp(440px, 72vw, 540px)" }}
       >
         {/* Animated flow lines */}

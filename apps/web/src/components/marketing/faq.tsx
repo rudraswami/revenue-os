@@ -45,7 +45,7 @@ export function Faq() {
       <div className="mx-auto max-w-[720px] px-6">
         <SectionHeader title="Common questions" subtitle="Everything teams ask before switching." />
 
-        <div className="mt-10 overflow-hidden rounded-3xl border border-[#dce9ff] bg-[#f8f9ff]/50 divide-y divide-[#dce9ff]">
+        <div className="mt-10 overflow-hidden rounded-3xl border border-border bg-[#f8f9ff]/50 divide-y divide-[#dce9ff]">
           {faqs.map((faq, i) => (
             <div key={faq.q}>
               <button

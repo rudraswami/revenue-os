@@ -44,7 +44,7 @@ export default function AboutPage() {
               </a>
             </p>
             <div className="flex flex-wrap gap-3 pt-4">
-              <Button asChild variant="accent">
+              <Button asChild>
                 <Link href="/register">{CTA.startTrial}</Link>
               </Button>
               <Button asChild variant="outline">

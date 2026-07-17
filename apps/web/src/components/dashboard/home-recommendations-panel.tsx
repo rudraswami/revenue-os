@@ -43,9 +43,9 @@ function toneFor(type: string) {
     case "Action needed":
       return { tone: "border-red-200/80 bg-red-50/40", iconBg: "bg-red-100 text-red-600" };
     case "Pipeline":
-      return { tone: "border-[#dce9ff] bg-[#f8f9ff]", iconBg: "bg-[#ecfdf5] text-accent" };
+      return { tone: "border-border bg-[#f8f9ff]", iconBg: "bg-[#ecfdf5] text-accent" };
     default:
-      return { tone: "border-[#dce9ff] bg-white", iconBg: "bg-muted text-muted-foreground" };
+      return { tone: "border-border bg-white", iconBg: "bg-muted text-muted-foreground" };
   }
 }
 

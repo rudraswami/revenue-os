@@ -113,7 +113,7 @@ export function PaymentIntegrationCard() {
       <Button
         type="button"
         size="sm"
-        variant="accent"
+       
         disabled={!secret.trim() || saveMut.isPending}
         onClick={() => saveMut.mutate({ razorpayWebhookSecret: secret.trim() })}
       >

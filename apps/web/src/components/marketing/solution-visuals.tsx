@@ -104,7 +104,7 @@ export function SolutionWorkflowDiagram({ slug }: { slug: SolutionPageSlug }) {
           viewport={{ once: true }}
           transition={{ delay: i * 0.08 }}
         >
-          <div className="min-w-[100px] rounded-xl border border-[#dce9ff] bg-white px-4 py-3 text-center shadow-sm">
+          <div className="min-w-[100px] rounded-xl border border-border bg-white px-4 py-3 text-center shadow-sm">
             <p className="text-xs font-bold text-accent">{String(i + 1).padStart(2, "0")}</p>
             <p className="mt-1 text-[13px] font-semibold">{label}</p>
           </div>

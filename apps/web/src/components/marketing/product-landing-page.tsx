@@ -79,7 +79,7 @@ export function ProductLandingPage({ slug }: { slug: ProductPageSlug }) {
               {product.features.map((f, i) => (
                 <motion.div
                   key={f.title}
-                  className="rounded-2xl border border-[#dce9ff] bg-white p-5 shadow-sm"
+                  className="rounded-2xl border border-border bg-white p-5 shadow-sm"
                   initial={{ opacity: 0, y: 12 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}

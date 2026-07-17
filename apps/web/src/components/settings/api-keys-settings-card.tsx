@@ -106,7 +106,7 @@ curl -H "Authorization: Bearer ${newSecret}" \\
         <Button
           type="button"
           size="sm"
-          variant="accent"
+         
           className="rounded-xl"
           disabled={createMutation.isPending || !name.trim()}
           onClick={() => createMutation.mutate()}

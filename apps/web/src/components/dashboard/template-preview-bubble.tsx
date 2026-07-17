@@ -26,7 +26,7 @@ export function TemplatePreviewBubble({
   const text = renderTemplateBody(body, params);
 
   return (
-    <div className={cn("rounded-2xl border border-[#dce9ff] bg-[#e5f6ef] p-4", className)}>
+    <div className={cn("rounded-2xl border border-border bg-[#e5f6ef] p-4", className)}>
       <div className="mb-2 flex items-center gap-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#128C7E] text-[10px] font-bold text-white">
           WA

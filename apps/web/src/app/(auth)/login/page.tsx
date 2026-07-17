@@ -129,7 +129,7 @@ function LoginForm() {
               {error}
             </p>
           )}
-          <Button type="submit" variant="accent" className="auth-submit" disabled={loading}>
+          <Button type="submit" className="auth-submit" disabled={loading}>
             {loading ? t("auth.signingIn") : t("auth.signIn")}
           </Button>
         </form>
@@ -142,7 +142,7 @@ function LoginForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-auto w-full justify-start rounded-xl border-[#dce9ff] py-3.5 hover:border-accent/30 hover:bg-[#ecfdf5]/50"
+                  className="h-auto w-full justify-start rounded-xl border-border py-3.5 hover:border-accent/30 hover:bg-[#ecfdf5]/50"
                   disabled={loading}
                   onClick={() => void submitLogin(org.id)}
                 >
@@ -175,7 +175,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="grid min-h-screen place-items-center bg-[#f8f9ff]">
-          <div className="rounded-2xl border border-[#dce9ff] bg-white px-8 py-6 text-sm text-muted-foreground shadow-sm">
+          <div className="rounded-2xl border border-border bg-white px-8 py-6 text-sm text-muted-foreground shadow-sm">
             {t("auth.loading")}
           </div>
         </div>

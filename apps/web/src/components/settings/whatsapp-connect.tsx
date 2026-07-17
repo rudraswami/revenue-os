@@ -284,7 +284,7 @@ export default function WhatsappConnect({
                 {activeAccounts.map((account) => (
                   <li
                     key={account.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-[#dce9ff] bg-white px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3"
                   >
                     <div>
                       <p className="text-sm font-semibold">
@@ -331,7 +331,7 @@ export default function WhatsappConnect({
               </div>
             )}
 
-            <div className="mt-6 border-t border-[#dce9ff] pt-6">
+            <div className="mt-6 border-t border-border pt-6">
               <WhatsappGoLiveChecklist compact showTestMessage={false} />
             </div>
           </div>

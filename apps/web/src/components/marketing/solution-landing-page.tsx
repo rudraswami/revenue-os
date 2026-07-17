@@ -103,7 +103,7 @@ export function SolutionLandingPage({ slug }: { slug: SolutionPageSlug }) {
                   ))}
                 </ul>
               </div>
-              <div className="rounded-2xl border border-[#dce9ff] bg-gradient-to-br from-[#f8f9ff] to-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-border bg-gradient-to-br from-[#f8f9ff] to-white p-6 shadow-sm">
                 <p className="text-xs font-bold uppercase tracking-wider text-accent">With Growvisi</p>
                 <h2 className="mt-2 text-2xl font-bold">What changes in 30 days</h2>
                 <ul className="mt-6 space-y-3">
@@ -133,7 +133,7 @@ export function SolutionLandingPage({ slug }: { slug: SolutionPageSlug }) {
               {solution.workflow.map((step, i) => (
                 <motion.div
                   key={step.step}
-                  className="rounded-2xl border border-[#dce9ff] bg-white p-5 shadow-sm"
+                  className="rounded-2xl border border-border bg-white p-5 shadow-sm"
                   initial={{ opacity: 0, y: 12 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -156,7 +156,7 @@ export function SolutionLandingPage({ slug }: { slug: SolutionPageSlug }) {
               {solution.features.map((f, i) => (
                 <motion.div
                   key={f.title}
-                  className="rounded-2xl border border-[#dce9ff] bg-white p-5 shadow-sm"
+                  className="rounded-2xl border border-border bg-white p-5 shadow-sm"
                   initial={{ opacity: 0, y: 12 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}

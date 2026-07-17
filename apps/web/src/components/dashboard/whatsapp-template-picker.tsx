@@ -107,7 +107,7 @@ export function WhatsappTemplatePicker({
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-[#dce9ff] bg-[#f8f9ff] px-4 py-4 text-sm text-muted-foreground">
+      <div className="flex items-center gap-3 rounded-2xl border border-border bg-[#f8f9ff] px-4 py-4 text-sm text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin text-accent" />
         <div>
           <p className="font-medium text-foreground">Syncing templates from Meta…</p>

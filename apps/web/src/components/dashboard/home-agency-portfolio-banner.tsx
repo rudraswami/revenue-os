@@ -41,7 +41,7 @@ export function HomeAgencyPortfolioBanner() {
   const needsAttention = summary.setup + summary.token + summary.disconnected;
 
   return (
-    <div className="mb-6 rounded-2xl border border-[#dce9ff] bg-gradient-to-r from-[#f8f9ff] to-white px-4 py-4 sm:px-5">
+    <div className="mb-6 rounded-2xl border border-border bg-gradient-to-r from-[#f8f9ff] to-white px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-accent" />

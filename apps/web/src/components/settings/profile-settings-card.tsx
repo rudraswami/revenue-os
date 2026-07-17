@@ -152,7 +152,7 @@ export function ProfileSettingsCard() {
         <Button
           type="button"
           size="sm"
-          variant="accent"
+         
           className="rounded-xl"
           disabled={!name.trim() || !dirty || mutation.isPending || !token}
           onClick={() => mutation.mutate()}

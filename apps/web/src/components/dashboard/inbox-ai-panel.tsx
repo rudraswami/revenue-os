@@ -164,7 +164,7 @@ export function InboxAiPanel({
       )}
 
       {aiContext && (
-        <div className="rounded-xl border border-[#dce9ff] bg-white p-3 shadow-sm">
+        <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
           <button
             type="button"
             className="flex w-full items-start justify-between gap-2 text-left"

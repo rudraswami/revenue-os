@@ -74,7 +74,7 @@ export function DailyDigestCard() {
     ops.digest.channel === "whatsapp" || ops.digest.channel === "both";
 
   return (
-    <DashboardPanel noPadding className="overflow-hidden border-[#dce9ff]">
+    <DashboardPanel noPadding className="overflow-hidden border-border">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-bento-mint text-amber-700">

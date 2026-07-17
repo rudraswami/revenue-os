@@ -33,7 +33,7 @@ export function RoiCalculator() {
     }).format(n);
 
   return (
-    <div className="rounded-3xl border border-[#dce9ff] bg-gradient-to-br from-[#f8f9ff] to-white p-6 md:p-8">
+    <div className="rounded-3xl border border-border bg-gradient-to-br from-[#f8f9ff] to-white p-6 md:p-8">
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bento-mint">
           <IndianRupee className="h-5 w-5 text-accent" />

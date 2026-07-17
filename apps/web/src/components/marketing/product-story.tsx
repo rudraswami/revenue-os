@@ -67,14 +67,14 @@ export function ProductStory() {
             return (
               <motion.article
                 key={story.id}
-                className={`overflow-hidden rounded-3xl border border-[#dce9ff] bg-gradient-to-br ${story.accent} shadow-[0_12px_40px_rgb(11_28_48/0.05)]`}
+                className={`overflow-hidden rounded-3xl border border-border bg-gradient-to-br ${story.accent} shadow-[0_12px_40px_rgb(11_28_48/0.05)]`}
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ delay: i * 0.08, duration: 0.55 }}
                 whileHover={{ y: -4, boxShadow: "0 20px 48px rgb(11 28 48 / 0.08)" }}
               >
-                <div className="border-b border-[#dce9ff]/80 bg-white/60 px-5 py-4">
+                <div className="border-b border-border/80 bg-white/60 px-5 py-4">
                   <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
                     {story.label}
                   </span>

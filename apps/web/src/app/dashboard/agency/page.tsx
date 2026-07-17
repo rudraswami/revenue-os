@@ -270,7 +270,7 @@ export default function AgencyPage() {
       <div
         key={c.id}
         className={cn(
-          "rounded-2xl border border-[#dce9ff] bg-white p-4 shadow-sm",
+          "rounded-2xl border border-border bg-white p-4 shadow-sm",
           compact && "p-3.5",
         )}
       >
@@ -288,7 +288,7 @@ export default function AgencyPage() {
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex rounded-full border border-[#dce9ff] bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-foreground/80">
+          <span className="inline-flex rounded-full border border-border bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-foreground/80">
             {formatMessage(t("agency.planChip"), { plan: planDisplayName(c.planId, t) })}
           </span>
           {c.trialEndsAt && c.planId === "trial" && (
@@ -386,7 +386,7 @@ export default function AgencyPage() {
           {showContinueSetup && (
             <Button
               size="sm"
-              variant="accent"
+             
               className="w-full gap-1.5 rounded-xl"
               disabled={switchingId === c.organizationId}
               onClick={() => void switchToClient(c.organizationId, "/onboarding?from=agency")}
@@ -505,7 +505,7 @@ export default function AgencyPage() {
             </p>
           </div>
 
-          <div className="mb-6 rounded-2xl border border-[#dce9ff] bg-gradient-to-r from-[#f8f9ff] to-white px-4 py-3.5 sm:px-5">
+          <div className="mb-6 rounded-2xl border border-border bg-gradient-to-r from-[#f8f9ff] to-white px-4 py-3.5 sm:px-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
                 <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
@@ -539,7 +539,7 @@ export default function AgencyPage() {
                 ).map(([key, value]) => (
                   <div
                     key={key}
-                    className="rounded-xl border border-[#dce9ff] bg-white px-4 py-3"
+                    className="rounded-xl border border-border bg-white px-4 py-3"
                   >
                     <p className="text-xs text-muted-foreground">{t(`agency.${key}`)}</p>
                     <p className="mt-1 text-2xl font-bold">{value}</p>
@@ -561,7 +561,7 @@ export default function AgencyPage() {
               ).map(([statusKey, labelKey, count]) => (
                 <div
                   key={statusKey}
-                  className="rounded-xl border border-[#dce9ff] bg-white px-4 py-3"
+                  className="rounded-xl border border-border bg-white px-4 py-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">{t(`agency.${labelKey}`)}</p>
@@ -598,7 +598,7 @@ export default function AgencyPage() {
                       {c.connectionStatus === "setup" && c.whatsappConnected && (
                         <Button
                           size="sm"
-                          variant="accent"
+                         
                           className="h-8 gap-1.5 rounded-xl"
                           disabled={switchingId === c.organizationId}
                           onClick={() =>

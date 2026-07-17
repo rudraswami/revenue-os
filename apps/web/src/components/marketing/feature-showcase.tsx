@@ -44,7 +44,7 @@ export function FeatureShowcase() {
             const Preview = f.Preview;
             return (
               <ScrollReveal key={f.title} delay={i * 0.06}>
-                <article className="elev-2 overflow-hidden rounded-2xl bg-white">
+                <article className="elev-interactive overflow-hidden rounded-2xl bg-card">
                   <div className="border-b border-border p-6 md:p-8">
                     <h3 className="text-xl font-bold text-foreground">{f.title}</h3>
                     <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">

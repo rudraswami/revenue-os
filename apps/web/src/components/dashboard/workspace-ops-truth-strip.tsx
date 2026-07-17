@@ -102,7 +102,7 @@ export function WorkspaceOpsTruthStrip() {
   const showUpgrade = !ops.paid && (ops.requiresUpgrade || ops.stage === "at_risk");
 
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dce9ff] bg-gradient-to-r from-[#f8f9ff] to-white px-4 py-3.5 sm:px-5">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-gradient-to-r from-[#f8f9ff] to-white px-4 py-3.5 sm:px-5">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-foreground">
           Workspace · {STAGE_LABEL[ops.stage]}

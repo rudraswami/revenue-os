@@ -7,7 +7,7 @@ import { ENTERPRISE_OFFERING } from "@/lib/gtm-copy";
 /** Honest Enterprise callout — only what we can deliver today + standard contract items */
 export function EnterpriseCallout() {
   return (
-    <div className="mt-10 rounded-3xl border border-[#dce9ff] bg-gradient-to-br from-[#0b1c30] to-[#132a45] p-6 text-white md:p-8">
+    <div className="mt-10 rounded-3xl border border-border bg-gradient-to-br from-[#0b1c30] to-[#132a45] p-6 text-white md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-xl">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-[#6cf8bb]">

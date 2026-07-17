@@ -45,7 +45,7 @@ export function RevenueEngine() {
         />
 
         <div className="mt-12 hidden lg:block">
-          <div className="relative rounded-3xl border border-[#dce9ff] bg-white p-8 shadow-[0_16px_48px_rgb(11_28_48/0.06)]">
+          <div className="relative rounded-3xl border border-border bg-white p-8 shadow-[0_16px_48px_rgb(11_28_48/0.06)]">
             <div className="absolute left-[8%] right-[8%] top-[52px] h-0.5 overflow-hidden rounded-full bg-[#e5eeff]">
               <motion.div
                 className="h-full bg-gradient-to-r from-accent via-[#6cf8bb] to-accent"

@@ -50,7 +50,7 @@ export function MetricCardsSkeleton({ variant = "default" }: { variant?: "defaul
           <Skeleton className="mt-2 h-5 w-48" />
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-border bg-white p-5">
+              <div key={i} className="rounded-2xl border border-border bg-card p-5 elev-1">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="mt-4 h-9 w-14" />
                 <Skeleton className="mt-3 h-3 w-32" />
@@ -61,16 +61,16 @@ export function MetricCardsSkeleton({ variant = "default" }: { variant?: "defaul
         <div>
           <Skeleton className="h-3 w-24" />
           <div className="mt-3 grid gap-3 lg:grid-cols-5">
-            <div className="lg:col-span-3 rounded-2xl border border-border bg-white p-6">
+            <div className="lg:col-span-3 rounded-2xl border border-border bg-card p-6">
               <Skeleton className="h-3 w-32" />
               <Skeleton className="mt-4 h-12 w-28" />
             </div>
             <div className="flex flex-col gap-3 lg:col-span-2">
-              <div className="rounded-2xl border border-border bg-white p-5">
+              <div className="rounded-2xl border border-border bg-card p-5">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="mt-3 h-8 w-12" />
               </div>
-              <div className="rounded-2xl border border-border bg-white p-5">
+              <div className="rounded-2xl border border-border bg-card p-5">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="mt-3 h-8 w-12" />
               </div>
@@ -84,7 +84,7 @@ export function MetricCardsSkeleton({ variant = "default" }: { variant?: "defaul
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-border bg-white p-6">
+        <div key={i} className="rounded-xl border border-border bg-card p-6">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="mt-4 h-8 w-16" />
         </div>

@@ -77,7 +77,7 @@ function LeadCard({
         "rounded-2xl border bg-white p-3.5 shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all md:cursor-grab md:active:cursor-grabbing",
         lead.isHot && "border-accent/25 ring-1 ring-accent/10",
         lead.isStale && !lead.isHot && "border-amber-200/80 ring-1 ring-amber-100",
-        !lead.isHot && !lead.isStale && "border-[#dce9ff]",
+        !lead.isHot && !lead.isStale && "border-border",
         draggingId === lead.id && "scale-[1.02] opacity-60 shadow-lg ring-2 ring-accent/30",
       )}
     >
@@ -147,7 +147,7 @@ function LeadCard({
             Stage
           </label>
           <select
-            className="w-full rounded-xl border border-[#dce9ff] bg-[#f8f9ff] px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="w-full rounded-xl border border-border bg-[#f8f9ff] px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
             value={lead.stage}
             disabled={isPending}
             onChange={(e) => {
@@ -270,7 +270,7 @@ export function PipelineBoard({
               onDragLeave={() => setDropTarget(null)}
               onDrop={(e) => handleDrop(e, stage)}
             >
-              <div className="mb-2.5 flex items-center gap-2 rounded-xl border border-[#dce9ff] bg-white px-3 py-2.5 shadow-sm">
+              <div className="mb-2.5 flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2.5 shadow-sm">
                 <div className={cn("h-2 w-2 shrink-0 rounded-full", stageColors[stage])} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
