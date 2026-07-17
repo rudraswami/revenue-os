@@ -76,6 +76,18 @@ export function useConversationsCopy() {
       newMessage: t("conversations.newMessage"),
       newOutboundTitle: t("conversations.newOutboundTitle"),
       newOutboundHint: t("conversations.newOutboundHint"),
+      outboundPhoneLabel: t("conversations.outboundPhoneLabel"),
+      outboundPhoneHint: t("conversations.outboundPhoneHint"),
+      outboundNameLabel: t("conversations.outboundNameLabel"),
+      outboundMessageType: t("conversations.outboundMessageType"),
+      outboundModeTemplate: t("conversations.outboundModeTemplate"),
+      outboundModeTemplateHint: t("conversations.outboundModeTemplateHint"),
+      outboundModeSession: t("conversations.outboundModeSession"),
+      outboundModeSessionHint: t("conversations.outboundModeSessionHint"),
+      outboundTemplateVarLabel: t("conversations.outboundTemplateVarLabel"),
+      outboundTemplateVarHint: t("conversations.outboundTemplateVarHint"),
+      outboundFreeTextLabel: t("conversations.outboundFreeTextLabel"),
+      outboundFreeTextHint: t("conversations.outboundFreeTextHint"),
       searchPlaceholder: t("conversations.searchPlaceholder"),
       conversationCount: (n: number) =>
         n === 1
