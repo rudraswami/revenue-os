@@ -1,51 +1,22 @@
-import type { AuthSession } from "@/lib/auth-types";
+import {
+  ApiError,
+  API_URL,
+  CUSTOMER_NETWORK_ERROR,
+  CUSTOMER_SERVICE_ERROR,
+  CUSTOMER_TIMEOUT_ERROR,
+  rawFetchForAuth,
+} from "@/lib/api-client-core";
+import { refreshAccessToken, refreshSession } from "@/lib/auth-refresh";
 import { useAuthStore } from "@/stores/auth-store";
 
-function resolveApiBase(): string {
-  const raw = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000")
-    .replace(/\\r\\n/g, "")
-    .replace(/[\r\n]+/g, "")
-    .trim()
-    .replace(/\/$/, "");
-  return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
-}
-
-const API_URL = resolveApiBase();
-
-/** Shown when fetch fails (offline, DNS, CORS) — never expose internal URLs to customers. */
-export const CUSTOMER_NETWORK_ERROR =
-  "We couldn't reach Growvisi. Check your internet connection and try again, or email support@growvisi.in.";
-
-/** Shown when a request hangs — never spin forever on a slow/stuck backend. */
-export const CUSTOMER_TIMEOUT_ERROR =
-  "That took too long to respond. Please try again in a moment.";
-
-/** Bound every request so a stuck backend call can't spin the UI forever. */
-const REQUEST_TIMEOUT_MS = 20_000;
-
-function logNetworkFailure(path: string, cause: unknown) {
-  if (process.env.NODE_ENV === "development") {
-    console.error(`[growvisi-api] Network error on ${path}`, cause);
-    console.info(`[growvisi-api] Base URL: ${API_URL}`);
-  }
-}
-
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public code?: string,
-    public meta?: {
-      reason?: string;
-      limit?: number | null;
-      used?: number | null;
-      planId?: string;
-      suggestedPlan?: string;
-    },
-  ) {
-    super(message);
-  }
-}
+export {
+  ApiError,
+  API_URL,
+  CUSTOMER_NETWORK_ERROR,
+  CUSTOMER_SERVICE_ERROR,
+  CUSTOMER_TIMEOUT_ERROR,
+};
+export { refreshAccessToken, refreshSession } from "@/lib/auth-refresh";
 
 const INTERNAL_ERROR_PATTERN =
   /requiresHuman|prisma|ECONNREFUSED|localhost|127\.0\.0\.1|pnpm dev|Graph API|OPENAI|nestjs|META_APP_ID|WHATSAPP_VERIFY/i;
@@ -69,7 +40,13 @@ export function toUserMessage(error: unknown, fallback = "Something went wrong. 
   }
 
   if (error.status === 0) return error.message;
-  if (error.status === 401) return "Your session expired. Please sign in again.";
+  // Only use session-expired copy when the caller has already decided auth is dead.
+  // Generic 401s often mean "retry refresh" — prefer neutral wording.
+  if (error.status === 401) {
+    return error.message?.trim() && !INTERNAL_ERROR_PATTERN.test(error.message)
+      ? error.message
+      : "Please sign in again to continue.";
+  }
   if (error.status === 402) {
     return error.message || "Your trial has ended. Open Plans & pricing to upgrade and continue.";
   }
@@ -85,10 +62,10 @@ export function toUserMessage(error: unknown, fallback = "Something went wrong. 
   if (error.status === 404) return "We couldn't find that. It may have been removed.";
   if (error.status === 429) return "Too many requests. Please wait a moment and try again.";
   if (error.status === 503) {
-    return "Could not reach an upstream service. Please try again in a moment.";
+    return CUSTOMER_SERVICE_ERROR;
   }
   if (error.status >= 500) {
-    return "Something went wrong on our side. Please try again or email support@growvisi.in.";
+    return CUSTOMER_SERVICE_ERROR;
   }
 
   const msg = error.message.trim();
@@ -98,89 +75,6 @@ export function toUserMessage(error: unknown, fallback = "Something went wrong. 
 
 export function isUpgradeFrictionError(error: unknown): error is ApiError {
   return error instanceof ApiError && !!error.code && FRICTION_CODES.has(error.code);
-}
-
-let refreshInFlight: Promise<string | null> | null = null;
-
-async function parseError(res: Response): Promise<ApiError> {
-  const body = (await res.json().catch(() => ({}))) as {
-    message?: string | string[];
-    code?: string;
-    reason?: string;
-    limit?: number | null;
-    used?: number | null;
-    planId?: string;
-    suggestedPlan?: string;
-  };
-  const msg = Array.isArray(body.message)
-    ? body.message.join(", ")
-    : (body.message ?? res.statusText);
-  return new ApiError(msg, res.status, body.code, {
-    reason: body.reason,
-    limit: body.limit,
-    used: body.used,
-    planId: body.planId,
-    suggestedPlan: body.suggestedPlan,
-  });
-}
-
-async function rawFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  if (!headers.has("Content-Type") && options.body) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  let res: Response;
-  try {
-    res = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers,
-      credentials: "include",
-      signal: options.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-  } catch (cause) {
-    logNetworkFailure(path, cause);
-    if (cause instanceof DOMException && cause.name === "TimeoutError") {
-      throw new ApiError(CUSTOMER_TIMEOUT_ERROR, 0);
-    }
-    throw new ApiError(CUSTOMER_NETWORK_ERROR, 0);
-  }
-
-  if (!res.ok) {
-    throw await parseError(res);
-  }
-
-  if (res.status === 204) {
-    return undefined as T;
-  }
-  return res.json() as Promise<T>;
-}
-
-export async function refreshAccessToken(): Promise<string | null> {
-  const { refreshToken, setSession, clear } = useAuthStore.getState();
-
-  if (!refreshInFlight) {
-    refreshInFlight = (async () => {
-      try {
-        // The refresh token lives in an HttpOnly cookie (sent via credentials:
-        // "include"). We only send it in the body as a fallback for the current
-        // session before a reload, when it is still held in memory.
-        const session = await rawFetch<AuthSession>("/auth/refresh", {
-          method: "POST",
-          body: refreshToken ? JSON.stringify({ refreshToken }) : undefined,
-        });
-        setSession(session);
-        return session.accessToken;
-      } catch {
-        clear();
-        return null;
-      } finally {
-        refreshInFlight = null;
-      }
-    })();
-  }
-
-  return refreshInFlight;
 }
 
 export async function apiFetch<T>(
@@ -197,7 +91,7 @@ export async function apiFetch<T>(
   }
 
   try {
-    return await rawFetch<T>(path, { ...init, headers });
+    return await rawFetchForAuth<T>(path, { ...init, headers });
   } catch (err) {
     if (
       err instanceof ApiError &&
@@ -206,12 +100,17 @@ export async function apiFetch<T>(
       !skipAuthRetry &&
       !path.startsWith("/auth/")
     ) {
-      const newToken = await refreshAccessToken();
+      const newToken = await refreshAccessToken("api_401");
       if (newToken) {
         const retryHeaders = new Headers(init.headers);
         retryHeaders.set("Content-Type", "application/json");
         retryHeaders.set("Authorization", `Bearer ${newToken}`);
-        return rawFetch<T>(path, { ...init, headers: retryHeaders });
+        return rawFetchForAuth<T>(path, { ...init, headers: retryHeaders });
+      }
+      // Transient refresh failure: rethrow original 401 without having cleared session
+      const transient = useAuthStore.getState().lastTransientFailure;
+      if (transient) {
+        throw new ApiError(CUSTOMER_SERVICE_ERROR, 0);
       }
     }
     throw err;
@@ -229,11 +128,17 @@ async function authedBlob(path: string, token?: string): Promise<Blob> {
 
   let res = await doFetch(authToken);
   if (res.status === 401 && authToken) {
-    const newToken = await refreshAccessToken();
+    const newToken = await refreshAccessToken("api_blob_401");
     if (newToken) res = await doFetch(newToken);
   }
   if (!res.ok) {
-    throw await parseError(res);
+    if (res.status >= 500) {
+      throw new ApiError(CUSTOMER_SERVICE_ERROR, res.status);
+    }
+    if (res.status === 0) {
+      throw new ApiError(CUSTOMER_NETWORK_ERROR, 0);
+    }
+    throw new ApiError(res.statusText || "Request failed", res.status);
   }
   return res.blob();
 }

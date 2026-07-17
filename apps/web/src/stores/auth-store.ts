@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { syncAuthCookie } from "@/lib/auth-cookie";
+import { logLogout } from "@/lib/auth-observability";
+import type { LogoutReason, RefreshResultKind } from "@/lib/auth-session-death";
 import type { MembershipRole } from "@growvisi/shared";
 import type { AuthOrganization, AuthSession, AuthUser, OnboardingStatus } from "@/lib/auth-types";
 
@@ -14,11 +16,21 @@ interface AuthState {
   /** User chose to explore dashboard before connecting WhatsApp */
   onboardingDismissed: boolean;
   hydrated: boolean;
+  /** Last non-fatal refresh failure — session must be preserved */
+  lastTransientFailure: Extract<
+    RefreshResultKind,
+    "NETWORK_FAILURE" | "SERVER_FAILURE"
+  > | null;
   setHydrated: (value: boolean) => void;
   setSession: (session: AuthSession) => void;
+  /** Update access token from peer tab without wiping profile */
+  patchAccessToken: (accessToken: string, refreshToken?: string) => void;
+  setTransientFailure: (
+    kind: Extract<RefreshResultKind, "NETWORK_FAILURE" | "SERVER_FAILURE"> | null,
+  ) => void;
   patchOnboarding: (onboarding: OnboardingStatus) => void;
   dismissOnboarding: () => void;
-  clear: () => void;
+  clear: (reason: LogoutReason) => void;
   isAuthenticated: () => boolean;
 }
 
@@ -33,6 +45,7 @@ export const useAuthStore = create<AuthState>()(
       onboarding: null,
       onboardingDismissed: false,
       hydrated: false,
+      lastTransientFailure: null,
       setHydrated: (hydrated) => set({ hydrated }),
       setSession: (session) => {
         syncAuthCookie(true);
@@ -43,11 +56,22 @@ export const useAuthStore = create<AuthState>()(
           organization: session.organization,
           role: session.role,
           onboarding: session.onboarding,
+          lastTransientFailure: null,
         });
       },
+      patchAccessToken: (accessToken, refreshToken) => {
+        syncAuthCookie(true);
+        set((s) => ({
+          accessToken,
+          refreshToken: refreshToken ?? s.refreshToken,
+          lastTransientFailure: null,
+        }));
+      },
+      setTransientFailure: (kind) => set({ lastTransientFailure: kind }),
       patchOnboarding: (onboarding) => set({ onboarding }),
       dismissOnboarding: () => set({ onboardingDismissed: true }),
-      clear: () => {
+      clear: (reason) => {
+        logLogout(reason);
         syncAuthCookie(false);
         set({
           accessToken: null,
@@ -57,6 +81,7 @@ export const useAuthStore = create<AuthState>()(
           role: null,
           onboarding: null,
           onboardingDismissed: false,
+          lastTransientFailure: null,
         });
       },
       isAuthenticated: () => !!get().accessToken,

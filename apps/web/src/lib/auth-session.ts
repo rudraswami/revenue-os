@@ -1,6 +1,12 @@
-import { apiFetch, refreshAccessToken } from "@/lib/api-client";
+import { ApiError, apiFetch } from "@/lib/api-client";
+import {
+  endSessionFromRefresh,
+  refreshAccessToken,
+  refreshSession,
+} from "@/lib/auth-refresh";
 import { hasSessionHint, syncAuthCookie } from "@/lib/auth-cookie";
 import type { AuthSession, MeResponse } from "@/lib/auth-types";
+import { isConclusiveAuthDeath } from "@/lib/auth-session-death";
 import { useAuthStore } from "@/stores/auth-store";
 
 export async function logout(): Promise<void> {
@@ -14,9 +20,9 @@ export async function logout(): Promise<void> {
       skipAuthRetry: true,
     });
   } catch {
-    // Still clear local session if API unreachable
+    // Still clear local session if API unreachable — user explicitly signed out
   }
-  clear();
+  clear("USER_SIGN_OUT");
   syncAuthCookie(false);
 }
 
@@ -35,8 +41,9 @@ export function postAuthPath(onboarding?: { whatsappConnected?: boolean } | null
 /** Patch user/org profile into the store without wiping the refresh token. */
 function patchProfile(me: MeResponse) {
   const current = useAuthStore.getState();
+  if (!current.accessToken) return;
   useAuthStore.getState().setSession({
-    accessToken: current.accessToken!,
+    accessToken: current.accessToken,
     refreshToken: current.refreshToken ?? "",
     user: me.user,
     organization: me.organization,
@@ -46,7 +53,24 @@ function patchProfile(me: MeResponse) {
   syncAuthCookie(true);
 }
 
-/** Restore session on app load: refresh tokens + sync profile from API. */
+async function fetchMe(token: string): Promise<"ok" | "auth_dead" | "transient"> {
+  try {
+    const me = await apiFetch<MeResponse>("/auth/me", { token, skipAuthRetry: true });
+    patchProfile(me);
+    return "ok";
+  } catch (err) {
+    if (err instanceof ApiError) {
+      if (err.status === 401 || err.status === 403) return "auth_dead";
+      if (err.status === 0 || err.status >= 500 || err.status === 429) return "transient";
+    }
+    return "transient";
+  }
+}
+
+/**
+ * Restore session on app load.
+ * Never clears auth on network/server failures — only on conclusive AUTH_*.
+ */
 export async function bootstrapAuth(): Promise<void> {
   const state = useAuthStore.getState();
   if (!state.refreshToken && !state.accessToken && !hasSessionHint()) {
@@ -56,31 +80,60 @@ export async function bootstrapAuth(): Promise<void> {
   let token = state.accessToken;
 
   if (!token) {
-    token = await refreshAccessToken();
-    if (!token) {
-      useAuthStore.getState().clear();
-      syncAuthCookie(false);
+    const refreshed = await refreshSession("bootstrap_no_access");
+    if (refreshed.kind === "SUCCESS") {
+      token = refreshed.accessToken;
+    } else if (isConclusiveAuthDeath(refreshed.kind)) {
+      endSessionFromRefresh(refreshed);
+      return;
+    } else {
+      // NETWORK/SERVER — keep hint; AuthGuard will show reconnecting if no token
+      useAuthStore.getState().setTransientFailure(
+        refreshed.kind === "NETWORK_FAILURE" ? "NETWORK_FAILURE" : "SERVER_FAILURE",
+      );
       return;
     }
   }
 
-  try {
-    const me = await apiFetch<MeResponse>("/auth/me", { token });
-    patchProfile(me);
-  } catch {
-    const refreshed = await refreshAccessToken();
-    if (!refreshed) {
-      useAuthStore.getState().clear();
-      syncAuthCookie(false);
+  let meResult = await fetchMe(token);
+  if (meResult === "ok") return;
+
+  if (meResult === "transient") {
+    // Retry once after short delay
+    await new Promise((r) => setTimeout(r, 800));
+    meResult = await fetchMe(token);
+    if (meResult === "ok") return;
+    if (meResult === "transient") {
+      useAuthStore.getState().setTransientFailure("SERVER_FAILURE");
+      // Keep accessToken so AuthGuard does not bounce to login
       return;
     }
-
-    try {
-      const me = await apiFetch<MeResponse>("/auth/me");
-      patchProfile(me);
-    } catch {
-      useAuthStore.getState().clear();
-      syncAuthCookie(false);
-    }
   }
+
+  // auth_dead on /auth/me — try refresh
+  const refreshed = await refreshSession("bootstrap_me_401");
+  if (refreshed.kind === "SUCCESS") {
+    const again = await fetchMe(refreshed.accessToken);
+    if (again === "ok") return;
+    if (again === "transient") {
+      useAuthStore.getState().setTransientFailure("SERVER_FAILURE");
+      return;
+    }
+    // Still auth dead after fresh token — conclusive
+    useAuthStore.getState().clear("BOOTSTRAP_AUTH_INVALID");
+    return;
+  }
+
+  if (isConclusiveAuthDeath(refreshed.kind)) {
+    endSessionFromRefresh(refreshed);
+    return;
+  }
+
+  // Transient refresh failure — keep whatever access token we had
+  useAuthStore.getState().setTransientFailure(
+    refreshed.kind === "NETWORK_FAILURE" ? "NETWORK_FAILURE" : "SERVER_FAILURE",
+  );
 }
+
+/** @deprecated use refreshAccessToken from api-client / auth-refresh */
+export { refreshAccessToken };
