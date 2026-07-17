@@ -4,8 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { createHash, randomBytes } from "crypto";
 import type { JwtPayload } from "@growvisi/shared";
-import { DEFAULT_PIPELINE_STAGES } from "@growvisi/shared";
+import { DEFAULT_PIPELINE_STAGES, GROWVISI_WEB_URL, TRIAL_DAYS } from "@growvisi/shared";
+import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmbeddedSignupService } from "../whatsapp-accounts/embedded-signup.service";
@@ -25,7 +28,11 @@ export interface AgencyClientRow {
   connectionStatus: "live" | "setup" | "token" | "disconnected";
   goLiveProgressPct: number;
   displayPhoneNumber: string | null;
-  tokenNeedsRefresh: boolean;
+  /** Meta session needs reconnect via Embedded Signup (not paste-token). */
+  needsReconnect: boolean;
+  planId: string;
+  subscriptionStatus: string;
+  trialEndsAt: string | null;
 }
 
 @Injectable()
@@ -35,6 +42,8 @@ export class AgencyService {
     private readonly entitlements: EntitlementsService,
     private readonly whatsappAccounts: WhatsappAccountsService,
     private readonly embeddedSignup: EmbeddedSignupService,
+    private readonly email: EmailService,
+    private readonly config: ConfigService,
   ) {}
 
   async getStatus(user: JwtPayload) {
@@ -60,7 +69,7 @@ export class AgencyService {
 
   async enableAgencyMode(user: JwtPayload) {
     if (!["OWNER", "ADMIN"].includes(user.role)) {
-      throw new ForbiddenException("Only workspace admins can enable agency mode.");
+      throw new ForbiddenException("Only workspace admins can enable Agency hub.");
     }
     await this.entitlements.assertPlanAtLeast(user.organizationId, "pro");
 
@@ -91,7 +100,17 @@ export class AgencyService {
       where: { agencyOrganizationId: user.organizationId },
       orderBy: { displayName: "asc" },
       include: {
-        client: { select: { id: true, name: true, slug: true, createdAt: true } },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            createdAt: true,
+            subscription: {
+              select: { planId: true, status: true, createdAt: true },
+            },
+          },
+        },
       },
     });
 
@@ -100,33 +119,41 @@ export class AgencyService {
         const orgId = link.clientOrganizationId;
         const [waActive, unreadAgg, handoffs, pipelineAgg, openLeads, waSummary] =
           await Promise.all([
-          this.prisma.whatsappAccount.count({ where: { organizationId: orgId, isActive: true } }),
-          this.prisma.conversation.aggregate({
-            where: { organizationId: orgId },
-            _sum: { unreadCount: true },
-          }),
-          this.prisma.conversation.count({
-            where: {
-              organizationId: orgId,
-              metadata: { path: ["requiresHuman"], equals: true },
-            },
-          }),
-          this.prisma.lead.aggregate({
-            where: {
-              organizationId: orgId,
-              stage: { notIn: ["WON", "LOST"] },
-              valueCents: { not: null },
-            },
-            _sum: { valueCents: true },
-          }),
-          this.prisma.lead.count({
-            where: {
-              organizationId: orgId,
-              stage: { notIn: ["WON", "LOST"] },
-            },
-          }),
-          this.whatsappAccounts.getOrganizationWhatsAppSummary(orgId),
-        ]);
+            this.prisma.whatsappAccount.count({
+              where: { organizationId: orgId, isActive: true },
+            }),
+            this.prisma.conversation.aggregate({
+              where: { organizationId: orgId },
+              _sum: { unreadCount: true },
+            }),
+            this.prisma.conversation.count({
+              where: {
+                organizationId: orgId,
+                metadata: { path: ["requiresHuman"], equals: true },
+              },
+            }),
+            this.prisma.lead.aggregate({
+              where: {
+                organizationId: orgId,
+                stage: { notIn: ["WON", "LOST"] },
+                valueCents: { not: null },
+              },
+              _sum: { valueCents: true },
+            }),
+            this.prisma.lead.count({
+              where: {
+                organizationId: orgId,
+                stage: { notIn: ["WON", "LOST"] },
+              },
+            }),
+            this.whatsappAccounts.getOrganizationWhatsAppSummary(orgId),
+          ]);
+
+        const sub = link.client.subscription;
+        const trialEndsAt =
+          sub?.planId === "trial" && sub.createdAt
+            ? new Date(sub.createdAt.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString()
+            : null;
 
         return {
           id: link.id,
@@ -142,7 +169,10 @@ export class AgencyService {
           connectionStatus: waSummary.connectionStatus,
           goLiveProgressPct: waSummary.goLiveProgressPct,
           displayPhoneNumber: waSummary.displayPhoneNumber,
-          tokenNeedsRefresh: waSummary.tokenNeedsRefresh,
+          needsReconnect: waSummary.tokenNeedsRefresh || waSummary.connectionStatus === "token",
+          planId: sub?.planId ?? "trial",
+          subscriptionStatus: sub?.status ?? "TRIALING",
+          trialEndsAt,
         };
       }),
     );
@@ -162,7 +192,11 @@ export class AgencyService {
       live,
       setup,
       token,
+      reconnect: token,
       disconnected,
+      openPipelineInr: clients.reduce((s, c) => s + c.openPipelineInr, 0),
+      handoffs: clients.reduce((s, c) => s + c.handoffs, 0),
+      unreadMessages: clients.reduce((s, c) => s + c.unreadMessages, 0),
       clients,
     };
   }
@@ -189,13 +223,119 @@ export class AgencyService {
     return this.whatsappAccounts.getOrganizationWhatsAppSummary(clientOrganizationId);
   }
 
-  async quickConnectClient(
-    user: JwtPayload,
-    clientOrganizationId: string,
-    dto: { accessToken: string; phoneNumberId?: string; wabaId?: string },
-  ) {
+  async renameClient(user: JwtPayload, clientOrganizationId: string, displayName: string) {
     await this.assertAgencyAccessToClient(user, clientOrganizationId);
-    return this.whatsappAccounts.quickConnectForOrganization(clientOrganizationId, dto);
+    const cleanName = displayName.trim();
+    if (!cleanName) throw new BadRequestException("Client name is required.");
+
+    const link = await this.prisma.agencyClient.findFirst({
+      where: {
+        agencyOrganizationId: user.organizationId,
+        clientOrganizationId,
+      },
+    });
+    if (!link) throw new NotFoundException("Client not in your portfolio.");
+
+    await this.prisma.$transaction([
+      this.prisma.agencyClient.update({
+        where: { id: link.id },
+        data: { displayName: cleanName },
+      }),
+      this.prisma.organization.update({
+        where: { id: clientOrganizationId },
+        data: { name: cleanName },
+      }),
+    ]);
+
+    return { ok: true, displayName: cleanName, organizationId: clientOrganizationId };
+  }
+
+  /**
+   * Remove client from agency portfolio (frees a slot). Client org remains;
+   * agency staff memberships on the client are left intact for access if needed.
+   */
+  async removeClientFromPortfolio(user: JwtPayload, clientOrganizationId: string) {
+    await this.assertAgencyAccessToClient(user, clientOrganizationId);
+
+    const link = await this.prisma.agencyClient.findFirst({
+      where: {
+        agencyOrganizationId: user.organizationId,
+        clientOrganizationId,
+      },
+    });
+    if (!link) throw new NotFoundException("Client not in your portfolio.");
+
+    await this.prisma.agencyClient.delete({ where: { id: link.id } });
+
+    return { ok: true, removedOrganizationId: clientOrganizationId };
+  }
+
+  async inviteClientOwner(user: JwtPayload, clientOrganizationId: string, email: string) {
+    await this.assertAgencyAccessToClient(user, clientOrganizationId);
+    await this.entitlements.assertCanInviteMember(clientOrganizationId);
+
+    const normalized = email.trim().toLowerCase();
+    if (!normalized.includes("@")) {
+      throw new BadRequestException("Enter a valid email address.");
+    }
+
+    const existingMember = await this.prisma.organizationMember.findFirst({
+      where: {
+        organizationId: clientOrganizationId,
+        user: { email: normalized },
+      },
+    });
+    if (existingMember) {
+      throw new BadRequestException("This person is already on the client workspace.");
+    }
+
+    const token = randomBytes(24).toString("hex");
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: clientOrganizationId },
+      select: { name: true },
+    });
+    if (!org) throw new NotFoundException();
+
+    await this.prisma.organizationInvite.upsert({
+      where: {
+        organizationId_email: {
+          organizationId: clientOrganizationId,
+          email: normalized,
+        },
+      },
+      create: {
+        organizationId: clientOrganizationId,
+        email: normalized,
+        role: "OWNER",
+        tokenHash,
+        invitedById: user.sub,
+        expiresAt,
+      },
+      update: {
+        role: "OWNER",
+        tokenHash,
+        invitedById: user.sub,
+        expiresAt,
+        acceptedAt: null,
+      },
+    });
+
+    const appUrl = (
+      this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+    ).replace(/\/$/, "");
+    const inviteUrl = `${appUrl}/invite?token=${token}`;
+
+    await this.email.sendTeamInvite({
+      to: normalized,
+      organizationName: org.name,
+      inviteUrl,
+      role: "OWNER",
+    });
+
+    return { sent: true, email: normalized, expiresAt, organizationId: clientOrganizationId };
   }
 
   async createClient(user: JwtPayload, displayName: string) {
@@ -210,7 +350,7 @@ export class AgencyService {
     });
     if (count >= access.limits.agencyClients) {
       throw new ForbiddenException(
-        `Your Pro plan allows ${access.limits.agencyClients} client workspaces. Upgrade limits or remove a client.`,
+        `Your Operator plan allows ${access.limits.agencyClients} client workspaces. Remove a client from the portfolio to free a slot.`,
       );
     }
 
@@ -274,7 +414,7 @@ export class AgencyService {
           data: {
             organizationId: clientOrg.id,
             userId: member.userId,
-            role: member.role === "OWNER" ? "ADMIN" : "ADMIN",
+            role: "ADMIN",
           },
         });
       }
@@ -305,14 +445,14 @@ export class AgencyService {
       select: { kind: true },
     });
     if (!org || org.kind !== "AGENCY") {
-      throw new ForbiddenException("Enable agency mode on a Pro workspace to manage clients.");
+      throw new ForbiddenException("Enable Agency hub on an Operator workspace to manage clients.");
     }
   }
 
   private async assertAgencyAccessToClient(user: JwtPayload, clientOrganizationId: string) {
     await this.assertAgencyHub(user);
     if (!["OWNER", "ADMIN"].includes(user.role)) {
-      throw new ForbiddenException("Only workspace admins can connect WhatsApp for clients.");
+      throw new ForbiddenException("Only workspace admins can manage client WhatsApp.");
     }
     const link = await this.prisma.agencyClient.findFirst({
       where: {

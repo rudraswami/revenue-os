@@ -10,8 +10,18 @@ import { cn } from "@/lib/utils";
 interface BillingUsage {
   planId: string;
   planName: string;
-  usage: { whatsappNumbers: number; teamMembers: number; monthlyLeads: number };
-  limits: { whatsappNumbers: number; teamMembers: number; monthlyLeads: number; agencyClients: number };
+  usage: {
+    whatsappNumbers: number;
+    teamMembers: number;
+    monthlyLeads: number;
+    agencyClients?: number;
+  };
+  limits: {
+    whatsappNumbers: number;
+    teamMembers: number;
+    monthlyLeads: number;
+    agencyClients: number;
+  };
   entitlements?: { trialEndsAt: string | null; trialExpired: boolean };
 }
 
@@ -109,6 +119,13 @@ export function UsageMeterCard({ compact }: { compact?: boolean }) {
           limit={data.limits.whatsappNumbers}
           label="WhatsApp numbers"
         />
+        {data.planId === "pro" && data.limits.agencyClients > 0 && (
+          <MeterBar
+            used={data.usage.agencyClients ?? 0}
+            limit={data.limits.agencyClients}
+            label="Agency hub clients"
+          />
+        )}
       </div>
       {data.entitlements?.trialEndsAt && data.planId === "trial" && (
         <p className="mt-3 text-[11px] text-muted-foreground">

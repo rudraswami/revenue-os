@@ -109,23 +109,30 @@ export function AiCapabilitiesBanner() {
 export function OnboardingBanner() {
   const token = useAuthStore((s) => s.accessToken);
 
+  const { data: agencyStatus } = useQuery({
+    queryKey: ["agency-status"],
+    queryFn: () => apiFetch<{ isAgency: boolean }>("/agency/status", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: 60_000,
+  });
+
   const { data: accounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
     queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
       token: token ?? undefined,
     }),
-    enabled: !!token,
+    enabled: !!token && !agencyStatus?.isAgency,
   });
 
   const connected = accounts?.some((a) => a.isActive) ?? false;
-  if (connected || !token) return null;
+  if (agencyStatus?.isAgency || connected || !token) return null;
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/25 bg-bento-mint/50 px-4 py-3 lg:mb-6">
       <div>
         <p className="text-sm font-semibold text-foreground">Connect WhatsApp to start capturing revenue</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Paste your Meta token — we auto-detect your number and ingest customer messages.
+          Continue with Meta (Embedded Signup) — we link your business number and ingest customer messages.
         </p>
       </div>
       <Link

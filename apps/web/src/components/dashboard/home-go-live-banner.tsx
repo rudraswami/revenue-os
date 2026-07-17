@@ -16,6 +16,13 @@ export function HomeGoLiveBanner() {
   const token = useAuthStore((s) => s.accessToken);
   const globalBanner = useGlobalDashboardBanner();
 
+  const { data: agencyStatus } = useQuery({
+    queryKey: ["agency-status"],
+    queryFn: () => apiFetch<{ isAgency: boolean }>("/agency/status", { token: token ?? undefined }),
+    enabled: !!token,
+    staleTime: 60_000,
+  });
+
   const { data: progress } = useQuery({
     queryKey: ["onboarding-progress"],
     queryFn: () =>
@@ -24,12 +31,14 @@ export function HomeGoLiveBanner() {
       }>("/organizations/onboarding-progress", {
         token: token ?? undefined,
       }),
-    enabled: !!token,
+    enabled: !!token && !agencyStatus?.isAgency,
     staleTime: 30_000,
   });
 
   const goLive = progress?.goLive;
-  if (globalBanner || !goLive?.connected || goLive.progressPct >= 100) return null;
+  if (agencyStatus?.isAgency || globalBanner || !goLive?.connected || goLive.progressPct >= 100) {
+    return null;
+  }
 
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/20 bg-gradient-to-r from-accent/5 to-white px-4 py-3.5 sm:px-5">

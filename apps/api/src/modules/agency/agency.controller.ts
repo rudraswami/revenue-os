@@ -1,5 +1,14 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
-import { IsNotEmpty, IsString, MaxLength } from "class-validator";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
@@ -7,7 +16,6 @@ import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { CompleteEmbeddedSignupDto } from "../whatsapp-accounts/dto/embedded-signup.dto";
-import { QuickConnectWhatsappDto } from "../whatsapp-accounts/dto/whatsapp-account.dto";
 import { AgencyService } from "./agency.service";
 
 class CreateClientDto {
@@ -15,6 +23,24 @@ class CreateClientDto {
   @IsNotEmpty()
   @MaxLength(80)
   displayName!: string;
+}
+
+class RenameClientDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  displayName!: string;
+}
+
+class InviteClientOwnerDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  note?: string;
 }
 
 @Controller("agency")
@@ -55,14 +81,33 @@ export class AgencyController {
     return this.agency.completeClientEmbeddedSignup(user, organizationId, dto);
   }
 
-  @Post("clients/:organizationId/quick-connect")
+  @Patch("clients/:organizationId")
   @Roles("OWNER", "ADMIN")
-  quickConnectClient(
+  renameClient(
     @CurrentUser() user: JwtPayload,
     @Param("organizationId") organizationId: string,
-    @Body() dto: QuickConnectWhatsappDto,
+    @Body() dto: RenameClientDto,
   ) {
-    return this.agency.quickConnectClient(user, organizationId, dto);
+    return this.agency.renameClient(user, organizationId, dto.displayName);
+  }
+
+  @Delete("clients/:organizationId")
+  @Roles("OWNER", "ADMIN")
+  removeClient(
+    @CurrentUser() user: JwtPayload,
+    @Param("organizationId") organizationId: string,
+  ) {
+    return this.agency.removeClientFromPortfolio(user, organizationId);
+  }
+
+  @Post("clients/:organizationId/invite-owner")
+  @Roles("OWNER", "ADMIN")
+  inviteClientOwner(
+    @CurrentUser() user: JwtPayload,
+    @Param("organizationId") organizationId: string,
+    @Body() dto: InviteClientOwnerDto,
+  ) {
+    return this.agency.inviteClientOwner(user, organizationId, dto.email);
   }
 
   @Post("enable")

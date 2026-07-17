@@ -1,8 +1,10 @@
 # Growvisi Partner Install Kit
 
-**Audience:** Meta Tech Providers, WhatsApp BSP partners, and Indian agencies installing Growvisi alongside Meta Business Agent.
+**Audience:** Meta Tech Providers, WhatsApp agencies, and multi-location operators installing Growvisi for client businesses.
 
-**Stack positioning:** Your team replies from **Growvisi Inbox** (human messages). Growvisi AI classifies, tracks pipeline, assigns team, and sends owner digests — it **never auto-replies** customers. Optional **Meta Business Agent** can handle first-line FAQ in WhatsApp.
+**Stack positioning:** Your team replies from **Growvisi Conversations** (human messages). Growvisi AI classifies, tracks pipeline, assigns team, and sends owner digests — it **never auto-replies** customers. Optional **Meta Business Agent** can handle first-line FAQ in WhatsApp.
+
+**Connect path:** **Meta Embedded Signup only** (App Review approved). Do not paste Meta API Setup tokens as the install path.
 
 ---
 
@@ -12,8 +14,8 @@
 |------|--------|
 | WhatsApp Business Account (WABA) | Client |
 | Meta Business Agent (optional FAQ bot) | Client / Partner |
-| Growvisi workspace (trial or paid) | Client |
-| Meta Cloud API token or Embedded Signup (TP) | Partner |
+| Growvisi Operator (Pro) + Agency hub | Agency |
+| Meta Embedded Signup (Tech Provider / approved app) | Partner |
 
 ---
 
@@ -21,52 +23,55 @@
 
 ### Step A — Who replies to customers
 
-1. Train client: **human replies** from Growvisi Inbox or WhatsApp directly.
+1. Train client: **human replies** from Growvisi Conversations or WhatsApp directly.
 2. Optional: Meta Business Agent for automated first-line FAQ in WhatsApp.
 3. Growvisi is the **revenue layer** — classify, handoff, pipeline — not an AI chatbot.
 
-### Step B — Growvisi WhatsApp connect
+### Step B — Agency hub + client workspace
 
-1. Client opens **Settings → WhatsApp** or `/onboarding`.
-2. Paste Meta API Setup token **or** use Embedded Signup (requires Tech Provider approval).
-3. Verify **Connection** page shows webhooks + token healthy.
+1. On Operator plan, open `/dashboard/agency` and **Enable Agency hub**.
+2. **Add client** — creates an isolated Growvisi workspace (own trial/billing).
+3. Optional: **Invite client owner** from the client card (Owner on the client org).
 
-### Step C — First value (< 15 min)
+### Step C — Connect WhatsApp (Embedded Signup)
 
-1. Client sends test message to business number.
-2. Confirm message appears in **Conversations**.
+1. On the client card, click **Connect with Meta** (or **Reconnect with Meta** if connection health fails).
+2. Complete Meta Embedded Signup — stay in the Agency hub when using “Connect here”.
+3. Verify **Connection** health (`/dashboard/connection` after switch, or go-live % on the card).
+
+### Step D — First value (&lt; 15 min)
+
+1. Client (or you) sends a test WhatsApp **to** the business number from a personal phone.
+2. Confirm message in **Conversations**.
 3. Confirm AI classification + pipeline stage update.
-4. Move lead on **Pipeline** board once.
+4. Move a lead on **Pipeline** once.
 
-### Step D — Team & alerts
+### Step E — Team & alerts
 
-1. Invite sales reps (Settings → Team).
+1. Invite sales reps (Settings → Team) in the client workspace.
 2. Enable **Daily digest** (email and/or WhatsApp) in Automations.
-3. Optional: Razorpay payment webhook → Won (Settings → Growth).
+3. Optional: Razorpay payment → Won (Settings → Growth) on Growth+.
 
 ---
 
-## 3. Agency mode (Pro)
+## 3. Agency hub (Operator / Pro)
 
-Agencies on **Operator (Pro)** can enable **Agency hub** at `/dashboard/agency`:
+Agencies on **Operator (Pro)** enable **Agency hub** at `/dashboard/agency`:
 
 - Up to **15 client workspaces** per hub
 - Agency admins auto-added to each client org
-- Per-client health: WhatsApp, pipeline ₹, handoffs, unread
+- Per-client health: Live / Setup / **Reconnect** / Not connected, go-live %, phone, pipeline ₹, handoffs
+- **Connect / Reconnect with Meta** via Embedded Signup without pasting tokens
+- Rename clients; **Remove from portfolio** to free a slot (client org remains)
+- Invite client business owner by email
 
-Each client keeps isolated billing and data.
-
-**Partner install kit** lives at `/dashboard/partner` — open from Agency hub when installing a client. It is **not** in the default left nav for every SMB workspace; after Agency hub is enabled it also appears under Overview.
-
-**Per-client health:** Agency dashboard and Partner install kit show connection status (Live / Setup / Token / Not connected), go-live %, and phone number.
-
-**Connect without switching:** On `/dashboard/agency`, use **Connect here (Facebook)** to run Embedded Signup into the client workspace while staying in your agency hub (`POST /agency/clients/:organizationId/embedded-signup/complete`). Use **Switch & use token** during App Review.
+**Partner install kit** lives at `/dashboard/partner` — open from Agency hub when installing. Not in default SMB left nav; after Agency hub is enabled it can appear under Overview.
 
 ---
 
 ## 4. Hindi UI
 
-Users set **Language → Hindi** in Settings → Profile. Dashboard nav and key labels switch to Hindi. Digest WhatsApp body supports Hindi when digest locale is `hi`.
+Users set **Language → Hindi** in Settings → Profile. Dashboard nav and Agency/Partner copy switch to Hindi. Digest WhatsApp body supports Hindi when digest locale is `hi`.
 
 ---
 
@@ -78,8 +83,6 @@ For owners who skip email:
 2. Enter owner mobile (10-digit India)
 3. Optional: Meta-approved template name for reliable outbound
 4. Set digest language **English** or **Hindi**
-
-Template body params (if using template): `org name, pipeline ₹, won 24h, handoffs, unread, inbox URL`.
 
 ---
 
@@ -99,16 +102,17 @@ Tech Providers: set `META_PARTNER_SOLUTION_ID` on the Growvisi API so Embedded S
 
 | Question | Answer |
 |----------|--------|
-| Who replies to customers? | Your team from Growvisi Inbox (human) · optional Meta Business Agent for FAQ |
+| Who replies to customers? | Client team from Growvisi Conversations (human) · optional Meta Business Agent for FAQ |
+| How do we connect WhatsApp? | **Embedded Signup only** — Reconnect with Meta if session expires |
 | Who moves pipeline? | Growvisi AI + team |
-| Can Growvisi send marketing blasts? | Campaigns module (Meta policy applies) |
 | Billing currency | INR via Razorpay only |
 
 ---
 
 ## 8. Links
 
+- In-app kit: `/dashboard/partner`
+- Agency hub: `/dashboard/agency`
 - Product PRD: `docs/GROWVISI-PRD.md`
 - Meta embedded signup: `docs/META-EMBEDDED-SIGNUP.md`
 - Tech Provider: `docs/META-TECH-PROVIDER.md`
-- In-app kit: `/dashboard/partner`

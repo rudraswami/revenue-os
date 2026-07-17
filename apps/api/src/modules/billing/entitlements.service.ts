@@ -149,12 +149,13 @@ export class EntitlementsService {
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
 
-    const [whatsappNumbers, teamMembers, monthlyLeads] = await Promise.all([
+    const [whatsappNumbers, teamMembers, monthlyLeads, agencyClients] = await Promise.all([
       this.prisma.whatsappAccount.count({ where: { organizationId, isActive: true } }),
       this.prisma.organizationMember.count({ where: { organizationId } }),
       this.prisma.lead.count({
         where: { organizationId, createdAt: { gte: monthStart } },
       }),
+      this.prisma.agencyClient.count({ where: { agencyOrganizationId: organizationId } }),
     ]);
 
     return {
@@ -163,6 +164,7 @@ export class EntitlementsService {
         whatsappNumbers,
         teamMembers,
         monthlyLeads,
+        agencyClients,
       },
       limits: access.limits,
     };

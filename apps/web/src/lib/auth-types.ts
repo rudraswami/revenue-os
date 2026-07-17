@@ -41,6 +41,7 @@ export interface WorkspaceOption {
   id: string;
   name: string;
   slug: string;
+  kind?: string;
   role: MembershipRole;
   isCurrent: boolean;
 }

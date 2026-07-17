@@ -167,19 +167,49 @@ function WorkspaceCard({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                {workspaces!.map((ws) => (
-                  <DropdownMenuItem
-                    key={ws.id}
-                    disabled={ws.isCurrent || switchingId === ws.id}
-                    onSelect={() => onSwitch?.(ws.id)}
-                  >
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <span className="truncate">{ws.name}</span>
-                    {ws.isCurrent && (
-                      <span className="ml-auto text-[10px] font-semibold text-accent">Current</span>
-                    )}
-                  </DropdownMenuItem>
-                ))}
+                {(() => {
+                  const hubs = workspaces!.filter((ws) => ws.kind === "AGENCY");
+                  const clients = workspaces!.filter((ws) => ws.kind !== "AGENCY");
+                  const sections = [
+                    { label: "Agency hub", list: hubs },
+                    { label: "Client workspaces", list: clients },
+                  ].filter((s) => s.list.length > 0);
+                  if (sections.length <= 1) {
+                    return workspaces!.map((ws) => (
+                      <DropdownMenuItem
+                        key={ws.id}
+                        disabled={ws.isCurrent || switchingId === ws.id}
+                        onSelect={() => onSwitch?.(ws.id)}
+                      >
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <span className="truncate">{ws.name}</span>
+                        {ws.isCurrent && (
+                          <span className="ml-auto text-[10px] font-semibold text-accent">Current</span>
+                        )}
+                      </DropdownMenuItem>
+                    ));
+                  }
+                  return sections.map((section) => (
+                    <div key={section.label}>
+                      <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {section.label}
+                      </p>
+                      {section.list.map((ws) => (
+                        <DropdownMenuItem
+                          key={ws.id}
+                          disabled={ws.isCurrent || switchingId === ws.id}
+                          onSelect={() => onSwitch?.(ws.id)}
+                        >
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <span className="truncate">{ws.name}</span>
+                          {ws.isCurrent && (
+                            <span className="ml-auto text-[10px] font-semibold text-accent">Current</span>
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                  ));
+                })()}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
