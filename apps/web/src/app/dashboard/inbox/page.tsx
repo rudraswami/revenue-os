@@ -547,7 +547,6 @@ export default function InboxPage() {
           listScope={listScope}
           onListFilterChange={setInboxFilter}
           onListScopeChange={setInboxScope}
-          yourTurnCount={queueCounts.yourTurn}
           queueCounts={queueCounts}
         />
       </div>
