@@ -9,6 +9,15 @@ import { ContactDetailDrawer } from "@/components/dashboard/contact-detail";
 import { TagChip } from "@/components/dashboard/tag-chip";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -555,56 +564,56 @@ export default function ContactsPage() {
         )}
       </DashboardPanel>
 
-      {showAddContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
-            <h3 className="text-lg font-bold">Add contact</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+      <Dialog open={showAddContact} onOpenChange={setShowAddContact}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Add contact</DialogTitle>
+            <DialogDescription>
               Phone with country code (e.g. 919876543210). Use outbound from Inbox to message them.
-            </p>
-            <div className="mt-4 space-y-3">
-              <Input
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-                placeholder="Phone number"
-                className="h-10"
-              />
-              <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Name (optional)"
-                className="h-10"
-              />
-              {createContact.isError &&
-                (isUpgradeFrictionError(createContact.error) ? (
-                  <UpgradeFrictionBanner
-                    compact
-                    reason={createContact.error.meta?.reason ?? "leads"}
-                    message={toUserMessage(createContact.error, "Lead limit reached.")}
-                    suggestedPlan={createContact.error.meta?.suggestedPlan}
-                    limit={createContact.error.meta?.limit}
-                    used={createContact.error.meta?.used}
-                  />
-                ) : (
-                  <p className="text-xs text-destructive">
-                    {toUserMessage(createContact.error, "Could not add contact.")}
-                  </p>
-                ))}
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowAddContact(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => createContact.mutate()}
-                disabled={!newPhone.trim() || createContact.isPending}
-              >
-                {createContact.isPending ? "Saving…" : "Add contact"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-3">
+            <Input
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value)}
+              placeholder="Phone number"
+              className="h-10"
+            />
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Name (optional)"
+              className="h-10"
+            />
+            {createContact.isError &&
+              (isUpgradeFrictionError(createContact.error) ? (
+                <UpgradeFrictionBanner
+                  compact
+                  reason={createContact.error.meta?.reason ?? "leads"}
+                  message={toUserMessage(createContact.error, "Lead limit reached.")}
+                  suggestedPlan={createContact.error.meta?.suggestedPlan}
+                  limit={createContact.error.meta?.limit}
+                  used={createContact.error.meta?.used}
+                />
+              ) : (
+                <p className="text-xs text-destructive">
+                  {toUserMessage(createContact.error, "Could not add contact.")}
+                </p>
+              ))}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddContact(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createContact.mutate()}
+              disabled={!newPhone.trim() || createContact.isPending}
+            >
+              {createContact.isPending ? "Saving…" : "Add contact"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ContactDetailDrawer leadId={selected} onClose={() => setSelected(null)} />
     </div>
@@ -613,7 +622,7 @@ export default function ContactsPage() {
 
 function StatCard({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
+    <div className="rounded-2xl border border-border bg-card p-4 elev-1">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>

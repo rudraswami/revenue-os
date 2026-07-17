@@ -124,7 +124,7 @@ export function WhatsappConnectionHealth() {
         <div
           className={cn(
             "flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between",
-            summary.tone === "success" && "border-[#6cf8bb]/40 bg-bento-mint elev-1",
+            summary.tone === "success" && "border-accent-light/40 bg-bento-mint elev-1",
             summary.tone === "pending" && "border-border bg-card elev-1",
             summary.tone === "warning" && "border-amber-200/80 bg-card elev-1",
           )}
@@ -133,8 +133,8 @@ export function WhatsappConnectionHealth() {
             <div
               className={cn(
                 "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
-                summary.tone === "success" && "bg-[#25D366]/15 text-[#128C7E]",
-                summary.tone === "pending" && "bg-[#e8f0ff] text-[#0b1c30]",
+                summary.tone === "success" && "bg-[#25D366]/15 text-whatsapp",
+                summary.tone === "pending" && "bg-bento-blue text-foreground",
                 summary.tone === "warning" && "bg-amber-100 text-amber-800",
               )}
             >
@@ -257,7 +257,7 @@ export function WhatsappConnectionHealth() {
                   className={cn(
                     "flex items-start gap-3 rounded-xl border px-4 py-3.5 transition-colors",
                     pillar.status === "complete"
-                      ? "border-[#6cf8bb]/30 bg-bento-mint/40"
+                      ? "border-accent-light/30 bg-bento-mint/40"
                       : pillar.status === "pending"
                         ? "border-border bg-card"
                         : "border-amber-200/60 bg-amber-50/40",
@@ -267,9 +267,9 @@ export function WhatsappConnectionHealth() {
                     className={cn(
                       "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
                       pillar.status === "complete"
-                        ? "bg-[#25D366]/15 text-[#128C7E]"
+                        ? "bg-[#25D366]/15 text-whatsapp"
                         : pillar.status === "pending"
-                          ? "bg-[#e8f0ff] text-[#0b1c30]"
+                          ? "bg-bento-blue text-foreground"
                           : "bg-amber-100 text-amber-800",
                     )}
                   >
@@ -292,7 +292,7 @@ export function WhatsappConnectionHealth() {
         </div>
 
         {active && data.stats.inboundCount === 0 && (
-          <div className="rounded-xl border border-[#128C7E]/20 bg-bento-mint/50 px-4 py-4">
+          <div className="rounded-xl border border-whatsapp/20 bg-bento-mint/50 px-4 py-4">
             <p className="text-sm font-semibold text-foreground">Confirm your first message</p>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               From your personal phone, send any WhatsApp to{" "}

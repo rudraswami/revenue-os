@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export type AgencyConnectionStatus = "live" | "setup" | "token" | "disconnected";
 
 const STATUS_CLASS: Record<AgencyConnectionStatus, string> = {
-  live: "border-[#6cf8bb]/40 bg-bento-mint text-[#128C7E]",
+  live: "border-accent-light/40 bg-bento-mint text-whatsapp",
   setup: "border-amber-200/80 bg-amber-50 text-amber-900",
   token: "border-red-200/80 bg-red-50 text-red-800",
   disconnected: "border-border/80 bg-muted/40 text-muted-foreground",

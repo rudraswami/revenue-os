@@ -170,7 +170,7 @@ function LeadCard({
           </p>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eef3ff] pt-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
           <div className="flex items-center gap-2">
             {onEditValue && (
               <button

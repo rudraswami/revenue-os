@@ -27,18 +27,24 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     size?: "sm" | "md" | "lg" | "xl";
     showClose?: boolean;
+    /** Center modal (default) or right-edge sheet for detail drawers. */
+    side?: "center" | "right";
   }
->(({ className, children, size = "md", showClose = true, ...props }, ref) => (
+>(({ className, children, size = "md", showClose = true, side = "center", ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={side === "right" ? "bg-black/30" : undefined} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-card elev-2 outline-none",
-        size === "sm" && "max-w-sm",
-        size === "md" && "max-w-lg",
-        size === "lg" && "max-w-xl",
-        size === "xl" && "max-w-2xl",
+        "z-50 flex flex-col overflow-hidden border border-border bg-card elev-2 outline-none",
+        side === "center" &&
+          "fixed left-1/2 top-1/2 max-h-[90vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl",
+        side === "center" && size === "sm" && "max-w-sm",
+        side === "center" && size === "md" && "max-w-lg",
+        side === "center" && size === "lg" && "max-w-xl",
+        side === "center" && size === "xl" && "max-w-2xl",
+        side === "right" &&
+          "fixed inset-y-0 right-0 h-full w-full max-w-lg rounded-none rounded-l-2xl border-r-0 sm:max-w-[460px]",
         className,
       )}
       {...props}

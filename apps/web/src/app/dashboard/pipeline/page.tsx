@@ -43,10 +43,10 @@ const STAGE_LABELS: Record<LeadStage, string> = {
 };
 
 const STAGE_COLORS: Record<LeadStage, string> = {
-  NEW: "bg-[#0b1c30]/70",
-  CONTACTED: "bg-[#006c49]/60",
+  NEW: "bg-foreground/70",
+  CONTACTED: "bg-accent/60",
   QUALIFIED: "bg-accent",
-  PROPOSAL: "bg-[#4edea3]",
+  PROPOSAL: "bg-accent-light",
   NEGOTIATION: "bg-amber-500",
   WON: "bg-accent",
   LOST: "bg-muted-foreground",
@@ -285,7 +285,7 @@ export default function PipelinePage() {
       {hasWhatsapp && !isLoading && !isError && workspaceLeadCount > 0 && (
         <>
           {automationRunsToday > 0 && (
-            <DashboardPanel className="mb-4 border-accent/20 bg-gradient-to-r from-bento-mint/30 to-white" delay={0}>
+            <DashboardPanel className="mb-4 border-accent/20 bg-bento-mint/30" delay={0}>
               <div className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent">

@@ -57,13 +57,13 @@ export function WhatsappIngestionVerifier({
         className={cn(
           "rounded-xl border p-5 transition-colors",
           verified
-            ? "border-[#6cf8bb]/40 bg-bento-mint/60"
+            ? "border-accent-light/40 bg-bento-mint/60"
             : "border-border bg-background/80",
         )}
       >
         <div className="flex items-start gap-3">
           {verified ? (
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#128C7E]" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-whatsapp" />
           ) : (
             <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-accent" />
           )}

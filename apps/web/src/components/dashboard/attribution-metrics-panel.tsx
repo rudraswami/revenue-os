@@ -59,7 +59,7 @@ export function AttributionMetricsPanel() {
             </div>
             <div className="rounded-xl border border-border/80 bg-bento-mint/40 px-4 py-3">
               <p className="text-xs text-muted-foreground">Won from links</p>
-              <p className="text-xl font-bold text-[#128C7E]">{totalWon.toLocaleString("en-IN")}</p>
+              <p className="text-xl font-bold text-whatsapp">{totalWon.toLocaleString("en-IN")}</p>
             </div>
           </div>
           <ul className="divide-y divide-border/60 rounded-xl border border-border/80">

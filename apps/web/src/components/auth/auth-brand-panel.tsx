@@ -34,7 +34,7 @@ export function AuthBrandPanel() {
             className="absolute -left-2 top-8 z-20 rounded-xl border border-white/10 bg-white/95 px-3 py-2.5 shadow-[0_12px_32px_rgb(0_0_0/0.25)] backdrop-blur-sm xl:-left-8"
           >
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#ecfdf5] text-accent">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-bento-mint text-accent">
                 <Bot className="h-3.5 w-3.5" />
               </span>
               <div>
@@ -51,7 +51,7 @@ export function AuthBrandPanel() {
             className="absolute -right-2 bottom-16 z-20 rounded-xl border border-white/10 bg-white/95 px-3 py-2.5 shadow-[0_12px_32px_rgb(0_0_0/0.25)] backdrop-blur-sm xl:-right-10"
           >
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#e8f0ff] text-[#0b1c30]">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-bento-blue text-foreground">
                 <LineChart className="h-3.5 w-3.5" />
               </span>
               <div>
@@ -77,7 +77,7 @@ export function AuthBrandPanel() {
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/60">
           <span className="inline-flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-[#6cf8bb]" />
+            <ShieldCheck className="h-3.5 w-3.5 text-accent-light" />
             Meta-compliant
           </span>
           <span>Encrypted tokens</span>

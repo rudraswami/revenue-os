@@ -505,7 +505,7 @@ export default function AgencyPage() {
             </p>
           </div>
 
-          <div className="mb-6 rounded-2xl border border-border bg-gradient-to-r from-[#f8f9ff] to-white px-4 py-3.5 sm:px-5">
+          <div className="mb-6 rounded-2xl border border-border bg-background px-4 py-3.5 sm:px-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
                 <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-accent" />

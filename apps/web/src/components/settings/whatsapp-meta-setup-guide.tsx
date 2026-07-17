@@ -51,14 +51,14 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
           <p className="text-xs font-semibold text-[#1877F2]">Where to find your token</p>
         </div>
 
-        <div className="space-y-0 divide-y divide-[#dce9ff]/80 p-4">
+        <div className="space-y-0 divide-y divide-border/80 p-4">
           {STEPS.map((step) => (
             <div key={step.n} className="flex gap-3 py-3.5 first:pt-0 last:pb-0">
               <span
                 className={
                   step.highlight
                     ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1877F2] text-xs font-bold text-white"
-                    : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0b1c30] text-xs font-bold text-white"
+                    : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
                 }
               >
                 {step.n}
@@ -73,7 +73,7 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
 
         <div className="border-t border-border bg-background/50 px-4 py-4">
           <div className="flex items-start gap-3 rounded-xl border border-dashed border-[#25D366]/35 bg-bento-mint/60 px-3.5 py-3">
-            <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-[#128C7E]" />
+            <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-whatsapp" />
             <div className="text-xs leading-relaxed text-muted-foreground">
               <p>
                 Your token starts with{" "}
