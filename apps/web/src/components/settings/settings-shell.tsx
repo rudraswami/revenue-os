@@ -31,6 +31,7 @@ import { TeamMembersCard } from "@/components/settings/team-members-card";
 import { AuditActivityCard } from "@/components/settings/audit-activity-card";
 import { TrackingLinksCard } from "@/components/settings/tracking-links-card";
 import { PaymentIntegrationCard } from "@/components/settings/payment-integration-card";
+import { PartnerInstallKitSettingsCard } from "@/components/settings/partner-install-kit-card";
 import { WebhooksSettingsCard } from "@/components/settings/webhooks-settings-card";
 import WhatsappConnect from "@/components/settings/whatsapp-connect";
 import { WorkspaceOverview, WorkspaceOverviewLinks } from "@/components/settings/workspace-overview";
@@ -258,6 +259,7 @@ function SettingsTabContent({
     case "growth":
       return (
         <div className="space-y-5">
+          <PartnerInstallKitSettingsCard />
           <SettingsSection
             title="Attribution links"
             description="Track which ads and campaigns drive WhatsApp conversations."

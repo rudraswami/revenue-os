@@ -442,6 +442,14 @@ export const messages = {
         dangerTitle: "Danger zone",
         dangerDescription: "Permanently delete your account and sole-owner workspace data.",
       },
+      partnerKitSectionTitle: "Partner install kit",
+      partnerKitSectionDescription:
+        "Setup playbook for agencies — not a daily product page. Open when installing a client.",
+      partnerKitTitle: "Install playbook",
+      partnerKitBody:
+        "ES-first steps: Agency hub → Connect with Meta → first value. Also linked from Agency hub.",
+      partnerKitOpen: "Open install kit",
+      partnerKitAgency: "Agency hub",
     },
     userMenu: {
       settings: "Settings",
@@ -516,7 +524,7 @@ export const messages = {
     partner: {
       title: "Partner install kit",
       description:
-        "ES-first playbook for agencies installing Growvisi — humans reply, AI classifies, pipeline ₹ tracks. Open Agency hub to create clients and connect WhatsApp.",
+        "ES-first playbook for agencies installing Growvisi. Find this anytime in Settings → Growth, or open it from Agency hub when installing a client.",
       cardHumans: "Humans reply",
       cardHumansBody: "Conversations or WhatsApp directly — Growvisi never auto-replies.",
       cardAi: "Growvisi AI classifies",
@@ -1098,6 +1106,14 @@ export const messages = {
         dangerTitle: "खतरनाक क्षेत्र",
         dangerDescription: "अपना अकाउंट और एकमात्र-मालिक वर्कस्पेस डेटा स्थायी रूप से हटाएं।",
       },
+      partnerKitSectionTitle: "पार्टनर इंस्टॉल किट",
+      partnerKitSectionDescription:
+        "एजेंसियों के लिए सेटअप प्लेबुक — रोज़ की प्रोडक्ट पेज नहीं। क्लाइंट इंस्टॉल करते समय खोलें।",
+      partnerKitTitle: "इंस्टॉल प्लेबुक",
+      partnerKitBody:
+        "ES-फर्स्ट कदम: एजेंसी हब → Meta से कनेक्ट → पहला मूल्य। एजेंसी हब से भी लिंक।",
+      partnerKitOpen: "इंस्टॉल किट खोलें",
+      partnerKitAgency: "एजेंसी हब",
     },
     userMenu: {
       settings: "सेटिंग्स",
@@ -1172,7 +1188,7 @@ export const messages = {
     partner: {
       title: "पार्टनर इंस्टॉल किट",
       description:
-        "एजेंसियों के लिए ES-फर्स्ट प्लेबुक — इंसान जवाब दे, AI वर्गीकरण करे, पाइपलाइन ₹ ट्रैक हो। क्लाइंट बनाने के लिए एजेंसी हब खोलें।",
+        "एजेंसियों के लिए ES-फर्स्ट प्लेबुक। कभी भी Settings → Growth में, या क्लाइंट इंस्टॉल करते समय एजेंसी हब से खोलें।",
       cardHumans: "इंसान जवाब देते हैं",
       cardHumansBody: "Conversations या WhatsApp — Growvisi ऑटो-रिप्लाई नहीं करता।",
       cardAi: "Growvisi AI वर्गीकरण",

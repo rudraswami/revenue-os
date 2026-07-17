@@ -65,7 +65,7 @@ Agencies on **Operator (Pro)** enable **Agency hub** at `/dashboard/agency`:
 - Rename clients; **Remove from portfolio** to free a slot (client org remains)
 - Invite client business owner by email
 
-**Partner install kit** lives at `/dashboard/partner` — open from Agency hub when installing. Not in default SMB left nav; after Agency hub is enabled it can appear under Overview.
+**Partner install kit** lives at `/dashboard/partner` — open from **Agency hub** when installing a client, or later from **Settings → Growth**. It is **not** in the left nav (enablement docs, not a daily job).
 
 ---
 
