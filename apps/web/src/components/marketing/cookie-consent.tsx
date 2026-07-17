@@ -25,16 +25,16 @@ export function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] border-t border-border/80 bg-white/95 p-4 shadow-[0_-8px_30px_rgb(0_0_0_/0.08)] backdrop-blur-md md:p-5">
+    <div className="fixed bottom-0 left-0 right-0 z-[100] border-t border-border bg-card/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] elev-2 backdrop-blur-md md:p-5">
       <div className="mx-auto flex max-w-[1120px] flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-        <p className="text-[13px] leading-relaxed text-muted-foreground md:max-w-2xl">
+        <p className="text-sm leading-relaxed text-muted-foreground md:max-w-2xl">
           We use cookies to provide you with the best website experience and to improve our
           services. By continuing, you agree to our{" "}
-          <Link href="/privacy" className="font-medium text-primary hover:underline">
+          <Link href="/privacy" className="font-medium text-accent hover:underline">
             Privacy Policy
           </Link>{" "}
           and{" "}
-          <Link href="/cookies" className="font-medium text-primary hover:underline">
+          <Link href="/cookies" className="font-medium text-accent hover:underline">
             Cookie Policy
           </Link>
           .

@@ -45,7 +45,7 @@ export function AuthField({
           aria-invalid={error ? true : undefined}
           aria-describedby={errorId ?? (hint ? `${id}-hint` : undefined)}
           className={cn(
-            "auth-input h-11 rounded-xl border-border bg-[#f8f9ff]/50 transition-colors focus-visible:border-accent/40 focus-visible:ring-accent/20",
+            "auth-input h-11 rounded-xl border-border bg-card transition-colors focus-visible:border-accent/40 focus-visible:ring-accent/20",
             Icon && "pl-10",
             error && "border-destructive/50 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
             className,

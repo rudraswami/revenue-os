@@ -27,9 +27,9 @@ export function MarketingHeader() {
     <div className="sticky top-0 z-50">
       <Link
         href="/register"
-        className="group flex items-center justify-center gap-2 bg-[#0b1c30] px-4 py-2 text-center text-[13px] font-medium text-white/90 transition-colors hover:text-white"
+        className="group flex items-center justify-center gap-2 bg-accent px-4 py-2 text-center text-sm font-medium text-accent-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
       >
-        <Sparkles className="h-3.5 w-3.5 text-[#6cf8bb]" />
+        <Sparkles className="h-3.5 w-3.5 text-accent-light" />
         <span>From ₹999/mo · Human inbox + pipeline ₹ — 14-day trial, 500 leads</span>
         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
       </Link>
@@ -59,7 +59,7 @@ export function MarketingHeader() {
                 <Link
                   key={entry.href}
                   href={entry.href}
-                  className="text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {entry.label}
                 </Link>
@@ -67,7 +67,7 @@ export function MarketingHeader() {
                 <a
                   key={entry.href}
                   href={entry.href}
-                  className="text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {entry.label}
                 </a>
@@ -78,13 +78,13 @@ export function MarketingHeader() {
           <div className="hidden items-center gap-5 lg:flex">
             <Link
               href="/login"
-              className="text-[14px] font-semibold text-foreground transition-colors hover:text-accent"
+              className="text-sm font-semibold text-foreground transition-colors hover:text-accent"
             >
               {CTA.signIn}
             </Link>
             <Link
               href="/register"
-              className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[14px]"
+              className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm"
             >
               {CTA.getStarted}
               <ArrowRight className="h-4 w-4" />
@@ -185,7 +185,7 @@ export function MarketingHeader() {
               </Link>
               <Link
                 href="/register"
-                className="btn-primary rounded-xl px-4 py-2.5 text-center text-[15px]"
+                className="btn-primary rounded-xl px-4 py-2.5 text-center text-sm"
                 onClick={() => setOpen(false)}
               >
                 {CTA.getStarted}

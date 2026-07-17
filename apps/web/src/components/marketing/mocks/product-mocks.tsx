@@ -19,12 +19,12 @@ export function AppShell({
   activeNav?: string;
 }) {
   return (
-    <div className={cn("product-frame flex bg-white", compact ? "min-h-[380px]" : "min-h-[480px]", className)}>
-      <aside className="flex w-[168px] shrink-0 flex-col border-r border-border bg-[#fafafa]">
+    <div className={cn("product-frame flex bg-card", compact ? "min-h-[380px]" : "min-h-[480px]", className)}>
+      <aside className="flex w-[168px] shrink-0 flex-col border-r border-border bg-background">
         <div className="border-b border-border px-4 py-3.5">
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-md bg-primary" />
-            <span className="text-[13px] font-semibold text-foreground">Acme Retail</span>
+            <div className="h-6 w-6 rounded-md bg-accent" />
+            <span className="text-sm font-semibold text-foreground">Acme Retail</span>
           </div>
         </div>
         <nav className="flex-1 p-2">
@@ -32,9 +32,9 @@ export function AppShell({
             <div
               key={item.label}
               className={cn(
-                "mb-0.5 rounded-lg px-3 py-2 text-[13px] font-medium",
+                "mb-0.5 rounded-lg px-3 py-2 text-sm font-medium",
                 activeNav === item.key
-                  ? "bg-primary-soft text-primary"
+                  ? "bg-bento-mint font-semibold text-accent"
                   : "text-muted-foreground",
               )}
             >
@@ -44,10 +44,10 @@ export function AppShell({
         </nav>
         <div className="border-t border-border p-3">
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-full bg-primary-light" />
+            <div className="h-7 w-7 rounded-full bg-bento-mint" />
             <div>
-              <p className="text-[11px] font-medium">Jane Smith</p>
-              <p className="text-[10px] text-muted-foreground">Admin</p>
+              <p className="text-xs font-medium">Jane Smith</p>
+              <p className="text-xs text-muted-foreground">Admin</p>
             </div>
           </div>
         </div>
@@ -79,17 +79,17 @@ export function InboxMock({ compact }: { compact?: boolean }) {
                 key={c.name}
                 className={cn(
                   "mb-1 rounded-lg px-3 py-2.5",
-                  c.active ? "bg-primary-soft" : "hover:bg-muted",
+                  c.active ? "bg-bento-mint" : "hover:bg-muted",
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-[13px] font-semibold">{c.name}</p>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{c.time}</span>
+                  <p className="truncate text-sm font-semibold">{c.name}</p>
+                  <span className="shrink-0 text-xs text-muted-foreground">{c.time}</span>
                 </div>
                 <div className="mt-0.5 flex items-center justify-between gap-2">
-                  <p className="truncate text-[12px] text-muted-foreground">{c.preview}</p>
+                  <p className="truncate text-xs text-muted-foreground">{c.preview}</p>
                   {c.unread > 0 && (
-                    <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+                    <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
                       {c.unread}
                     </span>
                   )}
