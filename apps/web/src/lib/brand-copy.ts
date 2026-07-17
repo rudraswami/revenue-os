@@ -4,6 +4,17 @@ export const BRAND_NAME = "Growvisi";
 
 export const TAGLINE = "The revenue layer for WhatsApp sales teams";
 
+/** Homepage hero — left column (canonical) */
+export const HOME_HERO = {
+  label: "For WhatsApp sales teams",
+  headline: "Always know whose turn it is.",
+  headlineAccent: "whose turn it is",
+  subhead: "WhatsApp conversations in. Pipeline ₹ out.",
+  body: "When a customer writes, Growvisi shows who should respond and tracks the deal — so nothing slips while your team is busy.",
+  proof: "No more “did anyone reply?” threads.",
+  trialNote: "14-day trial · No card required",
+} as const;
+
 export const CTA = {
   startTrial: "Start 14-day free trial",
   getStarted: "Get started",
