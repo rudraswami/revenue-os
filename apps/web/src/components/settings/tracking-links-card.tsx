@@ -193,7 +193,7 @@ export function TrackingLinksCard() {
 
       {(metrics?.length ?? 0) > 0 && (
         <div className="rounded-xl border border-border/80 bg-background p-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             Leads by campaign
           </p>
           <ul className="mt-2 space-y-1 text-xs">

@@ -87,7 +87,7 @@ export function ProfileSettingsCard() {
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="profile-name">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="profile-name">
             Display name
           </label>
           <Input
@@ -103,7 +103,7 @@ export function ProfileSettingsCard() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="profile-locale">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="profile-locale">
             {t("common.language")}
           </label>
           <Select
@@ -121,14 +121,14 @@ export function ProfileSettingsCard() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <label className="text-xs font-medium text-muted-foreground">
             Email
           </label>
           <Input value={user?.email ?? ""} readOnly disabled className="h-10 rounded-xl bg-muted/40" />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <label className="text-xs font-medium text-muted-foreground">
             Workspace
           </label>
           <Input

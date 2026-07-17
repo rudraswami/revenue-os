@@ -102,7 +102,6 @@ export default function AnalyticsPage() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow="Performance"
         title="Analytics"
         description="Revenue and response metrics from your WhatsApp sales pipeline."
         action={

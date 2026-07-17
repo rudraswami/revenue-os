@@ -7,12 +7,13 @@ interface PageHeaderProps {
   title: string;
   description?: string;
   action?: ReactNode;
+  /** Rare orientation only — prefer title + description. Sentence case, not uppercase. */
   eyebrow?: string;
   badge?: ReactNode;
   className?: string;
 }
 
-/** Canonical page chrome: eyebrow → title → description → action. */
+/** Canonical page chrome: title → description → action. */
 export function PageHeader({
   title,
   description,
@@ -26,11 +27,9 @@ export function PageHeader({
       className={cn("mb-8 flex flex-wrap items-start justify-between gap-4", className)}
     >
       <div className="min-w-0">
-        {eyebrow && (
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-accent">
-            {eyebrow}
-          </p>
-        )}
+        {eyebrow ? (
+          <p className="mb-1 text-xs font-medium text-muted-foreground">{eyebrow}</p>
+        ) : null}
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">{title}</h1>
           {badge}

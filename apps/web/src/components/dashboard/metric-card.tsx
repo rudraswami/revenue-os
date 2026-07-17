@@ -114,7 +114,7 @@ export function MetricCard({
 
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className={cn("text-xs font-semibold uppercase tracking-wider", v.title)}>
+          <p className={cn("text-xs font-medium", v.title)}>
             {title}
           </p>
           <p

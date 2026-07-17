@@ -99,7 +99,7 @@ function StatPill({
           : "border-border/80 bg-background/60",
       )}
     >
-      <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
         {Icon && <Icon className="h-3 w-3" />}
         {label}
       </span>

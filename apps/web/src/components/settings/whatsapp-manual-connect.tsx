@@ -159,7 +159,7 @@ export function WhatsappManualConnect({
 
       {isPrimary && (
         <div className="border-b border-border bg-background px-6 py-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Quick connect</p>
+          <p className="text-xs font-medium text-accent">Quick connect</p>
           <h3 className="text-lg font-bold">Paste token & connect</h3>
         </div>
       )}

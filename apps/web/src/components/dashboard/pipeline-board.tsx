@@ -103,12 +103,12 @@ function LeadCard({
 
           <div className="mt-1.5 flex flex-wrap gap-1">
             {lead.isHot && (
-              <span className="rounded-full bg-bento-mint px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-accent">
+              <span className="rounded-full bg-bento-mint px-2 py-0.5 text-xs font-medium text-accent">
                 Hot
               </span>
             )}
             {lead.waitingOnTeam && (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-700">
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                 {CONVERSATIONS.waitingOnYou}
               </span>
             )}
@@ -143,7 +143,7 @@ function LeadCard({
 
       <div className="mt-3 space-y-2.5 md:pl-6">
         <div className="md:hidden">
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">
             Stage
           </label>
           <select

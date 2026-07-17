@@ -42,6 +42,7 @@ import {
   type CrmTag,
 } from "@/lib/crm";
 import type { LeadStage } from "@growvisi/shared";
+import { STATUS_TONE } from "@/lib/status-map";
 import { cn } from "@/lib/utils";
 import { FilterChip } from "@/components/ui/filter-chip";
 import { WhatsappTemplatePicker } from "@/components/dashboard/whatsapp-template-picker";
@@ -398,7 +399,6 @@ export default function CampaignsPage() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow="Outbound"
         title="Campaigns"
         description="Reach segments of your WhatsApp contacts with approved message templates."
       />
@@ -734,7 +734,7 @@ export default function CampaignsPage() {
                         {CAMPAIGN_STATUS_LABELS[c.status]}
                       </span>
                       {c.status === "SCHEDULED" && c.scheduledAt && (
-                        <span className="flex items-center gap-1 text-xs font-medium text-sky-700">
+                        <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                           <CalendarClock className="h-3 w-3" />
                           {formatDateTimeIst(c.scheduledAt)}
                         </span>
@@ -761,7 +761,7 @@ export default function CampaignsPage() {
         <DialogContent side="right" showClose={false} className="max-w-lg gap-0 p-0 sm:max-w-lg">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+              <p className="text-xs font-medium text-accent">
                 Campaign detail
               </p>
               <DialogTitle className="text-lg font-bold">
@@ -797,7 +797,12 @@ export default function CampaignsPage() {
                       {CAMPAIGN_STATUS_LABELS[detail.status]}
                     </span>
                     {detail.scheduledAt && detail.status === "SCHEDULED" && (
-                      <span className="flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800">
+                      <span
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                          STATUS_TONE.info,
+                        )}
+                      >
                         <CalendarClock className="h-3.5 w-3.5" />
                         Sends {formatDateTimeIst(detail.scheduledAt)}
                       </span>
@@ -877,7 +882,7 @@ export default function CampaignsPage() {
 
                   {(detail.status === "DRAFT" || detail.status === "FAILED") && (
                     <div className="mb-5 rounded-xl border border-border/80 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Schedule instead of sending now
                       </p>
                       <Input
@@ -910,7 +915,7 @@ export default function CampaignsPage() {
                     </div>
                   )}
 
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
                     Recipients
                   </p>
                   <ul className="divide-y divide-border/60 rounded-xl border border-border/80">
@@ -1032,7 +1037,7 @@ export default function CampaignsPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
         {label}
       </span>
       {children}
@@ -1043,7 +1048,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border/80 bg-background px-3 py-2">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-medium text-muted-foreground">
         {label}
       </p>
       <p className="text-sm font-bold">{value}</p>

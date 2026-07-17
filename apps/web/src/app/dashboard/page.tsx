@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { formatActivityLabel } from "@/lib/activity-labels";
-import { CTA, EYEBROW } from "@/lib/brand-copy";
+import { CTA } from "@/lib/brand-copy";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
@@ -154,7 +154,6 @@ export default function DashboardPage() {
       <div className="dashboard-hero">
         <PageHeader
           className="mb-0"
-          eyebrow={EYEBROW.overview}
           title={timeGreeting(user?.name)}
           description="Priorities, pipeline ₹, and team activity — one view."
           action={

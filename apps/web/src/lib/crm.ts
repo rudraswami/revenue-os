@@ -1,4 +1,5 @@
 import type { LeadStage } from "@growvisi/shared";
+import { STATUS_TONE } from "@/lib/status-map";
 
 export const LEAD_STAGES: LeadStage[] = [
   "NEW",
@@ -20,14 +21,15 @@ export const STAGE_LABELS: Record<LeadStage, string> = {
   LOST: "Lost",
 };
 
+/** Pipeline stage chips — semantic StatusMap tones (not rainbow Tailwind). */
 export const STAGE_BADGE: Record<LeadStage, string> = {
-  NEW: "bg-slate-100 text-slate-700",
-  CONTACTED: "bg-sky-100 text-sky-700",
-  QUALIFIED: "bg-indigo-100 text-indigo-700",
-  PROPOSAL: "bg-violet-100 text-violet-700",
-  NEGOTIATION: "bg-amber-100 text-amber-800",
-  WON: "bg-emerald-100 text-emerald-700",
-  LOST: "bg-rose-100 text-rose-700",
+  NEW: STATUS_TONE.muted,
+  CONTACTED: STATUS_TONE.info,
+  QUALIFIED: STATUS_TONE.progress,
+  PROPOSAL: STATUS_TONE.progress,
+  NEGOTIATION: STATUS_TONE.warning,
+  WON: STATUS_TONE.success,
+  LOST: STATUS_TONE.danger,
 };
 
 export type TaskStatus = "OPEN" | "IN_PROGRESS" | "DONE" | "CANCELLED";
@@ -36,10 +38,10 @@ export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export const TASK_PRIORITIES: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 export const PRIORITY_BADGE: Record<TaskPriority, string> = {
-  LOW: "bg-slate-100 text-slate-600",
-  MEDIUM: "bg-sky-100 text-sky-700",
-  HIGH: "bg-amber-100 text-amber-800",
-  URGENT: "bg-rose-100 text-rose-700",
+  LOW: STATUS_TONE.muted,
+  MEDIUM: STATUS_TONE.info,
+  HIGH: STATUS_TONE.warning,
+  URGENT: STATUS_TONE.danger,
 };
 
 export type CampaignStatus =
@@ -51,12 +53,12 @@ export type CampaignStatus =
   | "FAILED";
 
 export const CAMPAIGN_STATUS_BADGE: Record<CampaignStatus, string> = {
-  DRAFT: "bg-slate-100 text-slate-600",
-  SCHEDULED: "bg-sky-100 text-sky-700",
-  RUNNING: "bg-amber-100 text-amber-800",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
-  PAUSED: "bg-slate-100 text-slate-600",
-  FAILED: "bg-rose-100 text-rose-700",
+  DRAFT: STATUS_TONE.muted,
+  SCHEDULED: STATUS_TONE.info,
+  RUNNING: STATUS_TONE.warning,
+  COMPLETED: STATUS_TONE.success,
+  PAUSED: STATUS_TONE.muted,
+  FAILED: STATUS_TONE.danger,
 };
 
 export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {

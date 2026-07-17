@@ -223,7 +223,7 @@ export function WebhooksSettingsCard() {
 
       {(data?.deliveries.length ?? 0) > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
             Recent deliveries
           </p>
           <ul className="max-h-40 space-y-1 overflow-y-auto text-xs">

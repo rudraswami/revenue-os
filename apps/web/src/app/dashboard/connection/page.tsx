@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
-import { EYEBROW } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function ConnectionPage() {
@@ -29,7 +28,6 @@ export default function ConnectionPage() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow={EYEBROW.overview}
         title="WhatsApp connection"
         description="Live health for your Business number — webhooks, token session, and message ingest."
       />

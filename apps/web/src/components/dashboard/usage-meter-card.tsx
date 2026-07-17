@@ -134,7 +134,7 @@ export function UsageMeterCard({ compact }: { compact?: boolean }) {
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent">Plan usage</p>
+          <p className="text-xs font-medium text-accent">Plan usage</p>
           <p className="text-sm font-bold">{planLabel}</p>
         </div>
         <Link

@@ -125,7 +125,7 @@ export function WhatsappGoLiveChecklist({
       <div className="border-b border-border/80 px-5 py-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+            <p className="text-xs font-medium text-accent">
               {t("whatsappGoLive.title")}
             </p>
             <p className="mt-0.5 text-sm text-muted-foreground">
@@ -137,7 +137,7 @@ export function WhatsappGoLiveChecklist({
             </p>
           </div>
           <div className="rounded-xl border border-border/80 bg-muted/30 px-3 py-2 text-center min-w-[72px]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               {t("whatsappGoLive.progress")}
             </p>
             <p className="text-lg font-bold text-foreground">{goLive.progressPct}%</p>

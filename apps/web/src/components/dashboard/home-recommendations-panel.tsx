@@ -123,7 +123,7 @@ export function HomeRecommendationsPanel() {
     <section id="recommendations" className="mb-8 scroll-mt-6">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-accent">Recommendations</p>
+          <p className="text-xs font-medium text-accent">Recommendations</p>
           <h2 className="text-lg font-bold">What to do next</h2>
         </div>
         {isFetching && !isLoading && (
@@ -156,7 +156,7 @@ export function HomeRecommendationsPanel() {
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         {item.type}
                       </p>
                       <h3 className="mt-1 text-base font-bold">{item.title}</h3>

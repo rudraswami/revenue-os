@@ -32,7 +32,7 @@ export function TemplatePreviewBubble({
           WA
         </div>
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-whatsapp">
+          <p className="text-xs font-medium text-whatsapp">
             WhatsApp preview
           </p>
           <p className="text-xs text-muted-foreground">How customers will see it</p>

@@ -187,7 +187,7 @@ function WorkspaceCard({
                   }
                   return sections.map((section) => (
                     <div key={section.label}>
-                      <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                         {section.label}
                       </p>
                       {section.list.map((ws) => (
@@ -211,7 +211,7 @@ function WorkspaceCard({
           ) : (
             <p className="truncate text-sm font-semibold text-foreground">{organizationName}</p>
           )}
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             Workspace
           </p>
         </div>
@@ -402,7 +402,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4 custom-scrollbar">
         {navGroups.map((group) => (
           <div key={group.labelKey}>
-            <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
+            <p className="mb-1.5 px-3 text-xs font-medium text-muted-foreground/80">
               {t(group.labelKey)}
             </p>
             <div className="space-y-0.5">

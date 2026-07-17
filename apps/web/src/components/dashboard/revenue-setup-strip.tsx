@@ -26,7 +26,7 @@ export function RevenueSetupStrip({ hasWhatsapp }: { hasWhatsapp: boolean }) {
 
   return (
     <div className="mb-6 rounded-2xl border border-border bg-card elev-1 p-4">
-      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-accent">
+      <p className="mb-3 text-xs font-medium text-accent">
         Complete your revenue setup
       </p>
       <div className="grid gap-2 sm:grid-cols-3">

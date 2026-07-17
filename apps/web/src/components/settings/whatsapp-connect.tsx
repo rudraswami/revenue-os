@@ -466,7 +466,7 @@ export default function WhatsappConnect({
             </svg>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#1877F2]">
+            <p className="text-xs font-medium text-[#1877F2]">
               Recommended
             </p>
             <h3 className="text-lg font-semibold">One-click with Facebook</h3>

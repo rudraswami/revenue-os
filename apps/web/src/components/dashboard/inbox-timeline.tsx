@@ -214,7 +214,7 @@ export function InboxTimeline({
           <div className="space-y-3">
             {groups.map((group) => (
               <section key={group.date}>
-                <p className="mb-1 px-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">
+                <p className="mb-1 px-0.5 text-xs font-medium text-muted-foreground/80">
                   {group.date}
                 </p>
                 <ul>

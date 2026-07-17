@@ -262,7 +262,7 @@ export function ContactDetailDrawer({
                 {/* Stage + score + value */}
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">
                       Stage
                     </p>
                     <Select
@@ -296,7 +296,7 @@ export function ContactDetailDrawer({
                     )}
                   </div>
                   <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">
                       Score
                     </p>
                     <div
@@ -311,7 +311,7 @@ export function ContactDetailDrawer({
                     </div>
                   </div>
                   <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">
                       Value (₹)
                     </p>
                     <Input
@@ -335,7 +335,7 @@ export function ContactDetailDrawer({
                 {/* Tags */}
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="text-xs font-medium text-muted-foreground">
                       Tags
                     </p>
                     <button
@@ -379,7 +379,7 @@ export function ContactDetailDrawer({
 
                 {/* Profile fields */}
                 <section className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     Details
                   </p>
                   <Field label="Name">
@@ -427,7 +427,7 @@ export function ContactDetailDrawer({
 
                 {/* Tasks */}
                 <section>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
                     Tasks
                   </p>
                   <div className="space-y-1.5">
@@ -496,7 +496,7 @@ export function ContactDetailDrawer({
 
                 {/* Notes */}
                 <section>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
                     Notes
                   </p>
                   <form
@@ -592,7 +592,7 @@ export function ContactDetailDrawer({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="mb-1 block text-xs font-medium text-muted-foreground">
         {label}
       </span>
       {children}

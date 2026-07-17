@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
-import { CTA, CONVERSATIONS, EYEBROW } from "@/lib/brand-copy";
+import { CTA, CONVERSATIONS } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   Activity,
@@ -137,12 +137,11 @@ export default function AiStudioPage() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow={EYEBROW.intelligence}
         title="Intelligence"
         description="Your AI revenue agent — classifying, scoring, tagging, and routing leads automatically."
         badge={
           <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
               isActive ? "bg-bento-mint text-accent" : "bg-amber-50 text-amber-700"
             }`}
           >
@@ -239,7 +238,7 @@ export default function AiStudioPage() {
             <div className="p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Bot className="h-4 w-4 text-accent" />
-                <p className="text-xs font-bold uppercase tracking-wider text-accent">Latest AI conversation summary</p>
+                <p className="text-xs font-medium text-accent">Latest AI conversation summary</p>
               </div>
               <p className="text-sm leading-relaxed">{agentStatus.lastSummary}</p>
             </div>

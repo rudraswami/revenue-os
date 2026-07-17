@@ -70,7 +70,7 @@ export function PaymentIntegrationCard() {
       </div>
 
       <div className="rounded-xl border border-border/80 bg-background/40 px-4 py-3 text-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-medium text-muted-foreground">
           Webhook URL
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">

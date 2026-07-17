@@ -233,7 +233,6 @@ export default function PipelinePage() {
   return (
     <div className="dashboard-page flex h-full min-h-0 flex-col">
       <PageHeader
-        eyebrow="Sales"
         title="Pipeline"
         description="Drag leads between stages — synced with WhatsApp conversations and AI scoring."
         action={

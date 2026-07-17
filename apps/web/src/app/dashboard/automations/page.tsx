@@ -181,7 +181,6 @@ export default function AutomationsPage() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow="Workflows"
         title="Automations"
         description="Server-side workflows that help your team close faster — saved per workspace."
         badge={

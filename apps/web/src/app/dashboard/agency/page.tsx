@@ -447,7 +447,6 @@ export default function AgencyPage() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow={t("groups.growth")}
         title={t("agency.title")}
         description={t("agency.description")}
       />
@@ -525,7 +524,7 @@ export default function AgencyPage() {
 
           {health && (
             <>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-3 text-xs font-medium text-muted-foreground">
                 {t("agency.rollupTitle")}
               </p>
               <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

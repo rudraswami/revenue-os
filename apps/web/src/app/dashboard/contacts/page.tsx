@@ -207,7 +207,6 @@ export default function ContactsPage() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow="CRM"
         title="Contacts"
         description="Every WhatsApp lead in one searchable place — profiles, tags, notes, tasks and deal value."
         action={
@@ -285,7 +284,7 @@ export default function ContactsPage() {
             }}
           >
             <div className="flex-1 min-w-[160px]">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="mb-1 block text-xs font-medium text-muted-foreground">
                 Tag name
               </span>
               <Input
@@ -463,7 +462,7 @@ export default function ContactsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                   <th className="px-5 py-3 font-semibold">Contact</th>
                   <th className="px-3 py-3 font-semibold">Stage</th>
                   <th className="px-3 py-3 font-semibold">Score</th>
@@ -623,7 +622,7 @@ export default function ContactsPage() {
 function StatCard({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 elev-1">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-medium text-muted-foreground">
         {label}
       </p>
       <p className={cn("mt-1 text-2xl font-bold", accent ? "text-success" : "text-foreground")}>

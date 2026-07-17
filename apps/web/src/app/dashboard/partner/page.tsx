@@ -117,7 +117,6 @@ You'll get a Growvisi workspace invite. Connect your business number, send a tes
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow={t("groups.growth")}
         title={t("partner.title")}
         description={t("partner.description")}
       />

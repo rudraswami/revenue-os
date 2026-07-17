@@ -54,7 +54,7 @@ export function InboxThreadDetailsMobile({
         <div className="mt-3 grid gap-3 pb-2">
           {stage && canEditStage && (
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 Pipeline stage
               </label>
               <select
@@ -77,7 +77,7 @@ export function InboxThreadDetailsMobile({
           <div>
             <label
               htmlFor="mobile-assign-agent"
-              className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              className="mb-1 block text-xs font-medium text-muted-foreground"
             >
               {copy.assignedTo}
             </label>

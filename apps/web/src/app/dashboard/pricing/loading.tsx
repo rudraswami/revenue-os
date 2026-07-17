@@ -4,7 +4,6 @@ export default function PricingLoading() {
   return (
     <div className="dashboard-page max-w-[1100px]">
       <PageHeader
-        eyebrow="Billing"
         title="Plans & pricing"
         description="Transparent INR pricing. 14-day free trial — upgrade anytime with Razorpay."
       />

@@ -114,7 +114,7 @@ export function DailyDigestCard() {
           {isAdmin && (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-medium text-muted-foreground">
                   Channel
                 </label>
                 <Select
@@ -135,7 +135,7 @@ export function DailyDigestCard() {
 
               {showWhatsappPhone && (
                 <div className="w-full max-w-xs space-y-1">
-                  <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     <MessageCircle className="h-3 w-3" />
                     WhatsApp number
                   </label>
@@ -168,7 +168,7 @@ export function DailyDigestCard() {
                     }}
                   />
                   <div className="mt-2 flex items-center gap-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <label className="text-xs font-medium text-muted-foreground">
                       Digest language
                     </label>
                     <Select
@@ -189,7 +189,7 @@ export function DailyDigestCard() {
               )}
 
               <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-medium text-muted-foreground">
                   Send at
                 </label>
                 <Select

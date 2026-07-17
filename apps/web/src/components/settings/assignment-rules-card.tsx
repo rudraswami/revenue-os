@@ -136,7 +136,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             Default agent pool
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">

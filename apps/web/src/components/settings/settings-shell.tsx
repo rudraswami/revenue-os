@@ -430,7 +430,6 @@ export function SettingsShell() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow="Workspace"
         title={t("settings.title")}
         description={t("settings.description")}
       />
@@ -452,7 +451,7 @@ export function SettingsShell() {
               if (tabs.length === 0) return null;
               return (
                 <div key={group.label}>
-                  <p className="px-3 pb-1 pt-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="px-3 pb-1 pt-2 text-xs font-medium text-muted-foreground">
                     {group.label}
                   </p>
                   <ul className="space-y-0.5">

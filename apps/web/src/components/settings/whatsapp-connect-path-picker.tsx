@@ -56,7 +56,7 @@ export function WhatsappConnectPathPicker({
               )}
             >
               {meta.hasBadge && (
-                <span className="absolute right-3 top-3 rounded-full bg-accent px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+                <span className="absolute right-3 top-3 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-white">
                   {t(`${base}.badge`)}
                 </span>
               )}

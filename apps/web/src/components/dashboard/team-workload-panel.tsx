@@ -113,7 +113,7 @@ export function TeamWorkloadPanel({ compact }: { compact?: boolean }) {
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-accent">Team</p>
+          <p className="text-xs font-medium text-accent">Team</p>
           <h3 className="text-base font-bold">Workload</h3>
         </div>
         <Link href="/dashboard/tasks" className="text-xs font-semibold text-accent hover:underline">

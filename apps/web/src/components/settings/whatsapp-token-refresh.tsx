@@ -97,7 +97,7 @@ export function WhatsappTokenRefresh({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+          <p className="text-xs font-medium text-amber-800">
             {urgent ? "Action required" : "Recommended"}
           </p>
           <p className="mt-1 text-sm font-bold text-foreground">

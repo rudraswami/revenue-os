@@ -138,7 +138,6 @@ export default function TasksPage() {
   return (
     <div className="dashboard-page">
       <PageHeader
-        eyebrow="Workflows"
         title="Tasks"
         description="Assign follow-ups to your team so no WhatsApp lead goes cold. Tasks link straight to contacts."
       />
@@ -352,7 +351,7 @@ function StatCard({
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-medium text-muted-foreground">
         {label}
       </p>
       <p
@@ -378,7 +377,7 @@ function Field({
 }) {
   return (
     <label className={cn("block", className)}>
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="mb-1 block text-xs font-medium text-muted-foreground">
         {label}
       </span>
       {children}

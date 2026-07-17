@@ -102,7 +102,7 @@ export function WhatsappConnectionHealth() {
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Connection status</p>
+          <p className="text-xs font-medium text-accent">Connection status</p>
           <p className="mt-0.5 text-sm text-muted-foreground">
             How your WhatsApp line syncs with Growvisi
           </p>
@@ -156,7 +156,7 @@ export function WhatsappConnectionHealth() {
 
           <div className="flex shrink-0 gap-3 sm:flex-col sm:items-end">
             <div className="rounded-xl border border-border bg-card px-4 py-2.5 text-center min-w-[88px]">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Health
               </p>
               <p className="text-xl font-bold text-foreground">{healthPct}%</p>
@@ -245,7 +245,7 @@ export function WhatsappConnectionHealth() {
         </div>
 
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="mb-3 text-xs font-medium text-muted-foreground">
             Setup checklist
           </p>
           <ul className="space-y-2">

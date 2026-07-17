@@ -39,7 +39,7 @@ export function CampaignSchedulePicker({
 }) {
   return (
     <div className={cn("space-y-3", compact && "space-y-2")}>
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-medium text-muted-foreground">
         When to send
       </p>
       <div className="grid gap-2 sm:grid-cols-2">

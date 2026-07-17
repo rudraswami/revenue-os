@@ -275,7 +275,7 @@ export function WhatsappConnectWizard({
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
       <div className="border-b border-border bg-background px-6 py-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+        <p className="text-xs font-medium text-accent">
           Connect WhatsApp
         </p>
         <h2 className="mt-1 text-lg font-bold tracking-tight text-foreground">

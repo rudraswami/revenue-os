@@ -26,7 +26,7 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border bg-background/80 px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+        <p className="text-xs font-medium text-accent">
           Setup assist
         </p>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">

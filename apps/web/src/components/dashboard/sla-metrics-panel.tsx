@@ -108,7 +108,7 @@ export function SlaMetricsPanel({ period }: { period: MetricsPeriod }) {
       {isAdmin && (
         <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-border/80 bg-background p-3">
           <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
               SLA target (hours)
             </label>
             <Select
@@ -145,7 +145,7 @@ export function SlaMetricsPanel({ period }: { period: MetricsPeriod }) {
         />
       ) : (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
             Slowest replies ({data.sampleSize} measured)
           </p>
           <ul className="divide-y divide-border/60 rounded-xl border border-border/80">
@@ -193,7 +193,7 @@ function Stat({
 }) {
   return (
     <div className="rounded-xl border border-border/80 bg-card p-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-medium text-muted-foreground">
         {label}
       </p>
       <p

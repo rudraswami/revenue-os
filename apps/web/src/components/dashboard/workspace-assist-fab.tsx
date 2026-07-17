@@ -222,7 +222,7 @@ export function WorkspaceAssistFab() {
             {view === "setup" && showSetup ? (
               <>
                 <div className="border-b border-border/80 bg-background px-4 py-3.5">
-                  <p className="text-xs font-bold uppercase tracking-wider text-accent">
+                  <p className="text-xs font-medium text-accent">
                     {t("setupDock.eyebrow")}
                   </p>
                   <p className="text-sm font-bold">
