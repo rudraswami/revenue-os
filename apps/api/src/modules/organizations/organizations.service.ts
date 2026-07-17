@@ -7,13 +7,14 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
-import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics } from "@growvisi/shared";
+import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics, buildPostActivationCoaching } from "@growvisi/shared";
 import { AuthService } from "../auth/auth.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 import { normalizePaymentIntegration } from "./payment-integration";
+import { mergeCoachingSettings, normalizeWorkspaceOpsSettings } from "./workspace-settings";
 
 export interface ReplyTemplate {
   id: string;
@@ -294,6 +295,25 @@ export class OrganizationsService {
       },
     });
 
+    const orgSettingsRow = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { settings: true },
+    });
+    const inviteSettings =
+      orgSettingsRow?.settings && typeof orgSettingsRow.settings === "object"
+        ? (orgSettingsRow.settings as Record<string, unknown>)
+        : {};
+    if (!(inviteSettings.coaching as { firstInviteAt?: string } | undefined)?.firstInviteAt) {
+      await this.prisma.organization.update({
+        where: { id: user.organizationId },
+        data: {
+          settings: mergeCoachingSettings(inviteSettings, {
+            firstInviteAt: new Date().toISOString(),
+          }) as object,
+        },
+      });
+    }
+
     const appUrl = (
       this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
     ).replace(/\/$/, "");
@@ -564,11 +584,38 @@ export class OrganizationsService {
       },
     };
 
-    // Persist activation snapshot for CS / funnel analytics (never wipe prior keys).
     const prevSettings =
       org?.settings && typeof org.settings === "object"
         ? (org.settings as Record<string, unknown>)
         : {};
+    const opsSettings = normalizeWorkspaceOpsSettings(prevSettings.ops);
+    const coachingPersist =
+      prevSettings.coaching && typeof prevSettings.coaching === "object"
+        ? (prevSettings.coaching as Record<string, unknown>)
+        : {};
+    const hasTeam =
+      teamMembers > 1 ||
+      !!coachingPersist.firstInviteAt ||
+      (await this.prisma.organizationInvite.count({
+        where: { organizationId },
+      })) > 0;
+    const handoffsWaiting = await this.prisma.conversation.count({
+      where: {
+        organizationId,
+        metadata: { path: ["requiresHuman"], equals: true },
+      },
+    });
+    const hasTakeover = !!coachingPersist.firstTakeoverAt;
+
+    const coaching = buildPostActivationCoaching({
+      firstValue: firstValueDone,
+      digestEnabled: opsSettings.digest.enabled,
+      hasTeam,
+      hasTakeover,
+      handoffsWaiting,
+    });
+
+    // Persist activation snapshot for CS / funnel analytics (never wipe prior keys).
     const prevActivation =
       prevSettings.activation && typeof prevSettings.activation === "object"
         ? (prevSettings.activation as Record<string, unknown>)
@@ -584,6 +631,8 @@ export class OrganizationsService {
       paid: isPaid,
       firstValue: firstValueDone,
       firstAction: firstActionDone,
+      coachingCompleted: coaching.completedCount,
+      coachingAllComplete: coaching.allComplete,
       updatedAt: new Date().toISOString(),
     };
     const activationChanged =
@@ -599,6 +648,8 @@ export class OrganizationsService {
         paid: isPaid,
         firstValue: firstValueDone,
         firstAction: firstActionDone,
+        coachingCompleted: coaching.completedCount,
+        coachingAllComplete: coaching.allComplete,
       });
 
     if (activationChanged) {
@@ -623,6 +674,7 @@ export class OrganizationsService {
       nextAction: next,
       goLive,
       ops,
+      coaching,
     };
   }
 }

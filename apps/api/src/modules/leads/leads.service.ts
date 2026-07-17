@@ -1252,9 +1252,7 @@ export class LeadsService {
 
   async createContact(user: JwtPayload, input: CreateContactInput) {
     await this.entitlements.assertHasAccess(user.organizationId);
-    if (!(await this.entitlements.canCreateLead(user.organizationId))) {
-      throw new BadRequestException("Lead limit reached for your plan.");
-    }
+    await this.entitlements.assertCanCreateLead(user.organizationId);
 
     const phone = input.phone.replace(/\D/g, "");
     if (phone.length < 10 || phone.length > 15) {

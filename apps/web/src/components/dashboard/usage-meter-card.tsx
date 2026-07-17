@@ -6,6 +6,8 @@ import { ArrowRight } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
+import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
+import { trackConversionFriction } from "@/lib/conversion-friction-analytics";
 
 interface BillingUsage {
   planId: string;
@@ -23,6 +25,15 @@ interface BillingUsage {
     agencyClients: number;
   };
   entitlements?: { trialEndsAt: string | null; trialExpired: boolean };
+  friction?: {
+    seatsAtLimit: boolean;
+    whatsappAtLimit: boolean;
+    leadsAtLimit: boolean;
+    agencyAtLimit: boolean;
+    nearLimit: boolean;
+    primaryReason: string | null;
+    suggestedPlan: string | null;
+  };
 }
 
 function MeterBar({ used, limit, label }: { used: number; limit: number; label: string }) {
@@ -73,20 +84,51 @@ export function UsageMeterCard({ compact }: { compact?: boolean }) {
       data.limits.monthlyLeads > 0
         ? Math.round((data.usage.monthlyLeads / data.limits.monthlyLeads) * 100)
         : 0;
+    const friction = data.friction;
+    const href = friction?.suggestedPlan
+      ? `/dashboard/pricing?plan=${friction.suggestedPlan}&reason=${friction.primaryReason ?? "limit"}`
+      : "/dashboard/pricing";
     return (
       <Link
-        href="/dashboard/pricing"
+        href={href}
+        onClick={() => {
+          if (friction?.primaryReason || friction?.nearLimit) {
+            trackConversionFriction("conversion_friction_click", {
+              reason: friction.primaryReason ?? "near_limit",
+              surface: "usage_meter_compact",
+            });
+          }
+        }}
         className="flex items-center justify-between gap-2 rounded-xl border border-[#dce9ff] bg-white px-3 py-2 text-xs hover:bg-[#f8f9ff]"
       >
         <span className="text-muted-foreground">
           {planLabel} · {data.usage.monthlyLeads}/{data.limits.monthlyLeads} leads this month
         </span>
-        <span className={cn("font-semibold", leadPct >= 85 ? "text-amber-800" : "text-accent")}>
+        <span
+          className={cn(
+            "font-semibold",
+            friction?.leadsAtLimit || leadPct >= 85 ? "text-amber-800" : "text-accent",
+          )}
+        >
           {leadPct}%
         </span>
       </Link>
     );
   }
+
+  const friction = data.friction;
+  const frictionMessage =
+    friction?.primaryReason === "seats"
+      ? "Team seats are full — upgrade to invite the next agent."
+      : friction?.primaryReason === "whatsapp"
+        ? "WhatsApp number slots are full — upgrade to connect another line."
+        : friction?.primaryReason === "leads"
+          ? "Monthly lead capacity is full — upgrade so new WhatsApp leads keep scoring."
+          : friction?.primaryReason === "agency_clients"
+            ? "Agency client slots are full."
+            : friction?.nearLimit
+              ? "You're near a plan limit — upgrade before work stalls."
+              : null;
 
   return (
     <div className="rounded-2xl border border-[#dce9ff] bg-white p-4 shadow-sm">
@@ -96,7 +138,11 @@ export function UsageMeterCard({ compact }: { compact?: boolean }) {
           <p className="text-sm font-bold">{planLabel}</p>
         </div>
         <Link
-          href="/dashboard/pricing"
+          href={
+            friction?.suggestedPlan
+              ? `/dashboard/pricing?plan=${friction.suggestedPlan}`
+              : "/dashboard/pricing"
+          }
           className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
         >
           Plans
@@ -127,7 +173,16 @@ export function UsageMeterCard({ compact }: { compact?: boolean }) {
           />
         )}
       </div>
-      {data.entitlements?.trialEndsAt && data.planId === "trial" && (
+      {frictionMessage && (
+        <UpgradeFrictionBanner
+          className="mt-3"
+          compact
+          reason={friction?.primaryReason ?? "leads"}
+          message={frictionMessage}
+          suggestedPlan={friction?.suggestedPlan}
+        />
+      )}
+      {data.entitlements?.trialEndsAt && data.planId === "trial" && !frictionMessage && (
         <p className="mt-3 text-[11px] text-muted-foreground">
           Trial ends {new Date(data.entitlements.trialEndsAt).toLocaleDateString("en-IN")} · 500 lead
           cap applies during trial

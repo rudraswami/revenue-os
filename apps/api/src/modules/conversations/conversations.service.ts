@@ -6,10 +6,12 @@ import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../c
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import {
   formatDurationMs,
+  mergeCoachingSettings,
   normalizeWorkspaceOpsSettings,
 } from "../organizations/workspace-settings";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { KnowledgeEmbedService } from "../knowledge/knowledge-embed.service";
+import { AiClassifyService, type HumanAiCorrectionInput } from "../ai/ai-classify.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
@@ -23,6 +25,7 @@ export class ConversationsService {
     private readonly realtime: RealtimeGateway,
     private readonly entitlements: EntitlementsService,
     private readonly knowledgeEmbed: KnowledgeEmbedService,
+    private readonly aiClassify: AiClassifyService,
   ) {}
 
   getCapabilities() {
@@ -44,6 +47,15 @@ export class ConversationsService {
     const messageDateFilter = range.gte ? { createdAt: range } : undefined;
     const leadDateFilter = range.gte ? { createdAt: range } : undefined;
 
+    const closedStages: LeadStage[] = [LeadStage.WON, LeadStage.LOST];
+    const activeQueueWhere: Prisma.ConversationWhereInput = {
+      organizationId: orgId,
+      OR: [
+        { leadId: null },
+        { lead: { is: { stage: { notIn: closedStages } } } },
+      ],
+    };
+
     const [
       totalConversations,
       unreadAgg,
@@ -52,6 +64,8 @@ export class ConversationsService {
       classifiedLeads,
       aiClassifications,
       handoffConversations,
+      mineOpen,
+      unassignedOpen,
     ] = await Promise.all([
       this.prisma.conversation.count({
         where: {
@@ -94,8 +108,20 @@ export class ConversationsService {
       }),
       this.prisma.conversation.count({
         where: {
-          organizationId: orgId,
+          ...activeQueueWhere,
           metadata: { path: ["requiresHuman"], equals: true },
+        },
+      }),
+      this.prisma.conversation.count({
+        where: {
+          ...activeQueueWhere,
+          assignedToId: user.sub,
+        },
+      }),
+      this.prisma.conversation.count({
+        where: {
+          ...activeQueueWhere,
+          assignedToId: null,
         },
       }),
     ]);
@@ -109,6 +135,12 @@ export class ConversationsService {
       classifiedLeads,
       aiClassifications,
       humanHandoffRecommended: handoffConversations,
+      /** Active open queue (not Won/Lost) — agent daily habit */
+      queue: {
+        yourTurn: handoffConversations,
+        mine: mineOpen,
+        unassigned: unassignedOpen,
+      },
     };
   }
 
@@ -249,6 +281,9 @@ export class ConversationsService {
           tags: Array.isArray(profile.aiTags) ? profile.aiTags.map(String) : [],
           classifiedAt: conversation.lead.lastClassifiedAt.toISOString(),
           runId: lastAiRun?.id ?? null,
+          humanCorrected: !!profile.humanCorrectedAt,
+          humanCorrectedAt:
+            typeof profile.humanCorrectedAt === "string" ? profile.humanCorrectedAt : null,
         }
       : null;
 
@@ -285,6 +320,17 @@ export class ConversationsService {
     return { ok: true };
   }
 
+  /** AI Trust Loop — correct classification; soft-reclassify refreshes narrative. */
+  async correctAiClassification(
+    user: JwtPayload,
+    id: string,
+    input: HumanAiCorrectionInput,
+  ) {
+    const result = await this.aiClassify.applyHumanCorrection(user, id, input);
+    const detail = await this.getById(user, id);
+    return { ...result, conversation: detail };
+  }
+
   /**
    * One-click handoff: assign to caller, disable AI, resolve handoff, create follow-up task.
    */
@@ -315,6 +361,8 @@ export class ConversationsService {
             requiresHuman: false,
             handoffResolvedAt: new Date().toISOString(),
             handoffResolvedBy: user.sub,
+            takenOverAt: new Date().toISOString(),
+            takenOverBy: user.sub,
           },
         },
       });
@@ -332,6 +380,25 @@ export class ConversationsService {
         });
       }
     });
+
+    const orgRow = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { settings: true },
+    });
+    const orgSettings =
+      orgRow?.settings && typeof orgRow.settings === "object"
+        ? (orgRow.settings as Record<string, unknown>)
+        : {};
+    if (!(orgSettings.coaching as { firstTakeoverAt?: string } | undefined)?.firstTakeoverAt) {
+      await this.prisma.organization.update({
+        where: { id: user.organizationId },
+        data: {
+          settings: mergeCoachingSettings(orgSettings, {
+            firstTakeoverAt: new Date().toISOString(),
+          }) as object,
+        },
+      });
+    }
 
     this.realtime.emitInboxUpdated(user.organizationId);
     return this.getById(user, id);
@@ -641,9 +708,7 @@ export class ConversationsService {
     });
 
     if (!lead) {
-      if (!(await this.entitlements.canCreateLead(user.organizationId))) {
-        throw new BadRequestException("Lead limit reached for your plan.");
-      }
+      await this.entitlements.assertCanCreateLead(user.organizationId);
       lead = await this.prisma.lead.create({
         data: {
           organizationId: user.organizationId,

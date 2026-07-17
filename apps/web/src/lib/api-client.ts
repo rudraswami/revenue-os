@@ -34,6 +34,14 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    public code?: string,
+    public meta?: {
+      reason?: string;
+      limit?: number | null;
+      used?: number | null;
+      planId?: string;
+      suggestedPlan?: string;
+    },
   ) {
     super(message);
   }
@@ -41,6 +49,16 @@ export class ApiError extends Error {
 
 const INTERNAL_ERROR_PATTERN =
   /requiresHuman|prisma|ECONNREFUSED|localhost|127\.0\.0\.1|pnpm dev|Graph API|OPENAI|nestjs|META_APP_ID|WHATSAPP_VERIFY/i;
+
+const FRICTION_CODES = new Set([
+  "TEAM_SEAT_LIMIT",
+  "WHATSAPP_NUMBER_LIMIT",
+  "LEAD_MONTHLY_LIMIT",
+  "AGENCY_CLIENT_LIMIT",
+  "PLAN_FEATURE_REQUIRED",
+  "TRIAL_EXPIRED",
+  "SUBSCRIPTION_INACTIVE",
+]);
 
 /** Map API errors to customer-safe copy. Logs raw message in development. */
 export function toUserMessage(error: unknown, fallback = "Something went wrong. Please try again."): string {
@@ -53,11 +71,14 @@ export function toUserMessage(error: unknown, fallback = "Something went wrong. 
   if (error.status === 0) return error.message;
   if (error.status === 401) return "Your session expired. Please sign in again.";
   if (error.status === 402) {
-    return "Your trial has ended. Open Plans & pricing to upgrade and continue.";
+    return error.message || "Your trial has ended. Open Plans & pricing to upgrade and continue.";
   }
   if (error.status === 403) {
-    if (/plan|growth|pro|subscription|trial/i.test(error.message)) {
-      return "This feature needs a higher plan. View Plans & pricing in the sidebar.";
+    if (error.code && FRICTION_CODES.has(error.code)) {
+      return error.message;
+    }
+    if (/plan|growth|pro|subscription|trial|upgrade|limit|seat|whatsapp|lead/i.test(error.message)) {
+      return error.message || "This feature needs a higher plan. View Plans & pricing in the sidebar.";
     }
     return "You don't have permission to do that.";
   }
@@ -75,12 +96,32 @@ export function toUserMessage(error: unknown, fallback = "Something went wrong. 
   return msg;
 }
 
+export function isUpgradeFrictionError(error: unknown): error is ApiError {
+  return error instanceof ApiError && !!error.code && FRICTION_CODES.has(error.code);
+}
+
 let refreshInFlight: Promise<string | null> | null = null;
 
-async function parseError(res: Response): Promise<string> {
-  const body = await res.json().catch(() => ({}));
-  const msg = (body as { message?: string | string[] }).message;
-  return Array.isArray(msg) ? msg.join(", ") : (msg ?? res.statusText);
+async function parseError(res: Response): Promise<ApiError> {
+  const body = (await res.json().catch(() => ({}))) as {
+    message?: string | string[];
+    code?: string;
+    reason?: string;
+    limit?: number | null;
+    used?: number | null;
+    planId?: string;
+    suggestedPlan?: string;
+  };
+  const msg = Array.isArray(body.message)
+    ? body.message.join(", ")
+    : (body.message ?? res.statusText);
+  return new ApiError(msg, res.status, body.code, {
+    reason: body.reason,
+    limit: body.limit,
+    used: body.used,
+    planId: body.planId,
+    suggestedPlan: body.suggestedPlan,
+  });
 }
 
 async function rawFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -106,7 +147,7 @@ async function rawFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   }
 
   if (!res.ok) {
-    throw new ApiError(await parseError(res), res.status);
+    throw await parseError(res);
   }
 
   if (res.status === 204) {
@@ -192,7 +233,7 @@ async function authedBlob(path: string, token?: string): Promise<Blob> {
     if (newToken) res = await doFetch(newToken);
   }
   if (!res.ok) {
-    throw new ApiError(await parseError(res), res.status);
+    throw await parseError(res);
   }
   return res.blob();
 }

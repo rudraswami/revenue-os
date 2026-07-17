@@ -16,6 +16,8 @@ import {
   MessageCircle,
   Settings2,
   Sparkles,
+  UserRound,
+  Users,
   Zap,
 } from "lucide-react";
 import { SetupHelpPanel } from "@/components/support/setup-help-panel";
@@ -24,6 +26,7 @@ import { useActivationMilestoneTracking } from "@/hooks/use-activation-milestone
 import { resolveHelpContext, type HelpFabContext } from "@/lib/setup-help-content";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { formatMessage } from "@/lib/i18n/format-message";
+import { trackCoaching } from "@/lib/coaching-analytics";
 import { cn } from "@/lib/utils";
 
 const AUTO_COLLAPSE_MS = 12_000;
@@ -48,12 +51,18 @@ const OPS_STAGE_HINT: Record<string, string> = {
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "trial-ended": CreditCard,
   "trial-ending": CreditCard,
+  "limit-seats": CreditCard,
+  "limit-whatsapp": CreditCard,
+  "limit-leads": CreditCard,
   "connect-whatsapp": MessageCircle,
   "token-refresh": AlertTriangle,
   "first-inbound": MessageCircle,
   "ai-classify": Sparkles,
   "pipeline-move": Zap,
   "enable-digest": Bell,
+  "coach-digest": Bell,
+  "coach-invite": Users,
+  "coach-takeover": UserRound,
   "razorpay-webhook": CreditCard,
   "auto-win": CreditCard,
 };
@@ -68,6 +77,11 @@ function SetupRow({ action, index }: { action: SetupAction; index: number }) {
     >
       <Link
         href={action.href}
+        onClick={() => {
+          if (action.id.startsWith("coach-")) {
+            trackCoaching("coaching_next_click", { step: action.id.replace("coach-", "") });
+          }
+        }}
         className={cn(
           "group flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-[#f8f9ff]",
           action.priority === "critical" && "bg-amber-50/90 hover:bg-amber-50",
@@ -116,6 +130,12 @@ export function WorkspaceAssistFab() {
   const showSetup = !isLoading && !allComplete && totalCount > 0;
   const stageHint =
     opsStage && OPS_STAGE_HINT[opsStage] ? OPS_STAGE_HINT[opsStage] : t("setupDock.subtitle");
+  const coachAction = actions.find((a) => a.id.startsWith("coach-"));
+
+  useEffect(() => {
+    if (!coachAction) return;
+    trackCoaching("coaching_next_view", { step: coachAction.id.replace("coach-", "") });
+  }, [coachAction?.id]);
 
   const [expanded, setExpanded] = useState(false);
   const [view, setView] = useState<PanelView>("setup");

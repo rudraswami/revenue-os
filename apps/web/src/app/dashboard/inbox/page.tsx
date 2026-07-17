@@ -16,7 +16,9 @@ import {
   type InboxListScope,
 } from "@/lib/i18n/conversations-copy";
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
-import { InboxAiPanel, type InboxAiContext } from "@/components/dashboard/inbox-ai-panel";
+import { InboxAiPanel, type InboxAiContext, type AiCorrectionPayload } from "@/components/dashboard/inbox-ai-panel";
+import { trackAiTrust } from "@/lib/ai-trust-analytics";
+import { trackCoaching } from "@/lib/coaching-analytics";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
 import { InboxComposer } from "@/components/dashboard/inbox-composer";
@@ -29,6 +31,10 @@ import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { canWrite } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import {
+  pickDailyQueueFilter,
+  trackQueue,
+} from "@/lib/conversation-queue-analytics";
 
 interface ConversationRow {
   id: string;
@@ -109,8 +115,11 @@ export default function InboxPage() {
   const [wonPrompt, setWonPrompt] = useState(false);
   const [listFilter, setListFilter] = useState<InboxListFilter>("all");
   const [listScope, setListScope] = useState<InboxListScope>("active");
+  const [queueDefaultReady, setQueueDefaultReady] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
+  const queueDefaultedRef = useRef(false);
+  const urlHadFilterRef = useRef(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
@@ -122,11 +131,13 @@ export default function InboxPage() {
     const c = params.get("c");
     if (c) setSelectedId(c);
     const f = params.get("filter");
-    if (f === "handoff" || f === "unread" || f === "unassigned" || f === "mine") {
-      setListFilter(f);
+    if (f === "handoff" || f === "unread" || f === "unassigned" || f === "mine" || f === "all") {
+      urlHadFilterRef.current = true;
+      if (f !== "all") setListFilter(f);
     }
     const s = params.get("scope");
     if (s === "closed") setListScope("closed");
+    setQueueDefaultReady(true);
 
     function onPopState() {
       const p = new URLSearchParams(window.location.search);
@@ -164,12 +175,40 @@ export default function InboxPage() {
   const { data: convStats } = useQuery({
     queryKey: ["conversation-stats"],
     queryFn: () =>
-      apiFetch<{ humanHandoffRecommended: number }>("/conversations/stats", {
+      apiFetch<{
+        humanHandoffRecommended: number;
+        unreadMessages: number;
+        queue?: { yourTurn: number; mine: number; unassigned: number };
+      }>("/conversations/stats", {
         token: token ?? undefined,
       }),
     enabled: !!token,
+    staleTime: 15_000,
+    refetchInterval: live ? 20_000 : 30_000,
+  });
+
+  const { data: coachingProgress } = useQuery({
+    queryKey: ["onboarding-progress"],
+    queryFn: () =>
+      apiFetch<{
+        coaching?: {
+          eligible: boolean;
+          hasTakeover?: boolean;
+          next: null | { id: string };
+        };
+      }>("/organizations/onboarding-progress", { token: token ?? undefined }),
+    enabled: !!token,
     staleTime: 30_000,
   });
+  const coachTakeover =
+    !!coachingProgress?.coaching?.eligible &&
+    coachingProgress.coaching.next?.id === "takeover";
+
+  const queueCounts = convStats?.queue ?? {
+    yourTurn: convStats?.humanHandoffRecommended ?? 0,
+    mine: 0,
+    unassigned: 0,
+  };
 
   const { data: whatsappAccounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -180,6 +219,24 @@ export default function InboxPage() {
   });
 
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
+
+  // Daily queue habit: land on Your turn → Mine → Unassigned when opening Conversations cold.
+  useEffect(() => {
+    if (!queueDefaultReady || !hasWhatsapp || queueDefaultedRef.current) return;
+    if (urlHadFilterRef.current || selectedId) {
+      queueDefaultedRef.current = true;
+      return;
+    }
+    if (!convStats) return;
+    queueDefaultedRef.current = true;
+    const next = pickDailyQueueFilter(queueCounts);
+    if (next === "all") return;
+    setListFilter(next);
+    const params = new URLSearchParams(window.location.search);
+    params.set("filter", next);
+    window.history.replaceState(null, "", `/dashboard/inbox?${params.toString()}`);
+    trackQueue("queue_default_applied", { filter: next, yourTurn: queueCounts.yourTurn });
+  }, [queueDefaultReady, hasWhatsapp, convStats, queueCounts, selectedId]);
 
   const { data: thread, isLoading: threadLoading, isError: threadError, refetch: refetchThread } = useQuery({
     queryKey: ["conversation", selectedId],
@@ -327,8 +384,31 @@ export default function InboxPage() {
         token: token ?? undefined,
       }),
     onSuccess: () => {
+      const doneId = selectedId;
       void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
+      if (doneId) advanceAfterAction(doneId);
+    },
+  });
+
+  const correctAiMutation = useMutation({
+    mutationFn: (payload: AiCorrectionPayload) =>
+      apiFetch<{ conversation: ConversationDetail }>(`/conversations/${selectedId}/ai-correction`, {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: (res) => {
+      trackAiTrust("ai_correction_success", {
+        stage: res.conversation.lead?.stage,
+        score: res.conversation.lead?.score,
+      });
+      queryClient.setQueryData(["conversation", selectedId], res.conversation);
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      if (leadId) void queryClient.invalidateQueries({ queryKey: ["lead-timeline", leadId] });
     },
   });
 
@@ -340,9 +420,12 @@ export default function InboxPage() {
         body: JSON.stringify({ taskTitle }),
       }),
     onSuccess: (updated) => {
+      trackCoaching("coaching_takeover_complete");
       queryClient.setQueryData(["conversation", selectedId], updated);
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
       void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["onboarding-progress"] });
+      void queryClient.invalidateQueries({ queryKey: ["pending-setup-actions"] });
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
@@ -368,6 +451,18 @@ export default function InboxPage() {
 
   const conversations = listData?.data ?? [];
 
+  /** After clearing Your turn, open the next waiting chat so agents stay in flow. */
+  function advanceAfterAction(doneId: string) {
+    if (listFilter !== "handoff") return;
+    const remaining = conversations.filter((c) => c.id !== doneId);
+    if (remaining[0]) {
+      trackQueue("queue_advance_next", { filter: listFilter, remaining: remaining.length });
+      selectConversation(remaining[0].id);
+      return;
+    }
+    trackQueue("queue_caught_up", { filter: listFilter });
+  }
+
   function selectConversation(id: string) {
     setSelectedId(id);
     setSendError(null);
@@ -388,6 +483,7 @@ export default function InboxPage() {
 
   function setInboxFilter(filter: InboxListFilter) {
     setListFilter(filter);
+    trackQueue("queue_filter_click", { filter });
     const params = new URLSearchParams(window.location.search);
     if (filter !== "all") params.set("filter", filter);
     else params.delete("filter");
@@ -451,7 +547,8 @@ export default function InboxPage() {
           listScope={listScope}
           onListFilterChange={setInboxFilter}
           onListScopeChange={setInboxScope}
-          yourTurnCount={convStats?.humanHandoffRecommended}
+          yourTurnCount={queueCounts.yourTurn}
+          queueCounts={queueCounts}
         />
       </div>
 
@@ -469,8 +566,16 @@ export default function InboxPage() {
               <Inbox className="h-7 w-7 text-accent" />
             </div>
             <div className="max-w-sm space-y-1">
-              <h2 className="text-lg font-bold tracking-tight">{copy.selectTitle}</h2>
-              <p className="text-sm leading-relaxed text-muted-foreground">{copy.selectBody}</p>
+              <h2 className="text-lg font-bold tracking-tight">
+                {queueCounts.yourTurn > 0 || queueCounts.mine > 0 || queueCounts.unassigned > 0
+                  ? copy.dailyQueueTitle
+                  : copy.selectTitle}
+              </h2>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {queueCounts.yourTurn > 0 || queueCounts.mine > 0 || queueCounts.unassigned > 0
+                  ? copy.dailyQueueHint
+                  : copy.selectBody}
+              </p>
             </div>
             <div className="mt-2 grid max-w-md gap-2 text-left text-xs text-muted-foreground sm:grid-cols-3">
               <div className="rounded-xl border border-border/80 bg-white px-3 py-2.5">
@@ -658,11 +763,15 @@ export default function InboxPage() {
                 aiContext={thread.aiContext ?? null}
                 requiresHuman={thread.requiresHuman}
                 handoffReason={thread.handoffReason}
+                leadStage={thread.lead?.stage}
+                leadScore={thread.lead?.score}
                 canEdit={canSend}
                 takeoverPending={takeoverMutation.isPending}
                 taskPending={createTaskMutation.isPending}
                 assignPending={assignMutation.isPending}
                 resolvePending={resolveHandoffMutation.isPending}
+                correctionPending={correctAiMutation.isPending}
+                coachTakeover={coachTakeover}
                 onTakeover={(title) => {
                   const t =
                     title ||
@@ -681,6 +790,7 @@ export default function InboxPage() {
                   if (myUserId) assignMutation.mutate(myUserId);
                 }}
                 onResolveHandoff={() => resolveHandoffMutation.mutate()}
+                onCorrectAi={(payload) => correctAiMutation.mutate(payload)}
               />
               <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-[#f8f9ff]/60 px-4 py-2 lg:px-5">
                 <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">

@@ -38,6 +38,7 @@ export class BillingService {
       entitlements: snapshot.access,
       usage: snapshot.usage,
       limits: snapshot.limits,
+      friction: snapshot.friction,
     };
   }
 

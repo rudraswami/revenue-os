@@ -1,9 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { createHash } from "crypto";
-import type { AiClassificationResult, LeadStage } from "@growvisi/shared";
+import type { AiClassificationResult, JwtPayload, LeadStage } from "@growvisi/shared";
 import { LEAD_STAGE_ORDER, QUEUES } from "@growvisi/shared";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
@@ -21,7 +21,26 @@ export interface ClassifyJobData {
   conversationId: string;
   messageId: string;
   leadId: string;
+  /** After human correction — refresh summary/nextAction without overriding stage/score/handoff. */
+  refreshAfterCorrection?: boolean;
+  lockStage?: boolean;
+  lockHandoff?: boolean;
+  humanFeedback?: {
+    stage?: string;
+    score?: number;
+    requiresHuman?: boolean;
+    intent?: string;
+    note?: string;
+  };
 }
+
+export type HumanAiCorrectionInput = {
+  stage?: LeadStage;
+  score?: number;
+  requiresHuman?: boolean;
+  intent?: string;
+  note?: string;
+};
 
 const STAGE_SCORE: Record<LeadStage, number> = {
   NEW: 10,
@@ -56,7 +75,11 @@ export class AiClassifyService {
     }
 
     const jobId = createHash("sha256")
-      .update(`${data.organizationId}:${data.messageId}`)
+      .update(
+        data.refreshAfterCorrection
+          ? `correction:${data.organizationId}:${data.messageId}`
+          : `${data.organizationId}:${data.messageId}`,
+      )
       .digest("hex");
 
     try {
@@ -81,6 +104,215 @@ export class AiClassifyService {
     }
   }
 
+  /**
+   * AI Trust Loop: human corrects stage/score/handoff, then soft-reclassify
+   * refreshes summary/nextAction without undoing the correction.
+   */
+  async applyHumanCorrection(
+    user: JwtPayload,
+    conversationId: string,
+    input: HumanAiCorrectionInput,
+  ) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+
+    const hasField =
+      input.stage != null ||
+      input.score != null ||
+      input.requiresHuman != null ||
+      (input.intent != null && input.intent.trim().length > 0) ||
+      (input.note != null && input.note.trim().length > 0);
+    if (!hasField) {
+      throw new BadRequestException("Provide at least one correction field.");
+    }
+    if (input.score != null && (input.score < 0 || input.score > 100)) {
+      throw new BadRequestException("Score must be 0–100.");
+    }
+    if (input.stage && !LEAD_STAGE_ORDER.includes(input.stage)) {
+      throw new BadRequestException("Invalid stage.");
+    }
+
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId: user.organizationId },
+      include: { lead: true },
+    });
+    if (!conversation?.lead) {
+      throw new NotFoundException("Conversation or lead not found");
+    }
+
+    const lead = conversation.lead;
+    const prevProfile =
+      lead.profile && typeof lead.profile === "object"
+        ? (lead.profile as Record<string, unknown>)
+        : {};
+    const meta =
+      conversation.metadata && typeof conversation.metadata === "object"
+        ? (conversation.metadata as Record<string, unknown>)
+        : {};
+
+    const nextStage = input.stage ?? (lead.stage as LeadStage);
+    const nextScore =
+      input.score ??
+      (input.stage ? STAGE_SCORE[input.stage] : lead.score);
+    const nextIntent =
+      input.intent?.trim() ||
+      (typeof prevProfile.lastIntent === "string" ? prevProfile.lastIntent : undefined);
+
+    const correctionAt = new Date().toISOString();
+    const humanCorrection = {
+      at: correctionAt,
+      by: user.sub,
+      stage: nextStage,
+      score: nextScore,
+      requiresHuman: input.requiresHuman ?? meta.requiresHuman === true,
+      intent: nextIntent ?? null,
+      note: input.note?.trim().slice(0, 500) || null,
+      previous: {
+        stage: lead.stage,
+        score: lead.score,
+        confidence: lead.aiConfidence,
+        intent: prevProfile.lastIntent ?? null,
+        requiresHuman: meta.requiresHuman === true,
+      },
+    };
+
+    const correctionRun = await this.prisma.aiRun.create({
+      data: {
+        organizationId: user.organizationId,
+        conversationId,
+        type: "classify_correction",
+        provider: "human",
+        model: "agent",
+        status: "COMPLETED",
+        input: { correctedBy: user.sub },
+        output: humanCorrection as object,
+        completedAt: new Date(),
+      },
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.lead.update({
+        where: { id: lead.id },
+        data: {
+          stage: nextStage as never,
+          score: nextScore,
+          aiConfidence: 1,
+          lastClassifiedAt: new Date(),
+          wonAt: nextStage === "WON" ? new Date() : null,
+          lostAt: nextStage === "LOST" ? new Date() : null,
+          profile: {
+            ...prevProfile,
+            ...(nextIntent ? { lastIntent: nextIntent } : {}),
+            humanCorrection,
+            humanCorrectedAt: correctionAt,
+          },
+        },
+      });
+
+      if (input.stage && input.stage !== lead.stage) {
+        await tx.leadStageHistory.create({
+          data: {
+            leadId: lead.id,
+            fromStage: lead.stage,
+            toStage: input.stage as never,
+            reason:
+              input.note?.trim() ||
+              `Human corrected AI classification${nextIntent ? `: ${nextIntent}` : ""}`,
+            changedBy: user.sub,
+            aiRunId: correctionRun.id,
+          },
+        });
+      }
+
+      if (input.requiresHuman != null) {
+        await tx.conversation.update({
+          where: { id: conversationId },
+          data: {
+            metadata: {
+              ...meta,
+              requiresHuman: input.requiresHuman,
+              ...(input.requiresHuman
+                ? {
+                    handoffReason: nextIntent || "Human flagged for reply",
+                    handoffAt: correctionAt,
+                  }
+                : {
+                    handoffResolvedAt: correctionAt,
+                    handoffResolvedBy: user.sub,
+                  }),
+            },
+          },
+        });
+      }
+    });
+
+    if (input.stage && input.stage !== lead.stage) {
+      this.realtime.emitLeadStageChanged(user.organizationId, {
+        leadId: lead.id,
+        fromStage: lead.stage,
+        toStage: input.stage,
+        confidence: 1,
+      });
+      void this.webhooks.emit(user.organizationId, "lead.stage.changed", {
+        leadId: lead.id,
+        fromStage: lead.stage,
+        toStage: input.stage,
+        phone: lead.phone,
+        displayName: lead.displayName,
+        isAi: false,
+        humanCorrected: true,
+        at: correctionAt,
+      });
+    }
+
+    if (input.requiresHuman === true) {
+      this.realtime.emitLeadHandoff(user.organizationId, {
+        conversationId,
+        leadId: lead.id,
+        reason: nextIntent || "Human flagged for reply",
+      });
+    }
+
+    this.realtime.emitInboxUpdated(user.organizationId);
+
+    // Soft reclassify: refresh narrative with correction as ground truth.
+    const latestMessage = await this.prisma.message.findFirst({
+      where: { conversationId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    if (latestMessage) {
+      void this.enqueue({
+        organizationId: user.organizationId,
+        conversationId,
+        messageId: `correction:${correctionRun.id}:${latestMessage.id}`,
+        leadId: lead.id,
+        refreshAfterCorrection: true,
+        lockStage: true,
+        lockHandoff: true,
+        humanFeedback: {
+          stage: nextStage,
+          score: nextScore,
+          requiresHuman: humanCorrection.requiresHuman,
+          intent: nextIntent,
+          note: input.note?.trim(),
+        },
+      }).catch((err) => {
+        this.logger.warn(
+          `Post-correction reclassify failed: ${err instanceof Error ? err.message : err}`,
+        );
+      });
+    }
+
+    return {
+      ok: true,
+      correctionId: correctionRun.id,
+      stage: nextStage,
+      score: nextScore,
+      requiresHuman: humanCorrection.requiresHuman,
+      reclassifyQueued: !!latestMessage,
+    };
+  }
+
   async process(data: ClassifyJobData) {
     await this.entitlements.assertHasAccess(data.organizationId);
 
@@ -103,13 +335,13 @@ export class AiClassifyService {
       return;
     }
 
-    if (!conversation.aiEnabled) {
+    if (!conversation.aiEnabled && !data.refreshAfterCorrection) {
       this.logger.debug(`AI disabled for conversation ${data.conversationId} — skipping`);
       return;
     }
 
     const lead = conversation.lead;
-    if (lead.stage === "WON" || lead.stage === "LOST") {
+    if ((lead.stage === "WON" || lead.stage === "LOST") && !data.refreshAfterCorrection) {
       return;
     }
 
@@ -149,11 +381,15 @@ export class AiClassifyService {
       data: {
         organizationId: data.organizationId,
         conversationId: data.conversationId,
-        type: "classify",
+        type: data.refreshAfterCorrection ? "classify_refresh" : "classify",
         provider: "openai",
         model,
         status: "RUNNING",
-        input: { messageId: data.messageId, leadId: data.leadId },
+        input: {
+          messageId: data.messageId,
+          leadId: data.leadId,
+          humanFeedback: data.humanFeedback ?? null,
+        },
       },
     });
 
@@ -164,6 +400,7 @@ export class AiClassifyService {
         lead.stage as LeadStage,
         transcript,
         businessContext,
+        data.humanFeedback,
       );
       const latencyMs = Date.now() - started;
 
@@ -184,10 +421,11 @@ export class AiClassifyService {
         lead.stage as LeadStage,
         result,
         aiRun.id,
-        prefs.stage,
+        prefs.stage && !data.lockStage,
+        data.lockStage,
       );
 
-      if (result.requiresHuman) {
+      if (result.requiresHuman && !data.lockHandoff) {
         const conv = await this.prisma.conversation.findUnique({
           where: { id: data.conversationId },
           select: { metadata: true },
@@ -271,10 +509,14 @@ export class AiClassifyService {
     currentStage: LeadStage,
     transcript: string,
     businessContext?: string,
+    humanFeedback?: ClassifyJobData["humanFeedback"],
   ): Promise<AiClassificationResult> {
     const stages = LEAD_STAGE_ORDER.join(", ");
     const contextBlock = businessContext?.trim()
       ? `\n\nBusiness knowledge (use to interpret pricing, policies, and offers — do not invent facts beyond this):\n${businessContext}`
+      : "";
+    const feedbackBlock = humanFeedback
+      ? `\n\nHuman sales agent correction (treat as ground truth — do not contradict stage/score/handoff; improve summary and nextAction to match):\n${JSON.stringify(humanFeedback)}`
       : "";
     const res = await fetchWithTimeout(
       "https://api.openai.com/v1/chat/completions",
@@ -305,7 +547,7 @@ Return JSON with these keys:
 - tags: array of 1-4 short tags that describe this lead (e.g. "high-intent", "price-sensitive", "returning-customer", "urgent", "bulk-order")
 - nextAction: the single most important thing the sales rep should do right now (e.g. "Send pricing PDF", "Call within 2 hours", "Follow up on delivery status")
 
-Current pipeline stage: ${currentStage}.${contextBlock}`,
+Current pipeline stage: ${currentStage}.${contextBlock}${feedbackBlock}`,
             },
             {
               role: "user",
@@ -401,21 +643,31 @@ Current pipeline stage: ${currentStage}.${contextBlock}`,
     result: AiClassificationResult,
     aiRunId: string,
     autoStageEnabled = true,
+    preserveScore = false,
   ): Promise<boolean> {
     const updateStage =
       autoStageEnabled && this.shouldUpdateStage(currentStage, result.stage, result.confidence);
-    const score = Math.max(
-      STAGE_SCORE[result.stage],
-      Math.round(result.confidence * 100),
-    );
+    const score = preserveScore
+      ? undefined
+      : Math.max(STAGE_SCORE[result.stage], Math.round(result.confidence * 100));
+
+    const existing = await this.prisma.lead.findUnique({
+      where: { id: leadId },
+      select: { profile: true, score: true },
+    });
+    const prevProfile =
+      existing?.profile && typeof existing.profile === "object"
+        ? (existing.profile as Record<string, unknown>)
+        : {};
 
     await this.prisma.lead.update({
       where: { id: leadId },
       data: {
-        score,
+        ...(score != null ? { score } : {}),
         aiConfidence: result.confidence,
         lastClassifiedAt: new Date(),
         profile: {
+          ...prevProfile,
           lastIntent: result.intent,
           lastSentiment: result.sentiment,
           suggestedActions: result.suggestedActions,

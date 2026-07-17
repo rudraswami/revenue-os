@@ -1,5 +1,16 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
-import { IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from "class-validator";
 import { Type } from "class-transformer";
 import type { Response } from "express";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
@@ -9,9 +20,10 @@ import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { MetricsPeriod } from "../../common/date-range";
 import { ConversationsService } from "./conversations.service";
-import type { JwtPayload } from "@growvisi/shared";
+import type { JwtPayload, LeadStage } from "@growvisi/shared";
 
 const WRITE_ROLES = ["OWNER", "ADMIN", "MANAGER", "AGENT"] as const;
+const STAGES = ["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON", "LOST"] as const;
 
 class ListQueryDto {
   @IsOptional()
@@ -63,6 +75,33 @@ class TakeoverDto {
   @IsString()
   @MaxLength(120)
   taskTitle?: string;
+}
+
+class AiCorrectionDto {
+  @IsOptional()
+  @IsIn(STAGES)
+  stage?: LeadStage;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  score?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresHuman?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  intent?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }
 
 class StartOutboundDto {
@@ -171,6 +210,16 @@ export class ConversationsController {
   @Roles(...WRITE_ROLES)
   resolveHandoff(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.conversations.resolveHandoff(user, id);
+  }
+
+  @Post(":id/ai-correction")
+  @Roles(...WRITE_ROLES)
+  correctAi(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: AiCorrectionDto,
+  ) {
+    return this.conversations.correctAiClassification(user, id, dto);
   }
 
   @Post(":id/takeover")

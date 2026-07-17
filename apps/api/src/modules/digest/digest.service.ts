@@ -7,6 +7,7 @@ import { EntitlementsService } from "../billing/entitlements.service";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import {
   getIstNow,
+  mergeCoachingSettings,
   normalizeWorkspaceOpsSettings,
   type WorkspaceOpsSettings,
 } from "../organizations/workspace-settings";
@@ -46,13 +47,23 @@ export class DigestService {
       digest: { ...current.digest, ...patch.digest },
       sla: { ...current.sla, ...patch.sla },
     };
+    let nextSettings: Record<string, unknown> = {
+      ...settings,
+      ops: next as object,
+    };
+    if (next.digest.enabled && !current.digest.enabled) {
+      nextSettings = mergeCoachingSettings(nextSettings, {
+        digestEnabledAt: new Date().toISOString(),
+      });
+    } else if (next.digest.enabled && !(settings.coaching as { digestEnabledAt?: string } | undefined)?.digestEnabledAt) {
+      nextSettings = mergeCoachingSettings(nextSettings, {
+        digestEnabledAt: new Date().toISOString(),
+      });
+    }
     await this.prisma.organization.update({
       where: { id: organizationId },
       data: {
-        settings: {
-          ...settings,
-          ops: next as object,
-        },
+        settings: nextSettings as object,
       },
     });
     return next;

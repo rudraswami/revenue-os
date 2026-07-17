@@ -21,7 +21,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { apiDownload, apiFetch } from "@/lib/api-client";
+import { apiDownload, apiFetch, isUpgradeFrictionError, toUserMessage } from "@/lib/api-client";
+import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
 import { canWrite } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
@@ -182,7 +183,9 @@ export default function ContactsPage() {
       success(t("toast.contactCreated"));
       void qc.invalidateQueries({ queryKey: ["contacts"] });
     },
-    onError: () => toastError(t("toast.actionFailed")),
+    onError: (err) => {
+      if (!isUpgradeFrictionError(err)) toastError(t("toast.actionFailed"));
+    },
   });
 
   const total = contactPage?.total ?? 0;
@@ -572,6 +575,21 @@ export default function ContactsPage() {
                 placeholder="Name (optional)"
                 className="h-10"
               />
+              {createContact.isError &&
+                (isUpgradeFrictionError(createContact.error) ? (
+                  <UpgradeFrictionBanner
+                    compact
+                    reason={createContact.error.meta?.reason ?? "leads"}
+                    message={toUserMessage(createContact.error, "Lead limit reached.")}
+                    suggestedPlan={createContact.error.meta?.suggestedPlan}
+                    limit={createContact.error.meta?.limit}
+                    used={createContact.error.meta?.used}
+                  />
+                ) : (
+                  <p className="text-xs text-destructive">
+                    {toUserMessage(createContact.error, "Could not add contact.")}
+                  </p>
+                ))}
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowAddContact(false)}>

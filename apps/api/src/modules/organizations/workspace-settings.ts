@@ -105,3 +105,22 @@ export function formatDurationMs(ms: number): string {
   const m = Math.round((ms % 3_600_000) / 60_000);
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
+
+/** Persist post-activation coaching milestones on organization.settings.coaching */
+export function mergeCoachingSettings(
+  settings: Record<string, unknown>,
+  patch: Record<string, string | boolean | null>,
+): Record<string, unknown> {
+  const prev =
+    settings.coaching && typeof settings.coaching === "object"
+      ? (settings.coaching as Record<string, unknown>)
+      : {};
+  return {
+    ...settings,
+    coaching: {
+      ...prev,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { Crown, Loader2, Mail, Trash2, UserPlus, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
@@ -9,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { apiFetch, ApiError, isUpgradeFrictionError, toUserMessage } from "@/lib/api-client";
+import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
 import { formatRelative } from "@/lib/crm";
 import { canManageTeam, INVITE_ROLES, ROLE_LABELS } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
@@ -195,23 +195,37 @@ export function TeamMembersCard() {
         <div className="rounded-xl border border-border/70 bg-[#f8f9ff]/50 p-4">
           {inviteForm}
           {limits?.canInvite === false && (
-            <p className="mt-2 text-xs text-amber-700">
-              Seat limit reached.{" "}
-              <Link href="/dashboard/pricing" className="font-medium underline">
-                Upgrade plan
-              </Link>
-            </p>
+            <UpgradeFrictionBanner
+              className="mt-3"
+              compact
+              reason="seats"
+              message={`Your plan allows ${limits.limit} team member(s). Upgrade to invite more.`}
+              limit={limits.limit}
+              used={limits.memberCount + limits.pendingInvites}
+              suggestedPlan={limits.limit <= 2 ? "growth" : "pro"}
+            />
           )}
           {sent && (
             <p className="mt-2 text-xs font-medium text-accent">
               Invite sent to {sent} — valid for 7 days.
             </p>
           )}
-          {inviteMutation.isError && (
-            <p className="mt-2 text-xs text-destructive">
-              {toUserMessage(inviteMutation.error, "Could not send invite.")}
-            </p>
-          )}
+          {inviteMutation.isError &&
+            (isUpgradeFrictionError(inviteMutation.error) ? (
+              <UpgradeFrictionBanner
+                className="mt-3"
+                compact
+                reason={inviteMutation.error.meta?.reason ?? "seats"}
+                message={toUserMessage(inviteMutation.error, "Could not send invite.")}
+                suggestedPlan={inviteMutation.error.meta?.suggestedPlan}
+                limit={inviteMutation.error.meta?.limit}
+                used={inviteMutation.error.meta?.used}
+              />
+            ) : (
+              <p className="mt-2 text-xs text-destructive">
+                {toUserMessage(inviteMutation.error, "Could not send invite.")}
+              </p>
+            ))}
         </div>
       )}
 

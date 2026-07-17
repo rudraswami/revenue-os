@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 type PricingPlansGridProps = {
   variant: "marketing" | "app";
   currentPlanId?: string;
+  /** Suggested plan from capacity friction deep-link. */
+  highlightPlanId?: string;
   razorpayConfigured?: boolean;
   checkoutPlanId?: string | null;
   onUpgrade?: (planId: "starter" | "growth" | "pro") => void;
@@ -19,6 +21,7 @@ type PricingPlansGridProps = {
 export function PricingPlansGrid({
   variant,
   currentPlanId,
+  highlightPlanId,
   razorpayConfigured = true,
   checkoutPlanId,
   onUpgrade,
@@ -27,6 +30,10 @@ export function PricingPlansGrid({
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {PRICING_PLANS.map((plan, i) => {
         const isCurrent = variant === "app" && currentPlanId === plan.checkoutPlanId;
+        const isHighlight =
+          variant === "app" &&
+          !!highlightPlanId &&
+          (plan.checkoutPlanId === highlightPlanId || plan.id === highlightPlanId);
         const canUpgrade =
           variant === "app" &&
           plan.checkoutPlanId &&
@@ -40,6 +47,7 @@ export function PricingPlansGrid({
               "relative flex flex-col rounded-3xl border bg-white p-6 shadow-[0_8px_32px_rgb(11_28_48/0.05)] transition-shadow",
               plan.popular ? "border-accent ring-2 ring-accent/20" : "border-border",
               isCurrent && "border-accent/40 ring-2 ring-accent/15",
+              isHighlight && !isCurrent && "border-amber-400 ring-2 ring-amber-300/40",
             )}
             initial={variant === "marketing" ? { opacity: 0, y: 20 } : false}
             whileInView={variant === "marketing" ? { opacity: 1, y: 0 } : undefined}
@@ -55,6 +63,11 @@ export function PricingPlansGrid({
             {isCurrent && (
               <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                 Current plan
+              </span>
+            )}
+            {isHighlight && !isCurrent && (
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-600 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                Recommended
               </span>
             )}
             <h3 className="text-lg font-bold">{plan.name}</h3>

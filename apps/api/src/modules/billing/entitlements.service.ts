@@ -1,8 +1,10 @@
-import { ForbiddenException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PLAN_LIMITS, resolveSubscriptionAccess, type GrowvisiPlanId, type SubscriptionAccess } from "@growvisi/shared";
 import { isProductionDeploy } from "../../config/production";
 import { metaReviewerEmail } from "../../config/meta-reviewer";
 import { PrismaService } from "../prisma/prisma.service";
+
+export type LimitReason = "seats" | "whatsapp" | "leads" | "agency_clients";
 
 @Injectable()
 export class EntitlementsService {
@@ -38,6 +40,46 @@ export class EntitlementsService {
       requiresUpgrade: false,
       status: "ACTIVE",
     };
+  }
+
+  /** Next plan that raises the constrained resource (INR / Razorpay path). */
+  suggestUpgrade(planId: GrowvisiPlanId, reason: LimitReason): GrowvisiPlanId {
+    if (planId === "pro") return "pro";
+    if (reason === "agency_clients") return "pro";
+    if (reason === "whatsapp") {
+      if (planId === "trial" || planId === "starter") return "growth";
+      return "pro";
+    }
+    if (reason === "seats") {
+      if (planId === "trial" || planId === "starter") return "growth";
+      return "pro";
+    }
+    // leads
+    if (planId === "trial") return "starter";
+    if (planId === "starter" || planId === "growth") return "pro";
+    return "pro";
+  }
+
+  private throwCapacityLimit(opts: {
+    code: string;
+    message: string;
+    reason: LimitReason;
+    limit: number;
+    used: number;
+    planId: GrowvisiPlanId;
+  }): never {
+    throw new HttpException(
+      {
+        message: opts.message,
+        code: opts.code,
+        reason: opts.reason,
+        limit: opts.limit,
+        used: opts.used,
+        planId: opts.planId,
+        suggestedPlan: this.suggestUpgrade(opts.planId, opts.reason),
+      },
+      HttpStatus.FORBIDDEN,
+    );
   }
 
   async getAccess(organizationId: string): Promise<SubscriptionAccess> {
@@ -76,6 +118,9 @@ export class EntitlementsService {
               ? "Your 14-day trial has ended. Upgrade to keep using Growvisi."
               : "Subscription inactive. Upgrade or update billing to continue.",
           code: access.trialExpired ? "TRIAL_EXPIRED" : "SUBSCRIPTION_INACTIVE",
+          reason: "trial",
+          planId: access.planId,
+          suggestedPlan: this.suggestUpgrade(access.planId, "leads"),
         },
         HttpStatus.PAYMENT_REQUIRED,
       );
@@ -96,8 +141,17 @@ export class EntitlementsService {
     };
     const minRank = minimum === "growth" ? 2 : 3;
     if (rank[access.planId] < minRank) {
-      throw new ForbiddenException(
-        `This feature requires the ${minimum === "growth" ? "Growth" : "Pro"} plan or higher.`,
+      throw new HttpException(
+        {
+          message: `This feature requires the ${minimum === "growth" ? "Growth" : "Pro"} plan or higher.`,
+          code: "PLAN_FEATURE_REQUIRED",
+          reason: minimum === "pro" ? "agency_clients" : "whatsapp",
+          planId: access.planId,
+          suggestedPlan: minimum,
+          limit: null,
+          used: null,
+        },
+        HttpStatus.FORBIDDEN,
       );
     }
     return access;
@@ -109,9 +163,14 @@ export class EntitlementsService {
       where: { organizationId, isActive: true },
     });
     if (active >= access.limits.whatsappNumbers) {
-      throw new ForbiddenException(
-        `Your ${access.planId} plan allows ${access.limits.whatsappNumbers} WhatsApp number(s). Upgrade to add more.`,
-      );
+      this.throwCapacityLimit({
+        code: "WHATSAPP_NUMBER_LIMIT",
+        message: `Your ${access.planId} plan allows ${access.limits.whatsappNumbers} WhatsApp number(s). Upgrade to add more.`,
+        reason: "whatsapp",
+        limit: access.limits.whatsappNumbers,
+        used: active,
+        planId: access.planId,
+      });
     }
   }
 
@@ -123,10 +182,16 @@ export class EntitlementsService {
         where: { organizationId, acceptedAt: null, expiresAt: { gt: new Date() } },
       }),
     ]);
-    if (members + pendingInvites >= access.limits.teamMembers) {
-      throw new ForbiddenException(
-        `Your ${access.planId} plan allows ${access.limits.teamMembers} team member(s). Upgrade to invite more.`,
-      );
+    const used = members + pendingInvites;
+    if (used >= access.limits.teamMembers) {
+      this.throwCapacityLimit({
+        code: "TEAM_SEAT_LIMIT",
+        message: `Your ${access.planId} plan allows ${access.limits.teamMembers} team member(s). Upgrade to invite more.`,
+        reason: "seats",
+        limit: access.limits.teamMembers,
+        used,
+        planId: access.planId,
+      });
     }
   }
 
@@ -141,6 +206,27 @@ export class EntitlementsService {
       where: { organizationId, createdAt: { gte: monthStart } },
     });
     return used < access.limits.monthlyLeads;
+  }
+
+  /** Throwing check for dashboard actions (add contact / outbound). */
+  async assertCanCreateLead(organizationId: string): Promise<void> {
+    const access = await this.assertHasAccess(organizationId);
+    const monthStart = new Date();
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+    const used = await this.prisma.lead.count({
+      where: { organizationId, createdAt: { gte: monthStart } },
+    });
+    if (used >= access.limits.monthlyLeads) {
+      this.throwCapacityLimit({
+        code: "LEAD_MONTHLY_LIMIT",
+        message: `You've used ${used} of ${access.limits.monthlyLeads} leads this month on ${access.planId}. Upgrade for more capacity.`,
+        reason: "leads",
+        limit: access.limits.monthlyLeads,
+        used,
+        planId: access.planId,
+      });
+    }
   }
 
   async usageSnapshot(organizationId: string) {
@@ -158,15 +244,47 @@ export class EntitlementsService {
       this.prisma.agencyClient.count({ where: { agencyOrganizationId: organizationId } }),
     ]);
 
+    const usage = {
+      whatsappNumbers,
+      teamMembers,
+      monthlyLeads,
+      agencyClients,
+    };
+    const limits = access.limits;
+
+    const seatsAtLimit = teamMembers >= limits.teamMembers;
+    const whatsappAtLimit = whatsappNumbers >= limits.whatsappNumbers;
+    const leadsAtLimit = monthlyLeads >= limits.monthlyLeads;
+    const agencyAtLimit = limits.agencyClients > 0 && agencyClients >= limits.agencyClients;
+
+    const primaryReason: LimitReason | null = seatsAtLimit
+      ? "seats"
+      : whatsappAtLimit
+        ? "whatsapp"
+        : leadsAtLimit
+          ? "leads"
+          : agencyAtLimit
+            ? "agency_clients"
+            : null;
+
     return {
       access,
-      usage: {
-        whatsappNumbers,
-        teamMembers,
-        monthlyLeads,
-        agencyClients,
+      usage,
+      limits,
+      friction: {
+        seatsAtLimit,
+        whatsappAtLimit,
+        leadsAtLimit,
+        agencyAtLimit,
+        nearLimit:
+          teamMembers / Math.max(limits.teamMembers, 1) >= 0.85 ||
+          whatsappNumbers / Math.max(limits.whatsappNumbers, 1) >= 0.85 ||
+          monthlyLeads / Math.max(limits.monthlyLeads, 1) >= 0.85,
+        primaryReason,
+        suggestedPlan: primaryReason
+          ? this.suggestUpgrade(access.planId, primaryReason)
+          : null,
       },
-      limits: access.limits,
     };
   }
 }

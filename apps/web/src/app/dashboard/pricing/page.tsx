@@ -1,9 +1,11 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { UsageMeterCard } from "@/components/dashboard/usage-meter-card";
+import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { PricingPlansGrid } from "@/components/pricing/pricing-plans-grid";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
@@ -12,6 +14,7 @@ import { PRICING_FOOTNOTES } from "@/lib/pricing-plans";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
+import { trackConversionFriction } from "@/lib/conversion-friction-analytics";
 
 interface BillingStatus {
   planId: string;
@@ -24,12 +27,30 @@ interface BillingStatus {
     trialEndsAt: string | null;
     hasAccess: boolean;
   };
+  friction?: {
+    primaryReason: string | null;
+    suggestedPlan: string | null;
+    seatsAtLimit?: boolean;
+    leadsAtLimit?: boolean;
+    whatsappAtLimit?: boolean;
+  };
 }
+
+const REASON_COPY: Record<string, string> = {
+  seats: "You hit the team seat limit — pick a plan with more seats to invite agents.",
+  whatsapp: "You hit the WhatsApp number limit — pick a plan with more lines.",
+  leads: "You hit this month's lead cap — upgrade so new WhatsApp leads keep scoring.",
+  agency_clients: "Client workspace slots are full on Operator.",
+  limit: "Upgrade for more capacity on seats, WhatsApp numbers, or monthly leads.",
+};
 
 export default function PricingPage() {
   const token = useAuthStore((s) => s.accessToken);
   const { success } = useToast();
   const { t } = useI18n();
+  const searchParams = useSearchParams();
+  const reasonParam = searchParams.get("reason");
+  const planParam = searchParams.get("plan");
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const [checkoutOpened, setCheckoutOpened] = useState(false);
 
@@ -38,6 +59,15 @@ export default function PricingPage() {
     queryFn: () => apiFetch<BillingStatus>("/billing", { token: token ?? undefined }),
     enabled: !!token,
   });
+
+  useEffect(() => {
+    if (!reasonParam) return;
+    trackConversionFriction("conversion_friction_view", {
+      reason: reasonParam,
+      suggestedPlan: planParam ?? undefined,
+      surface: "pricing",
+    });
+  }, [reasonParam, planParam]);
 
   const checkoutMutation = useMutation({
     mutationFn: (planId: string) =>
@@ -107,6 +137,16 @@ export default function PricingPage() {
 
       {data && (
         <div className="mb-8 space-y-4">
+          {(reasonParam || data.friction?.primaryReason) && (
+            <UpgradeFrictionBanner
+              reason={reasonParam ?? data.friction?.primaryReason ?? "limit"}
+              message={
+                REASON_COPY[reasonParam ?? data.friction?.primaryReason ?? "limit"] ??
+                REASON_COPY.limit
+              }
+              suggestedPlan={planParam ?? data.friction?.suggestedPlan}
+            />
+          )}
           <UsageMeterCard />
           <div className="rounded-2xl border border-border/80 bg-[#f8f9ff]/60 px-5 py-4 text-sm">
           <p>
@@ -144,6 +184,7 @@ export default function PricingPage() {
       <PricingPlansGrid
         variant="app"
         currentPlanId={data?.planId}
+        highlightPlanId={planParam ?? data?.friction?.suggestedPlan ?? undefined}
         razorpayConfigured={data?.razorpayConfigured ?? false}
         checkoutPlanId={checkoutPlan}
         onUpgrade={(planId) => checkoutMutation.mutate(planId)}

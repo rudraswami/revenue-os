@@ -65,6 +65,7 @@ export function InboxConversationList({
   onListFilterChange,
   onListScopeChange,
   yourTurnCount,
+  queueCounts,
 }: {
   conversations: InboxConversationRow[];
   selectedId: string | null;
@@ -82,6 +83,7 @@ export function InboxConversationList({
   onListFilterChange?: (f: InboxListFilter) => void;
   onListScopeChange?: (s: InboxListScope) => void;
   yourTurnCount?: number;
+  queueCounts?: { yourTurn: number; mine: number; unassigned: number };
 }) {
   const { t } = useI18n();
   const copy = useConversationsCopy();
@@ -139,6 +141,46 @@ export function InboxConversationList({
         <p className="mt-1 text-[11px] text-muted-foreground">
           {copy.conversationCount(conversations.length)}
         </p>
+
+        {hasWhatsapp && listScope === "active" && queueCounts && onListFilterChange && (
+          <div className="mt-2.5 rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-50/90 to-white px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-900">
+              {copy.dailyQueueTitle}
+            </p>
+            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+              {copy.dailyQueueHint}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {(
+                [
+                  ["handoff", copy.yourTurn, queueCounts.yourTurn],
+                  ["mine", copy.filterMine, queueCounts.mine],
+                  ["unassigned", copy.filterUnassigned, queueCounts.unassigned],
+                ] as const
+              ).map(([id, label, count]) => {
+                const active = listFilter === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onListFilterChange(id)}
+                    className={cn(
+                      "rounded-lg px-2 py-1 text-[10px] font-semibold transition",
+                      active
+                        ? id === "handoff"
+                          ? "bg-amber-600 text-white"
+                          : "bg-accent text-white"
+                        : "bg-white/80 text-muted-foreground ring-1 ring-border/80 hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                    {count > 0 ? ` · ${count}` : ""}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {hasWhatsapp && onListScopeChange && (
           <div className="mt-2.5 flex rounded-lg bg-muted/60 p-0.5">

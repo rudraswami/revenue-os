@@ -14,6 +14,7 @@ import {
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { WhatsappConnectPathPicker } from "@/components/settings/whatsapp-connect-path-picker";
@@ -376,14 +377,16 @@ export default function WhatsappConnect({
             Only workspace admins can connect or disconnect WhatsApp numbers.
           </p>
         )}
-        {canConnect && !canAddNumber && whatsappUsed >= whatsappLimit && whatsappLimit === 1 && (
-          <p className="text-sm text-muted-foreground">
-            Your plan includes 1 WhatsApp number.{" "}
-            <Link href="/dashboard/pricing" className="font-medium text-accent hover:underline">
-              Upgrade to Growth
-            </Link>{" "}
-            for up to 3 lines.
-          </p>
+        {canConnect && !canAddNumber && whatsappUsed >= whatsappLimit && (
+          <UpgradeFrictionBanner
+            className="mt-3"
+            compact
+            reason="whatsapp"
+            message={`Your plan includes ${whatsappLimit} WhatsApp number${whatsappLimit === 1 ? "" : "s"}. Upgrade to connect another line.`}
+            limit={whatsappLimit}
+            used={whatsappUsed}
+            suggestedPlan={whatsappLimit <= 1 ? "growth" : "pro"}
+          />
         )}
       </div>
     );

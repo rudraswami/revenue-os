@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -349,8 +351,17 @@ export class AgencyService {
       where: { agencyOrganizationId: user.organizationId },
     });
     if (count >= access.limits.agencyClients) {
-      throw new ForbiddenException(
-        `Your Operator plan allows ${access.limits.agencyClients} client workspaces. Remove a client from the portfolio to free a slot.`,
+      throw new HttpException(
+        {
+          message: `Your Operator plan allows ${access.limits.agencyClients} client workspaces. Remove a client from the portfolio to free a slot, or contact sales for more.`,
+          code: "AGENCY_CLIENT_LIMIT",
+          reason: "agency_clients",
+          limit: access.limits.agencyClients,
+          used: count,
+          planId: access.planId,
+          suggestedPlan: "pro",
+        },
+        HttpStatus.FORBIDDEN,
       );
     }
 

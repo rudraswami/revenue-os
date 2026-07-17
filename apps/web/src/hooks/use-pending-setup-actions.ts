@@ -26,6 +26,16 @@ type OnboardingProgress = {
     firstValue: boolean;
     firstAction: boolean;
   };
+  coaching?: {
+    eligible: boolean;
+    allComplete: boolean;
+    next: null | {
+      id: string;
+      title: string;
+      description: string;
+      href: string;
+    };
+  };
 };
 
 export function usePendingSetupActions() {
@@ -34,7 +44,7 @@ export function usePendingSetupActions() {
   const query = useQuery({
     queryKey: ["pending-setup-actions"],
     queryFn: async () => {
-      const [billing, progress, accounts, health, ops, payment, capabilities, teamLimits, workload] =
+      const [billing, progress, accounts, health, payment, capabilities] =
         await Promise.all([
           apiFetch<{
             entitlements?: {
@@ -42,6 +52,23 @@ export function usePendingSetupActions() {
               trialEndsAt: string | null;
               hasAccess: boolean;
               planId: string;
+            };
+            usage?: {
+              teamMembers: number;
+              whatsappNumbers: number;
+              monthlyLeads: number;
+            };
+            limits?: {
+              teamMembers: number;
+              whatsappNumbers: number;
+              monthlyLeads: number;
+            };
+            friction?: {
+              seatsAtLimit: boolean;
+              whatsappAtLimit: boolean;
+              leadsAtLimit: boolean;
+              primaryReason: string | null;
+              suggestedPlan: string | null;
             };
           }>("/billing", { token: token ?? undefined }),
           apiFetch<OnboardingProgress>("/organizations/onboarding-progress", {
@@ -55,9 +82,6 @@ export function usePendingSetupActions() {
           }>("/whatsapp-accounts/connection-health", { token: token ?? undefined }).catch(
             () => ({ tokenHealth: undefined }),
           ),
-          apiFetch<{ digest: { enabled: boolean } }>("/organizations/ops-settings", {
-            token: token ?? undefined,
-          }),
           apiFetch<{ hasWebhookSecret: boolean; autoWinOnPayment: boolean }>(
             "/organizations/payment-integration",
             { token: token ?? undefined },
@@ -65,14 +89,6 @@ export function usePendingSetupActions() {
           apiFetch<{ aiClassification: boolean }>("/conversations/capabilities", {
             token: token ?? undefined,
           }).catch(() => ({ aiClassification: true })),
-          apiFetch<{
-            memberCount: number;
-            pendingInvites: number;
-            canInvite: boolean;
-          }>("/organizations/team-limits", { token: token ?? undefined }).catch(() => null),
-          apiFetch<{ unassignedConversations: number }>("/organizations/team-workload", {
-            token: token ?? undefined,
-          }).catch(() => null),
         ]);
 
       const connected = accounts?.some((a) => a.isActive) ?? false;
@@ -161,14 +177,28 @@ export function usePendingSetupActions() {
         });
       }
 
-      // Conversion after proof — soft upgrade once classify works (not urgent trial).
+      // Post-activation coaching — ONE next habit after first classify (no pile).
+      if (progress.coaching?.eligible && progress.coaching.next) {
+        const n = progress.coaching.next;
+        actions.push({
+          id: `coach-${n.id}`,
+          title: n.title,
+          description: n.description,
+          href: n.href,
+          priority: "recommended",
+          order: 14,
+        });
+      }
+
+      // Soft upgrade after proof — only when coaching isn't the active habit focus.
       if (
         ent?.hasAccess &&
         ent.planId === "trial" &&
         !progress.ops?.paid &&
         progress.aiClassified &&
         !trialEnded &&
-        !trialEndsSoon
+        !trialEndsSoon &&
+        (!progress.coaching?.eligible || progress.coaching.allComplete || !progress.coaching.next)
       ) {
         actions.push({
           id: "upgrade-after-proof",
@@ -177,39 +207,6 @@ export function usePendingSetupActions() {
           href: "/dashboard/pricing",
           priority: "recommended",
           order: 25,
-        });
-      }
-
-      // Team habit — invite when solo after first classify.
-      if (
-        progress.aiClassified &&
-        teamLimits &&
-        teamLimits.memberCount <= 1 &&
-        teamLimits.pendingInvites === 0 &&
-        teamLimits.canInvite &&
-        (workload?.unassignedConversations ?? 0) >= 0
-      ) {
-        const busy = (workload?.unassignedConversations ?? 0) > 0;
-        actions.push({
-          id: "invite-teammate",
-          title: "Invite a teammate",
-          description: busy
-            ? "Unassigned chats waiting — share the queue with your sales team."
-            : "Add an agent so hot leads aren’t stuck on one phone.",
-          href: "/dashboard/settings?tab=team",
-          priority: "recommended",
-          order: busy ? 23 : 28,
-        });
-      }
-
-      if (progress.whatsappConnected && !ops.digest.enabled) {
-        actions.push({
-          id: "enable-digest",
-          title: "Turn on morning digest",
-          description: "Pipeline ₹ and chats waiting on you — email or WhatsApp for owners.",
-          href: "/dashboard/automations",
-          priority: "recommended",
-          order: 30,
         });
       }
 
@@ -234,6 +231,42 @@ export function usePendingSetupActions() {
             order: 32,
           });
         }
+      }
+
+      // Capacity friction — upgrade when seats / WA / leads are blocked.
+      const friction = billing.friction;
+      if (friction?.seatsAtLimit && ent?.hasAccess) {
+        const plan = friction.suggestedPlan ?? "growth";
+        actions.push({
+          id: "limit-seats",
+          title: "Need more seats",
+          description: `Team full (${billing.usage?.teamMembers ?? "?"}/${billing.limits?.teamMembers ?? "?"}) — upgrade to invite the next agent.`,
+          href: `/dashboard/pricing?plan=${plan}&reason=seats`,
+          priority: "recommended",
+          order: 5,
+        });
+      }
+      if (friction?.whatsappAtLimit && ent?.hasAccess) {
+        const plan = friction.suggestedPlan ?? "growth";
+        actions.push({
+          id: "limit-whatsapp",
+          title: "Need another WhatsApp line",
+          description: `Number slots full (${billing.usage?.whatsappNumbers ?? "?"}/${billing.limits?.whatsappNumbers ?? "?"}) — upgrade to connect more.`,
+          href: `/dashboard/pricing?plan=${plan}&reason=whatsapp`,
+          priority: "recommended",
+          order: 6,
+        });
+      }
+      if (friction?.leadsAtLimit && ent?.hasAccess) {
+        const plan = friction.suggestedPlan ?? "starter";
+        actions.push({
+          id: "limit-leads",
+          title: "Monthly lead cap reached",
+          description: `Used ${billing.usage?.monthlyLeads ?? "?"} of ${billing.limits?.monthlyLeads ?? "?"} leads — upgrade so new chats keep scoring.`,
+          href: `/dashboard/pricing?plan=${plan}&reason=leads`,
+          priority: "recommended",
+          order: 4,
+        });
       }
 
       actions.sort((a, b) => a.order - b.order);
