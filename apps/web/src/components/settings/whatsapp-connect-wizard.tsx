@@ -295,8 +295,8 @@ export function WhatsappConnectWizard({
                   i < stepIndex
                     ? "bg-accent text-white"
                     : i === stepIndex
-                      ? "bg-[#0b1c30] text-white shadow-md"
-                      : "bg-[#dce9ff] text-muted-foreground",
+                      ? "bg-primary text-white shadow-md"
+                      : "bg-border text-muted-foreground",
                 )}
               >
                 {i < stepIndex ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
@@ -310,7 +310,7 @@ export function WhatsappConnectWizard({
                 {s.title}
               </span>
               {i < WIZARD_STEPS.length - 1 && (
-                <div className="ml-2 hidden h-px w-8 bg-[#dce9ff] sm:block" aria-hidden />
+                <div className="ml-2 hidden h-px w-8 bg-border sm:block" aria-hidden />
               )}
             </div>
           ))}
@@ -372,7 +372,7 @@ export function WhatsappConnectWizard({
                     </p>
                   )}
                   {discovered.length === 1 && !discoverMutation.isPending && (
-                    <p className="flex items-center gap-1.5 text-xs text-[#128C7E]">
+                    <p className="flex items-center gap-1.5 text-xs text-whatsapp">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       Found {discovered[0].displayPhoneNumber}
                       {discovered[0].verifiedName ? ` · ${discovered[0].verifiedName}` : ""}
@@ -428,8 +428,8 @@ export function WhatsappConnectWizard({
 
         {step === "verify" && connected && (
           <>
-            <div className="flex items-start gap-3 rounded-2xl border border-[#6cf8bb]/40 bg-bento-mint/60 p-5">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#128C7E]" />
+            <div className="flex items-start gap-3 rounded-2xl border border-accent-light/40 bg-bento-mint/60 p-5">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-whatsapp" />
               <div>
                 <p className="font-semibold text-foreground">Number connected</p>
                 <p className="text-lg font-bold">

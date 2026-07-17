@@ -178,7 +178,7 @@ export function WhatsappTokenRefresh({
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           {success && (
-            <p className="text-sm text-[#128C7E]">Token updated — your connection is restored.</p>
+            <p className="text-sm text-whatsapp">Token updated — your connection is restored.</p>
           )}
           <div className="flex gap-2">
             <Button

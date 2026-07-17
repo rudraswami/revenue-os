@@ -95,7 +95,7 @@ export function HomeConnectionHealthBanner() {
         {health.tokenHealth?.needsRefresh ? (
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" />
         ) : (
-          <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-[#0b1c30]" />
+          <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
         )}
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">

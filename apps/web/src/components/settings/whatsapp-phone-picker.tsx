@@ -38,7 +38,7 @@ export function WhatsappPhonePicker({
                 <div
                   className={cn(
                     "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                    selected ? "bg-[#25D366]/20 text-[#128C7E]" : "bg-muted text-muted-foreground",
+                    selected ? "bg-[#25D366]/20 text-whatsapp" : "bg-muted text-muted-foreground",
                   )}
                 >
                   {selected ? (

@@ -176,7 +176,7 @@ export function WhatsappTemplatePicker({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <CheckCircle2 className="h-3.5 w-3.5 text-[#128C7E]" />
+          <CheckCircle2 className="h-3.5 w-3.5 text-whatsapp" />
           <span>
             {data?.count ?? templates.length} approved
             {data?.syncedAt ? ` · synced ${formatSyncedAt(data.syncedAt)}` : ""}

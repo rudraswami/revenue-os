@@ -52,7 +52,7 @@ export function WhatsappConnectPathPicker({
                 "relative rounded-2xl border p-4 text-left transition-all",
                 selected
                   ? "border-accent/50 bg-bento-mint/60 ring-2 ring-accent/20 shadow-sm"
-                  : "border-border/80 bg-card hover:border-accent/30 hover:bg-[#f8fafc]",
+                  : "border-border/80 bg-card hover:border-accent/30 hover:bg-muted",
               )}
             >
               {meta.hasBadge && (

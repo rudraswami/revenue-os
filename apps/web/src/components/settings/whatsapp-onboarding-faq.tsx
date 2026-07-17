@@ -20,7 +20,7 @@ export function WhatsappOnboardingFaq() {
         <HelpCircle className="h-4 w-4 text-accent" />
         <p className="text-sm font-semibold text-foreground">{t("whatsappOnboardingFaq.title")}</p>
       </div>
-      <div className="divide-y divide-[#dce9ff]/80">
+      <div className="divide-y divide-border/80">
         {FAQ_IDS.map((id) => (
           <details key={id} className="group px-4 py-3">
             <summary className="cursor-pointer text-sm font-medium text-foreground marker:content-none list-none [&::-webkit-details-marker]:hidden">

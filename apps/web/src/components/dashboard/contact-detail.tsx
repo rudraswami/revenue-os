@@ -28,6 +28,11 @@ import {
 import { HOT_LEAD_SCORE_THRESHOLD, type LeadStage } from "@growvisi/shared";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { TagChip } from "./tag-chip";
@@ -226,32 +231,27 @@ export function ContactDetailDrawer({
 
   return (
     <>
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-[2px]"
-            onClick={onClose}
-          />
-          <aside
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[460px] flex-col border-l border-border bg-card shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div className="flex items-center gap-3">
-                <AvatarInitials name={displayName} size="md" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-                  <p className="text-xs text-muted-foreground">{contact?.phone}</p>
-                </div>
+      <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+        <DialogContent side="right" showClose={false} className="gap-0 p-0">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <AvatarInitials name={displayName} size="md" />
+              <div className="min-w-0">
+                <DialogTitle className="truncate text-sm font-semibold text-foreground">
+                  {displayName}
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground">{contact?.phone}</p>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted"
-                aria-label="Close contact details"
-              >
-                <X className="h-5 w-5" />
-              </button>
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted"
+              aria-label="Close contact details"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
             {isLoading || !contact ? (
               <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
@@ -561,9 +561,8 @@ export function ContactDetailDrawer({
                 </Button>
               </div>
             )}
-          </aside>
-        </>
-      )}
+        </DialogContent>
+      </Dialog>
       <LostReasonDialog
         open={lostPrompt}
         leadName={contact?.displayName}

@@ -75,7 +75,7 @@ const TAB_ICONS: Record<SettingsTabId, LucideIcon> = {
 };
 
 const TAB_ICON_CLASS: Partial<Record<SettingsTabId, string>> = {
-  whatsapp: "bg-bento-mint text-[#128C7E]",
+  whatsapp: "bg-bento-mint text-whatsapp",
 };
 
 function buildTabMeta(id: SettingsTabId, t: (path: string) => string): SettingsTab {

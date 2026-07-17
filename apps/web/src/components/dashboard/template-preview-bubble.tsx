@@ -26,13 +26,13 @@ export function TemplatePreviewBubble({
   const text = renderTemplateBody(body, params);
 
   return (
-    <div className={cn("rounded-2xl border border-border bg-[#e5f6ef] p-4", className)}>
+    <div className={cn("rounded-2xl border border-border bg-bento-mint p-4", className)}>
       <div className="mb-2 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#128C7E] text-xs font-bold text-white">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-whatsapp text-xs font-bold text-white">
           WA
         </div>
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-[#128C7E]">
+          <p className="text-xs font-bold uppercase tracking-wider text-whatsapp">
             WhatsApp preview
           </p>
           <p className="text-xs text-muted-foreground">How customers will see it</p>

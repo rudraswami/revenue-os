@@ -97,7 +97,7 @@ export function AuditActivityCard() {
                 row.action === "DELETE"
                   ? "bg-red-50 text-red-700"
                   : row.action === "CREATE"
-                    ? "bg-bento-mint text-[#128C7E]"
+                    ? "bg-bento-mint text-whatsapp"
                     : "bg-muted text-muted-foreground",
               )}
             >

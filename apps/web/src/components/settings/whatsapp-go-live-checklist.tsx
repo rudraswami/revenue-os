@@ -147,8 +147,8 @@ export function WhatsappGoLiveChecklist({
 
       <div className="space-y-4 p-5 sm:p-6">
         <ul className="space-y-2">
-          <li className="flex items-start gap-3 rounded-xl border border-[#6cf8bb]/30 bg-bento-mint/40 px-4 py-3.5">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#25D366]/15 text-[#128C7E]">
+          <li className="flex items-start gap-3 rounded-xl border border-accent-light/30 bg-bento-mint/40 px-4 py-3.5">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#25D366]/15 text-whatsapp">
               <CheckCircle2 className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
@@ -167,7 +167,7 @@ export function WhatsappGoLiveChecklist({
                 className={cn(
                   "flex items-start gap-3 rounded-xl border px-4 py-3.5 transition-colors",
                   step.done
-                    ? "border-[#6cf8bb]/30 bg-bento-mint/40"
+                    ? "border-accent-light/30 bg-bento-mint/40"
                     : "border-border/80 bg-card",
                 )}
               >
@@ -175,7 +175,7 @@ export function WhatsappGoLiveChecklist({
                   className={cn(
                     "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
                     step.done
-                      ? "bg-[#25D366]/15 text-[#128C7E]"
+                      ? "bg-[#25D366]/15 text-whatsapp"
                       : "bg-muted/60 text-muted-foreground",
                   )}
                 >

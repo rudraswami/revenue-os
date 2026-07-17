@@ -163,7 +163,7 @@ export default function AiStudioPage() {
       {/* Agent status hero card */}
       <DashboardPanel
         noPadding
-        className="mb-8 overflow-hidden border-accent/20 bg-gradient-to-br from-[#ecfdf5]/80 to-white"
+        className="mb-8 overflow-hidden border-accent/20 bg-bento-mint/80"
         delay={0.05}
       >
         <div className="flex flex-wrap items-center justify-between gap-4 p-6">
@@ -235,7 +235,7 @@ export default function AiStudioPage() {
       {/* Latest summary */}
       {agentStatus?.lastSummary && (
         <div className="mb-8">
-          <DashboardPanel noPadding className="border-accent/20 bg-gradient-to-r from-bento-mint/30 to-white">
+          <DashboardPanel noPadding className="border-accent/20 bg-bento-mint/30">
             <div className="p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Bot className="h-4 w-4 text-accent" />

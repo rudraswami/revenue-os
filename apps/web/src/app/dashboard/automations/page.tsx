@@ -202,7 +202,7 @@ export default function AutomationsPage() {
 
       {/* Stats bar */}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-gradient-to-r from-bento-mint/40 to-white p-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-bento-mint/40 p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white">
             <Activity className="h-5 w-5" />
           </div>
@@ -229,7 +229,7 @@ export default function AutomationsPage() {
 
       <DashboardPanel
         noPadding
-        className="mb-8 border-accent/20 bg-gradient-to-r from-bento-mint/40 to-white"
+        className="mb-8 border-accent/20 bg-bento-mint/40"
         delay={0.05}
       >
         <div className="p-5 text-sm">
@@ -269,7 +269,7 @@ export default function AutomationsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <DashboardPanel noPadding className="border-accent/20 bg-gradient-to-r from-bento-mint/30 to-white">
+          <DashboardPanel noPadding className="border-accent/20 bg-bento-mint/30">
             <div className="flex flex-row items-start gap-4 p-5">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bento-mint text-accent">
                 <MessageCircle className="h-5 w-5" />

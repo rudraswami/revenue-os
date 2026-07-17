@@ -18,6 +18,11 @@ import {
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
@@ -749,24 +754,26 @@ export default function CampaignsPage() {
         )}
       </DashboardPanel>
 
-      {detailId && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
-          <div className="flex h-full w-full max-w-lg flex-col border-l border-border bg-card shadow-xl">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-                  Campaign detail
-                </p>
-                <h2 className="text-lg font-bold">{detail?.name ?? "Loading…"}</h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDetailId(null)}
-                className="rounded-lg p-2 hover:bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      <Dialog open={!!detailId} onOpenChange={(next) => !next && setDetailId(null)}>
+        <DialogContent side="right" showClose={false} className="max-w-lg gap-0 p-0 sm:max-w-lg">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+                Campaign detail
+              </p>
+              <DialogTitle className="text-lg font-bold">
+                {detail?.name ?? "Loading…"}
+              </DialogTitle>
             </div>
+            <button
+              type="button"
+              onClick={() => setDetailId(null)}
+              className="rounded-lg p-2 hover:bg-muted"
+              aria-label="Close campaign detail"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
 
             <div className="flex-1 overflow-y-auto p-5">
               {detailLoading || !detail ? (
@@ -816,7 +823,7 @@ export default function CampaignsPage() {
                       {detail.deliveredCount > 0 && (
                         <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
                           <div
-                            className="h-full rounded-full bg-[#128C7E] transition-all"
+                            className="h-full rounded-full bg-whatsapp transition-all"
                             style={{
                               width: `${Math.min(100, (detail.deliveredCount / detail.totalRecipients) * 100)}%`,
                             }}
@@ -1001,9 +1008,8 @@ export default function CampaignsPage() {
                 )}
               </div>
             )}
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
