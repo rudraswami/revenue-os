@@ -37,6 +37,7 @@ import {
 } from "@/lib/crm";
 import type { LeadStage } from "@growvisi/shared";
 import { cn } from "@/lib/utils";
+import { FilterChip } from "@/components/ui/filter-chip";
 import { WhatsappTemplatePicker } from "@/components/dashboard/whatsapp-template-picker";
 import {
   CampaignSchedulePicker,
@@ -521,19 +522,13 @@ export default function CampaignsPage() {
                 <Field label="Stages">
                   <div className="flex flex-wrap gap-1.5">
                     {LEAD_STAGES.map((s) => (
-                      <button
+                      <FilterChip
                         key={s}
-                        type="button"
+                        active={stages.includes(s)}
                         onClick={() => toggleStage(s)}
-                        className={cn(
-                          "rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
-                          stages.includes(s)
-                            ? "bg-accent text-white"
-                            : "bg-muted text-muted-foreground hover:bg-muted/70",
-                        )}
                       >
                         {STAGE_LABELS[s]}
-                      </button>
+                      </FilterChip>
                     ))}
                   </div>
                 </Field>
@@ -683,20 +678,14 @@ export default function CampaignsPage() {
       <DashboardPanel noPadding title="Your campaigns">
         <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-5 py-3">
           {LIST_FILTERS.map((f) => (
-            <button
+            <FilterChip
               key={f.id}
-              type="button"
+              active={listFilter === f.id}
+              count={f.id === "scheduled" && scheduledCount > 0 ? scheduledCount : undefined}
               onClick={() => setListFilter(f.id)}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-semibold transition",
-                listFilter === f.id
-                  ? "bg-accent text-white"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80",
-              )}
             >
               {f.label}
-              {f.id === "scheduled" && scheduledCount > 0 && ` (${scheduledCount})`}
-            </button>
+            </FilterChip>
           ))}
         </div>
         {isLoading ? (

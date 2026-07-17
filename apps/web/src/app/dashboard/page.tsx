@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -218,12 +217,7 @@ export default function DashboardPage() {
         <HomeRecommendationsPanel />
       </div>
 
-      <motion.div
-        className="mt-8"
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-      >
+      <div className="mt-8">
         <DashboardPanel
           title="Activity"
           description="Classifications, pipeline moves, and team actions"
@@ -267,15 +261,10 @@ export default function DashboardPage() {
                   </>
                 );
                 return (
-                  <motion.div
-                    key={`${item.type}-${item.time}-${i}`}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.03 }}
+                  <div key={`${item.type}-${item.time}-${i}`}
                     className={`flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-muted/50 ${
                       isAi ? "bg-bento-mint/20" : ""
-                    }`}
-                  >
+                    }`}>
                     {href ? (
                       <Link href={href} className="flex w-full items-start gap-3">
                         {inner}
@@ -283,13 +272,13 @@ export default function DashboardPage() {
                     ) : (
                       inner
                     )}
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
           )}
         </DashboardPanel>
-      </motion.div>
+      </div>
     </div>
   );
 }

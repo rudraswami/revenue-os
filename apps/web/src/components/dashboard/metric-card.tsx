@@ -2,57 +2,57 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type MetricVariant = "mint" | "blue" | "amber" | "rose" | "violet" | "slate" | "emerald";
 
+/** Quiet tint tokens — no gradients (Batch B). */
 const VARIANT_STYLES: Record<
   MetricVariant,
-  { card: string; icon: string; glow: string; value: string }
+  { card: string; icon: string; value: string; title: string }
 > = {
   mint: {
-    card: "border-emerald-200/80 bg-gradient-to-br from-white via-white to-emerald-50/90",
-    icon: "bg-emerald-100 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white",
-    glow: "bg-emerald-400/10",
-    value: "text-emerald-950",
+    card: "border-border bg-card",
+    icon: "bg-bento-mint text-accent",
+    value: "text-foreground",
+    title: "text-muted-foreground",
   },
   emerald: {
-    card: "border-emerald-300/60 bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-[0_12px_40px_rgb(5_150_105/0.25)]",
+    card: "border-accent/30 bg-accent text-accent-foreground",
     icon: "bg-white/20 text-white",
-    glow: "bg-white/10",
     value: "text-white",
+    title: "text-white/80",
   },
   blue: {
-    card: "border-sky-200/80 bg-gradient-to-br from-white via-white to-sky-50/90",
-    icon: "bg-sky-100 text-sky-700 group-hover:bg-sky-600 group-hover:text-white",
-    glow: "bg-sky-400/10",
-    value: "text-sky-950",
+    card: "border-border bg-card",
+    icon: "bg-bento-blue text-primary",
+    value: "text-foreground",
+    title: "text-muted-foreground",
   },
   amber: {
-    card: "border-amber-200/80 bg-gradient-to-br from-white via-white to-amber-50/90",
-    icon: "bg-amber-100 text-amber-800 group-hover:bg-amber-500 group-hover:text-white",
-    glow: "bg-amber-400/10",
-    value: "text-amber-950",
+    card: "border-border bg-card",
+    icon: "bg-amber-100 text-amber-800",
+    value: "text-foreground",
+    title: "text-muted-foreground",
   },
   rose: {
-    card: "border-rose-200/80 bg-gradient-to-br from-white via-rose-50/50 to-rose-50/90",
-    icon: "bg-rose-100 text-rose-700 group-hover:bg-rose-600 group-hover:text-white",
-    glow: "bg-rose-400/10",
-    value: "text-rose-950",
+    card: "border-border bg-card",
+    icon: "bg-rose-100 text-rose-700",
+    value: "text-foreground",
+    title: "text-muted-foreground",
   },
   violet: {
-    card: "border-violet-200/80 bg-gradient-to-br from-white via-white to-violet-50/90",
-    icon: "bg-violet-100 text-violet-700 group-hover:bg-violet-600 group-hover:text-white",
-    glow: "bg-violet-400/10",
-    value: "text-violet-950",
+    card: "border-border bg-card",
+    icon: "bg-violet-100 text-violet-700",
+    value: "text-foreground",
+    title: "text-muted-foreground",
   },
   slate: {
-    card: "border-border bg-white",
-    icon: "bg-muted text-muted-foreground group-hover:bg-slate-700 group-hover:text-white",
-    glow: "bg-slate-400/5",
+    card: "border-border bg-card",
+    icon: "bg-muted text-muted-foreground",
     value: "text-foreground",
+    title: "text-muted-foreground",
   },
 };
 
@@ -63,6 +63,7 @@ interface MetricCardProps {
   trend?: "up" | "down" | "neutral";
   icon?: ReactNode;
   className?: string;
+  /** @deprecated ignored — motion removed */
   delay?: number;
   variant?: MetricVariant;
   size?: "default" | "large";
@@ -81,7 +82,6 @@ export function MetricCard({
   trend = "neutral",
   icon,
   className,
-  delay = 0,
   variant = "mint",
   size = "default",
   href,
@@ -95,26 +95,16 @@ export function MetricCard({
   const isHero = resolvedVariant === "emerald" || size === "large";
 
   const inner = (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={href ? { y: -3 } : undefined}
+    <div
       className={cn(
-        "group relative overflow-hidden rounded-2xl border p-5 shadow-[0_4px_16px_rgb(11_28_48/0.04)] transition-shadow",
-        href && "cursor-pointer hover:shadow-[0_12px_32px_rgb(11_28_48/0.1)]",
+        "group relative overflow-hidden rounded-2xl border p-5 elev-1 transition-colors",
+        href && "cursor-pointer hover:border-accent/30",
         v.card,
         muted && "opacity-90",
-        urgent && resolvedVariant !== "emerald" && "ring-2 ring-rose-300/50",
+        urgent && resolvedVariant !== "emerald" && "ring-2 ring-rose-300/40",
         className,
       )}
     >
-      <div
-        className={cn(
-          "absolute -right-8 -top-8 h-24 w-24 rounded-full transition-transform group-hover:scale-110",
-          v.glow,
-        )}
-      />
       {urgent && (typeof value === "number" ? value > 0 : value !== "0" && value !== "—") && (
         <span className="absolute right-4 top-4 flex h-2.5 w-2.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-60" />
@@ -124,12 +114,7 @@ export function MetricCard({
 
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              "text-[11px] font-bold uppercase tracking-wider",
-              isHero ? "text-emerald-100" : "text-muted-foreground",
-            )}
-          >
+          <p className={cn("text-xs font-semibold uppercase tracking-wider", v.title)}>
             {title}
           </p>
           <p
@@ -145,8 +130,8 @@ export function MetricCard({
             <p
               className={cn(
                 "mt-2 text-xs leading-relaxed",
-                isHero && "text-emerald-50/90",
-                !isHero && trend === "up" && "text-emerald-700",
+                isHero && "text-white/90",
+                !isHero && trend === "up" && "text-accent",
                 !isHero && trend === "down" && "text-rose-600",
                 !isHero && trend === "neutral" && "text-muted-foreground",
               )}
@@ -169,7 +154,7 @@ export function MetricCard({
         {icon && (
           <div
             className={cn(
-              "flex shrink-0 items-center justify-center rounded-xl transition-colors",
+              "flex shrink-0 items-center justify-center rounded-xl",
               isHero ? "h-12 w-12" : "h-11 w-11",
               v.icon,
             )}
@@ -178,7 +163,7 @@ export function MetricCard({
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 
   if (href) {

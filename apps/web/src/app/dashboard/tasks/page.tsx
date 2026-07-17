@@ -25,6 +25,7 @@ import {
   type TeamMember,
 } from "@/lib/crm";
 import { cn } from "@/lib/utils";
+import { FilterChip } from "@/components/ui/filter-chip";
 import { TeamWorkloadPanel } from "@/components/dashboard/team-workload-panel";
 
 interface TaskRow {
@@ -214,19 +215,9 @@ export default function TasksPage() {
 
       <div className="mb-4 flex gap-1.5">
         {(["open", "mine", "all"] as const).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setScope(s)}
-            className={cn(
-              "rounded-full px-3.5 py-1.5 text-xs font-semibold transition",
-              scope === s
-                ? "bg-accent text-white"
-                : "bg-muted text-muted-foreground hover:bg-muted/70",
-            )}
-          >
+          <FilterChip key={s} active={scope === s} onClick={() => setScope(s)}>
             {s === "open" ? "Open" : s === "mine" ? "My tasks" : "All"}
-          </button>
+          </FilterChip>
         ))}
       </div>
 

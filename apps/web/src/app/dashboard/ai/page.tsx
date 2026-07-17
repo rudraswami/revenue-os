@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -201,12 +200,7 @@ export default function AiStudioPage() {
       </DashboardPanel>
 
       {/* Agent metrics */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="mb-8 grid gap-4 sm:grid-cols-3"
-      >
+      <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent">
             <Activity className="h-5 w-5" />
@@ -236,16 +230,11 @@ export default function AiStudioPage() {
             <p className="text-[11px] text-muted-foreground">Last response time</p>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Latest summary */}
       {agentStatus?.lastSummary && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="mb-8"
-        >
+        <div className="mb-8">
           <DashboardPanel noPadding className="border-accent/20 bg-gradient-to-r from-bento-mint/30 to-white">
             <div className="p-5">
               <div className="flex items-center gap-2 mb-2">
@@ -255,7 +244,7 @@ export default function AiStudioPage() {
               <p className="text-sm leading-relaxed">{agentStatus.lastSummary}</p>
             </div>
           </DashboardPanel>
-        </motion.div>
+        </div>
       )}
 
       {/* Capabilities + RAG status */}
@@ -322,13 +311,8 @@ export default function AiStudioPage() {
 
       {/* Feature cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map((f, i) => (
-          <motion.div
-            key={f.title}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12 + i * 0.05 }}
-          >
+        {features.map((f) => (
+          <div key={f.title}>
             <Link href={f.href} className="card-interactive block h-full p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
@@ -344,7 +328,7 @@ export default function AiStudioPage() {
                 Open <ArrowRight className="h-3.5 w-3.5" />
               </span>
             </Link>
-          </motion.div>
+          </div>
         ))}
       </div>
     </div>

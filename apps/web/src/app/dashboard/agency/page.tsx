@@ -270,7 +270,7 @@ export default function AgencyPage() {
       <div
         key={c.id}
         className={cn(
-          "rounded-2xl border border-border bg-white p-4 shadow-sm",
+          "rounded-2xl border border-border bg-card p-4 elev-1",
           compact && "p-3.5",
         )}
       >
@@ -539,7 +539,7 @@ export default function AgencyPage() {
                 ).map(([key, value]) => (
                   <div
                     key={key}
-                    className="rounded-xl border border-border bg-white px-4 py-3"
+                    className="rounded-xl border border-border bg-card px-4 py-3"
                   >
                     <p className="text-xs text-muted-foreground">{t(`agency.${key}`)}</p>
                     <p className="mt-1 text-2xl font-bold">{value}</p>
@@ -561,7 +561,7 @@ export default function AgencyPage() {
               ).map(([statusKey, labelKey, count]) => (
                 <div
                   key={statusKey}
-                  className="rounded-xl border border-border bg-white px-4 py-3"
+                  className="rounded-xl border border-border bg-card px-4 py-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">{t(`agency.${labelKey}`)}</p>
@@ -583,7 +583,7 @@ export default function AgencyPage() {
                 {attentionClients.map((c) => (
                   <div
                     key={`attention-${c.id}`}
-                    className="rounded-xl border border-amber-200/60 bg-white p-3"
+                    className="rounded-xl border border-amber-200/60 bg-card p-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">

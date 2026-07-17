@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
@@ -226,22 +225,15 @@ export function ContactDetailDrawer({
   );
 
   return (
-    <AnimatePresence>
+    <>
       {open && (
         <>
-          <motion.div
+          <div
             className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-[2px]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             onClick={onClose}
           />
-          <motion.aside
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[460px] flex-col border-l border-border bg-white shadow-2xl"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 320 }}
+          <aside
+            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[460px] flex-col border-l border-border bg-card shadow-2xl"
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div className="flex items-center gap-3">
@@ -569,7 +561,7 @@ export function ContactDetailDrawer({
                 </Button>
               </div>
             )}
-          </motion.aside>
+          </aside>
         </>
       )}
       <LostReasonDialog
@@ -594,7 +586,7 @@ export function ContactDetailDrawer({
           }
         }}
       />
-    </AnimatePresence>
+    </>
   );
 }
 

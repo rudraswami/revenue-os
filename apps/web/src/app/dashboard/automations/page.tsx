@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { DailyDigestCard } from "@/components/dashboard/daily-digest-card";
@@ -202,11 +201,7 @@ export default function AutomationsPage() {
       </div>
 
       {/* Stats bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6 grid gap-4 sm:grid-cols-3"
-      >
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-gradient-to-r from-bento-mint/40 to-white p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white">
             <Activity className="h-5 w-5" />
@@ -230,7 +225,7 @@ export default function AutomationsPage() {
             </div>
           );
         })}
-      </motion.div>
+      </div>
 
       <DashboardPanel
         noPadding
@@ -252,8 +247,7 @@ export default function AutomationsPage() {
       {mutation.isError && (
         <p
           role="alert"
-          className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-        >
+          className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           Couldn&apos;t save that change.{" "}
           {mutation.error instanceof Error && mutation.error.message.includes("Growth")
             ? "Stale deal reminder requires the Growth plan."
@@ -296,18 +290,12 @@ export default function AutomationsPage() {
             </div>
           </DashboardPanel>
 
-          {SERVER_AUTOMATIONS.map((auto, i) => {
+          {SERVER_AUTOMATIONS.map((auto) => {
             const enabled = toggles?.[auto.id] ?? DEFAULT_AUTOMATIONS[auto.id];
             const runCount = stats?.byType.find((b) => b.type === auto.id)?.count ?? 0;
             const planLocked = auto.id === "staleDeal" && !growthPlanOk;
             return (
-            <motion.div
-              key={auto.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-            >
-              <DashboardPanel noPadding className={enabled ? "border-accent/25 ring-1 ring-accent/10" : ""}>
+              <DashboardPanel key={auto.id} noPadding className={enabled ? "border-accent/25 ring-1 ring-accent/10" : ""}>
                 <div className="flex flex-row items-start gap-4 p-5">
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
@@ -339,8 +327,7 @@ export default function AutomationsPage() {
                     {planLocked && (
                       <Link
                         href="/dashboard/pricing?plan=growth"
-                        className="mt-1 inline-block text-xs font-semibold text-accent hover:underline"
-                      >
+                        className="mt-1 inline-block text-xs font-semibold text-accent hover:underline">
                         Upgrade to Growth →
                       </Link>
                     )}
@@ -353,19 +340,13 @@ export default function AutomationsPage() {
                   />
                 </div>
               </DashboardPanel>
-            </motion.div>
             );
           })}
         </div>
       )}
 
       {/* Automation execution log */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="mt-8"
-      >
+      <div className="mt-8">
         <DashboardPanel
           title="Execution history"
           description="Recent automation runs across your workspace"
@@ -378,16 +359,10 @@ export default function AutomationsPage() {
             </div>
           ) : (
             <div className="space-y-1 max-h-[360px] overflow-y-auto custom-scrollbar">
-              {logs.map((log, i) => {
+              {logs.map((log) => {
                 const Icon = autoTypeIcons[log.automationType] ?? Zap;
                 return (
-                  <motion.div
-                    key={log.id}
-                    initial={{ opacity: 0, x: -6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.02 }}
-                    className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-muted/50"
-                  >
+                  <div key={log.id} className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-muted/50">
                     <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
                       <Icon className="h-3.5 w-3.5" />
                     </div>
@@ -396,13 +371,13 @@ export default function AutomationsPage() {
                       <p className="mt-0.5 text-[10px] text-muted-foreground capitalize">{log.trigger}</p>
                     </div>
                     <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(log.createdAt)}</span>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
           )}
         </DashboardPanel>
-      </motion.div>
+      </div>
     </div>
   );
 }

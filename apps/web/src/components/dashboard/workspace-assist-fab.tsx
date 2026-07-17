@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -67,14 +66,10 @@ const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   "auto-win": CreditCard,
 };
 
-function SetupRow({ action, index }: { action: SetupAction; index: number }) {
+function SetupRow({ action }: { action: SetupAction }) {
   const Icon = ACTION_ICONS[action.id] ?? Settings2;
   return (
-    <motion.li
-      initial={{ opacity: 0, x: 8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.05 }}
-    >
+    <li>
       <Link
         href={action.href}
         onClick={() => {
@@ -103,7 +98,7 @@ function SetupRow({ action, index }: { action: SetupAction; index: number }) {
         </div>
         <ArrowRight className="mt-2 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
       </Link>
-    </motion.li>
+    </li>
   );
 }
 
@@ -214,13 +209,8 @@ export function WorkspaceAssistFab() {
       className="pointer-events-none fixed bottom-5 right-5 z-[55] flex flex-col items-end gap-2 sm:bottom-6 sm:right-6"
       data-assist-mode={showSetup ? "setup" : "help"}
     >
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+      {expanded && (
+          <div
             className="pointer-events-auto w-[min(100vw-2.5rem,380px)] overflow-hidden rounded-2xl border border-border bg-white shadow-[0_20px_60px_rgb(11_28_48/0.16)]"
             onMouseEnter={() => {
               if (collapseTimer.current) clearTimeout(collapseTimer.current);
@@ -243,8 +233,8 @@ export function WorkspaceAssistFab() {
                   <p className="mt-0.5 text-xs text-muted-foreground">{stageHint}</p>
                 </div>
                 <ul className="max-h-[min(50vh,320px)] overflow-y-auto p-2 custom-scrollbar">
-                  {actions.map((action, i) => (
-                    <SetupRow key={action.id} action={action} index={i} />
+                  {actions.map((action) => (
+                    <SetupRow key={action.id} action={action} />
                   ))}
                 </ul>
                 <div className="flex items-center justify-between gap-2 border-t border-border/80 px-4 py-2.5">
@@ -284,11 +274,10 @@ export function WorkspaceAssistFab() {
                 />
               </div>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
 
-      <motion.button
+      <button
         type="button"
         onClick={toggle}
         className={cn(
@@ -299,7 +288,6 @@ export function WorkspaceAssistFab() {
           showSetup && criticalCount > 0 && !expanded && "animate-pulse ring-2 ring-amber-400 ring-offset-2",
           !showSetup && expanded && "ring-2 ring-accent/30 ring-offset-2",
         )}
-        whileTap={{ scale: 0.94 }}
         aria-expanded={expanded}
         aria-label={fabLabel}
       >
@@ -321,7 +309,7 @@ export function WorkspaceAssistFab() {
             !showSetup && "text-accent",
           )}
         />
-      </motion.button>
+      </button>
     </div>
   );
 }

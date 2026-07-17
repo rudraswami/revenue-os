@@ -143,17 +143,17 @@ You'll get a Growvisi workspace invite. Connect your business number, send a tes
       )}
 
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-white p-4">
+        <div className="rounded-2xl border border-border bg-card p-4">
           <Users className="h-6 w-6 text-accent" />
           <p className="mt-2 text-sm font-bold">{t("partner.cardHumans")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("partner.cardHumansBody")}</p>
         </div>
-        <div className="rounded-2xl border border-border bg-white p-4">
+        <div className="rounded-2xl border border-border bg-card p-4">
           <Sparkles className="h-6 w-6 text-accent" />
           <p className="mt-2 text-sm font-bold">{t("partner.cardAi")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("partner.cardAiBody")}</p>
         </div>
-        <div className="rounded-2xl border border-border bg-white p-4">
+        <div className="rounded-2xl border border-border bg-card p-4">
           <Zap className="h-6 w-6 text-accent" />
           <p className="mt-2 text-sm font-bold">{t("partner.cardIndia")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("partner.cardIndiaBody")}</p>

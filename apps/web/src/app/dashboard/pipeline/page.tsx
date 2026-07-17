@@ -14,13 +14,13 @@ import { Button } from "@/components/ui/button";
 import { apiDownload, apiFetch } from "@/lib/api-client";
 import { CTA } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
-import { cn } from "@/lib/utils";
 import type { LeadStage } from "@growvisi/shared";
 import { Activity, Download, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
+import { FilterChip } from "@/components/ui/filter-chip";
 
 const STAGES: LeadStage[] = [
   "NEW",
@@ -337,19 +337,13 @@ export default function PipelinePage() {
 
           <div className="mb-4 flex flex-wrap gap-2">
             {FILTER_CHIPS.map((chip) => (
-              <button
+              <FilterChip
                 key={chip.label}
-                type="button"
+                active={filter === chip.id}
                 onClick={() => setFilter(chip.id)}
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                  filter === chip.id
-                    ? "bg-accent text-white"
-                    : "bg-[#f8f9ff] text-muted-foreground hover:bg-[#ecfdf5] hover:text-accent",
-                )}
               >
                 {chip.label}
-              </button>
+              </FilterChip>
             ))}
           </div>
 
