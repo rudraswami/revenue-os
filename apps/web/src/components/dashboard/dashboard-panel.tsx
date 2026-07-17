@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export function DashboardPanel({
@@ -12,7 +11,6 @@ export function DashboardPanel({
   className,
   contentClassName,
   noPadding,
-  delay = 0,
 }: {
   title?: string;
   description?: string;
@@ -21,30 +19,28 @@ export function DashboardPanel({
   className?: string;
   contentClassName?: string;
   noPadding?: boolean;
+  /** @deprecated Motion delay removed — kept for call-site compatibility. */
   delay?: number;
 }) {
   return (
-    <motion.div
+    <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-border bg-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]",
+        "elev-1 overflow-hidden rounded-2xl bg-card",
         className,
       )}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       {(title || action) && (
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/80 bg-background/60 px-5 py-4">
           <div>
-            {title && <h3 className="text-[15px] font-semibold text-foreground">{title}</h3>}
+            {title && <h3 className="text-sm font-semibold text-foreground md:text-[15px]">{title}</h3>}
             {description && (
-              <p className="mt-0.5 text-[13px] text-muted-foreground">{description}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground md:text-[13px]">{description}</p>
             )}
           </div>
           {action}
         </div>
       )}
       <div className={cn(!noPadding && "p-5", contentClassName)}>{children}</div>
-    </motion.div>
+    </div>
   );
 }

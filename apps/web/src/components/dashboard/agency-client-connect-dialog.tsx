@@ -1,9 +1,18 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { formatMessage } from "@/lib/i18n/format-message";
@@ -126,49 +135,35 @@ export function AgencyClientConnectDialog({
     setError(null);
   }
 
-  if (!open) return null;
-
   const embeddedLive = config?.embeddedSignupLive ?? false;
   const busy = phase === "waiting_meta" || phase === "saving";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        className="w-full max-w-lg rounded-2xl border border-border bg-white p-5 shadow-xl"
-        role="dialog"
-        aria-labelledby="agency-connect-title"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 id="agency-connect-title" className="text-base font-bold">
-              {formatMessage(t("agency.connect.title"), { name: clientName })}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("agency.connect.subtitle")}</p>
-          </div>
-          <button
-            type="button"
-            className="rounded-lg p-1 text-muted-foreground hover:bg-muted"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="mt-5">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) handleClose();
+      }}
+    >
+      <DialogContent size="md" showClose={!busy}>
+        <DialogHeader>
+          <DialogTitle>
+            {formatMessage(t("agency.connect.title"), { name: clientName })}
+          </DialogTitle>
+          <DialogDescription>{t("agency.connect.subtitle")}</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
           {phase === "done" ? (
             <div className="space-y-4">
-              <p className="text-sm font-medium text-[#128C7E]">
+              <p className="text-sm font-medium text-whatsapp">
                 {formatMessage(t("agency.connect.done"), { name: clientName })}
               </p>
-              <Button className="rounded-xl" onClick={handleClose}>
-                {t("agency.connect.doneBtn")}
-              </Button>
+              <Button onClick={handleClose}>{t("agency.connect.doneBtn")}</Button>
             </div>
           ) : (
             <div className="space-y-4">
               {error && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {error}
                 </div>
               )}
@@ -180,7 +175,7 @@ export function AgencyClientConnectDialog({
                   <WhatsappConnectPathPicker value={connectPath} onChange={setConnectPath} />
 
                   <Button
-                    className="h-11 w-full gap-2 rounded-xl bg-[#1877F2] hover:bg-[#166FE0]"
+                    className="h-11 w-full gap-2 bg-[#1877F2] hover:bg-[#166FE0]"
                     disabled={busy}
                     onClick={() => void handleFacebookConnect()}
                   >
@@ -191,13 +186,13 @@ export function AgencyClientConnectDialog({
                         ? t("agency.connect.saving")
                         : t("agency.connect.continueFacebook")}
                   </Button>
-                  <p className="text-[11px] text-muted-foreground">{t("agency.connect.metaFinishHint")}</p>
+                  <p className="text-xs text-muted-foreground">{t("agency.connect.metaFinishHint")}</p>
                 </>
               )}
             </div>
           )}
-        </div>
-      </div>
-    </div>
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -13,6 +13,7 @@ import {
   type InboxListScope,
 } from "@/lib/i18n/conversations-copy";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { FilterChip } from "@/components/ui/filter-chip";
 import { cn } from "@/lib/utils";
 
 export interface InboxConversationRow {
@@ -121,10 +122,10 @@ export function InboxConversationList({
       <div className="shrink-0 border-b border-border/80 bg-white px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+            <p className="text-xs font-semibold uppercase tracking-wider text-accent">
               {copy.messagingEyebrow}
             </p>
-            <h1 className="text-base font-bold tracking-tight">{t("nav.conversations")}</h1>
+            <h1 className="text-xl font-bold tracking-tight md:text-2xl">{t("nav.conversations")}</h1>
           </div>
           <div className="flex items-center gap-1.5">
             {hasWhatsapp && (
@@ -189,22 +190,15 @@ export function InboxConversationList({
                       ? queueCounts?.unassigned
                       : undefined;
               return (
-                <button
+                <FilterChip
                   key={id}
-                  type="button"
+                  active={active}
+                  attention={id === "handoff"}
+                  count={count}
                   onClick={() => onListFilterChange(id)}
-                  className={cn(
-                    "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
-                    active
-                      ? id === "handoff"
-                        ? "bg-amber-600 text-white shadow-sm"
-                        : "bg-accent text-white shadow-sm"
-                      : "bg-muted/80 text-muted-foreground hover:bg-muted",
-                  )}
                 >
                   {filterLabel[id]}
-                  {count != null && count > 0 ? ` · ${count}` : ""}
-                </button>
+                </FilterChip>
               );
             })}
           </div>

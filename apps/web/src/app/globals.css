@@ -29,7 +29,6 @@
   --width-marketing: 72rem;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
   --radius-lg: 1rem;
   --radius-md: 0.75rem;
   --radius-sm: 0.5rem;
@@ -106,7 +105,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dashboard-hero {
-  @apply mb-8 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-white via-white to-bento-mint/40 p-6 shadow-[0_4px_20px_rgb(11_28_48/0.05)] md:p-8;
+  @apply mb-8 overflow-hidden rounded-2xl border border-border bg-card p-6 md:p-8;
+  box-shadow: 0 1px 3px rgb(11 28 48 / 0.08);
 }
 
 .dashboard-quick-link {
@@ -139,7 +139,18 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .status-pill {
-  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide;
+}
+
+/* Design system type scale helpers */
+.text-caption {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+}
+.text-label {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 /* Marketing + app primary CTA */
@@ -312,7 +323,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 @media (prefers-reduced-motion: reduce) {
   .marketing-aurora,
-  .marketing-shimmer::after {
-    animation: none;
+  .marketing-shimmer::after,
+  .hero-live-border,
+  .bar-animate,
+  .typing-dot {
+    animation: none !important;
+  }
+  .dashboard-quick-link:hover,
+  .card-interactive:hover,
+  .elev-2:hover,
+  .auth-submit:hover:not(:disabled),
+  .btn-primary:hover {
+    transform: none !important;
   }
 }

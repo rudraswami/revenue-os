@@ -3,8 +3,17 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MessageSquarePlus, X } from "lucide-react";
+import { Loader2, MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { apiFetch, toUserMessage } from "@/lib/api-client";
@@ -59,7 +68,7 @@ function Field({
     <label className="block space-y-1.5">
       <span className="text-xs font-semibold text-foreground">{label}</span>
       {children}
-      {hint ? <span className="block text-[11px] leading-snug text-muted-foreground">{hint}</span> : null}
+      {hint ? <span className="block text-xs leading-snug text-muted-foreground">{hint}</span> : null}
     </label>
   );
 }
@@ -84,7 +93,6 @@ export function OutboundCompose({
   const [languageCode, setLanguageCode] = useState("en");
   const [templateParam, setTemplateParam] = useState("");
   const [templateVarCount, setTemplateVarCount] = useState(0);
-  /** Template is required for first outreach; session = free text inside Meta’s 24h window. */
   const [mode, setMode] = useState<"template" | "session">("template");
   const [error, setError] = useState<string | null>(null);
 
@@ -93,7 +101,8 @@ export function OutboundCompose({
     [dialCode, nationalNumber],
   );
   const phonePreview = formatPreview(dialCode, nationalNumber);
-  const phoneReady = fullPhone.length >= 10 && fullPhone.length <= 15 && digitsOnly(nationalNumber).length >= 7;
+  const phoneReady =
+    fullPhone.length >= 10 && fullPhone.length <= 15 && digitsOnly(nationalNumber).length >= 7;
 
   function resetForm() {
     setDialCode("91");
@@ -136,51 +145,39 @@ export function OutboundCompose({
     },
   });
 
-  if (!open) return null;
-
   const canSend =
     phoneReady &&
     !sendMut.isPending &&
     (mode === "template" ? Boolean(templateName.trim()) : Boolean(content.trim()));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="outbound-title"
-        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-border bg-white shadow-2xl sm:rounded-2xl"
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <DialogContent
+        size="md"
+        className="max-sm:top-auto max-sm:bottom-0 max-sm:max-h-[92vh] max-sm:translate-y-0 max-sm:rounded-b-none"
       >
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/80 px-5 py-4">
-          <div className="flex min-w-0 items-start gap-3">
+        <DialogHeader className="pr-12">
+          <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
               <MessageSquarePlus className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <h3 id="outbound-title" className="text-base font-bold tracking-tight">
-                {copy.newOutboundTitle}
-              </h3>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              <DialogTitle>{copy.newOutboundTitle}</DialogTitle>
+              <DialogDescription className="mt-0.5 text-xs">
                 {copy.newOutboundHint}
-              </p>
+              </DialogDescription>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        </DialogHeader>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+        <DialogBody className="space-y-5">
           <div className="space-y-3">
-            <Field
-              label={copy.outboundPhoneLabel}
-              hint={copy.outboundPhoneHint}
-            >
+            <Field label={copy.outboundPhoneLabel} hint={copy.outboundPhoneHint}>
               <div className="flex gap-2">
                 <Select
                   value={dialCode}
@@ -196,9 +193,7 @@ export function OutboundCompose({
                 </Select>
                 <Input
                   value={nationalNumber}
-                  onChange={(e) =>
-                    setNationalNumber(normalizeNational(dialCode, e.target.value))
-                  }
+                  onChange={(e) => setNationalNumber(normalizeNational(dialCode, e.target.value))}
                   placeholder={dialCode === "91" ? "98765 43210" : "Mobile number"}
                   inputMode="tel"
                   autoComplete="tel-national"
@@ -208,7 +203,7 @@ export function OutboundCompose({
               </div>
             </Field>
             {digitsOnly(nationalNumber).length > 0 && (
-              <p className="text-[11px] font-medium tabular-nums text-muted-foreground">
+              <p className="text-xs font-medium tabular-nums text-muted-foreground">
                 Sends to <span className="text-foreground">{phonePreview}</span>
               </p>
             )}
@@ -233,7 +228,7 @@ export function OutboundCompose({
                   "rounded-xl border px-3 py-2.5 text-left transition",
                   mode === "template"
                     ? "border-accent bg-accent/5 ring-1 ring-accent/30"
-                    : "border-border bg-white hover:bg-muted/40",
+                    : "border-border bg-card hover:bg-muted/40",
                 )}
               >
                 <p className="text-xs font-bold text-foreground">{copy.outboundModeTemplate}</p>
@@ -248,7 +243,7 @@ export function OutboundCompose({
                   "rounded-xl border px-3 py-2.5 text-left transition",
                   mode === "session"
                     ? "border-accent bg-accent/5 ring-1 ring-accent/30"
-                    : "border-border bg-white hover:bg-muted/40",
+                    : "border-border bg-card hover:bg-muted/40",
                 )}
               >
                 <p className="text-xs font-bold text-foreground">{copy.outboundModeSession}</p>
@@ -270,10 +265,7 @@ export function OutboundCompose({
                 onVariableCountChange={setTemplateVarCount}
               />
               {templateVarCount > 0 && (
-                <Field
-                  label={copy.outboundTemplateVarLabel}
-                  hint={copy.outboundTemplateVarHint}
-                >
+                <Field label={copy.outboundTemplateVarLabel} hint={copy.outboundTemplateVarHint}>
                   <Input
                     value={templateParam}
                     onChange={(e) => setTemplateParam(e.target.value)}
@@ -290,7 +282,7 @@ export function OutboundCompose({
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Type your message…"
                 rows={4}
-                className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
               />
             </Field>
           )}
@@ -309,18 +301,13 @@ export function OutboundCompose({
               )}
             </div>
           )}
-        </div>
+        </DialogBody>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border/80 bg-[#f8f9ff]/80 px-5 py-3.5">
-          <Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            className="rounded-xl bg-accent hover:bg-accent-hover"
-            onClick={() => sendMut.mutate()}
-            disabled={!canSend}
-          >
+          <Button type="button" onClick={() => sendMut.mutate()} disabled={!canSend}>
             {sendMut.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…
@@ -329,8 +316,8 @@ export function OutboundCompose({
               "Send message"
             )}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

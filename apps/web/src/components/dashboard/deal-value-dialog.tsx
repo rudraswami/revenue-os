@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 export function DealValueDialog({
@@ -21,43 +30,42 @@ export function DealValueDialog({
 }) {
   const [raw, setRaw] = useState("");
 
-  if (!open) return null;
-
   const initial =
     raw ||
     (currentValueCents != null ? String(Math.round(currentValueCents / 100)) : "");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        className="w-full max-w-sm rounded-2xl border border-border bg-white p-5 shadow-xl"
-        role="dialog"
-        aria-labelledby="deal-value-title"
-      >
-        <h2 id="deal-value-title" className="text-base font-bold">
-          Deal value
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {leadName ? `For ${leadName}. ` : ""}
-          Track pipeline ₹ — used in revenue metrics.
-        </p>
-
-        <div className="relative mt-3">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-            ₹
-          </span>
-          <Input
-            value={initial}
-            onChange={(e) => setRaw(e.target.value.replace(/[^\d,]/g, ""))}
-            placeholder="e.g. 5000"
-            className="h-10 pl-7 text-sm"
-            inputMode="numeric"
-            autoFocus
-          />
-        </div>
-
-        <div className="mt-4 flex justify-between gap-2">
-          {currentValueCents != null && (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onCancel();
+      }}
+    >
+      <DialogContent size="sm" showClose={false}>
+        <DialogHeader>
+          <DialogTitle>Deal value</DialogTitle>
+          <DialogDescription>
+            {leadName ? `For ${leadName}. ` : ""}
+            Track pipeline ₹ — used in revenue metrics.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              ₹
+            </span>
+            <Input
+              value={initial}
+              onChange={(e) => setRaw(e.target.value.replace(/[^\d,]/g, ""))}
+              placeholder="e.g. 5000"
+              className="h-10 pl-7 text-sm"
+              inputMode="numeric"
+              autoFocus
+            />
+          </div>
+        </DialogBody>
+        <DialogFooter className="justify-between">
+          {currentValueCents != null ? (
             <Button
               type="button"
               variant="ghost"
@@ -68,8 +76,10 @@ export function DealValueDialog({
             >
               Clear value
             </Button>
+          ) : (
+            <span />
           )}
-          <div className="ml-auto flex gap-2">
+          <div className="flex gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={loading}>
               Cancel
             </Button>
@@ -91,8 +101,8 @@ export function DealValueDialog({
               Save
             </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

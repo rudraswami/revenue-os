@@ -20,6 +20,7 @@ import { ReturnToWorkBanner } from "@/components/dashboard/return-to-work-banner
 import { WorkspaceOpsTruthStrip } from "@/components/dashboard/workspace-ops-truth-strip";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
@@ -152,21 +153,20 @@ export default function DashboardPage() {
   return (
     <div className="dashboard-page">
       <div className="dashboard-hero">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-accent">{EYEBROW.overview}</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">{timeGreeting(user?.name)}</h1>
-            <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-              Priorities, pipeline ₹, and team activity — one view.
-            </p>
-          </div>
-          <Button asChild size="sm" className="shrink-0 gap-1.5 rounded-xl">
-            <Link href="/dashboard/inbox">
-              {CTA.openConversations}
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        </div>
+        <PageHeader
+          className="mb-0"
+          eyebrow={EYEBROW.overview}
+          title={timeGreeting(user?.name)}
+          description="Priorities, pipeline ₹, and team activity — one view."
+          action={
+            <Button asChild size="sm" className="shrink-0 gap-1.5">
+              <Link href="/dashboard/inbox">
+                {CTA.openConversations}
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          }
+        />
       </div>
 
       {(funnelError || convError) && !isLoading && (
