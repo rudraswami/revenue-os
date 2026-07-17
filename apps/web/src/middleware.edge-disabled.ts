@@ -1,3 +1,13 @@
+/**
+ * DISABLED (2026-07-17) — Do not rename back to middleware.ts until Vercel Edge
+ * stops failing with EnvFileReadError → MIDDLEWARE_INVOCATION_FAILED on
+ * www.growvisi.in. Confirmed: matcher routes 500; non-matcher routes (/agencies)
+ * return 200. Middleware source never reads process.env; failure is platform
+ * env-file packaging before our code runs.
+ *
+ * Auth redirects remain via AuthGuard / GuestGuard in app layouts.
+ * Restore by renaming this file to `src/middleware.ts` after a healthy Edge deploy.
+ */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
