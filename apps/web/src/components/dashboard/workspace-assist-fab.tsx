@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { SetupHelpPanel } from "@/components/support/setup-help-panel";
 import { usePendingSetupActions, type SetupAction } from "@/hooks/use-pending-setup-actions";
+import { useActivationMilestoneTracking } from "@/hooks/use-activation-milestone-tracking";
 import { resolveHelpContext, type HelpFabContext } from "@/lib/setup-help-content";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { formatMessage } from "@/lib/i18n/format-message";
@@ -34,6 +35,15 @@ const HIDE_ASSIST_PATHS = [/^\/dashboard\/inbox(?:\/|$)/];
 const HELP_SURFACE_PATHS = [/^\/dashboard\/connection(?:\/|$)/, /^\/dashboard\/pricing(?:\/|$)/];
 
 type PanelView = "setup" | "help";
+
+const OPS_STAGE_HINT: Record<string, string> = {
+  setup: "Connect WhatsApp to start",
+  activating: "Get first AI classify",
+  activated: "Take one pipeline action",
+  acting: "Convert while value is fresh",
+  paying: "Paying workspace",
+  at_risk: "Trial ending — pick a plan",
+};
 
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "trial-ended": CreditCard,
@@ -100,8 +110,12 @@ export function WorkspaceAssistFab() {
   const assistDeepLink = searchParams.get("assist") === "help";
   const helpContext: HelpFabContext = resolveHelpContext(pathname, settingsTab) ?? "general";
 
-  const { actions, criticalCount, totalCount, allComplete, isLoading } = usePendingSetupActions();
+  useActivationMilestoneTracking();
+  const { actions, criticalCount, totalCount, allComplete, opsStage, isLoading } =
+    usePendingSetupActions();
   const showSetup = !isLoading && !allComplete && totalCount > 0;
+  const stageHint =
+    opsStage && OPS_STAGE_HINT[opsStage] ? OPS_STAGE_HINT[opsStage] : t("setupDock.subtitle");
 
   const [expanded, setExpanded] = useState(false);
   const [view, setView] = useState<PanelView>("setup");
@@ -206,7 +220,7 @@ export function WorkspaceAssistFab() {
                       ? t("setupDock.stepsOne")
                       : formatMessage(t("setupDock.stepsMany"), { count: totalCount })}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{t("setupDock.subtitle")}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{stageHint}</p>
                 </div>
                 <ul className="max-h-[min(50vh,320px)] overflow-y-auto p-2 custom-scrollbar">
                   {actions.map((action, i) => (

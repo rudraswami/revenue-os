@@ -568,7 +568,7 @@ export const messages = {
       ctaMetaAgent: "Meta Business Agent (optional)",
     },
     setupDock: {
-      eyebrow: "Setup",
+      eyebrow: "Next steps",
       stepsOne: "1 step remaining",
       stepsMany: "{count} steps remaining",
       subtitle: "Finish these to run Growvisi on WhatsApp revenue",
@@ -1231,7 +1231,7 @@ export const messages = {
       ctaMetaAgent: "Meta Business Agent (वैकल्पिक)",
     },
     setupDock: {
-      eyebrow: "सेटअप",
+      eyebrow: "अगले कदम",
       stepsOne: "1 कदम बाकी",
       stepsMany: "{count} कदम बाकी",
       subtitle: "WhatsApp राजस्व के लिए ये पूरे करें",

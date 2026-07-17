@@ -27,7 +27,10 @@ export type ActivationEvent =
   | "conversion_after_proof_click"
   | "team_habit_invite_view"
   | "team_habit_invite_dismiss"
-  | "team_habit_invite_click";
+  | "team_habit_invite_click"
+  | "activation_ops_truth_view"
+  | "activation_ops_truth_upgrade_click"
+  | "activation_ops_paid";
 
 declare global {
   interface Window {

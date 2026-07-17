@@ -15,12 +15,9 @@ import { HomeRecommendationsPanel } from "@/components/dashboard/home-recommenda
 import { HomeConnectionHealthBanner } from "@/components/dashboard/home-connection-health-banner";
 import { HomeGoLiveBanner } from "@/components/dashboard/home-go-live-banner";
 import { HomeAgencyPortfolioBanner } from "@/components/dashboard/home-agency-portfolio-banner";
-import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
 import { RevenueSetupStrip } from "@/components/dashboard/revenue-setup-strip";
 import { ReturnToWorkBanner } from "@/components/dashboard/return-to-work-banner";
-import { ConversionAfterProofBanner } from "@/components/dashboard/conversion-after-proof-banner";
-import { TeamHabitInviteBanner } from "@/components/dashboard/team-habit-invite-banner";
-import { ActivationFunnelCard } from "@/components/dashboard/activation-funnel-card";
+import { WorkspaceOpsTruthStrip } from "@/components/dashboard/workspace-ops-truth-strip";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
 import { Button } from "@/components/ui/button";
@@ -200,11 +197,8 @@ export default function DashboardPage() {
       )}
 
       <HomeAgencyPortfolioBanner />
-      <GettingStartedCard />
-      <ActivationFunnelCard />
+      <WorkspaceOpsTruthStrip />
       <ReturnToWorkBanner />
-      <TeamHabitInviteBanner />
-      <ConversionAfterProofBanner />
       <HomeGoLiveBanner />
       <HomeConnectionHealthBanner />
       {onboardingProgress?.whatsappConnected ? (

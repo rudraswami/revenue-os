@@ -20,6 +20,12 @@ type OnboardingProgress = {
   firstInbound: boolean;
   aiClassified: boolean;
   pipelineMoved: boolean;
+  ops?: {
+    stage: string;
+    paid: boolean;
+    firstValue: boolean;
+    firstAction: boolean;
+  };
 };
 
 export function usePendingSetupActions() {
@@ -104,7 +110,7 @@ export function usePendingSetupActions() {
         actions.push({
           id: "connect-whatsapp",
           title: "Connect WhatsApp",
-          description: "Link your business line in Settings — embedded signup or Meta token.",
+          description: "Link your business line with Meta Embedded Signup in Settings.",
           href: "/dashboard/settings?tab=whatsapp",
           priority: "critical",
           order: 10,
@@ -159,6 +165,7 @@ export function usePendingSetupActions() {
       if (
         ent?.hasAccess &&
         ent.planId === "trial" &&
+        !progress.ops?.paid &&
         progress.aiClassified &&
         !trialEnded &&
         !trialEndsSoon
@@ -237,6 +244,8 @@ export function usePendingSetupActions() {
         criticalCount,
         totalCount: actions.length,
         allComplete: actions.length === 0,
+        opsStage: progress.ops?.stage ?? null,
+        opsPaid: !!progress.ops?.paid,
       };
     },
     enabled: !!token,
@@ -249,6 +258,8 @@ export function usePendingSetupActions() {
     criticalCount: query.data?.criticalCount ?? 0,
     totalCount: query.data?.totalCount ?? 0,
     allComplete: query.data?.allComplete ?? true,
+    opsStage: query.data?.opsStage ?? null,
+    opsPaid: query.data?.opsPaid ?? false,
     isLoading: query.isLoading && !query.data,
   };
 }

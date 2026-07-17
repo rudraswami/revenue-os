@@ -429,6 +429,11 @@ export class OrganizationsService {
       pipelineMovedLead,
       goLive,
       org,
+      inboundCount,
+      classifiedCount,
+      outboundCount,
+      teamMembers,
+      access,
     ] = await Promise.all([
       this.prisma.whatsappAccount.findFirst({
         where: { organizationId, isActive: true },
@@ -461,6 +466,17 @@ export class OrganizationsService {
         where: { id: organizationId },
         select: { settings: true },
       }),
+      this.prisma.message.count({
+        where: { organizationId, direction: "INBOUND" },
+      }),
+      this.prisma.lead.count({
+        where: { organizationId, lastClassifiedAt: { not: null } },
+      }),
+      this.prisma.message.count({
+        where: { organizationId, direction: "OUTBOUND" },
+      }),
+      this.prisma.organizationMember.count({ where: { organizationId } }),
+      this.entitlements.getAccess(organizationId),
     ]);
 
     const steps = {
@@ -493,6 +509,61 @@ export class OrganizationsService {
         : null,
     };
 
+    const isPaid =
+      access.planId !== "trial" &&
+      (access.status === "ACTIVE" || access.status === "PAST_DUE");
+    const firstActionDone = steps.pipelineMoved || outboundCount > 0;
+    const firstValueDone = steps.aiClassified;
+
+    let opsStage: "setup" | "activating" | "activated" | "acting" | "paying" | "at_risk" =
+      "setup";
+    if (!steps.whatsappConnected) {
+      opsStage = "setup";
+    } else if (!firstValueDone) {
+      opsStage = "activating";
+    } else if (isPaid) {
+      opsStage = "paying";
+    } else if (
+      access.trialEndsAt &&
+      new Date(access.trialEndsAt).getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000
+    ) {
+      opsStage = "at_risk";
+    } else if (firstActionDone) {
+      opsStage = "acting";
+    } else {
+      opsStage = "activated";
+    }
+
+    const daysSinceConnect =
+      whatsappAccount?.createdAt != null
+        ? Math.max(
+            0,
+            Math.floor(
+              (Date.now() - whatsappAccount.createdAt.getTime()) / (24 * 60 * 60 * 1000),
+            ),
+          )
+        : null;
+
+    const ops = {
+      stage: opsStage,
+      activated: allComplete,
+      firstValue: firstValueDone,
+      firstAction: firstActionDone,
+      paid: isPaid,
+      planId: access.planId,
+      subscriptionStatus: access.status,
+      hasAccess: access.hasAccess,
+      trialEndsAt: access.trialEndsAt,
+      requiresUpgrade: access.requiresUpgrade,
+      daysSinceConnect,
+      proof: {
+        inboundMessages: inboundCount,
+        classifiedLeads: classifiedCount,
+        outboundMessages: outboundCount,
+        teamMembers,
+      },
+    };
+
     // Persist activation snapshot for CS / funnel analytics (never wipe prior keys).
     const prevSettings =
       org?.settings && typeof org.settings === "object"
@@ -509,6 +580,10 @@ export class OrganizationsService {
       ),
       completedCount,
       allComplete,
+      opsStage,
+      paid: isPaid,
+      firstValue: firstValueDone,
+      firstAction: firstActionDone,
       updatedAt: new Date().toISOString(),
     };
     const activationChanged =
@@ -520,6 +595,10 @@ export class OrganizationsService {
         ),
         completedCount,
         allComplete,
+        opsStage,
+        paid: isPaid,
+        firstValue: firstValueDone,
+        firstAction: firstActionDone,
       });
 
     if (activationChanged) {
@@ -543,6 +622,7 @@ export class OrganizationsService {
       funnel: buildActivationFunnelMetrics(milestones),
       nextAction: next,
       goLive,
+      ops,
     };
   }
 }
