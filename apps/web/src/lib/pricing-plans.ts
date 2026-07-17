@@ -54,11 +54,11 @@ export const PRICING_PLANS: PricingPlan[] = [
     forWho: OUTCOME_TIERS.operator.forWho,
     price: OUTCOME_TIERS.operator.priceInr,
     features: [
+      "Agency hub · up to 15 client workspaces",
       "Up to 50 numbers · 50 team members",
-      "1,00,000 leads / month · 15 client workspaces",
+      "1,00,000 leads / month",
       "Morning digest on email or WhatsApp (Hindi)",
       "API keys + outbound webhooks",
-      "Partner install kit for Meta + Growvisi stack",
     ],
     popular: false,
     custom: false,

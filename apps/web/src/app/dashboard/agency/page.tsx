@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowRight,
+  BookOpen,
   Building2,
   Loader2,
   Plus,
@@ -135,9 +136,7 @@ export default function AgencyPage() {
             <Building2 className="h-10 w-10 text-accent" />
             <h3 className="mt-4 text-lg font-bold">{t("agency.enableAgency")}</h3>
             <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              {status?.canEnableAgency
-                ? "Pro plan unlocks up to 15 client workspaces — each with its own WhatsApp, pipeline, and team."
-                : t("agency.proRequired")}
+              {status?.canEnableAgency ? t("agency.enableHint") : t("agency.proRequired")}
             </p>
             {status?.canEnableAgency ? (
               <Button
@@ -153,15 +152,39 @@ export default function AgencyPage() {
             ) : (
               <Button className="mt-4 rounded-xl" asChild>
                 <Link href="/dashboard/pricing?plan=pro">
-                  Upgrade to Pro
+                  Upgrade to Operator
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             )}
+            <Button asChild variant="ghost" size="sm" className="mt-3 gap-1.5 rounded-xl text-muted-foreground">
+              <Link href="/dashboard/partner">
+                <BookOpen className="h-3.5 w-3.5" />
+                {t("agency.installKitCta")}
+              </Link>
+            </Button>
           </div>
         </DashboardPanel>
       ) : (
         <>
+          <div className="mb-6 rounded-2xl border border-[#dce9ff] bg-gradient-to-r from-[#f8f9ff] to-white px-4 py-3.5 sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{t("agency.installKitTitle")}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t("agency.installKitBody")}</p>
+                </div>
+              </div>
+              <Button asChild size="sm" variant="outline" className="h-8 shrink-0 gap-1.5 rounded-xl">
+                <Link href="/dashboard/partner">
+                  {t("agency.installKitCta")}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
             <p className="text-sm text-muted-foreground">
               {status.clientCount} / {status.clientLimit} {t("agency.clientsUsed")}

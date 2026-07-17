@@ -33,6 +33,13 @@ export default function ConnectionPage() {
           Open WhatsApp settings →
         </Link>
       </p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Installing Growvisi for a client? Use the{" "}
+        <Link href="/dashboard/partner" className="font-semibold text-accent hover:underline">
+          Partner install kit
+        </Link>{" "}
+        from Agency hub when you need the playbook — it is not in the main nav for every workspace.
+      </p>
     </div>
   );
 }

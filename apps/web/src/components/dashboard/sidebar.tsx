@@ -51,14 +51,15 @@ type NavGroup = {
   }>;
 };
 
-function buildNavGroups(opts: { showAgency: boolean }): NavGroup[] {
+function buildNavGroups(opts: { showAgency: boolean; showPartner: boolean }): NavGroup[] {
   const overviewItems = [
     { href: "/dashboard", labelKey: "nav.home", icon: LayoutDashboard, exact: true },
     ...(opts.showAgency
-      ? [
-          { href: "/dashboard/agency", labelKey: "nav.agency", icon: Building2 },
-          { href: "/dashboard/partner", labelKey: "nav.partner", icon: HelpCircle },
-        ]
+      ? [{ href: "/dashboard/agency", labelKey: "nav.agency", icon: Building2 }]
+      : []),
+    // Partner kit is enablement, not a daily job — only after Agency hub is on.
+    ...(opts.showPartner
+      ? [{ href: "/dashboard/partner", labelKey: "nav.partner", icon: HelpCircle }]
       : []),
   ];
 
@@ -327,7 +328,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   });
 
   const navGroups = buildNavGroups({
+    // Operator (Pro) can discover Agency hub; Partner kit only after hub is enabled.
     showAgency: !!(agencyStatus?.isAgency || agencyStatus?.canEnableAgency),
+    showPartner: !!agencyStatus?.isAgency,
   });
 
   const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;

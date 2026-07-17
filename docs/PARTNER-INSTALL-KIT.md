@@ -48,13 +48,15 @@
 
 ## 3. Agency mode (Pro)
 
-Agencies on **Pro** can enable **Agency mode** at `/dashboard/agency`:
+Agencies on **Operator (Pro)** can enable **Agency hub** at `/dashboard/agency`:
 
 - Up to **15 client workspaces** per hub
 - Agency admins auto-added to each client org
 - Per-client health: WhatsApp, pipeline ₹, handoffs, unread
 
 Each client keeps isolated billing and data.
+
+**Partner install kit** lives at `/dashboard/partner` — open from Agency hub when installing a client. It is **not** in the default left nav for every SMB workspace; after Agency hub is enabled it also appears under Overview.
 
 **Per-client health:** Agency dashboard and Partner install kit show connection status (Live / Setup / Token / Not connected), go-live %, and phone number.
 

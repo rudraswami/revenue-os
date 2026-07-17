@@ -47,7 +47,7 @@ export const OUTCOME_TIERS = {
     name: "Operator",
     priceInr: 5999,
     promise: "Run many WhatsApp businesses from one hub",
-    forWho: "Agencies & multi-brand ops",
+    forWho: "Agencies & multi-location teams · includes Agency hub",
   },
 } as const;
 

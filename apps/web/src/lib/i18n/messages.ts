@@ -5,7 +5,7 @@ export const messages = {
     nav: {
       home: "Home",
       connection: "Connection",
-      agency: "Clients",
+      agency: "Agency hub",
       partner: "Partner kit",
       conversations: "Conversations",
       contacts: "Contacts",
@@ -31,22 +31,29 @@ export const messages = {
       cancel: "Cancel",
       switchClient: "Switch to client",
       addClient: "Add client",
-      enableAgency: "Enable agency mode",
+      enableAgency: "Enable Agency hub",
       language: "Language",
       english: "English",
       hindi: "Hindi",
     },
     agency: {
-      title: "Agency clients",
-      description: "Manage multiple client workspaces from one Pro hub — WhatsApp health, pipeline, and handoffs at a glance.",
+      title: "Agency hub",
+      description:
+        "Client workspaces from one Operator hub — WhatsApp health, pipeline ₹, and handoffs at a glance. For agencies & multi-location teams.",
       empty: "No client workspaces yet",
-      emptyHint: "Add a client to provision a isolated Growvisi workspace you can switch into.",
-      proRequired: "Agency mode requires the Pro plan.",
-      clientsUsed: "clients",
+      emptyHint: "Add a client to provision an isolated Growvisi workspace you can switch into.",
+      proRequired: "Agency hub requires the Operator (Pro) plan.",
+      clientsUsed: "client workspaces",
       connectFacebook: "Connect with Meta",
       switchUseOnboarding: "Open client onboarding",
       continueSetup: "Continue setup",
       tokenNeedsRefresh: "Meta connection needs attention in client workspace.",
+      installKitTitle: "Partner install kit",
+      installKitBody:
+        "Playbook for Meta + Growvisi: who replies, connect WhatsApp, first value, digests. Not a daily nav item — open when installing a client.",
+      installKitCta: "Open install kit",
+      enableHint:
+        "Operator unlocks Agency hub — up to 15 client workspaces, each with its own WhatsApp, pipeline, and team.",
       connect: {
         title: "Connect WhatsApp for {name}",
         subtitle: "Stay in your agency hub — links the client number without switching workspaces.",
@@ -89,10 +96,10 @@ export const messages = {
       goLiveCta: "Continue setup",
       connectionTitle: "WhatsApp connection · {pct}% healthy",
       connectionReview: "Review connection",
-      agencyTitle: "Agency portfolio · {live}/{total} clients live",
+      agencyTitle: "Agency hub · {live}/{total} clients live",
       agencyNeedsAttention: "{count} client(s) need setup or token attention.",
       agencyAllHealthy: "All client WhatsApp lines are healthy.",
-      agencyManage: "Manage clients",
+      agencyManage: "Open Agency hub",
     },
     onboardingPage: {
       step2: "Step 2 of 3",
@@ -106,7 +113,7 @@ export const messages = {
       exploreFirst: "Explore dashboard first",
       exploreHint: " — connect anytime from Connection settings.",
       agencyBanner:
-        "Complete go-live here, then return to Agency clients to monitor portfolio health.",
+        "Complete go-live here, then return to Agency hub to monitor portfolio health.",
       trialBadge: "14-day free trial",
       trialTitle: "No credit card required",
       trialSub: "From ₹999/mo after trial · Cancel anytime",
@@ -229,7 +236,7 @@ export const messages = {
       viewConversation: "View in Conversations",
       optionalSetup: "More setup (optional)",
       goToDashboard: "Go to dashboard",
-      backToAgency: "Back to agency",
+      backToAgency: "Back to Agency hub",
       agencyBanner: "Connecting WhatsApp for",
     },
     whatsappOnboardingFaq: {
@@ -470,7 +477,8 @@ export const messages = {
     },
     partner: {
       title: "Partner install kit",
-      description: "Human Inbox + AI classification — the WhatsApp revenue stack for Indian SMBs.",
+      description:
+        "Install playbook for agencies & Meta partners — human Conversations + AI classification. Reach this from Agency hub when you need it.",
     },
     setupDock: {
       eyebrow: "Setup",
@@ -574,7 +582,7 @@ export const messages = {
     nav: {
       home: "होम",
       connection: "कनेक्शन",
-      agency: "क्लाइंट",
+      agency: "एजेंसी हब",
       partner: "पार्टनर किट",
       conversations: "बातचीत",
       contacts: "संपर्क",
@@ -600,22 +608,29 @@ export const messages = {
       cancel: "रद्द करें",
       switchClient: "क्लाइंट पर जाएं",
       addClient: "क्लाइंट जोड़ें",
-      enableAgency: "एजेंसी मोड चालू करें",
+      enableAgency: "एजेंसी हब चालू करें",
       language: "भाषा",
       english: "English",
       hindi: "हिंदी",
     },
     agency: {
-      title: "एजेंसी क्लाइंट",
-      description: "एक Pro हब से कई क्लाइंट वर्कस्पेस — WhatsApp स्वास्थ्य, पाइपलाइन और हैंडऑफ एक नज़र में।",
+      title: "एजेंसी हब",
+      description:
+        "एक Operator हब से क्लाइंट वर्कस्पेस — WhatsApp स्वास्थ्य, पाइपलाइन ₹ और हैंडऑफ एक नज़र में। एजेंसियों और मल्टी-लोकेशन टीमों के लिए।",
       empty: "अभी कोई क्लाइंट वर्कस्पेस नहीं",
       emptyHint: "क्लाइंट जोड़ें — अलग Growvisi वर्कस्पेस बनेगा जिसमें आप स्विच कर सकते हैं।",
-      proRequired: "एजेंसी मोड के लिए Pro प्लान जरूरी है।",
-      clientsUsed: "क्लाइंट",
+      proRequired: "एजेंसी हब के लिए Operator (Pro) प्लान जरूरी है।",
+      clientsUsed: "क्लाइंट वर्कस्पेस",
       connectFacebook: "Meta से कनेक्ट करें",
       switchUseOnboarding: "क्लाइंट ऑनबोर्डिंग खोलें",
       continueSetup: "सेटअप जारी रखें",
       tokenNeedsRefresh: "क्लाइंट वर्कस्पेस में Meta कनेक्शन पर ध्यान दें।",
+      installKitTitle: "पार्टनर इंस्टॉल किट",
+      installKitBody:
+        "Meta + Growvisi प्लेबुक: कौन जवाब दे, WhatsApp कनेक्ट, पहला मूल्य, डाइजेस्ट। रोज़ की नेव नहीं — क्लाइंट इंस्टॉल करते समय खोलें।",
+      installKitCta: "इंस्टॉल किट खोलें",
+      enableHint:
+        "Operator से एजेंसी हब खुलता है — 15 क्लाइंट वर्कस्पेस तक, हर एक का अपना WhatsApp, पाइपलाइन और टीम।",
       connect: {
         title: "{name} के लिए WhatsApp कनेक्ट करें",
         subtitle: "एजेंसी हब में रहें — वर्कस्पेस स्विच किए बिना क्लाइंट नंबर लिंक करें।",
@@ -658,10 +673,10 @@ export const messages = {
       goLiveCta: "सेटअप जारी रखें",
       connectionTitle: "WhatsApp कनेक्शन · {pct}% स्वस्थ",
       connectionReview: "कनेक्शन देखें",
-      agencyTitle: "एजेंसी पोर्टफोलियो · {live}/{total} क्लाइंट लाइव",
+      agencyTitle: "एजेंसी हब · {live}/{total} क्लाइंट लाइव",
       agencyNeedsAttention: "{count} क्लाइंट को सेटअप या टोकन ध्यान चाहिए।",
       agencyAllHealthy: "सभी क्लाइंट WhatsApp लाइन स्वस्थ हैं।",
-      agencyManage: "क्लाइंट प्रबंधित करें",
+      agencyManage: "एजेंसी हब खोलें",
     },
     onboardingPage: {
       step2: "चरण 2 / 3",
@@ -675,7 +690,7 @@ export const messages = {
       exploreFirst: "पहले डैशबोर्ड देखें",
       exploreHint: " — Connection सेटिंग्स से कभी भी कनेक्ट करें।",
       agencyBanner:
-        "गो-लाइव पूरा करें, फिर Agency clients पर पोर्टफोलियो स्वास्थ्य देखें।",
+        "गो-लाइव पूरा करें, फिर एजेंसी हब पर पोर्टफोलियो स्वास्थ्य देखें।",
       trialBadge: "14-दिन मुफ्त ट्रायल",
       trialTitle: "क्रेडिट कार्ड की जरूरत नहीं",
       trialSub: "ट्रायल के बाद ₹999/माह से · कभी भी रद्द करें",
@@ -798,7 +813,7 @@ export const messages = {
       viewConversation: "Conversations में देखें",
       optionalSetup: "और सेटअप (वैकल्पिक)",
       goToDashboard: "डैशबोर्ड पर जाएँ",
-      backToAgency: "एजेंसी पर वापस",
+      backToAgency: "एजेंसी हब पर वापस",
       agencyBanner: "WhatsApp कनेक्ट कर रहे हैं:",
     },
     whatsappOnboardingFaq: {
@@ -1039,7 +1054,8 @@ export const messages = {
     },
     partner: {
       title: "पार्टनर इंस्टॉल किट",
-      description: "ह्यूमन Inbox + AI वर्गीकरण — भारतीय SMB के लिए WhatsApp राजस्व स्टैक।",
+      description:
+        "एजेंसी और Meta पार्टनर के लिए इंस्टॉल प्लेबुक — ह्यूमन Conversations + AI वर्गीकरण। ज़रूरत पड़ने पर एजेंसी हब से खोलें।",
     },
     setupDock: {
       eyebrow: "सेटअप",

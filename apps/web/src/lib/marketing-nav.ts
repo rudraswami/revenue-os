@@ -115,8 +115,8 @@ export const MARKETING_NAV: NavEntry[] = [
         ...solutionNavItems,
         {
           href: "/agencies",
-          label: "Agencies & partners",
-          description: "Multi-client hub · Operator plan",
+          label: "Agencies & multi-location",
+          description: "Operator plan · Agency hub for client workspaces",
           icon: "network",
         },
       ],
