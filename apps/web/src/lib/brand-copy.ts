@@ -15,6 +15,14 @@ export const HOME_HERO = {
   trialNote: "14-day trial · No card required",
 } as const;
 
+/** Homepage — How it works / The Layer */
+export const HOME_LAYER = {
+  label: "How it works",
+  title: "WhatsApp is the conversation. Growvisi is the deal.",
+  subtitle:
+    "Every message classified. Every reply owned. Every deal tracked in ₹.",
+} as const;
+
 export const CTA = {
   startTrial: "Start 14-day free trial",
   getStarted: "Get started",
