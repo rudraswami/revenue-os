@@ -3,7 +3,6 @@ node_modules
 .turbo
 dist
 .next
-.env
 .env.local
 supabase/.temp
 supabase/.branches
@@ -21,6 +20,9 @@ apps/api/dist
 packages/database/prisma/migrations/**/migration_lock.toml
 .vercel
 .env*.local
+# Track empty root `.env` (Edge placeholder). Secrets stay in .env.local / Vercel.
+.env.*
+!.env
 # Local/Vercel env dumps — never commit secrets or OIDC tokens
 .env.vercel*
 .env.api.*
