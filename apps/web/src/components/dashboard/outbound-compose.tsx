@@ -24,6 +24,10 @@ const DIAL_CODES = [
   { code: "61", label: "Australia +61" },
 ] as const;
 
+function digitsOnly(value: string) {
+  return value.replace(/\D/g, "");
+}
+
 function normalizeNational(dial: string, raw: string) {
   let n = digitsOnly(raw);
   if (n.startsWith("0")) n = n.replace(/^0+/, "");
