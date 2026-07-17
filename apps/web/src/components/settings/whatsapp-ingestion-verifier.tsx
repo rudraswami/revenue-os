@@ -57,8 +57,8 @@ export function WhatsappIngestionVerifier({
         className={cn(
           "rounded-xl border p-5 transition-colors",
           verified
-            ? "border-[#6cf8bb]/40 bg-[#ecfdf5]/60"
-            : "border-border bg-[#f8f9ff]/80",
+            ? "border-[#6cf8bb]/40 bg-bento-mint/60"
+            : "border-border bg-background/80",
         )}
       >
         <div className="flex items-start gap-3">
@@ -80,7 +80,7 @@ export function WhatsappIngestionVerifier({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="rounded-xl border border-border bg-white px-3.5 py-2 text-sm font-semibold text-foreground shadow-sm">
+          <span className="rounded-xl border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-sm">
             {displayPhoneNumber}
           </span>
           <Button

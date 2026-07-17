@@ -37,7 +37,7 @@ export function WhatsappSetupBanner() {
   }
 
   return (
-    <div className="border-b border-primary/15 bg-gradient-to-r from-primary/8 via-[#25D366]/8 to-primary/5 px-4 py-3 md:px-6">
+    <div className="border-b border-border bg-background px-4 py-3 md:px-6">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#25D366]/15 text-[#128C7E]">

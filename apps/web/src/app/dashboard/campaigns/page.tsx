@@ -461,7 +461,7 @@ export default function CampaignsPage() {
                   <select
                     value={whatsappAccountId}
                     onChange={(e) => setWhatsappAccountId(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm"
                     disabled={!canManage}
                   >
                     <option value="">
@@ -541,7 +541,7 @@ export default function CampaignsPage() {
                           type="button"
                           onClick={() => toggleTag(t.id)}
                           className={cn(
-                            "rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
+                            "rounded-full px-2.5 py-1 text-xs font-semibold transition",
                             tagIds.includes(t.id) ? "ring-2 ring-foreground" : "opacity-80",
                           )}
                           style={{ backgroundColor: t.color, color: readableOn(t.color) }}
@@ -568,7 +568,7 @@ export default function CampaignsPage() {
                 </Field>
 
                 {preview && preview.sample.length > 0 && (
-                  <div className="rounded-xl border border-border/80 bg-[#f8f9ff] p-3">
+                  <div className="rounded-xl border border-border/80 bg-background p-3">
                     <p className="text-xs font-semibold text-foreground">
                       Sample contacts ({preview.count} total)
                     </p>
@@ -597,7 +597,7 @@ export default function CampaignsPage() {
                     }}
                   />
                   <div
-                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/80 bg-[#f8f9ff] px-4 py-8 text-center transition hover:border-accent/50"
+                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/80 bg-background px-4 py-8 text-center transition hover:border-accent/50"
                     onClick={() => fileRef.current?.click()}
                     onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
                     role="button"
@@ -614,7 +614,7 @@ export default function CampaignsPage() {
                   </div>
                 </Field>
                 {importRecipients.length > 0 && (
-                  <div className="rounded-xl border border-border/80 bg-white p-3">
+                  <div className="rounded-xl border border-border/80 bg-card p-3">
                     <p className="text-xs font-semibold">First 5 rows</p>
                     <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
                       {importRecipients.slice(0, 5).map((r, i) => (
@@ -719,14 +719,14 @@ export default function CampaignsPage() {
                       <p className="truncate font-semibold text-foreground">{c.name}</p>
                       <span
                         className={cn(
-                          "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                          "rounded-full px-2 py-0.5 text-xs font-semibold",
                           CAMPAIGN_STATUS_BADGE[c.status],
                         )}
                       >
                         {CAMPAIGN_STATUS_LABELS[c.status]}
                       </span>
                       {c.status === "SCHEDULED" && c.scheduledAt && (
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-sky-700">
+                        <span className="flex items-center gap-1 text-xs font-medium text-sky-700">
                           <CalendarClock className="h-3 w-3" />
                           {formatDateTimeIst(c.scheduledAt)}
                         </span>
@@ -751,10 +751,10 @@ export default function CampaignsPage() {
 
       {detailId && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
-          <div className="flex h-full w-full max-w-lg flex-col border-l border-border bg-white shadow-xl">
+          <div className="flex h-full w-full max-w-lg flex-col border-l border-border bg-card shadow-xl">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+                <p className="text-xs font-semibold uppercase tracking-wider text-accent">
                   Campaign detail
                 </p>
                 <h2 className="text-lg font-bold">{detail?.name ?? "Loading…"}</h2>
@@ -848,7 +848,7 @@ export default function CampaignsPage() {
                   </div>
 
                   {detail.templateName && (
-                    <div className="mb-4 rounded-xl border border-border/80 bg-[#f8f9ff] p-3">
+                    <div className="mb-4 rounded-xl border border-border/80 bg-background p-3">
                       <p className="text-xs text-muted-foreground">
                         Template: <strong className="text-foreground">{detail.templateName}</strong>
                         {detail.audienceFilter?.languageCode
@@ -867,7 +867,7 @@ export default function CampaignsPage() {
 
                   {(detail.status === "DRAFT" || detail.status === "FAILED") && (
                     <div className="mb-5 rounded-xl border border-border/80 p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Schedule instead of sending now
                       </p>
                       <Input
@@ -917,7 +917,7 @@ export default function CampaignsPage() {
                           </div>
                           <span
                             className={cn(
-                              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                              "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
                               r.status === "SENT" || r.status === "DELIVERED"
                                 ? "bg-bento-mint text-accent"
                                 : r.status === "FAILED"
@@ -1011,7 +1011,7 @@ export default function CampaignsPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       {children}
@@ -1021,8 +1021,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border/80 bg-[#f8f9ff] px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-xl border border-border/80 bg-background px-3 py-2">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p className="text-sm font-bold">{value}</p>

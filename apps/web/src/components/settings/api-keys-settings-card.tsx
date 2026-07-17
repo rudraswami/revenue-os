@@ -66,7 +66,7 @@ export function ApiKeysSettingsCard() {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bento-mint text-accent">
           <Key className="h-5 w-5" />
         </div>
         <div>
@@ -80,11 +80,11 @@ export function ApiKeysSettingsCard() {
       {newSecret && (
         <div className="rounded-xl border border-accent/30 bg-bento-mint/40 p-3 text-xs">
           <p className="font-semibold text-accent">Copy your key now — it won&apos;t be shown again.</p>
-          <code className="mt-2 block break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11px]">
+          <code className="mt-2 block break-all rounded-lg bg-card px-2 py-1.5 font-mono text-xs">
             {newSecret}
           </code>
           <p className="mt-3 font-medium text-foreground">Example requests</p>
-          <code className="mt-1 block whitespace-pre-wrap break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[10px] text-muted-foreground">
+          <code className="mt-1 block whitespace-pre-wrap break-all rounded-lg bg-card px-2 py-1.5 font-mono text-xs text-muted-foreground">
             {`# List leads
 curl -H "Authorization: Bearer ${newSecret}" \\
   https://api.growvisi.in/api/v1/external/leads
@@ -128,8 +128,8 @@ curl -H "Authorization: Bearer ${newSecret}" \\
             >
               <div>
                 <p className="font-medium">{k.name}</p>
-                <p className="font-mono text-[11px] text-muted-foreground">{k.keyPrefix}…</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="font-mono text-xs text-muted-foreground">{k.keyPrefix}…</p>
+                <p className="text-xs text-muted-foreground">
                   {k.scopes.join(", ")}
                   {k.lastUsedAt ? ` · used ${formatRelative(k.lastUsedAt)}` : " · never used"}
                 </p>

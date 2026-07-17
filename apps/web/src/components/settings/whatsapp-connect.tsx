@@ -266,8 +266,8 @@ export default function WhatsappConnect({
   if (displayAccount && !addingAnother && phase !== "waiting_meta" && phase !== "saving") {
     return (
       <div className="space-y-6">
-        <div className="overflow-hidden rounded-2xl border border-[#6cf8bb]/30 bg-gradient-to-br from-[#ecfdf5]/80 via-white to-white shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
-          <div className="border-b border-[#6cf8bb]/20 bg-[#ecfdf5]/50 px-6 py-4">
+        <div className="overflow-hidden rounded-2xl border border-[#6cf8bb]/30 bg-card elev-1 shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
+          <div className="border-b border-[#6cf8bb]/20 bg-bento-mint/50 px-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="flex items-center gap-2 text-sm font-semibold text-[#128C7E]">
                 <CheckCircle2 className="h-4 w-4" />
@@ -284,7 +284,7 @@ export default function WhatsappConnect({
                 {activeAccounts.map((account) => (
                   <li
                     key={account.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3"
                   >
                     <div>
                       <p className="text-sm font-semibold">
@@ -457,8 +457,8 @@ export default function WhatsappConnect({
       </div>
     </div>
   ) : (
-    <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
-      <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/10 via-primary/5 to-[#25D366]/10 px-6 py-6">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgb(11_28_48/0.04)]">
+      <div className="border-b border-border bg-background px-6 py-6">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1877F2]/15 text-[#1877F2]">
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
@@ -566,7 +566,7 @@ export default function WhatsappConnect({
         </div>
       )}
       {!isOnboarding && (
-        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary-soft/40 to-[#25D366]/5 px-5 py-4 shadow-sm">
+        <div className="rounded-xl border border-primary/20 bg-background elev-1 px-5 py-4 shadow-sm">
           <p className="text-sm text-muted-foreground">
             Connect the <strong className="text-foreground">WhatsApp Business number you already use</strong>{" "}
             — the line your customers message. Growvisi ingests conversations for classification,

@@ -8,7 +8,7 @@ export function MetaAiNotice({ compact = false }: { compact?: boolean }) {
   if (!compact) return null;
 
   return (
-    <p className="rounded-lg border border-border/60 bg-white/80 px-3 py-2 text-xs text-muted-foreground">
+    <p className="rounded-lg border border-border/60 bg-card/80 px-3 py-2 text-xs text-muted-foreground">
       <Info className="mr-1.5 inline h-3.5 w-3.5 -translate-y-px text-primary" />
       {copy.composeFooter}
     </p>

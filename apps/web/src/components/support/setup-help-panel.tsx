@@ -57,11 +57,11 @@ export function SetupHelpPanel({
   }, [context]);
 
   return (
-    <div className={cn("flex flex-col overflow-hidden bg-white", className)}>
+    <div className={cn("flex flex-col overflow-hidden bg-card", className)}>
       {showHeader && (
         <div className="flex items-start justify-between gap-3 border-b border-border/80 bg-gradient-to-r from-[#ecfdf5] to-white px-4 py-3.5">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
+            <p className="text-xs font-bold uppercase tracking-wider text-accent">
               {t("setupHelp.eyebrow")}
             </p>
             <p className="text-sm font-bold text-foreground">{title}</p>
@@ -91,7 +91,7 @@ export function SetupHelpPanel({
               "min-h-10 flex-1 touch-manipulation rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
               tab === "answers"
                 ? "bg-accent text-white"
-                : "text-muted-foreground hover:bg-[#ecfdf5]/80",
+                : "text-muted-foreground hover:bg-bento-mint/80",
             )}
           >
             {t("setupHelp.tabAnswers")}
@@ -105,7 +105,7 @@ export function SetupHelpPanel({
               "flex min-h-10 flex-1 touch-manipulation items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
               tab === "ask"
                 ? "bg-accent text-white"
-                : "text-muted-foreground hover:bg-[#ecfdf5]/80",
+                : "text-muted-foreground hover:bg-bento-mint/80",
             )}
           >
             <Sparkles className="h-3 w-3" />
@@ -123,10 +123,10 @@ export function SetupHelpPanel({
       )}
 
       <div className="space-y-2 border-t border-border/80 bg-[#f8fafc] p-3">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
+        <p className="text-xs font-bold uppercase tracking-wider text-accent">
           {t("setupHelp.supportNeedTitle")}
         </p>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{t("setupHelp.supportHours")}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">{t("setupHelp.supportHours")}</p>
         <p className="text-xs text-foreground">
           <span className="font-medium text-muted-foreground">
             {t("setupHelp.supportEmailLabel")}:{" "}
@@ -144,7 +144,7 @@ export function SetupHelpPanel({
             {t("setupHelp.bookCall")}
           </a>
         </Button>
-        <Button asChild variant="outline" size="sm" className="h-10 w-full gap-2 rounded-xl bg-white">
+        <Button asChild variant="outline" size="sm" className="h-10 w-full gap-2 rounded-xl bg-card">
           <a href={SETUP_HELP_ESCALATION.contactFormHref}>
             <Mail className="h-3.5 w-3.5" />
             {t("setupHelp.contactForm")}

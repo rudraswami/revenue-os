@@ -118,8 +118,8 @@ export function InboxConversationList({
   const empty = emptyState();
 
   return (
-    <aside className="relative flex h-full w-full shrink-0 flex-col border-r border-border/80 bg-[#f8f9ff] md:w-[min(100%,320px)] lg:w-[360px]">
-      <div className="shrink-0 border-b border-border/80 bg-white px-4 py-3">
+    <aside className="relative flex h-full w-full shrink-0 flex-col border-r border-border/80 bg-background md:w-[min(100%,320px)] lg:w-[360px]">
+      <div className="shrink-0 border-b border-border/80 bg-card px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-accent">
@@ -129,7 +129,7 @@ export function InboxConversationList({
           </div>
           <div className="flex items-center gap-1.5">
             {hasWhatsapp && (
-              <span className="rounded-full bg-bento-mint px-2 py-0.5 text-[9px] font-bold uppercase text-accent">
+              <span className="rounded-full bg-bento-mint px-2 py-0.5 text-xs font-bold uppercase text-accent">
                 {copy.live}
               </span>
             )}
@@ -138,7 +138,7 @@ export function InboxConversationList({
             )}
           </div>
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           {copy.conversationCount(conversations.length)}
         </p>
 
@@ -150,9 +150,9 @@ export function InboxConversationList({
                 type="button"
                 onClick={() => onListScopeChange(scope)}
                 className={cn(
-                  "flex-1 rounded-md py-1.5 text-[11px] font-semibold transition",
+                  "flex-1 rounded-md py-1.5 text-xs font-semibold transition",
                   listScope === scope
-                    ? "bg-white text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -169,7 +169,7 @@ export function InboxConversationList({
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={copy.searchPlaceholder}
-              className="h-8 rounded-lg border-border/80 bg-[#f8f9ff] pl-9 text-xs"
+              className="h-8 rounded-lg border-border/80 bg-background pl-9 text-xs"
             />
           </div>
         )}
@@ -268,8 +268,8 @@ export function InboxConversationList({
                   className={cn(
                     "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors",
                     active
-                      ? "border-l-[3px] border-l-accent bg-white"
-                      : "border-l-[3px] border-l-transparent hover:bg-white/70",
+                      ? "border-l-[3px] border-l-accent bg-card"
+                      : "border-l-[3px] border-l-transparent hover:bg-card/70",
                     closed && !active && "opacity-80",
                   )}
                 >
@@ -279,7 +279,7 @@ export function InboxConversationList({
                       <p className={cn("truncate text-sm font-semibold", active && "text-accent")}>
                         {displayName}
                       </p>
-                      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                         {formatListTime(c.lastMessageAt)}
                       </span>
                     </div>
@@ -288,17 +288,17 @@ export function InboxConversationList({
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       {c.requiresHuman && listScope === "active" && (
-                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900">
                           {copy.waitingOnYou}
                         </span>
                       )}
                       {c.lead && (
-                        <span className="text-[10px] font-medium text-muted-foreground">
+                        <span className="text-xs font-medium text-muted-foreground">
                           {copy.stageLabel(c.lead.stage)}
                         </span>
                       )}
                       {c.unreadCount > 0 && (
-                        <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-white">
+                        <span className="rounded-full bg-accent px-1.5 py-0.5 text-xs font-bold text-white">
                           {c.unreadCount}
                         </span>
                       )}
@@ -312,13 +312,13 @@ export function InboxConversationList({
       </div>
 
       {onNewMessage && hasWhatsapp && listScope === "active" && (
-        <div className="shrink-0 border-t border-border/80 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="shrink-0 border-t border-border/80 bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Button
             type="button"
             className="h-10 w-full gap-2 rounded-xl bg-accent text-sm font-semibold shadow-sm hover:bg-accent-hover"
             onClick={onNewMessage}
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/20">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-card/20">
               <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
             </span>
             {copy.newMessage}

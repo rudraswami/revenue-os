@@ -56,7 +56,7 @@ export function SetupHelpChat({ context }: { context: HelpFabContext }) {
     <div className="flex flex-col border-b border-border/60">
       <div ref={scrollRef} className="max-h-[min(40vh,280px)] overflow-y-auto custom-scrollbar px-4 py-3">
         {turns.length === 0 ? (
-          <div className="rounded-xl bg-[#ecfdf5]/50 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+          <div className="rounded-xl bg-bento-mint/50 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
             <div className="mb-1 flex items-center gap-1.5 font-semibold text-accent">
               <Sparkles className="h-3.5 w-3.5" />
               {t("setupHelp.chatIntroTitle")}
@@ -77,7 +77,7 @@ export function SetupHelpChat({ context }: { context: HelpFabContext }) {
                   "rounded-xl px-3 py-2 text-xs leading-relaxed",
                   turn.role === "user"
                     ? "ml-6 bg-[#f1f5f9] text-foreground"
-                    : "mr-2 border border-border bg-white text-muted-foreground",
+                    : "mr-2 border border-border bg-card text-muted-foreground",
                 )}
               >
                 {turn.content}
@@ -104,7 +104,7 @@ export function SetupHelpChat({ context }: { context: HelpFabContext }) {
           onChange={(e) => setInput(e.target.value)}
           placeholder={t("setupHelp.chatPlaceholder")}
           maxLength={500}
-          className="min-w-0 flex-1 touch-manipulation rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none ring-accent/30 focus:ring-2"
+          className="min-w-0 flex-1 touch-manipulation rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none ring-accent/30 focus:ring-2"
           disabled={chatMutation.isPending}
         />
         <Button

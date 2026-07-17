@@ -106,7 +106,7 @@ export default function AnalyticsPage() {
         title="Analytics"
         description="Revenue and response metrics from your WhatsApp sales pipeline."
         action={
-          <div className="flex flex-wrap gap-1 rounded-xl border border-border/80 bg-white p-1">
+          <div className="flex flex-wrap gap-1 rounded-xl border border-border/80 bg-card p-1">
             {METRICS_PERIOD_OPTIONS.map((opt) => (
               <button
                 key={opt.value}

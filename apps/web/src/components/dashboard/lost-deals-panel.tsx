@@ -52,7 +52,7 @@ export function LostDealsPanel({ period }: { period: MetricsPeriod }) {
       ) : (
         <>
           <div className="mb-4 grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-border/80 bg-[#f8f9ff]/50 px-4 py-3">
+            <div className="rounded-xl border border-border/80 bg-background/50 px-4 py-3">
               <p className="text-xs text-muted-foreground">Deals lost</p>
               <p className="text-xl font-bold">{data.totalLost}</p>
             </div>

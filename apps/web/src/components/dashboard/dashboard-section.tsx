@@ -24,7 +24,7 @@ export function DashboardSection({
         {Icon && (
           <div
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bento-mint text-accent",
               iconClassName,
             )}
           >
@@ -32,7 +32,7 @@ export function DashboardSection({
           </div>
         )}
         <div>
-          <h2 className="text-[15px] font-bold tracking-tight text-foreground">{title}</h2>
+          <h2 className="text-sm font-bold tracking-tight text-foreground">{title}</h2>
           {description && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>}
         </div>
       </div>

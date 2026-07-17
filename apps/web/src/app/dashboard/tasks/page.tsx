@@ -275,7 +275,7 @@ export default function TasksPage() {
                       {t.title}
                     </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold", PRIORITY_BADGE[t.priority])}>
+                      <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-semibold", PRIORITY_BADGE[t.priority])}>
                         {t.priority}
                       </span>
                       {t.lead && (
@@ -346,8 +346,8 @@ function StatCard({
   danger?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-white p-4 shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p
@@ -373,7 +373,7 @@ function Field({
 }) {
   return (
     <label className={cn("block", className)}>
-      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       {children}

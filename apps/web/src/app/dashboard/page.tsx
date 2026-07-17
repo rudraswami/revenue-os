@@ -257,7 +257,7 @@ export default function DashboardPage() {
                         <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{secondary}</p>
                       )}
                     </div>
-                    <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(item.time)}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(item.time)}</span>
                   </>
                 );
                 return (

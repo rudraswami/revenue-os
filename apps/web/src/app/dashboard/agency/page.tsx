@@ -288,11 +288,11 @@ export default function AgencyPage() {
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex rounded-full border border-border bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-foreground/80">
+          <span className="inline-flex rounded-full border border-border bg-background px-2 py-0.5 text-xs font-semibold text-foreground/80">
             {formatMessage(t("agency.planChip"), { plan: planDisplayName(c.planId, t) })}
           </span>
           {c.trialEndsAt && c.planId === "trial" && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {formatMessage(t("agency.trialEnds"), {
                 date: new Date(c.trialEndsAt).toLocaleDateString(),
               })}
@@ -302,7 +302,7 @@ export default function AgencyPage() {
 
         {c.whatsappConnected && (
           <div className="mt-3">
-            <div className="mb-1 flex justify-between text-[10px] font-medium text-muted-foreground">
+            <div className="mb-1 flex justify-between text-xs font-medium text-muted-foreground">
               <span>{t("agency.goLive")}</span>
               <span>{c.goLiveProgressPct}%</span>
             </div>
@@ -327,11 +327,11 @@ export default function AgencyPage() {
         )}
 
         <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-lg bg-[#f8f9ff] px-2.5 py-2">
+          <div className="rounded-lg bg-background px-2.5 py-2">
             <dt className="text-muted-foreground">{t("agency.metricPipeline")}</dt>
             <dd className="font-bold">{formatInr(Math.round(c.openPipelineInr * 100))}</dd>
           </div>
-          <div className="rounded-lg bg-[#f8f9ff] px-2.5 py-2">
+          <div className="rounded-lg bg-background px-2.5 py-2">
             <dt className="text-muted-foreground">{t("agency.metricOpenLeads")}</dt>
             <dd className="font-bold">{c.openLeads}</dd>
           </div>
@@ -339,7 +339,7 @@ export default function AgencyPage() {
             <dt className="text-muted-foreground">{t("agency.metricHandoffs")}</dt>
             <dd className="font-bold text-amber-900">{c.handoffs}</dd>
           </div>
-          <div className="rounded-lg bg-[#f8f9ff] px-2.5 py-2">
+          <div className="rounded-lg bg-background px-2.5 py-2">
             <dt className="text-muted-foreground">{t("agency.metricUnread")}</dt>
             <dd className="font-bold">{c.unreadMessages}</dd>
           </div>

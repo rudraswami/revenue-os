@@ -528,7 +528,7 @@ export default function InboxPage() {
 
   return (
     <>
-    <div className="flex min-h-0 flex-1 flex-row overflow-hidden rounded-xl border border-border/80 bg-white shadow-[0_2px_16px_rgb(11_28_48/0.05)] max-lg:rounded-none max-lg:border-0 lg:mx-4 lg:mb-4 lg:mt-2">
+    <div className="flex min-h-0 flex-1 flex-row overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_2px_16px_rgb(11_28_48/0.05)] max-lg:rounded-none max-lg:border-0 lg:mx-4 lg:mb-4 lg:mt-2">
       {/* Conversation list — always visible on md+; mobile shows list OR thread */}
       <div className={cn("h-full shrink-0", selectedId ? "max-md:hidden" : "flex", "md:flex")}>
         <InboxConversationList
@@ -554,14 +554,14 @@ export default function InboxPage() {
       {/* Thread + timeline — always visible on md+ */}
       <div
         className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col bg-[#f8f9ff]/40",
+          "flex min-h-0 min-w-0 flex-1 flex-col bg-background/40",
           selectedId ? "flex" : "max-md:hidden",
           "md:flex",
         )}
       >
         {!selectedId ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-border/80">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-card shadow-sm ring-1 ring-border/80">
               <Inbox className="h-7 w-7 text-accent" />
             </div>
             <div className="max-w-sm space-y-1">
@@ -577,15 +577,15 @@ export default function InboxPage() {
               </p>
             </div>
             <div className="mt-2 grid max-w-md gap-2 text-left text-xs text-muted-foreground sm:grid-cols-3">
-              <div className="rounded-xl border border-border/80 bg-white px-3 py-2.5">
+              <div className="rounded-xl border border-border/80 bg-card px-3 py-2.5">
                 <p className="font-semibold text-foreground">Thread</p>
                 <p className="mt-0.5">Full message history</p>
               </div>
-              <div className="rounded-xl border border-border/80 bg-white px-3 py-2.5">
+              <div className="rounded-xl border border-border/80 bg-card px-3 py-2.5">
                 <p className="font-semibold text-foreground">AI & owner</p>
                 <p className="mt-0.5">Classify and assign</p>
               </div>
-              <div className="rounded-xl border border-border/80 bg-white px-3 py-2.5">
+              <div className="rounded-xl border border-border/80 bg-card px-3 py-2.5">
                 <p className="font-semibold text-foreground">Timeline</p>
                 <p className="mt-0.5">Stage & automation log</p>
               </div>
@@ -617,7 +617,7 @@ export default function InboxPage() {
           <div className="flex min-h-0 flex-1 min-w-0">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {/* Thread header */}
-            <div className="shrink-0 border-b border-border/80 bg-white">
+            <div className="shrink-0 border-b border-border/80 bg-card">
               <div className="flex items-center gap-3 px-4 py-3 lg:px-5">
                 <Button
                   type="button"
@@ -656,7 +656,7 @@ export default function InboxPage() {
                                 "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium transition hover:underline",
                                 lead.stage === "WON"
                                   ? "bg-emerald-50 text-emerald-800"
-                                  : "bg-[#f8f9ff] text-foreground",
+                                  : "bg-background text-foreground",
                               )}
                               title="Deal ₹ tracked on Pipeline — tap to view or edit"
                             >
@@ -700,10 +700,10 @@ export default function InboxPage() {
                   {thread.lead?.score != null && thread.lead.score > 0 && (
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                        "rounded-full px-2 py-0.5 text-xs font-bold",
                         thread.lead.score >= HOT_LEAD_SCORE_THRESHOLD
                           ? "bg-accent text-white"
-                          : "bg-[#ecfdf5] text-accent",
+                          : "bg-bento-mint text-accent",
                       )}
                       title="Lead score from AI"
                     >
@@ -716,7 +716,7 @@ export default function InboxPage() {
                     canSend ? (
                       <select
                         className={cn(
-                          "max-w-[110px] truncate rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                          "max-w-[110px] truncate rounded-full border px-2 py-0.5 text-xs font-semibold",
                           STAGE_BADGE[thread.lead.stage as LeadStage] ?? "bg-primary-soft text-accent",
                         )}
                         value={thread.lead.stage}
@@ -732,7 +732,7 @@ export default function InboxPage() {
                     ) : (
                       <span
                         className={cn(
-                          "rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
+                          "rounded-full px-2.5 py-0.5 text-xs font-semibold",
                           STAGE_BADGE[thread.lead.stage as LeadStage],
                         )}
                       >
@@ -741,7 +741,7 @@ export default function InboxPage() {
                     )
                   )}
                   {thread.requiresHuman && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">
                       {copy.waitingOnYou}
                     </span>
                   )}
@@ -791,9 +791,9 @@ export default function InboxPage() {
                 onResolveHandoff={() => resolveHandoffMutation.mutate()}
                 onCorrectAi={(payload) => correctAiMutation.mutate(payload)}
               />
-              <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-[#f8f9ff]/60 px-4 py-2 lg:px-5">
-                <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5">
-                  <span className="text-[10px] font-medium text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/60 px-4 py-2 lg:px-5">
+                <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
                     {copy.autoClassify}
                   </span>
                   <span className="scale-90">
@@ -805,8 +805,8 @@ export default function InboxPage() {
                     />
                   </span>
                 </div>
-                <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-white px-2.5 py-1.5 md:flex">
-                  <label htmlFor="assign-agent" className="text-[10px] font-medium text-muted-foreground">
+                <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1.5 md:flex">
+                  <label htmlFor="assign-agent" className="text-xs font-medium text-muted-foreground">
                     {copy.assignedTo}
                   </label>
                   <select
@@ -827,7 +827,7 @@ export default function InboxPage() {
                     ))}
                   </select>
                 </div>
-                <span className="ml-auto text-[10px] text-muted-foreground">
+                <span className="ml-auto text-xs text-muted-foreground">
                   {live ? "Live" : "Syncing"}
                 </span>
               </div>
@@ -839,10 +839,10 @@ export default function InboxPage() {
                   <div
                     key={m.id}
                     className={cn(
-                      "max-w-[88%] rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed shadow-sm",
+                      "max-w-[88%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm",
                       m.direction === "OUTBOUND"
-                        ? "ml-auto rounded-br-md border border-emerald-200/60 bg-[#d9fdd3] text-foreground"
-                        : "mr-auto rounded-bl-md border border-white/80 bg-white text-foreground",
+                        ? "ml-auto rounded-br-md border border-emerald-200/60 bg-whatsapp-green text-foreground"
+                        : "mr-auto rounded-bl-md border border-white/80 bg-card text-foreground",
                     )}
                   >
                     <InboxMessageBody
@@ -853,7 +853,7 @@ export default function InboxPage() {
                     />
                     <p
                       className={cn(
-                        "mt-1 text-[10px]",
+                        "mt-1 text-xs",
                         m.direction === "OUTBOUND" ? "text-emerald-800/60" : "text-muted-foreground",
                       )}
                     >
@@ -868,7 +868,7 @@ export default function InboxPage() {
               </div>
             </div>
 
-            <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-6">
+            <div className="shrink-0 border-t border-border/80 bg-card px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-6">
               <div className="mx-auto w-full max-w-3xl">
                 {windowClosed && (
                   <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
@@ -904,7 +904,7 @@ export default function InboxPage() {
                 ) : (
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-[#fafbff] px-4 py-3.5 text-left transition hover:border-accent/25 hover:bg-[#ecfdf5]/40"
+                    className="flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-background px-4 py-3.5 text-left transition hover:border-accent/25 hover:bg-bento-mint/40"
                     onClick={() => setShowComposer(true)}
                   >
                     <div className="min-w-0 flex-1">
@@ -922,7 +922,7 @@ export default function InboxPage() {
             </div>
 
             {thread.lead && (
-              <div className="shrink-0 border-t border-border/80 bg-white px-4 py-3 lg:hidden">
+              <div className="shrink-0 border-t border-border/80 bg-card px-4 py-3 lg:hidden">
                 <button
                   type="button"
                   className="mb-2 text-xs font-semibold text-accent"

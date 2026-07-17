@@ -41,7 +41,7 @@ export function HomeGoLiveBanner() {
   }
 
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/20 bg-gradient-to-r from-accent/5 to-white px-4 py-3.5 sm:px-5">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/20 bg-card elev-1 px-4 py-3.5 sm:px-5">
       <div className="flex min-w-0 items-start gap-3">
         <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
         <div>

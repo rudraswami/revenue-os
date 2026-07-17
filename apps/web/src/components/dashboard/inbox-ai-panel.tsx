@@ -123,9 +123,9 @@ export function InboxAiPanel({
   }
 
   return (
-    <div className="border-t border-border/50 bg-[#f8f9ff]/80 px-4 py-2.5 lg:px-5">
+    <div className="border-t border-border/50 bg-background/80 px-4 py-2.5 lg:px-5">
       {requiresHuman && (
-        <div className="mb-2 rounded-xl border border-amber-200/90 bg-gradient-to-r from-amber-50 to-orange-50/80 px-3 py-3 shadow-sm">
+        <div className="mb-2 rounded-xl border border-amber-200/90 bg-card elev-1 px-3 py-3 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <p className="text-xs font-semibold leading-snug text-amber-950">
               {copy.needsYouTitle(handoffReason)}
@@ -135,7 +135,7 @@ export function InboxAiPanel({
                 <Button
                   type="button"
                   size="sm"
-                  className="h-8 gap-1.5 rounded-lg bg-accent text-[11px] hover:bg-accent-hover"
+                  className="h-8 gap-1.5 rounded-lg bg-accent text-xs hover:bg-accent-hover"
                   disabled={takeoverPending}
                   onClick={() => onTakeover(suggestedTitle)}
                 >
@@ -146,7 +146,7 @@ export function InboxAiPanel({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="h-8 text-[10px] text-amber-900 hover:bg-amber-100/60"
+                  className="h-8 text-xs text-amber-900 hover:bg-amber-100/60"
                   disabled={resolvePending}
                   onClick={onResolveHandoff}
                 >
@@ -156,7 +156,7 @@ export function InboxAiPanel({
             )}
           </div>
           {canEdit && (
-            <p className="mt-1.5 text-[10px] leading-relaxed text-amber-800/85">
+            <p className="mt-1.5 text-xs leading-relaxed text-amber-800/85">
               {coachTakeover ? copy.coachTakeoverHint : copy.replyNowHint}
             </p>
           )}
@@ -164,7 +164,7 @@ export function InboxAiPanel({
       )}
 
       {aiContext && (
-        <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
           <button
             type="button"
             className="flex w-full items-start justify-between gap-2 text-left"
@@ -179,7 +179,7 @@ export function InboxAiPanel({
                 {aiContext.sentiment && (
                   <span
                     className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[9px] font-semibold capitalize",
+                      "rounded-full px-1.5 py-0.5 text-xs font-semibold capitalize",
                       aiContext.sentiment === "positive"
                         ? "bg-bento-mint text-accent"
                         : aiContext.sentiment === "negative"
@@ -191,12 +191,12 @@ export function InboxAiPanel({
                   </span>
                 )}
                 {confidencePct != null && (
-                  <span className="text-[10px] font-semibold text-muted-foreground">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     {confidencePct}%
                   </span>
                 )}
                 {aiContext.humanCorrected && (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-bento-mint px-1.5 py-0.5 text-[9px] font-semibold text-accent">
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-bento-mint px-1.5 py-0.5 text-xs font-semibold text-accent">
                     <Check className="h-2.5 w-2.5" />
                     {copy.aiCorrected}
                   </span>
@@ -236,7 +236,7 @@ export function InboxAiPanel({
                   {aiContext.tags.map((t) => (
                     <span
                       key={t}
-                      className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium"
+                      className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium"
                     >
                       {t}
                     </span>
@@ -254,7 +254,7 @@ export function InboxAiPanel({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 text-[10px]"
+                    className="h-7 text-xs"
                     disabled={taskPending}
                     onClick={() => onCreateTask(suggestedTitle)}
                   >
@@ -264,7 +264,7 @@ export function InboxAiPanel({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 gap-1 text-[10px]"
+                    className="h-7 gap-1 text-xs"
                     disabled={assignPending}
                     onClick={onAssignToMe}
                   >
@@ -278,7 +278,7 @@ export function InboxAiPanel({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 text-[10px]"
+                  className="h-7 text-xs"
                   onClick={() => {
                     const next = !fixOpen;
                     setFixOpen(next);
@@ -292,16 +292,16 @@ export function InboxAiPanel({
           )}
 
           {canEdit && fixOpen && onCorrectAi && (
-            <div className="mt-2 space-y-2 rounded-lg border border-border/80 bg-[#f8f9ff] p-2.5">
-              <p className="text-[10px] font-semibold text-foreground">{copy.aiFixTitle}</p>
-              <p className="text-[10px] text-muted-foreground">{copy.aiFixHint}</p>
+            <div className="mt-2 space-y-2 rounded-lg border border-border/80 bg-background p-2.5">
+              <p className="text-xs font-semibold text-foreground">{copy.aiFixTitle}</p>
+              <p className="text-xs text-muted-foreground">{copy.aiFixHint}</p>
               <div className="grid gap-2 sm:grid-cols-2">
-                <label className="block text-[10px] font-medium text-muted-foreground">
+                <label className="block text-xs font-medium text-muted-foreground">
                   {copy.aiFixStage}
                   <select
                     value={stage}
                     onChange={(e) => setStage(e.target.value as LeadStage)}
-                    className="mt-1 h-8 w-full rounded-lg border border-border bg-white px-2 text-xs"
+                    className="mt-1 h-8 w-full rounded-lg border border-border bg-card px-2 text-xs"
                   >
                     {LEAD_STAGES.map((s) => (
                       <option key={s} value={s}>
@@ -310,7 +310,7 @@ export function InboxAiPanel({
                     ))}
                   </select>
                 </label>
-                <label className="block text-[10px] font-medium text-muted-foreground">
+                <label className="block text-xs font-medium text-muted-foreground">
                   {copy.aiFixScore}
                   <input
                     type="number"
@@ -318,21 +318,21 @@ export function InboxAiPanel({
                     max={100}
                     value={score}
                     onChange={(e) => setScore(e.target.value)}
-                    className="mt-1 h-8 w-full rounded-lg border border-border bg-white px-2 text-xs"
+                    className="mt-1 h-8 w-full rounded-lg border border-border bg-card px-2 text-xs"
                   />
                 </label>
               </div>
-              <label className="block text-[10px] font-medium text-muted-foreground">
+              <label className="block text-xs font-medium text-muted-foreground">
                 {copy.aiFixIntent}
                 <input
                   type="text"
                   value={intent}
                   onChange={(e) => setIntent(e.target.value)}
                   maxLength={120}
-                  className="mt-1 h-8 w-full rounded-lg border border-border bg-white px-2 text-xs"
+                  className="mt-1 h-8 w-full rounded-lg border border-border bg-card px-2 text-xs"
                 />
               </label>
-              <label className="flex items-center gap-2 text-[10px] font-medium text-foreground">
+              <label className="flex items-center gap-2 text-xs font-medium text-foreground">
                 <input
                   type="checkbox"
                   checked={flagHuman}
@@ -341,7 +341,7 @@ export function InboxAiPanel({
                 />
                 {copy.aiFixNeedsYou}
               </label>
-              <label className="block text-[10px] font-medium text-muted-foreground">
+              <label className="block text-xs font-medium text-muted-foreground">
                 {copy.aiFixNote}
                 <input
                   type="text"
@@ -349,13 +349,13 @@ export function InboxAiPanel({
                   onChange={(e) => setNote(e.target.value)}
                   maxLength={500}
                   placeholder={copy.aiFixNotePlaceholder}
-                  className="mt-1 h-8 w-full rounded-lg border border-border bg-white px-2 text-xs"
+                  className="mt-1 h-8 w-full rounded-lg border border-border bg-card px-2 text-xs"
                 />
               </label>
               <Button
                 type="button"
                 size="sm"
-                className="h-8 w-full rounded-lg text-[11px]"
+                className="h-8 w-full rounded-lg text-xs"
                 disabled={correctionPending}
                 onClick={submitCorrection}
               >

@@ -58,7 +58,7 @@ export function PaymentIntegrationCard() {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bento-mint text-accent">
           <IndianRupee className="h-5 w-5" />
         </div>
         <div>
@@ -69,12 +69,12 @@ export function PaymentIntegrationCard() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/80 bg-[#f8f9ff]/40 px-4 py-3 text-sm">
+      <div className="rounded-xl border border-border/80 bg-background/40 px-4 py-3 text-sm">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Webhook URL
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <code className="flex-1 break-all rounded-lg bg-white px-2 py-1.5 text-xs">
+          <code className="flex-1 break-all rounded-lg bg-card px-2 py-1.5 text-xs">
             {data?.webhookUrl}
           </code>
           <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => void copyUrl()}>
@@ -84,7 +84,7 @@ export function PaymentIntegrationCard() {
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           In Razorpay Dashboard → Webhooks, subscribe to <strong>payment.captured</strong>. Add{" "}
-          <code className="rounded bg-white px-1">leadId</code> in payment notes to match a
+          <code className="rounded bg-card px-1">leadId</code> in payment notes to match a
           specific contact, or we match by customer phone.
         </p>
       </div>

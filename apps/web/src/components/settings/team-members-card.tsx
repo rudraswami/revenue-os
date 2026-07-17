@@ -192,7 +192,7 @@ export function TeamMembersCard() {
   return (
     <div className="space-y-4">
       {isAdmin && (
-        <div className="rounded-xl border border-border/70 bg-[#f8f9ff]/50 p-4">
+        <div className="rounded-xl border border-border/70 bg-background/50 p-4">
           {inviteForm}
           {limits?.canInvite === false && (
             <UpgradeFrictionBanner
@@ -230,7 +230,7 @@ export function TeamMembersCard() {
       )}
 
       <div className="overflow-hidden rounded-xl border border-border/80">
-        <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)_100px_100px_72px] gap-3 border-b border-border/70 bg-background px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground md:grid">
+        <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)_100px_100px_72px] gap-3 border-b border-border/70 bg-background px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground md:grid">
           <span>Member</span>
           <span>Email</span>
           <span>Role</span>
@@ -326,7 +326,7 @@ export function TeamMembersCard() {
             {invites!.map((inv) => (
               <li
                 key={inv.id}
-                className="flex items-center justify-between gap-3 bg-white px-4 py-3"
+                className="flex items-center justify-between gap-3 bg-card px-4 py-3"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
@@ -368,7 +368,7 @@ function RoleBadge({ role }: { role: MembershipRole }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
         role === "OWNER"
           ? "bg-amber-50 text-amber-800"
           : "bg-muted text-muted-foreground",

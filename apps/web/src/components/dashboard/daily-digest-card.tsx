@@ -77,14 +77,14 @@ export function DailyDigestCard() {
     <DashboardPanel noPadding className="overflow-hidden border-border">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-bento-mint text-amber-700">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
             <Sun className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-bold">Daily revenue digest</h3>
               {ops.digest.enabled && (
-                <span className="rounded-full bg-bento-mint px-2 py-0.5 text-[9px] font-bold uppercase text-accent">
+                <span className="rounded-full bg-bento-mint px-2 py-0.5 text-xs font-bold uppercase text-accent">
                   On
                 </span>
               )}
@@ -102,7 +102,7 @@ export function DailyDigestCard() {
         </div>
 
         <div className="flex shrink-0 flex-col items-stretch gap-3 sm:items-end">
-          <div className="flex items-center gap-2 rounded-lg border border-border/80 bg-white px-3 py-2">
+          <div className="flex items-center gap-2 rounded-lg border border-border/80 bg-card px-3 py-2">
             <span className="text-xs font-medium text-muted-foreground">Morning digest</span>
             <Switch
               checked={ops.digest.enabled}
@@ -114,7 +114,7 @@ export function DailyDigestCard() {
           {isAdmin && (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Channel
                 </label>
                 <Select
@@ -135,7 +135,7 @@ export function DailyDigestCard() {
 
               {showWhatsappPhone && (
                 <div className="w-full max-w-xs space-y-1">
-                  <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     <MessageCircle className="h-3 w-3" />
                     WhatsApp number
                   </label>
@@ -151,7 +151,7 @@ export function DailyDigestCard() {
                       }
                     }}
                   />
-                  <p className="text-[10px] leading-relaxed text-muted-foreground">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
                     Internal alert to you — not a customer auto-reply. Use a Meta-approved template
                     name for reliable delivery outside the 24h window.
                   </p>
@@ -168,7 +168,7 @@ export function DailyDigestCard() {
                     }}
                   />
                   <div className="mt-2 flex items-center gap-2">
-                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Digest language
                     </label>
                     <Select
@@ -189,7 +189,7 @@ export function DailyDigestCard() {
               )}
 
               <div className="flex items-center gap-2">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Send at
                 </label>
                 <Select
@@ -213,7 +213,7 @@ export function DailyDigestCard() {
             </>
           )}
           {!isAdmin && (
-            <p className="text-[11px] text-muted-foreground">Ask an admin to change digest settings.</p>
+            <p className="text-xs text-muted-foreground">Ask an admin to change digest settings.</p>
           )}
         </div>
       </div>

@@ -57,7 +57,7 @@ export function WhatsappTokenExpiryBanner() {
           : (th.hint ?? "Reconnect WhatsApp in Settings to restore message sync.");
 
   return (
-    <div className="border-b border-amber-200/80 bg-gradient-to-r from-amber-50 via-amber-50/95 to-orange-50/80 px-4 py-2.5 md:px-6">
+    <div className="border-b border-amber-200/80 bg-card px-4 py-2.5 md:px-6">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-800" />
@@ -70,7 +70,7 @@ export function WhatsappTokenExpiryBanner() {
           asChild
           size="sm"
           variant="outline"
-          className="h-8 shrink-0 gap-1.5 border-amber-300 bg-white/90"
+          className="h-8 shrink-0 gap-1.5 border-amber-300 bg-card/90"
         >
           <Link href="/dashboard/settings?tab=whatsapp">
             Open WhatsApp settings

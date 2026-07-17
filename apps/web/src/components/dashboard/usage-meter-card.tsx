@@ -99,7 +99,7 @@ export function UsageMeterCard({ compact }: { compact?: boolean }) {
             });
           }
         }}
-        className="flex items-center justify-between gap-2 rounded-xl border border-border bg-white px-3 py-2 text-xs hover:bg-[#f8f9ff]"
+        className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs hover:bg-background"
       >
         <span className="text-muted-foreground">
           {planLabel} · {data.usage.monthlyLeads}/{data.limits.monthlyLeads} leads this month
@@ -131,7 +131,7 @@ export function UsageMeterCard({ compact }: { compact?: boolean }) {
               : null;
 
   return (
-    <div className="rounded-2xl border border-border bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-accent">Plan usage</p>
@@ -183,7 +183,7 @@ export function UsageMeterCard({ compact }: { compact?: boolean }) {
         />
       )}
       {data.entitlements?.trialEndsAt && data.planId === "trial" && !frictionMessage && (
-        <p className="mt-3 text-[11px] text-muted-foreground">
+        <p className="mt-3 text-xs text-muted-foreground">
           Trial ends {new Date(data.entitlements.trialEndsAt).toLocaleDateString("en-IN")} · 500 lead
           cap applies during trial
         </p>

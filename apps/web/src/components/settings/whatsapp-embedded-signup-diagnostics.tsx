@@ -63,7 +63,7 @@ export function WhatsappEmbeddedSignupDiagnostics() {
   const failedChecks = diagnose?.checks.filter((c) => !c.ok && c.id !== "feature_unavailable_note") ?? [];
 
   return (
-    <details className="rounded-xl border border-border bg-[#f8f9ff]/60 text-xs">
+    <details className="rounded-xl border border-border bg-background/60 text-xs">
       <summary className="cursor-pointer px-4 py-3 font-medium text-foreground">
         Embedded Signup diagnostics (for Meta support)
       </summary>
@@ -71,19 +71,19 @@ export function WhatsappEmbeddedSignupDiagnostics() {
         <p>
           <strong className="text-foreground">DevTools tip:</strong> Filter &quot;oauth&quot; on the
           main Growvisi tab shows <em>0 requests</em> — that is normal.{" "}
-          <code className="rounded bg-white px-1">FB.login()</code> opens a{" "}
+          <code className="rounded bg-card px-1">FB.login()</code> opens a{" "}
           <strong className="text-foreground">popup</strong>. Inspect the popup window (right-click
           inside the Meta dialog → Inspect → Network).
         </p>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="rounded-lg bg-white p-2">
+          <div className="rounded-lg bg-card p-2">
             <p className="font-semibold text-foreground">Browser</p>
             <p>Origin: {client.origin || "—"}</p>
             <p>Domain OK: {client.domainOk ? "yes" : "no"}</p>
             <p>SDK loaded: {client.sdkReady ? "yes" : "on click"}</p>
           </div>
-          <div className="rounded-lg bg-white p-2">
+          <div className="rounded-lg bg-card p-2">
             <p className="font-semibold text-foreground">API config</p>
             <p>App ID: {payload.appId}</p>
             <p>Config ID: {payload.configId}</p>
@@ -92,7 +92,7 @@ export function WhatsappEmbeddedSignupDiagnostics() {
           </div>
         </div>
 
-        <pre className="max-h-40 overflow-auto rounded-lg bg-white p-2 text-[10px] leading-relaxed">
+        <pre className="max-h-40 overflow-auto rounded-lg bg-card p-2 text-xs leading-relaxed">
           {JSON.stringify(payload.loginOptions, null, 2)}
         </pre>
 
@@ -111,7 +111,7 @@ export function WhatsappEmbeddedSignupDiagnostics() {
           <p className="font-semibold">If popup says &quot;Feature Unavailable&quot;</p>
           <p className="mt-1 leading-relaxed">
             Growvisi implementation matches Meta docs. Blockers are on Meta&apos;s side: Tech
-            Provider approval, <code className="rounded bg-white/80 px-1">public_profile</code>{" "}
+            Provider approval, <code className="rounded bg-card/80 px-1">public_profile</code>{" "}
             Advanced access, Facebook Login for Business allowed domains, and app roles for your
             Facebook account.
           </p>

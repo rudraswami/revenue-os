@@ -97,7 +97,7 @@ export function BillingSettingsCard() {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bento-mint text-accent">
           <CreditCard className="h-5 w-5" />
         </div>
         <div>
@@ -112,10 +112,10 @@ export function BillingSettingsCard() {
         <div className="h-20 animate-pulse rounded-xl bg-muted" />
       ) : (
         <>
-          <div className="rounded-xl border border-border/80 bg-[#f8f9ff]/40 px-4 py-3 text-sm">
+          <div className="rounded-xl border border-border/80 bg-background/40 px-4 py-3 text-sm">
             <p>
               Current plan: <strong>{data?.planName ?? "Trial"}</strong>
-              <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
+              <span className="ml-2 rounded-full bg-card px-2 py-0.5 text-xs font-bold uppercase text-muted-foreground">
                 {statusLabel}
               </span>
             </p>
@@ -159,7 +159,7 @@ export function BillingSettingsCard() {
                   key={plan.id}
                   className={cn(
                     "rounded-xl border p-3 text-sm",
-                    isCurrent ? "border-accent/40 bg-bento-mint/30" : "border-border/80 bg-white",
+                    isCurrent ? "border-accent/40 bg-bento-mint/30" : "border-border/80 bg-card",
                   )}
                 >
                   <p className="font-semibold">{plan.name}</p>
@@ -167,7 +167,7 @@ export function BillingSettingsCard() {
                     ₹{plan.priceInr.toLocaleString("en-IN")}
                     <span className="text-xs font-normal text-muted-foreground">/mo</span>
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{plan.description}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{plan.description}</p>
                   <Button
                     type="button"
                     size="sm"
@@ -197,7 +197,7 @@ export function BillingSettingsCard() {
           </div>
 
           {canCancel && (
-            <div className="rounded-xl border border-border/80 bg-white px-4 py-3">
+            <div className="rounded-xl border border-border/80 bg-card px-4 py-3">
               <p className="text-sm font-semibold">Cancel subscription</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Cancels at end of the current billing period. You keep access until then.

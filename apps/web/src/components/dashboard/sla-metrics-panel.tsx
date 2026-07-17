@@ -106,9 +106,9 @@ export function SlaMetricsPanel({ period }: { period: MetricsPeriod }) {
       </div>
 
       {isAdmin && (
-        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-border/80 bg-[#f8f9ff] p-3">
+        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-border/80 bg-background p-3">
           <div>
-            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               SLA target (hours)
             </label>
             <Select
@@ -158,7 +158,7 @@ export function SlaMetricsPanel({ period }: { period: MetricsPeriod }) {
                   <span className="truncate font-medium">{row.label}</span>
                   <span
                     className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
                       row.breached
                         ? "bg-destructive/10 text-destructive"
                         : "bg-bento-mint text-accent",
@@ -173,7 +173,7 @@ export function SlaMetricsPanel({ period }: { period: MetricsPeriod }) {
         </div>
       )}
 
-      <p className="mt-3 text-[11px] text-muted-foreground">{data.note}</p>
+      <p className="mt-3 text-xs text-muted-foreground">{data.note}</p>
     </DashboardPanel>
   );
 }
@@ -192,8 +192,8 @@ function Stat({
   danger?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border/80 bg-white p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-xl border border-border/80 bg-card p-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p

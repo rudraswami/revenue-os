@@ -72,7 +72,7 @@ export function InboxComposer({
             <button
               key={t.id}
               type="button"
-              className="shrink-0 rounded-lg border border-border/70 bg-white px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm transition hover:border-accent/30 hover:text-foreground"
+              className="shrink-0 rounded-lg border border-border/70 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition hover:border-accent/30 hover:text-foreground"
               onClick={() => onDraftChange(t.body)}
             >
               {t.title}
@@ -81,7 +81,7 @@ export function InboxComposer({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-border/70 bg-white shadow-[0_1px_8px_rgb(11_28_48/0.05)]">
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_1px_8px_rgb(11_28_48/0.05)]">
         <textarea
           ref={composeRef}
           rows={2}
@@ -97,7 +97,7 @@ export function InboxComposer({
           )}
         />
 
-        <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-[#fafbff]/80 px-3 py-2">
+        <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-background/80 px-3 py-2">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {showAiSuggest && (
               <button
@@ -109,7 +109,7 @@ export function InboxComposer({
                 {suggestPending ? copy.drafting : copy.draftWithAi}
               </button>
             )}
-            <p className="hidden truncate text-[10px] text-muted-foreground sm:block">
+            <p className="hidden truncate text-xs text-muted-foreground sm:block">
               {copy.composeFooter}
             </p>
           </div>
@@ -118,7 +118,7 @@ export function InboxComposer({
             <button
               type="button"
               onClick={onMinimize}
-              className="flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground transition hover:text-foreground"
+              className="flex items-center gap-0.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
             >
               <ChevronDown className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{copy.minimizeComposer}</span>
@@ -142,7 +142,7 @@ export function InboxComposer({
         </div>
       </div>
 
-      <p className="mt-1.5 text-center text-[10px] text-muted-foreground sm:hidden">
+      <p className="mt-1.5 text-center text-xs text-muted-foreground sm:hidden">
         {copy.composeFooter}
       </p>
     </form>

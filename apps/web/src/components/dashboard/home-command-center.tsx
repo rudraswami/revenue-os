@@ -252,7 +252,7 @@ export function HomeCommandCenter({
         </div>
 
         {openStages.length > 0 && (
-          <div className="mt-3 rounded-xl border border-border bg-white px-4 py-3">
+          <div className="mt-3 rounded-xl border border-border bg-card px-4 py-3">
             <div className="mb-2 flex items-center justify-between text-xs">
               <span className="font-medium text-muted-foreground">Leads by stage</span>
               <Link href="/dashboard/pipeline" className="font-semibold text-accent hover:underline">
@@ -271,7 +271,7 @@ export function HomeCommandCenter({
             </div>
             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
               {openStages.map((s) => (
-                <span key={s.stage} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span key={s.stage} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span
                     className={cn("h-2 w-2 rounded-full", STAGE_COLORS[s.stage] ?? "bg-slate-400")}
                   />

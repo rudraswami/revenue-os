@@ -35,7 +35,7 @@ export function PartnerInstallKitSettingsCard() {
       title={t("settings.partnerKitSectionTitle")}
       description={t("settings.partnerKitSectionDescription")}
     >
-      <div className="rounded-2xl border border-border bg-gradient-to-r from-[#f8f9ff] to-white p-4">
+      <div className="rounded-2xl border border-border bg-background p-4 elev-1">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-accent" />

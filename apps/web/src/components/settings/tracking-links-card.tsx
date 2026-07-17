@@ -152,7 +152,7 @@ export function TrackingLinksCard() {
           {(links ?? []).map((link) => (
             <li
               key={link.id}
-              className="rounded-xl border border-border/80 bg-white px-4 py-3 text-sm"
+              className="rounded-xl border border-border/80 bg-card px-4 py-3 text-sm"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -162,7 +162,7 @@ export function TrackingLinksCard() {
                     {link.clickCount} clicks
                     {link.utmCampaign && ` · ${link.utmCampaign}`}
                   </p>
-                  <p className="mt-1 truncate font-mono text-[10px] text-accent">{link.trackedUrl}</p>
+                  <p className="mt-1 truncate font-mono text-xs text-accent">{link.trackedUrl}</p>
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button
@@ -192,8 +192,8 @@ export function TrackingLinksCard() {
       )}
 
       {(metrics?.length ?? 0) > 0 && (
-        <div className="rounded-xl border border-border/80 bg-[#f8f9ff] p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-xl border border-border/80 bg-background p-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Leads by campaign
           </p>
           <ul className="mt-2 space-y-1 text-xs">

@@ -81,7 +81,7 @@ export function AuditActivityCard() {
       <ul className="divide-y divide-border/60">
         {data.map((row) => (
           <li key={row.id} className="flex items-start gap-3 px-4 py-3 text-sm">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f8f9ff] text-accent">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background text-accent">
               <ClipboardList className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
@@ -93,11 +93,11 @@ export function AuditActivityCard() {
             </div>
             <span
               className={cn(
-                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold uppercase",
                 row.action === "DELETE"
                   ? "bg-red-50 text-red-700"
                   : row.action === "CREATE"
-                    ? "bg-[#ecfdf5] text-[#128C7E]"
+                    ? "bg-bento-mint text-[#128C7E]"
                     : "bg-muted text-muted-foreground",
               )}
             >

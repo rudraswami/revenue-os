@@ -39,7 +39,7 @@ export function CampaignSchedulePicker({
 }) {
   return (
     <div className={cn("space-y-3", compact && "space-y-2")}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         When to send
       </p>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -51,7 +51,7 @@ export function CampaignSchedulePicker({
             "flex items-start gap-3 rounded-xl border p-3 text-left transition",
             mode === "draft"
               ? "border-accent bg-bento-mint/50 ring-1 ring-accent/30"
-              : "border-border/80 bg-white hover:border-accent/40",
+              : "border-border/80 bg-card hover:border-accent/40",
           )}
         >
           <div
@@ -77,7 +77,7 @@ export function CampaignSchedulePicker({
             "flex items-start gap-3 rounded-xl border p-3 text-left transition",
             mode === "schedule"
               ? "border-accent bg-bento-mint/50 ring-1 ring-accent/30"
-              : "border-border/80 bg-white hover:border-accent/40",
+              : "border-border/80 bg-card hover:border-accent/40",
           )}
         >
           <div
@@ -107,13 +107,13 @@ export function CampaignSchedulePicker({
             type="datetime-local"
             value={scheduledLocal}
             onChange={(e) => onScheduledLocalChange(e.target.value)}
-            className="mt-2 h-10 bg-white text-sm"
+            className="mt-2 h-10 bg-card text-sm"
             disabled={disabled}
             min={toDatetimeLocalValue(new Date(Date.now() + 6 * 60_000))}
           />
-          <p className="mt-2 text-[11px] text-sky-800/80">
+          <p className="mt-2 text-xs text-sky-800/80">
             Minimum 5 minutes ahead. Scheduled campaigns need an hourly cron on{" "}
-            <code className="rounded bg-white/80 px-1">/internal/cron/scheduled-campaigns</code>.
+            <code className="rounded bg-card/80 px-1">/internal/cron/scheduled-campaigns</code>.
           </p>
         </div>
       )}

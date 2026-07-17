@@ -78,7 +78,7 @@ function SetupRow({ action }: { action: SetupAction }) {
           }
         }}
         className={cn(
-          "group flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-[#f8f9ff]",
+          "group flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-background",
           action.priority === "critical" && "bg-amber-50/90 hover:bg-amber-50",
         )}
       >
@@ -211,7 +211,7 @@ export function WorkspaceAssistFab() {
     >
       {expanded && (
           <div
-            className="pointer-events-auto w-[min(100vw-2.5rem,380px)] overflow-hidden rounded-2xl border border-border bg-white shadow-[0_20px_60px_rgb(11_28_48/0.16)]"
+            className="pointer-events-auto w-[min(100vw-2.5rem,380px)] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_60px_rgb(11_28_48/0.16)]"
             onMouseEnter={() => {
               if (collapseTimer.current) clearTimeout(collapseTimer.current);
             }}
@@ -221,8 +221,8 @@ export function WorkspaceAssistFab() {
           >
             {view === "setup" && showSetup ? (
               <>
-                <div className="border-b border-border/80 bg-gradient-to-r from-bento-mint/40 to-white px-4 py-3.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                <div className="border-b border-border/80 bg-background px-4 py-3.5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-accent">
                     {t("setupDock.eyebrow")}
                   </p>
                   <p className="text-sm font-bold">
@@ -284,7 +284,7 @@ export function WorkspaceAssistFab() {
           "pointer-events-auto relative flex h-14 w-14 touch-manipulation items-center justify-center rounded-full text-white shadow-[0_8px_32px_rgb(11_158_109/0.45)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
           showSetup
             ? "bg-accent hover:bg-accent-hover"
-            : "border-2 border-accent/20 bg-white text-accent hover:bg-[#ecfdf5]",
+            : "border-2 border-accent/20 bg-card text-accent hover:bg-bento-mint",
           showSetup && criticalCount > 0 && !expanded && "animate-pulse ring-2 ring-amber-400 ring-offset-2",
           !showSetup && expanded && "ring-2 ring-accent/30 ring-offset-2",
         )}
@@ -295,7 +295,7 @@ export function WorkspaceAssistFab() {
         {showSetup && (
           <span
             className={cn(
-              "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white",
+              "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-bold text-white",
               criticalCount > 0 ? "bg-amber-500" : "bg-accent",
             )}
           >

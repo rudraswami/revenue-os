@@ -102,7 +102,7 @@ export function WorkspaceOpsTruthStrip() {
   const showUpgrade = !ops.paid && (ops.requiresUpgrade || ops.stage === "at_risk");
 
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-gradient-to-r from-[#f8f9ff] to-white px-4 py-3.5 sm:px-5">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card elev-1 px-4 py-3.5 sm:px-5">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-foreground">
           Workspace · {STAGE_LABEL[ops.stage]}
@@ -118,7 +118,7 @@ export function WorkspaceOpsTruthStrip() {
       {showUpgrade ? (
         <Link
           href="/dashboard/pricing"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-white px-3 text-xs font-semibold text-foreground hover:bg-muted"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted"
           onClick={() =>
             trackActivation("activation_ops_truth_upgrade_click", { stage: ops.stage })
           }

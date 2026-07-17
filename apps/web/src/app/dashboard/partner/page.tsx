@@ -227,7 +227,7 @@ You'll get a Growvisi workspace invite. Connect your business number, send a tes
       </div>
 
       <DashboardPanel className="mt-6" title={t("partner.emailTitle")}>
-        <pre className="overflow-x-auto rounded-xl bg-[#f8f9ff] p-4 text-xs leading-relaxed text-foreground whitespace-pre-wrap">
+        <pre className="overflow-x-auto rounded-xl bg-background p-4 text-xs leading-relaxed text-foreground whitespace-pre-wrap">
           {emailTemplate}
         </pre>
         <Button type="button" size="sm" variant="outline" className="mt-3 rounded-xl" onClick={copyTemplate}>

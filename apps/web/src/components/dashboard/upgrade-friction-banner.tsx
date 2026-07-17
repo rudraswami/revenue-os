@@ -58,7 +58,7 @@ export function UpgradeFrictionBanner({
   return (
     <div
       className={cn(
-        "rounded-xl border border-amber-200/90 bg-gradient-to-r from-amber-50 to-white",
+        "rounded-xl border border-amber-200/90 bg-card elev-1",
         compact ? "px-3 py-2.5" : "px-4 py-3.5",
         className,
       )}
@@ -68,7 +68,7 @@ export function UpgradeFrictionBanner({
           <p className={cn("font-semibold text-amber-950", compact ? "text-xs" : "text-sm")}>
             {title}
           </p>
-          <p className={cn("mt-0.5 text-amber-900/85", compact ? "text-[11px]" : "text-xs")}>
+          <p className={cn("mt-0.5 text-amber-900/85", compact ? "text-xs" : "text-xs")}>
             {message}
             {used != null && limit != null ? ` (${used}/${limit})` : ""}
           </p>

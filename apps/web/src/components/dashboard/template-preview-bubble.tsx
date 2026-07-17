@@ -28,21 +28,21 @@ export function TemplatePreviewBubble({
   return (
     <div className={cn("rounded-2xl border border-border bg-[#e5f6ef] p-4", className)}>
       <div className="mb-2 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#128C7E] text-[10px] font-bold text-white">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#128C7E] text-xs font-bold text-white">
           WA
         </div>
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#128C7E]">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#128C7E]">
             WhatsApp preview
           </p>
-          <p className="text-[10px] text-muted-foreground">How customers will see it</p>
+          <p className="text-xs text-muted-foreground">How customers will see it</p>
         </div>
       </div>
-      <div className="relative max-w-[92%] rounded-xl rounded-tl-sm bg-white px-3.5 py-2.5 text-sm leading-relaxed text-foreground shadow-sm">
+      <div className="relative max-w-[92%] rounded-xl rounded-tl-sm bg-card px-3.5 py-2.5 text-sm leading-relaxed text-foreground shadow-sm">
         {text || (
           <span className="text-muted-foreground italic">Select a template to preview</span>
         )}
-        <span className="mt-1 block text-right text-[9px] text-muted-foreground">12:30 PM</span>
+        <span className="mt-1 block text-right text-xs text-muted-foreground">12:30 PM</span>
       </div>
     </div>
   );

@@ -142,8 +142,8 @@ export default function AiStudioPage() {
         description="Your AI revenue agent — classifying, scoring, tagging, and routing leads automatically."
         badge={
           <span
-            className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
-              isActive ? "bg-[#ecfdf5] text-accent" : "bg-amber-50 text-amber-700"
+            className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+              isActive ? "bg-bento-mint text-accent" : "bg-amber-50 text-amber-700"
             }`}
           >
             {isLoading ? "…" : isActive ? "Active" : "Setup needed"}
@@ -201,25 +201,25 @@ export default function AiStudioPage() {
 
       {/* Agent metrics */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent">
             <Activity className="h-5 w-5" />
           </div>
           <div>
             <p className="text-2xl font-bold">{agentStatus?.classificationsToday ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">Classifications today</p>
+            <p className="text-xs text-muted-foreground">Classifications today</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
             <Zap className="h-5 w-5" />
           </div>
           <div>
             <p className="text-2xl font-bold">{agentStatus?.automationsToday ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">Automations triggered</p>
+            <p className="text-xs text-muted-foreground">Automations triggered</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
             <Clock className="h-5 w-5" />
           </div>
@@ -227,7 +227,7 @@ export default function AiStudioPage() {
             <p className="text-2xl font-bold">
               {agentStatus?.lastLatencyMs ? `${(agentStatus.lastLatencyMs / 1000).toFixed(1)}s` : "—"}
             </p>
-            <p className="text-[11px] text-muted-foreground">Last response time</p>
+            <p className="text-xs text-muted-foreground">Last response time</p>
           </div>
         </div>
       </div>
@@ -291,7 +291,7 @@ export default function AiStudioPage() {
                 const next =
                   typeof d.nextAction === "string" ? d.nextAction : null;
                 return (
-                  <li key={`${item.time}-${i}`} className="rounded-xl border border-border/70 bg-[#f8f9ff]/50 p-3">
+                  <li key={`${item.time}-${i}`} className="rounded-xl border border-border/70 bg-background/50 p-3">
                     <p className="text-sm font-semibold">
                       {name} — <span className="text-accent">{intent}</span>
                     </p>
@@ -315,10 +315,10 @@ export default function AiStudioPage() {
           <div key={f.title}>
             <Link href={f.href} className="card-interactive block h-full p-5">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bento-mint text-accent">
                   <f.icon className="h-5 w-5" />
                 </div>
-                <span className="rounded-full bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-accent">
+                <span className="rounded-full bg-background px-2 py-0.5 text-xs font-semibold text-accent">
                   {f.stat}
                 </span>
               </div>

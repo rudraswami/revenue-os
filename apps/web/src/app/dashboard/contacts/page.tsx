@@ -276,7 +276,7 @@ export default function ContactsPage() {
             }}
           >
             <div className="flex-1 min-w-[160px]">
-              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Tag name
               </span>
               <Input
@@ -320,14 +320,14 @@ export default function ContactsPage() {
                     <input
                       value={editTagName}
                       onChange={(e) => setEditTagName(e.target.value)}
-                      className="w-20 rounded bg-white/90 px-1 text-[11px] text-foreground"
+                      className="w-20 rounded bg-card/90 px-1 text-xs text-foreground"
                     />
                     <button
                       type="button"
                       onClick={() =>
                         updateTag.mutate({ id: t.id, name: editTagName.trim(), color: editTagColor })
                       }
-                      className="text-[10px] underline"
+                      className="text-xs underline"
                     >
                       Save
                     </button>
@@ -454,7 +454,7 @@ export default function ContactsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="px-5 py-3 font-semibold">Contact</th>
                   <th className="px-3 py-3 font-semibold">Stage</th>
                   <th className="px-3 py-3 font-semibold">Score</th>
@@ -487,7 +487,7 @@ export default function ContactsPage() {
                     <td className="px-3 py-3">
                       <span
                         className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
                           STAGE_BADGE[c.stage],
                         )}
                       >
@@ -513,7 +513,7 @@ export default function ContactsPage() {
                           <TagChip key={t.id} tag={t} />
                         ))}
                         {c.tags.length > 3 && (
-                          <span className="text-[11px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             +{c.tags.length - 3}
                           </span>
                         )}
@@ -557,7 +557,7 @@ export default function ContactsPage() {
 
       {showAddContact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
             <h3 className="text-lg font-bold">Add contact</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Phone with country code (e.g. 919876543210). Use outbound from Inbox to message them.
@@ -613,8 +613,8 @@ export default function ContactsPage() {
 
 function StatCard({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className="rounded-2xl border border-border bg-white p-4 shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_4px_20px_rgb(11_28_48/0.05)]">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p className={cn("mt-1 text-2xl font-bold", accent ? "text-success" : "text-foreground")}>

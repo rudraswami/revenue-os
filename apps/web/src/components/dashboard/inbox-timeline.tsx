@@ -86,13 +86,13 @@ function TimelineRow({
 }) {
   return (
     <li className="grid grid-cols-[3.25rem_1fr] gap-x-2 gap-y-0.5 border-b border-border/50 py-2.5 last:border-0">
-      <time className="pt-0.5 text-[10px] tabular-nums leading-tight text-muted-foreground">
+      <time className="pt-0.5 text-xs tabular-nums leading-tight text-muted-foreground">
         {formatTimelineTime(ev.at, locale)}
       </time>
       <div className="min-w-0">
-        <p className="text-[13px] font-medium leading-snug text-foreground">{headline}</p>
+        <p className="text-sm font-medium leading-snug text-foreground">{headline}</p>
         {detail && (
-          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{detail}</p>
         )}
       </div>
     </li>
@@ -146,7 +146,7 @@ export function InboxTimeline({
   return (
     <aside
       className={cn(
-        "flex shrink-0 flex-col border-l border-border/80 bg-white transition-[width] duration-200",
+        "flex shrink-0 flex-col border-l border-border/80 bg-card transition-[width] duration-200",
         open ? "w-[15.5rem] xl:w-72" : "w-11",
         className,
       )}
@@ -158,7 +158,7 @@ export function InboxTimeline({
               <h2 className="text-sm font-semibold tracking-tight text-foreground">
                 {copy.timelineTitle}
               </h2>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">{copy.timelineSubtitle}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{copy.timelineSubtitle}</p>
             </div>
             <Button
               type="button"
@@ -190,7 +190,7 @@ export function InboxTimeline({
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 custom-scrollbar">
           {confidencePct != null && (
             <div className="mb-3 border-b border-border/50 pb-3">
-              <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+              <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
                 <span>{copy.timelineConfidence}</span>
                 <span className="tabular-nums font-medium text-foreground">{confidencePct}%</span>
               </div>
@@ -214,7 +214,7 @@ export function InboxTimeline({
           <div className="space-y-3">
             {groups.map((group) => (
               <section key={group.date}>
-                <p className="mb-1 px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
+                <p className="mb-1 px-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">
                   {group.date}
                 </p>
                 <ul>

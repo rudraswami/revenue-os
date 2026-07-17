@@ -126,7 +126,7 @@ export default function PricingPage() {
       )}
 
       {isLoading && (
-        <div className="mb-8 h-20 animate-pulse rounded-2xl border border-border/80 bg-[#f8f9ff]/60" />
+        <div className="mb-8 h-20 animate-pulse rounded-2xl border border-border/80 bg-background/60" />
       )}
 
       {isError && (
@@ -148,10 +148,10 @@ export default function PricingPage() {
             />
           )}
           <UsageMeterCard />
-          <div className="rounded-2xl border border-border/80 bg-[#f8f9ff]/60 px-5 py-4 text-sm">
+          <div className="rounded-2xl border border-border/80 bg-background/60 px-5 py-4 text-sm">
           <p>
             You&apos;re on <strong>{data.planName}</strong>
-            <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
+            <span className="ml-2 rounded-full bg-card px-2 py-0.5 text-xs font-bold uppercase text-muted-foreground">
               {statusLabel}
             </span>
           </p>
@@ -201,7 +201,7 @@ export default function PricingPage() {
       <div className="mt-10">
         <RoiCalculator />
       </div>
-      <ul className="mt-6 space-y-2 text-[12px] text-muted-foreground">
+      <ul className="mt-6 space-y-2 text-xs text-muted-foreground">
         {PRICING_FOOTNOTES.map((note) => (
           <li key={note}>· {note}</li>
         ))}

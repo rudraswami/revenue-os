@@ -20,7 +20,7 @@ const VARIANT_STYLES: Record<
   },
   emerald: {
     card: "border-accent/30 bg-accent text-accent-foreground",
-    icon: "bg-white/20 text-white",
+    icon: "bg-card/20 text-white",
     value: "text-white",
     title: "text-white/80",
   },

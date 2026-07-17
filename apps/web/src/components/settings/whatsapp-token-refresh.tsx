@@ -67,7 +67,7 @@ export function WhatsappTokenRefresh({
 
   if (!showWarning && !open) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-[#f8f9ff]/50 px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/50 px-5 py-4">
         <div>
           <p className="text-sm font-semibold text-foreground">Meta access token</p>
           <p className="mt-0.5 text-sm text-muted-foreground">Active — your connection is healthy.</p>
@@ -91,8 +91,8 @@ export function WhatsappTokenRefresh({
       className={cn(
         "rounded-2xl border p-5",
         urgent
-          ? "border-amber-200/80 bg-gradient-to-br from-amber-50/90 to-white"
-          : "border-border bg-[#f8f9ff]/50",
+          ? "border-amber-200/80 bg-card elev-1"
+          : "border-border bg-background/50",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">

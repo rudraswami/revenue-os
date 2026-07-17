@@ -185,7 +185,7 @@ export default function AutomationsPage() {
         title="Automations"
         description="Server-side workflows that help your team close faster — saved per workspace."
         badge={
-          <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-bold text-accent">
+          <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-bold text-accent">
             {activeCount} active
           </span>
         }
@@ -208,19 +208,19 @@ export default function AutomationsPage() {
           </div>
           <div>
             <p className="text-2xl font-bold">{stats?.totalRuns30d ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">Runs last 30 days</p>
+            <p className="text-xs text-muted-foreground">Runs last 30 days</p>
           </div>
         </div>
         {(stats?.byType ?? []).slice(0, 2).map((bt) => {
           const Icon = autoTypeIcons[bt.type] ?? Zap;
           return (
-            <div key={bt.type} className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+            <div key={bt.type} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bento-mint text-accent">
                 <Icon className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{bt.count}</p>
-                <p className="text-[11px] capitalize text-muted-foreground">{bt.type} runs</p>
+                <p className="text-xs capitalize text-muted-foreground">{bt.type} runs</p>
               </div>
             </div>
           );
@@ -237,7 +237,7 @@ export default function AutomationsPage() {
             <Sparkles className="h-4 w-4 text-accent" />
             <p className="font-semibold">AI-powered revenue workflows</p>
           </div>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             Stage updates and hot-lead alerts fire when AI classifies messages. Follow-up and stale-deal
             reminders run once daily. Manual stage moves can trigger email alerts when enabled.
           </p>
@@ -271,13 +271,13 @@ export default function AutomationsPage() {
         <div className="space-y-4">
           <DashboardPanel noPadding className="border-accent/20 bg-gradient-to-r from-bento-mint/30 to-white">
             <div className="flex flex-row items-start gap-4 p-5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bento-mint text-accent">
                 <MessageCircle className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-base font-bold">Welcome & first reply</h3>
-                  <span className="rounded-full bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  <span className="rounded-full bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                     Meta or human
                   </span>
                 </div>
@@ -299,7 +299,7 @@ export default function AutomationsPage() {
                 <div className="flex flex-row items-start gap-4 p-5">
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                      enabled ? "bg-accent text-white" : "bg-[#ecfdf5] text-accent"
+                      enabled ? "bg-accent text-white" : "bg-bento-mint text-accent"
                     }`}
                   >
                     <auto.icon className="h-5 w-5" />
@@ -307,11 +307,11 @@ export default function AutomationsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-bold">{auto.title}</h3>
-                      <span className="rounded-full bg-[#f8f9ff] px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      <span className="rounded-full bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                         {auto.impact}
                       </span>
                       {runCount > 0 && (
-                        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+                        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-bold text-accent">
                           {runCount} runs
                         </span>
                       )}
@@ -368,9 +368,9 @@ export default function AutomationsPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm">{log.result}</p>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground capitalize">{log.trigger}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground capitalize">{log.trigger}</p>
                     </div>
-                    <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(log.createdAt)}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(log.createdAt)}</span>
                   </div>
                 );
               })}

@@ -77,7 +77,7 @@ export function InsightActionButtons({
             asChild
             size="sm"
             variant={compact ? "outline" : "default"}
-            className={compact ? "h-7 text-[10px]" : "h-8"}
+            className={compact ? "h-7 text-xs" : "h-8"}
           >
             <Link href={action.href}>{action.label}</Link>
           </Button>
@@ -87,7 +87,7 @@ export function InsightActionButtons({
             type="button"
             size="sm"
             variant="outline"
-            className={compact ? "h-7 text-[10px]" : "h-8"}
+            className={compact ? "h-7 text-xs" : "h-8"}
             disabled={apiMut.isPending}
             onClick={() => apiMut.mutate(action)}
           >
@@ -100,7 +100,7 @@ export function InsightActionButtons({
           type="button"
           size="sm"
           variant="ghost"
-          className={compact ? "h-7 px-2 text-[10px] text-muted-foreground" : "h-8 text-muted-foreground"}
+          className={compact ? "h-7 px-2 text-xs text-muted-foreground" : "h-8 text-muted-foreground"}
           disabled={dismissMut.isPending}
           onClick={() => dismissMut.mutate()}
           title="Snooze for 7 days"

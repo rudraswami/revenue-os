@@ -75,7 +75,7 @@ const TAB_ICONS: Record<SettingsTabId, LucideIcon> = {
 };
 
 const TAB_ICON_CLASS: Partial<Record<SettingsTabId, string>> = {
-  whatsapp: "bg-[#ecfdf5] text-[#128C7E]",
+  whatsapp: "bg-bento-mint text-[#128C7E]",
 };
 
 function buildTabMeta(id: SettingsTabId, t: (path: string) => string): SettingsTab {
@@ -444,7 +444,7 @@ export function SettingsShell() {
           className="hidden shrink-0 lg:block lg:w-56"
           aria-label="Settings sections"
         >
-          <div className="sticky top-6 space-y-3 rounded-2xl border border-border/80 bg-white p-2 shadow-[0_4px_20px_rgb(11_28_48/0.04)]">
+          <div className="sticky top-6 space-y-3 rounded-2xl border border-border/80 bg-card p-2 shadow-[0_4px_20px_rgb(11_28_48/0.04)]">
             {[
               { label: t("settings.essentials"), ids: SETTINGS_ESSENTIAL_TABS },
               { label: t("settings.advanced"), ids: SETTINGS_ADVANCED_TABS },
@@ -456,7 +456,7 @@ export function SettingsShell() {
               if (tabs.length === 0) return null;
               return (
                 <div key={group.label}>
-                  <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="px-3 pb-1 pt-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     {group.label}
                   </p>
                   <ul className="space-y-0.5">
@@ -469,7 +469,7 @@ export function SettingsShell() {
                             onClick={() => selectTab(tab.id)}
                             disabled={!shellReady}
                             className={cn(
-                              "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition",
+                              "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition",
                               active
                                 ? "bg-accent/10 text-accent shadow-sm"
                                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -517,7 +517,7 @@ export function SettingsShell() {
           <div className="mb-5 flex items-start gap-3">
             <div
               className={cn(
-                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent",
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bento-mint text-accent",
                 current.iconClassName,
               )}
             >

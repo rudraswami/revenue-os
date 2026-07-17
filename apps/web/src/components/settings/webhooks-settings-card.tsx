@@ -117,7 +117,7 @@ export function WebhooksSettingsCard() {
           <p className="text-sm font-semibold">Outbound webhooks</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Push lead events to your CRM or automation stack. Signed with HMAC SHA-256
-            (<code className="text-[10px]">X-Growvisi-Signature</code>).
+            (<code className="text-xs">X-Growvisi-Signature</code>).
           </p>
         </div>
       </div>
@@ -125,14 +125,14 @@ export function WebhooksSettingsCard() {
       {newSecret && (
         <div className="rounded-xl border border-violet-200 bg-violet-50/80 p-3 text-xs">
           <p className="font-semibold text-violet-900">Signing secret — copy now</p>
-          <code className="mt-2 block break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11px]">
+          <code className="mt-2 block break-all rounded-lg bg-card px-2 py-1.5 font-mono text-xs">
             {newSecret.secret}
           </code>
         </div>
       )}
 
       {isAdmin && (data?.endpoints.length ?? 0) < 3 && (
-        <div className="space-y-2 rounded-xl border border-border/80 bg-[#f8f9ff]/40 p-3">
+        <div className="space-y-2 rounded-xl border border-border/80 bg-background/40 p-3">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -151,7 +151,7 @@ export function WebhooksSettingsCard() {
                 key={ev.id}
                 type="button"
                 onClick={() => toggleEvent(ev.id)}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                   events.includes(ev.id) ? "bg-accent text-white" : "bg-muted text-muted-foreground"
                 }`}
               >
@@ -178,13 +178,13 @@ export function WebhooksSettingsCard() {
           {(data?.endpoints ?? []).map((ep) => (
             <li
               key={ep.id}
-              className="rounded-xl border border-border/80 bg-white px-4 py-3 text-sm"
+              className="rounded-xl border border-border/80 bg-card px-4 py-3 text-sm"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-semibold">{ep.name}</p>
-                  <p className="truncate font-mono text-[11px] text-muted-foreground">{ep.url}</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="truncate font-mono text-xs text-muted-foreground">{ep.url}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {ep.events.join(", ")}
                   </p>
                 </div>
@@ -223,7 +223,7 @@ export function WebhooksSettingsCard() {
 
       {(data?.deliveries.length ?? 0) > 0 && (
         <div>
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Recent deliveries
           </p>
           <ul className="max-h-40 space-y-1 overflow-y-auto text-xs">

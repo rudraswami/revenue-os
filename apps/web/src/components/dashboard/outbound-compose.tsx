@@ -232,7 +232,7 @@ export function OutboundCompose({
                 )}
               >
                 <p className="text-xs font-bold text-foreground">{copy.outboundModeTemplate}</p>
-                <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
                   {copy.outboundModeTemplateHint}
                 </p>
               </button>
@@ -247,7 +247,7 @@ export function OutboundCompose({
                 )}
               >
                 <p className="text-xs font-bold text-foreground">{copy.outboundModeSession}</p>
-                <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
                   {copy.outboundModeSessionHint}
                 </p>
               </button>

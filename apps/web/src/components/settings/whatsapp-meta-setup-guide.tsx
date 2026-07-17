@@ -25,7 +25,7 @@ const STEPS = [
 export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: string }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-[#f8f9ff]/80 px-4 py-3">
+      <div className="rounded-xl border border-border bg-background/80 px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-accent">
           Setup assist
         </p>
@@ -38,7 +38,7 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
       <Button
         asChild
         size="lg"
-        className="h-12 w-full gap-2 rounded-xl bg-[#1877F2] text-[15px] font-semibold hover:bg-[#166FE0]"
+        className="h-12 w-full gap-2 rounded-xl bg-[#1877F2] text-sm font-semibold hover:bg-[#166FE0]"
       >
         <a href={metaApiSetupUrl} target="_blank" rel="noopener noreferrer">
           Open Meta API Setup
@@ -46,8 +46,8 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
         </a>
       </Button>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-        <div className="border-b border-border bg-gradient-to-r from-[#1877F2]/8 to-[#25D366]/5 px-4 py-3">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="border-b border-border bg-background px-4 py-3">
           <p className="text-xs font-semibold text-[#1877F2]">Where to find your token</p>
         </div>
 
@@ -57,8 +57,8 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
               <span
                 className={
                   step.highlight
-                    ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1877F2] text-[11px] font-bold text-white"
-                    : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0b1c30] text-[11px] font-bold text-white"
+                    ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1877F2] text-xs font-bold text-white"
+                    : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0b1c30] text-xs font-bold text-white"
                 }
               >
                 {step.n}
@@ -71,8 +71,8 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
           ))}
         </div>
 
-        <div className="border-t border-border bg-[#f8f9ff]/50 px-4 py-4">
-          <div className="flex items-start gap-3 rounded-xl border border-dashed border-[#25D366]/35 bg-[#ecfdf5]/60 px-3.5 py-3">
+        <div className="border-t border-border bg-background/50 px-4 py-4">
+          <div className="flex items-start gap-3 rounded-xl border border-dashed border-[#25D366]/35 bg-bento-mint/60 px-3.5 py-3">
             <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-[#128C7E]" />
             <div className="text-xs leading-relaxed text-muted-foreground">
               <p>

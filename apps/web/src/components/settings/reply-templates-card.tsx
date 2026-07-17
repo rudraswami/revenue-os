@@ -79,7 +79,7 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
       ) : (
         <div className="space-y-3">
           {templates.map((t) => (
-            <div key={t.id} className="rounded-xl border border-border/80 bg-[#f8f9ff]/40 p-3 space-y-2">
+            <div key={t.id} className="rounded-xl border border-border/80 bg-background/40 p-3 space-y-2">
               <div className="flex gap-2">
                 <Input
                   value={t.title}
@@ -109,7 +109,7 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
                 rows={2}
                 readOnly={!canEdit}
                 disabled={!canEdit}
-                className="w-full resize-none rounded-lg border border-input bg-white px-3 py-2 text-sm disabled:opacity-80"
+                className="w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm disabled:opacity-80"
               />
             </div>
           ))}

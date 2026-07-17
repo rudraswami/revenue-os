@@ -97,7 +97,7 @@ export function AiCapabilitiesBanner() {
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
       <div className="flex-1">
         <p className="font-semibold">AI classification is being set up</p>
-        <p className="mt-1 text-[13px] text-amber-900/85">
+        <p className="mt-1 text-sm text-amber-900/85">
           Classification starts automatically once your workspace is configured. Use the help button
           (bottom-right) or email support@growvisi.in if this persists after WhatsApp is connected.
         </p>

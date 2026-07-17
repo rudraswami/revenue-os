@@ -93,7 +93,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
     <div className="space-y-4">
       {!embedded && (
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bento-mint text-accent">
             <BookOpen className="h-5 w-5" />
           </div>
           <div>
@@ -121,7 +121,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
       )}
 
       {canManage && (
-        <div className="space-y-2 rounded-xl border border-border/80 bg-[#f8f9ff]/40 p-3">
+        <div className="space-y-2 rounded-xl border border-border/80 bg-background/40 p-3">
           <Input
             placeholder="Title — e.g. Pricing sheet"
             value={title}
@@ -133,7 +133,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
             onChange={(e) => setContent(e.target.value)}
             placeholder="Paste product details, offers, or policies your sales team should know…"
             rows={3}
-            className="w-full resize-none rounded-lg border border-input bg-white px-3 py-2 text-sm"
+            className="w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm"
           />
           <Button
             type="button"
@@ -165,7 +165,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
           {docs!.map((doc) => (
             <li
               key={doc.id}
-              className="rounded-xl border border-border/80 bg-white px-4 py-3"
+              className="rounded-xl border border-border/80 bg-card px-4 py-3"
             >
               {editingId === doc.id ? (
                 <div className="space-y-2">
@@ -178,7 +178,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     rows={4}
-                    className="w-full resize-none rounded-lg border border-input bg-white px-3 py-2 text-sm"
+                    className="w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm"
                   />
                   <div className="flex gap-2">
                     <Button
@@ -216,7 +216,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium">{doc.title}</p>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                           doc.status === "indexed"
                             ? "bg-bento-mint text-accent"
                             : "bg-muted text-muted-foreground"

@@ -239,7 +239,7 @@ export function ContactDetailDrawer({
               <div className="flex items-center gap-3">
                 <AvatarInitials name={displayName} size="md" />
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-semibold text-foreground">{displayName}</p>
+                  <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
                   <p className="text-xs text-muted-foreground">{contact?.phone}</p>
                 </div>
               </div>
@@ -262,7 +262,7 @@ export function ContactDetailDrawer({
                 {/* Stage + score + value */}
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Stage
                     </p>
                     <Select
@@ -285,18 +285,18 @@ export function ContactDetailDrawer({
                       ))}
                     </Select>
                     {contact.stage === "LOST" && contact.lostReason && (
-                      <p className="mt-1.5 text-[11px] text-muted-foreground">
+                      <p className="mt-1.5 text-xs text-muted-foreground">
                         Lost reason: <span className="font-medium text-foreground">{contact.lostReason}</span>
                       </p>
                     )}
                     {contact.stage === "WON" && contact.wonReason && (
-                      <p className="mt-1.5 text-[11px] text-muted-foreground">
+                      <p className="mt-1.5 text-xs text-muted-foreground">
                         Won reason: <span className="font-medium text-foreground">{contact.wonReason}</span>
                       </p>
                     )}
                   </div>
                   <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Score
                     </p>
                     <div
@@ -311,7 +311,7 @@ export function ContactDetailDrawer({
                     </div>
                   </div>
                   <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Value (₹)
                     </p>
                     <Input
@@ -335,7 +335,7 @@ export function ContactDetailDrawer({
                 {/* Tags */}
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Tags
                     </p>
                     <button
@@ -366,7 +366,7 @@ export function ContactDetailDrawer({
                             key={t.id}
                             type="button"
                             onClick={() => assignTag.mutate(t.id)}
-                            className="rounded-full px-2 py-0.5 text-[11px] font-semibold transition hover:opacity-80"
+                            className="rounded-full px-2 py-0.5 text-xs font-semibold transition hover:opacity-80"
                             style={{ backgroundColor: t.color, color: readableOn(t.color) }}
                           >
                             {t.name}
@@ -379,7 +379,7 @@ export function ContactDetailDrawer({
 
                 {/* Profile fields */}
                 <section className="space-y-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Details
                   </p>
                   <Field label="Name">
@@ -427,7 +427,7 @@ export function ContactDetailDrawer({
 
                 {/* Tasks */}
                 <section>
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Tasks
                   </p>
                   <div className="space-y-1.5">
@@ -439,7 +439,7 @@ export function ContactDetailDrawer({
                       return (
                         <div
                           key={t.id}
-                          className="flex items-center gap-2 rounded-lg border border-border/70 bg-white px-2.5 py-2"
+                          className="flex items-center gap-2 rounded-lg border border-border/70 bg-card px-2.5 py-2"
                         >
                           <button
                             type="button"
@@ -465,7 +465,7 @@ export function ContactDetailDrawer({
                           </span>
                           <span
                             className={cn(
-                              "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                              "rounded-full px-1.5 py-0.5 text-xs font-semibold",
                               PRIORITY_BADGE[t.priority],
                             )}
                           >
@@ -496,7 +496,7 @@ export function ContactDetailDrawer({
 
                 {/* Notes */}
                 <section>
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Notes
                   </p>
                   <form
@@ -511,7 +511,7 @@ export function ContactDetailDrawer({
                       onChange={(e) => setNoteBody(e.target.value)}
                       placeholder="Log a call, a requirement, or context for your team…"
                       rows={2}
-                      className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
                     />
                     <div className="flex justify-end">
                       <Button type="submit" size="sm" disabled={!noteBody.trim() || addNote.isPending}>
@@ -523,11 +523,11 @@ export function ContactDetailDrawer({
                     {contact.notes.map((n) => (
                       <div key={n.id} className="group rounded-xl border border-border/70 bg-muted/20 p-3">
                         <div className="mb-1 flex items-center justify-between">
-                          <span className="text-[11px] font-semibold text-foreground">
+                          <span className="text-xs font-semibold text-foreground">
                             {n.author?.name ?? n.author?.email ?? "Team"}
                           </span>
                           <span className="flex items-center gap-2">
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               {formatRelative(n.createdAt)}
                             </span>
                             <button
@@ -593,7 +593,7 @@ export function ContactDetailDrawer({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       {children}

@@ -49,7 +49,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Main column — only this area scrolls */}
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-center justify-between border-b border-border/80 bg-white/90 px-4 py-3 backdrop-blur-sm lg:hidden">
+        <header className="flex shrink-0 items-center justify-between border-b border-border/80 bg-card/90 px-4 py-3 backdrop-blur-sm lg:hidden">
           <button
             type="button"
             className="rounded-lg p-2 text-muted-foreground hover:bg-muted"

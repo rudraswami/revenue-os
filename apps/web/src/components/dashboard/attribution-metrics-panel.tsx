@@ -53,11 +53,11 @@ export function AttributionMetricsPanel() {
       ) : (
         <>
           <div className="mb-4 grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-border/80 bg-[#f8f9ff]/50 px-4 py-3">
+            <div className="rounded-xl border border-border/80 bg-background/50 px-4 py-3">
               <p className="text-xs text-muted-foreground">Attributed leads</p>
               <p className="text-xl font-bold">{totalLeads.toLocaleString("en-IN")}</p>
             </div>
-            <div className="rounded-xl border border-border/80 bg-[#ecfdf5]/40 px-4 py-3">
+            <div className="rounded-xl border border-border/80 bg-bento-mint/40 px-4 py-3">
               <p className="text-xs text-muted-foreground">Won from links</p>
               <p className="text-xl font-bold text-[#128C7E]">{totalWon.toLocaleString("en-IN")}</p>
             </div>

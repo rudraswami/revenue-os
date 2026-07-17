@@ -37,7 +37,7 @@ export function InboxThreadDetailsMobile({
   const leadScore = score ?? 0;
 
   return (
-    <div className="border-b border-border/60 bg-[#fafbff] px-4 py-2 md:hidden">
+    <div className="border-b border-border/60 bg-background px-4 py-2 md:hidden">
       <button
         type="button"
         className="flex w-full items-center justify-between text-left text-xs font-semibold text-foreground"
@@ -54,7 +54,7 @@ export function InboxThreadDetailsMobile({
         <div className="mt-3 grid gap-3 pb-2">
           {stage && canEditStage && (
             <div>
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Pipeline stage
               </label>
               <select
@@ -77,13 +77,13 @@ export function InboxThreadDetailsMobile({
           <div>
             <label
               htmlFor="mobile-assign-agent"
-              className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
             >
               {copy.assignedTo}
             </label>
             <select
               id="mobile-assign-agent"
-              className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
               value={assignedToId ?? ""}
               disabled={assignPending}
               onChange={(e) => onAssign(e.target.value || null)}

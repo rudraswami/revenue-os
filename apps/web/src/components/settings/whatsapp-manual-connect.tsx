@@ -132,8 +132,8 @@ export function WhatsappManualConnect({
   }
 
   const shellClass = isPrimary
-    ? "overflow-hidden rounded-2xl border border-border bg-white shadow-sm"
-    : "overflow-hidden rounded-2xl border border-border bg-[#f8f9ff]/50";
+    ? "overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+    : "overflow-hidden rounded-2xl border border-border bg-background/50";
 
   return (
     <div id="whatsapp-api-setup" className={shellClass}>
@@ -158,7 +158,7 @@ export function WhatsappManualConnect({
       )}
 
       {isPrimary && (
-        <div className="border-b border-border bg-gradient-to-r from-[#ecfdf5]/60 to-transparent px-6 py-5">
+        <div className="border-b border-border bg-background px-6 py-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-accent">Quick connect</p>
           <h3 className="text-lg font-bold">Paste token & connect</h3>
         </div>
@@ -174,7 +174,7 @@ export function WhatsappManualConnect({
             </div>
           )}
 
-          <div className="space-y-2 rounded-xl border border-border bg-white p-4">
+          <div className="space-y-2 rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between">
               <label className="text-sm font-semibold text-foreground">Access token</label>
               <Button

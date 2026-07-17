@@ -32,9 +32,9 @@ export function DashboardPanel({
       {(title || action) && (
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/80 bg-background/60 px-5 py-4">
           <div>
-            {title && <h3 className="text-sm font-semibold text-foreground md:text-[15px]">{title}</h3>}
+            {title && <h3 className="text-sm font-semibold text-foreground md:text-sm">{title}</h3>}
             {description && (
-              <p className="mt-0.5 text-xs text-muted-foreground md:text-[13px]">{description}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">{description}</p>
             )}
           </div>
           {action}

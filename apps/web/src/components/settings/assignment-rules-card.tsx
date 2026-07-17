@@ -136,7 +136,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
         </div>
 
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Default agent pool
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -146,7 +146,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
                 type="button"
                 disabled={!isAdmin || mutation.isPending}
                 onClick={() => togglePoolUser(m.user.id)}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
                   poolIds.includes(m.user.id)
                     ? "bg-accent text-white"
                     : "bg-muted text-muted-foreground hover:bg-muted/70"
@@ -160,7 +160,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
 
         <div className="space-y-3">
           {rules.map((rule, idx) => (
-            <div key={rule.id} className="rounded-xl border border-border/80 bg-white p-3">
+            <div key={rule.id} className="rounded-xl border border-border/80 bg-card p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Switch
                   checked={rule.enabled}
@@ -228,7 +228,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
                         };
                         updateDraft(next);
                       }}
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                         active ? "bg-accent text-white" : "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -250,7 +250,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
                     };
                     updateDraft(next);
                   }}
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                     rule.conditions.handoffOnly
                       ? "bg-amber-500 text-white"
                       : "bg-muted text-muted-foreground"
@@ -305,7 +305,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
         )}
 
         {!isAdmin && (
-          <p className="text-[11px] text-muted-foreground">Ask an admin to change assignment rules.</p>
+          <p className="text-xs text-muted-foreground">Ask an admin to change assignment rules.</p>
         )}
     </div>
   );

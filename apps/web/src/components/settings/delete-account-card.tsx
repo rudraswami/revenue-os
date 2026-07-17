@@ -38,7 +38,7 @@ export function DeleteAccountCard() {
   const canSubmit = password.length > 0 && confirmation === "DELETE";
 
   return (
-    <div className="rounded-xl border border-destructive/30 bg-gradient-to-br from-destructive/5 to-white p-4 shadow-sm">
+    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 elev-0">
       <div className="flex items-start gap-3">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
         <div className="min-w-0 flex-1">

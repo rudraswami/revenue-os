@@ -43,9 +43,9 @@ function toneFor(type: string) {
     case "Action needed":
       return { tone: "border-red-200/80 bg-red-50/40", iconBg: "bg-red-100 text-red-600" };
     case "Pipeline":
-      return { tone: "border-border bg-[#f8f9ff]", iconBg: "bg-[#ecfdf5] text-accent" };
+      return { tone: "border-border bg-background", iconBg: "bg-bento-mint text-accent" };
     default:
-      return { tone: "border-border bg-white", iconBg: "bg-muted text-muted-foreground" };
+      return { tone: "border-border bg-card", iconBg: "bg-muted text-muted-foreground" };
   }
 }
 
@@ -123,11 +123,11 @@ export function HomeRecommendationsPanel() {
     <section id="recommendations" className="mb-8 scroll-mt-6">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Recommendations</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-accent">Recommendations</p>
           <h2 className="text-lg font-bold">What to do next</h2>
         </div>
         {isFetching && !isLoading && (
-          <span className="text-[11px] text-muted-foreground">Updating…</span>
+          <span className="text-xs text-muted-foreground">Updating…</span>
         )}
       </div>
 
@@ -156,7 +156,7 @@ export function HomeRecommendationsPanel() {
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                         {item.type}
                       </p>
                       <h3 className="mt-1 text-base font-bold">{item.title}</h3>
@@ -197,11 +197,11 @@ export function HomeRecommendationsPanel() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="truncate text-sm font-bold">{lead.name}</p>
-                          <span className="shrink-0 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-bold text-accent">
+                          <span className="shrink-0 rounded-full bg-accent/10 px-1.5 py-0.5 text-xs font-bold text-accent">
                             {lead.score}
                           </span>
                         </div>
-                        <p className="mt-0.5 text-[11px] capitalize text-muted-foreground">
+                        <p className="mt-0.5 text-xs capitalize text-muted-foreground">
                           {lead.stage.toLowerCase().replace("_", " ")}
                           {lead.intent && ` · ${lead.intent}`}
                         </p>
@@ -209,7 +209,7 @@ export function HomeRecommendationsPanel() {
                       {lead.sentiment && (
                         <span
                           className={cn(
-                            "rounded-full px-1.5 py-0.5 text-[9px] font-bold capitalize",
+                            "rounded-full px-1.5 py-0.5 text-xs font-bold capitalize",
                             sentimentColors[lead.sentiment] ?? "bg-muted text-muted-foreground",
                           )}
                         >
@@ -228,7 +228,7 @@ export function HomeRecommendationsPanel() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="mt-2 h-7 w-full text-[10px]"
+                        className="mt-2 h-7 w-full text-xs"
                         disabled={createLeadTask.isPending}
                         onClick={(e) => {
                           e.preventDefault();

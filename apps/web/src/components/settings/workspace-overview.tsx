@@ -54,7 +54,7 @@ export function WorkspaceOverview() {
             {organization?.name ?? "Your workspace"}
           </p>
           <p className="mt-0.5 font-mono text-xs text-muted-foreground">{organization?.slug}</p>
-          <p className="mt-2 text-[13px] text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             Switch workspaces from the sidebar when you belong to multiple organizations.
           </p>
         </div>
@@ -96,10 +96,10 @@ function StatPill({
         "inline-flex min-w-[88px] flex-col rounded-xl border px-3 py-2",
         highlight
           ? "border-accent/25 bg-accent/5"
-          : "border-border/80 bg-[#f8f9ff]/60",
+          : "border-border/80 bg-background/60",
       )}
     >
-      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {Icon && <Icon className="h-3 w-3" />}
         {label}
       </span>

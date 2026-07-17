@@ -72,12 +72,12 @@ export function ProfileSettingsCard() {
           <p className="mt-0.5 text-sm text-muted-foreground">{user?.email}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {role && (
-              <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-semibold text-accent">
+              <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent">
                 {ROLE_LABELS[role as MembershipRole]}
               </span>
             )}
             {organization?.name && (
-              <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                 {organization.name}
               </span>
             )}

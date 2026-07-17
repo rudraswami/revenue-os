@@ -51,12 +51,12 @@ export function WhatsappConnectPathPicker({
               className={cn(
                 "relative rounded-2xl border p-4 text-left transition-all",
                 selected
-                  ? "border-accent/50 bg-[#ecfdf5]/60 ring-2 ring-accent/20 shadow-sm"
-                  : "border-border/80 bg-white hover:border-accent/30 hover:bg-[#f8fafc]",
+                  ? "border-accent/50 bg-bento-mint/60 ring-2 ring-accent/20 shadow-sm"
+                  : "border-border/80 bg-card hover:border-accent/30 hover:bg-[#f8fafc]",
               )}
             >
               {meta.hasBadge && (
-                <span className="absolute right-3 top-3 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                <span className="absolute right-3 top-3 rounded-full bg-accent px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
                   {t(`${base}.badge`)}
                 </span>
               )}
@@ -64,7 +64,7 @@ export function WhatsappConnectPathPicker({
                 <div
                   className={cn(
                     "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                    selected ? "bg-accent text-white" : "bg-[#ecfdf5] text-accent",
+                    selected ? "bg-accent text-white" : "bg-bento-mint text-accent",
                   )}
                 >
                   <Icon className="h-5 w-5" />
