@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import type { ProductPageSlug } from "@/lib/product-pages";
 import { PRODUCT_PAGES, PRODUCT_SLUGS } from "@/lib/product-pages";
 import { MarketingIcon } from "@/lib/marketing-icons";
+import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 import { MarketingHeader } from "./header";
 import { MarketingFooter } from "./footer";
@@ -51,13 +52,15 @@ export function ProductLandingPage({ slug }: { slug: ProductPageSlug }) {
               </h1>
               <p className="mt-5 text-lg leading-relaxed text-muted-foreground">{product.subhead}</p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/register" className="btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-3">
-                  {CTA.startTrial}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link href="/contact" className="btn-outline inline-flex items-center rounded-xl px-6 py-3">
-                  {CTA.bookDemo}
-                </Link>
+                <Button asChild>
+                  <Link href="/register">
+                    {CTA.startTrial}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/contact">{CTA.bookDemo}</Link>
+                </Button>
               </div>
               <p className="mt-4 text-sm text-muted-foreground">{product.proofLine}</p>
             </motion.div>

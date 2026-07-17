@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Headphones, Mail, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
 import { SetupHelpChat } from "@/components/support/setup-help-chat";
 import { SetupHelpFaqList } from "@/components/support/setup-help-faq-list";
 import { apiFetch } from "@/lib/api-client";
@@ -81,37 +82,20 @@ export function SetupHelpPanel({
       )}
 
       {llmAvailable && (
-        <div className="flex border-b border-border/60 p-1" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "answers"}
-            onClick={() => setTab("answers")}
-            className={cn(
-              "min-h-10 flex-1 touch-manipulation rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
-              tab === "answers"
-                ? "bg-accent text-white"
-                : "text-muted-foreground hover:bg-bento-mint/80",
-            )}
-          >
-            {t("setupHelp.tabAnswers")}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "ask"}
-            onClick={() => setTab("ask")}
-            className={cn(
-              "flex min-h-10 flex-1 touch-manipulation items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
-              tab === "ask"
-                ? "bg-accent text-white"
-                : "text-muted-foreground hover:bg-bento-mint/80",
-            )}
-          >
-            <Sparkles className="h-3 w-3" />
-            {t("setupHelp.tabAsk")}
-          </button>
-        </div>
+        <Tabs
+          aria-label="Setup help"
+          fullWidth
+          value={tab}
+          onChange={setTab}
+          items={[
+            { value: "answers", label: t("setupHelp.tabAnswers") },
+            {
+              value: "ask",
+              label: t("setupHelp.tabAsk"),
+              icon: <Sparkles className="h-3 w-3" />,
+            },
+          ]}
+        />
       )}
 
       {tab === "answers" || !llmAvailable ? (
@@ -122,8 +106,8 @@ export function SetupHelpPanel({
         <SetupHelpChat context={context} />
       )}
 
-      <div className="space-y-2 border-t border-border/80 bg-[#f8fafc] p-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-accent">
+      <div className="space-y-2 border-t border-border/80 bg-muted/40 p-3">
+        <p className="text-xs font-medium text-accent">
           {t("setupHelp.supportNeedTitle")}
         </p>
         <p className="text-xs leading-relaxed text-muted-foreground">{t("setupHelp.supportHours")}</p>

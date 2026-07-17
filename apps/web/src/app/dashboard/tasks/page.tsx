@@ -25,7 +25,7 @@ import {
   type TeamMember,
 } from "@/lib/crm";
 import { cn } from "@/lib/utils";
-import { FilterChip } from "@/components/ui/filter-chip";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { TeamWorkloadPanel } from "@/components/dashboard/team-workload-panel";
 
 interface TaskRow {
@@ -213,12 +213,17 @@ export default function TasksPage() {
       </DashboardPanel>
       )}
 
-      <div className="mb-4 flex gap-1.5">
-        {(["open", "mine", "all"] as const).map((s) => (
-          <FilterChip key={s} active={scope === s} onClick={() => setScope(s)}>
-            {s === "open" ? "Open" : s === "mine" ? "My tasks" : "All"}
-          </FilterChip>
-        ))}
+      <div className="mb-4">
+        <SegmentedControl
+          aria-label="Task scope"
+          value={scope}
+          onChange={setScope}
+          options={[
+            { value: "open", label: "Open" },
+            { value: "mine", label: "My tasks" },
+            { value: "all", label: "All" },
+          ]}
+        />
       </div>
 
       <DashboardPanel noPadding>

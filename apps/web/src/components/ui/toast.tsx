@@ -86,16 +86,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={item.id}
             role="status"
             className={cn(
-              "pointer-events-auto flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm elev-2",
+              "pointer-events-auto flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm elev-2 gv-animate-toast",
               item.variant === "success" &&
                 "border-accent/20 bg-card text-foreground",
               item.variant === "error" &&
                 "border-destructive/30 bg-card text-destructive",
-              item.variant === "info" && "border-accent/25 bg-card text-foreground",
+              item.variant === "info" && "border-border bg-muted/40 text-foreground",
             )}
           >
             {item.variant === "error" ? (
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : item.variant === "info" ? (
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             ) : (
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
             )}

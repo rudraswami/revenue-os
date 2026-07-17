@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -168,6 +169,7 @@ export default function CampaignsPage() {
   const [listFilter, setListFilter] = useState<ListFilter>("all");
   const [detailScheduleLocal, setDetailScheduleLocal] = useState(defaultScheduleLocal);
   const [whatsappAccountId, setWhatsappAccountId] = useState<string>("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const { data: whatsappAccounts } = useQuery({
     queryKey: QUERY_KEYS.whatsappAccounts,
@@ -314,6 +316,7 @@ export default function CampaignsPage() {
     mutationFn: (id: string) =>
       apiFetch(`/campaigns/${id}`, { method: "DELETE", token: token ?? undefined }),
     onSuccess: () => {
+      setConfirmDeleteId(null);
       setDetailId(null);
       void qc.invalidateQueries({ queryKey: ["campaigns"] });
     },
@@ -999,7 +1002,7 @@ export default function CampaignsPage() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => deleteMut.mutate(detail.id)}
+                    onClick={() => setConfirmDeleteId(detail.id)}
                     disabled={deleteMut.isPending}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -1010,6 +1013,18 @@ export default function CampaignsPage() {
             )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!confirmDeleteId}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+        title="Delete this campaign?"
+        description="This cannot be undone. Recipients and send history for this campaign will be removed."
+        confirmLabel="Delete campaign"
+        isLoading={deleteMut.isPending}
+        onConfirm={() => {
+          if (confirmDeleteId) deleteMut.mutate(confirmDeleteId);
+        }}
+      />
     </div>
   );
 }

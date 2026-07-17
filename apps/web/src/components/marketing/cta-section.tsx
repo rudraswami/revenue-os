@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 
 export function CtaSection() {
@@ -32,13 +33,12 @@ export function CtaSection() {
             Join teams across India closing more deals with less chaos.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              href="/register"
-              className="btn-primary inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-[15px] shadow-lg shadow-accent/25"
-            >
-              {CTA.startTrial}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <Button asChild size="lg" className="shadow-lg shadow-accent/25">
+              <Link href="/register">
+                {CTA.startTrial}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
             <Link
               href="/contact"
               className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/5 px-8 py-3.5 text-[15px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10"

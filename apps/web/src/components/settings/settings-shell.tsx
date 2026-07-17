@@ -388,7 +388,6 @@ export function SettingsShell() {
 
   const tabFromUrl = normalizeSettingsTab(searchParams.get("tab")) ?? getDefaultSettingsTab(accessCtx);
   const [activeTab, setActiveTab] = useState<SettingsTabId>(tabFromUrl);
-  const [tabSwitching, setTabSwitching] = useState(false);
 
   const syncFromLocation = useCallback(() => {
     const resolved = resolveTabFromLocation(
@@ -407,7 +406,6 @@ export function SettingsShell() {
   useEffect(() => {
     const resolved = normalizeSettingsTab(searchParams.get("tab")) ?? getDefaultSettingsTab(accessCtx);
     setActiveTab(resolved);
-    setTabSwitching(false);
   }, [searchParams, accessCtx]);
 
   const current = tabById[activeTab] ?? buildTabMeta(activeTab, t);
@@ -416,14 +414,12 @@ export function SettingsShell() {
 
   function selectTab(id: SettingsTabId) {
     if (!canAccessSettingsTab(id, accessCtx) || id === activeTab) return;
-    setTabSwitching(true);
     setActiveTab(id);
     const params = new URLSearchParams(window.location.search);
     if (id === "team") params.delete("tab");
     else params.set("tab", id);
     const qs = params.toString();
     router.replace(qs ? `/dashboard/settings?${qs}` : "/dashboard/settings", { scroll: false });
-    requestAnimationFrame(() => setTabSwitching(false));
   }
 
   async function handleLogout() {
@@ -499,10 +495,10 @@ export function SettingsShell() {
                   type="button"
                   onClick={() => selectTab(tab.id)}
                   className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition",
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition-colors duration-150",
                     active
-                      ? "bg-accent text-white shadow-sm"
-                      : "bg-muted text-muted-foreground",
+                      ? "bg-accent/10 text-accent ring-1 ring-accent/15"
+                      : "bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   <tab.icon className="h-3.5 w-3.5" />
@@ -535,18 +531,11 @@ export function SettingsShell() {
             ) : showAccessPanel ? (
               <SettingsAccessPanel tab={activeTab} ctx={accessCtx} />
             ) : (
-              <div
-                className={cn(
-                  "transition-opacity duration-150",
-                  tabSwitching && "opacity-60",
-                )}
-              >
-                <SettingsTabContent
-                  tab={activeTab}
-                  isAdmin={isAdmin}
-                  onLogout={() => void handleLogout()}
-                />
-              </div>
+              <SettingsTabContent
+                tab={activeTab}
+                isAdmin={isAdmin}
+                onLogout={() => void handleLogout()}
+              />
             )}
           </div>
         </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 import { PILOT_METRICS_TEMPLATE } from "@/lib/marketing-nav";
 import { SectionHeader } from "./section-header";
@@ -169,13 +170,12 @@ export function CaseStudy() {
                 before/after numbers from Analytics. Join our pilot cohort if you want to be first.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href="/register"
-                  className="btn-primary inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm shadow-[0_8px_24px_rgb(0_108_73/0.25)]"
-                >
-                  {CTA.startTrial}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                <Button asChild className="shadow-[0_8px_24px_rgb(0_108_73/0.25)]">
+                  <Link href="/register">
+                    {CTA.startTrial}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
                 <Link
                   href="/contact"
                   className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-white/80 px-6 py-3 text-sm font-semibold text-foreground backdrop-blur-sm transition hover:border-accent/30"

@@ -20,7 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
-import { FilterChip } from "@/components/ui/filter-chip";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 const STAGES: LeadStage[] = [
   "NEW",
@@ -52,14 +52,14 @@ const STAGE_COLORS: Record<LeadStage, string> = {
   LOST: "bg-muted-foreground",
 };
 
-type PipelineFilter = "hot" | "stale" | "mine" | "unassigned";
+type PipelineFilter = "all" | "hot" | "stale" | "mine" | "unassigned";
 
-const FILTER_CHIPS: Array<{ id: PipelineFilter | null; label: string }> = [
-  { id: null, label: "All" },
-  { id: "hot", label: "Hot" },
-  { id: "stale", label: "Stale" },
-  { id: "mine", label: "Mine" },
-  { id: "unassigned", label: "Unassigned" },
+const FILTER_OPTIONS: Array<{ value: PipelineFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "hot", label: "Hot" },
+  { value: "stale", label: "Stale" },
+  { value: "mine", label: "Mine" },
+  { value: "unassigned", label: "Unassigned" },
 ];
 
 interface PipelineResponse {
@@ -87,7 +87,7 @@ export default function PipelinePage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [exporting, setExporting] = useState(false);
-  const [filter, setFilter] = useState<PipelineFilter | null>(null);
+  const [filter, setFilter] = useState<PipelineFilter>("all");
   const [lostPrompt, setLostPrompt] = useState<{ leadId: string; name?: string | null } | null>(
     null,
   );
@@ -100,15 +100,17 @@ export default function PipelinePage() {
     const f = searchParams.get("filter");
     if (f === "hot" || f === "stale" || f === "mine" || f === "unassigned") {
       setFilter(f);
+    } else if (!f) {
+      setFilter("all");
     }
   }, [searchParams]);
 
-  const pipelineQueryKey = ["pipeline", filter ?? "all"] as const;
+  const pipelineQueryKey = ["pipeline", filter] as const;
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: pipelineQueryKey,
     queryFn: () => {
-      const qs = filter ? `?filter=${filter}` : "";
+      const qs = filter !== "all" ? `?filter=${filter}` : "";
       return apiFetch<PipelineResponse>(`/leads/pipeline${qs}`, {
         token: token ?? undefined,
       });
@@ -335,25 +337,22 @@ export default function PipelinePage() {
             />
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-2">
-            {FILTER_CHIPS.map((chip) => (
-              <FilterChip
-                key={chip.label}
-                active={filter === chip.id}
-                onClick={() => setFilter(chip.id)}
-              >
-                {chip.label}
-              </FilterChip>
-            ))}
+          <div className="mb-4">
+            <SegmentedControl
+              aria-label="Pipeline filters"
+              value={filter}
+              onChange={setFilter}
+              options={FILTER_OPTIONS}
+            />
           </div>
 
-          {filter && totalLeads === 0 && (
+          {filter !== "all" && totalLeads === 0 && (
             <p className="mb-4 text-sm text-muted-foreground">
               No leads match this filter.{" "}
               <button
                 type="button"
                 className="font-semibold text-accent hover:underline"
-                onClick={() => setFilter(null)}
+                onClick={() => setFilter("all")}
               >
                 Show all
               </button>

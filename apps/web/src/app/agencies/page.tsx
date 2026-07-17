@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Building2, CheckCircle2, Handshake, Layers, Users } from "lucide-react";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
+import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 import { OUTCOME_TIERS, POSITIONING } from "@/lib/gtm-copy";
 
@@ -46,13 +47,15 @@ export default function AgenciesPage() {
               install kit so you deliver pipeline ₹ reporting — not just chat setup.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <Link href="/register" className="btn-primary inline-flex items-center gap-2 rounded-xl px-8 py-4">
-                Start Operator trial
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href="/contact" className="btn-outline inline-flex items-center gap-2 rounded-xl px-8 py-4">
-                {CTA.bookDemo}
-              </Link>
+              <Button asChild size="lg" className="px-8">
+                <Link href="/register">
+                  Start Operator trial
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="px-8">
+                <Link href="/contact">{CTA.bookDemo}</Link>
+              </Button>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
               ₹{OUTCOME_TIERS.operator.priceInr.toLocaleString("en-IN")}/mo · {POSITIONING.trialNote}

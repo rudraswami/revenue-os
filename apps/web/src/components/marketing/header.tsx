@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, ChevronDown, Menu, Sparkles, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 import { MARKETING_NAV } from "@/lib/marketing-nav";
 import { MarketingIcon } from "@/lib/marketing-icons";
@@ -82,13 +83,12 @@ export function MarketingHeader() {
             >
               {CTA.signIn}
             </Link>
-            <Link
-              href="/register"
-              className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm"
-            >
-              {CTA.getStarted}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <Button asChild>
+              <Link href="/register">
+                {CTA.getStarted}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
           </div>
 
           <button
@@ -183,13 +183,11 @@ export function MarketingHeader() {
               <Link href="/login" onClick={() => setOpen(false)}>
                 {CTA.signIn}
               </Link>
-              <Link
-                href="/register"
-                className="btn-primary rounded-xl px-4 py-2.5 text-center text-sm"
-                onClick={() => setOpen(false)}
-              >
-                {CTA.getStarted}
-              </Link>
+              <Button asChild className="w-full">
+                <Link href="/register" onClick={() => setOpen(false)}>
+                  {CTA.getStarted}
+                </Link>
+              </Button>
             </div>
           </nav>
         </div>

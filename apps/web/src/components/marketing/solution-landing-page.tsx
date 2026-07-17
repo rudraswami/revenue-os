@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import type { SolutionPageSlug } from "@/lib/solution-pages";
 import { SOLUTION_PAGES, SOLUTION_SLUGS } from "@/lib/solution-pages";
 import { MarketingIcon } from "@/lib/marketing-icons";
+import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 import { HANDOFF_EXPLAINER } from "@/lib/gtm-copy";
 import { MarketingHeader } from "./header";
@@ -199,13 +200,15 @@ export function SolutionLandingPage({ slug }: { slug: SolutionPageSlug }) {
               14-day trial · 500 leads · 1 WhatsApp number · no card
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link href="/register" className="btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-3">
-                {CTA.startTrial}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href="/#pricing" className="btn-outline inline-flex items-center rounded-xl px-6 py-3">
-                See pricing
-              </Link>
+              <Button asChild>
+                <Link href="/register">
+                  {CTA.startTrial}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/#pricing">See pricing</Link>
+              </Button>
             </div>
           </div>
         </section>

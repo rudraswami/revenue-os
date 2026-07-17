@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PhoneMockup } from "./phone-mockup";
 import { WhatsAppChat, AI_PHONE_CHAT } from "./animated-chat";
 
@@ -26,13 +27,12 @@ export function AiSection() {
             <h2 className="display-lg text-foreground">
               The AI teammate your sales team deserves
             </h2>
-            <Link
-              href="/register"
-              className="btn-gradient mt-8 inline-flex h-12 items-center gap-2 rounded-full px-8 text-[15px] font-semibold shadow-md"
-            >
-              Try it free for 14 days
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <Button asChild size="lg" className="mt-8 shadow-md">
+              <Link href="/register">
+                Try it free for 14 days
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
 
             <ul className="mt-10 space-y-3">
               {benefits.map((benefit, i) => (
