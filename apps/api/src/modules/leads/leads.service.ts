@@ -898,6 +898,29 @@ export class LeadsService {
       });
     }
 
+    const memberCount = await this.prisma.organizationMember.count({
+      where: { organizationId: orgId },
+    });
+    if (
+      handoffs > 0 &&
+      memberCount <= 1 &&
+      activationSteps.aiClassified &&
+      !this.isDismissed(dismissed, "invite_teammate")
+    ) {
+      items.push({
+        id: "invite_teammate",
+        type: "Tip",
+        title: "Invite a teammate for handoffs",
+        body: "AI flagged chats that need a human. Share the queue so nothing sits on one phone.",
+        href: "/dashboard/settings?tab=team",
+        actionLabel: "Invite teammate",
+        priority: 3,
+        actions: [
+          { type: "link", label: "Invite teammate", href: "/dashboard/settings?tab=team" },
+        ],
+      });
+    }
+
     items.sort((a, b) => a.priority - b.priority);
 
     const hotLeads = await this.prisma.lead.findMany({

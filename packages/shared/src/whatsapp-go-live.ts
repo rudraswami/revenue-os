@@ -92,3 +92,27 @@ export function activationNextMilestone(steps: {
     description: "WhatsApp → classify → pipeline is working in this workspace.",
   };
 }
+
+/** Hours between two ISO timestamps; null if either missing. */
+export function hoursBetweenIso(from: string | null | undefined, to: string | null | undefined): number | null {
+  if (!from || !to) return null;
+  const a = new Date(from).getTime();
+  const b = new Date(to).getTime();
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return null;
+  return Math.round(((b - a) / 3_600_000) * 10) / 10;
+}
+
+export function buildActivationFunnelMetrics(milestones: {
+  whatsappConnectedAt: string | null;
+  firstInboundAt: string | null;
+  aiClassifiedAt: string | null;
+  pipelineMovedAt: string | null;
+  completedAt: string | null;
+}) {
+  return {
+    hoursConnectToInbound: hoursBetweenIso(milestones.whatsappConnectedAt, milestones.firstInboundAt),
+    hoursInboundToClassify: hoursBetweenIso(milestones.firstInboundAt, milestones.aiClassifiedAt),
+    hoursClassifyToPipeline: hoursBetweenIso(milestones.aiClassifiedAt, milestones.pipelineMovedAt),
+    hoursConnectToComplete: hoursBetweenIso(milestones.whatsappConnectedAt, milestones.completedAt),
+  };
+}

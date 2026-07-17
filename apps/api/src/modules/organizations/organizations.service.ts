@@ -7,7 +7,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
-import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone } from "@growvisi/shared";
+import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics } from "@growvisi/shared";
 import { AuthService } from "../auth/auth.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -540,6 +540,7 @@ export class OrganizationsService {
       totalSteps: values.length,
       allComplete,
       milestones,
+      funnel: buildActivationFunnelMetrics(milestones),
       nextAction: next,
       goLive,
     };

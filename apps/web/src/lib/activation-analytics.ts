@@ -21,7 +21,13 @@ export type ActivationEvent =
   | "activation_complete"
   | "activation_home_card_view"
   | "activation_home_card_dismiss"
-  | "activation_next_step_click";
+  | "activation_next_step_click"
+  | "conversion_after_proof_view"
+  | "conversion_after_proof_dismiss"
+  | "conversion_after_proof_click"
+  | "team_habit_invite_view"
+  | "team_habit_invite_dismiss"
+  | "team_habit_invite_click";
 
 declare global {
   interface Window {

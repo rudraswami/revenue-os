@@ -1,8 +1,10 @@
 import {
   activationAllComplete,
   activationNextMilestone,
+  buildActivationFunnelMetrics,
   computeGoLiveProgressPct,
   deriveAgencyConnectionStatus,
+  hoursBetweenIso,
 } from "./whatsapp-go-live";
 
 describe("computeGoLiveProgressPct", () => {
@@ -111,5 +113,22 @@ describe("activationNextMilestone", () => {
         pipelineMoved: true,
       }).id,
     ).toBe("complete");
+  });
+});
+
+describe("hoursBetweenIso / buildActivationFunnelMetrics", () => {
+  it("computes hours between milestones", () => {
+    expect(hoursBetweenIso("2026-01-01T00:00:00.000Z", "2026-01-01T03:00:00.000Z")).toBe(3);
+    const metrics = buildActivationFunnelMetrics({
+      whatsappConnectedAt: "2026-01-01T00:00:00.000Z",
+      firstInboundAt: "2026-01-01T02:00:00.000Z",
+      aiClassifiedAt: "2026-01-01T03:00:00.000Z",
+      pipelineMovedAt: "2026-01-01T05:00:00.000Z",
+      completedAt: "2026-01-01T05:00:00.000Z",
+    });
+    expect(metrics.hoursConnectToInbound).toBe(2);
+    expect(metrics.hoursInboundToClassify).toBe(1);
+    expect(metrics.hoursClassifyToPipeline).toBe(2);
+    expect(metrics.hoursConnectToComplete).toBe(5);
   });
 });

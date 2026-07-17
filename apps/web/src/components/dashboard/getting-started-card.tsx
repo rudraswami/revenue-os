@@ -23,6 +23,12 @@ interface OnboardingProgress {
   completedCount: number;
   totalSteps: number;
   allComplete: boolean;
+  milestones?: {
+    whatsappConnectedAt: string | null;
+    firstInboundAt: string | null;
+    aiClassifiedAt: string | null;
+    pipelineMovedAt: string | null;
+  };
   nextAction?: {
     id: string;
     href: string;
@@ -99,6 +105,7 @@ export function GettingStartedCard() {
       href: "/dashboard/settings?tab=whatsapp",
       action: "Connect",
       icon: MessageSquare,
+      at: progress.milestones?.whatsappConnectedAt,
     },
     {
       id: "message",
@@ -108,6 +115,7 @@ export function GettingStartedCard() {
       href: "/dashboard/inbox",
       action: CTA.openConversations,
       icon: MessageSquare,
+      at: progress.milestones?.firstInboundAt,
     },
     {
       id: "ai",
@@ -117,6 +125,7 @@ export function GettingStartedCard() {
       href: "/dashboard/inbox",
       action: CTA.openConversations,
       icon: Bot,
+      at: progress.milestones?.aiClassifiedAt,
     },
     {
       id: "pipeline",
@@ -126,6 +135,7 @@ export function GettingStartedCard() {
       href: "/dashboard/pipeline",
       action: NAV.pipeline,
       icon: Kanban,
+      at: progress.milestones?.pipelineMovedAt,
     },
   ];
 
@@ -195,6 +205,16 @@ export function GettingStartedCard() {
                     {step.title}
                   </p>
                   <p className="text-xs text-muted-foreground">{step.description}</p>
+                  {step.done && step.at ? (
+                    <p className="mt-0.5 text-[10px] text-muted-foreground/80">
+                      {new Date(step.at).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               {!step.done && (

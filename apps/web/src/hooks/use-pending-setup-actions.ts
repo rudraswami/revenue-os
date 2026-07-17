@@ -28,7 +28,7 @@ export function usePendingSetupActions() {
   const query = useQuery({
     queryKey: ["pending-setup-actions"],
     queryFn: async () => {
-      const [billing, progress, accounts, health, ops, payment, capabilities] =
+      const [billing, progress, accounts, health, ops, payment, capabilities, teamLimits, workload] =
         await Promise.all([
           apiFetch<{
             entitlements?: {
@@ -59,6 +59,14 @@ export function usePendingSetupActions() {
           apiFetch<{ aiClassification: boolean }>("/conversations/capabilities", {
             token: token ?? undefined,
           }).catch(() => ({ aiClassification: true })),
+          apiFetch<{
+            memberCount: number;
+            pendingInvites: number;
+            canInvite: boolean;
+          }>("/organizations/team-limits", { token: token ?? undefined }).catch(() => null),
+          apiFetch<{ unassignedConversations: number }>("/organizations/team-workload", {
+            token: token ?? undefined,
+          }).catch(() => null),
         ]);
 
       const connected = accounts?.some((a) => a.isActive) ?? false;
@@ -144,6 +152,46 @@ export function usePendingSetupActions() {
           href: "/dashboard/pipeline",
           priority: "recommended",
           order: 22,
+        });
+      }
+
+      // Conversion after proof — soft upgrade once classify works (not urgent trial).
+      if (
+        ent?.hasAccess &&
+        ent.planId === "trial" &&
+        progress.aiClassified &&
+        !trialEnded &&
+        !trialEndsSoon
+      ) {
+        actions.push({
+          id: "upgrade-after-proof",
+          title: "Lock in your plan",
+          description: "AI scoring is live — upgrade from ₹999/mo before trial ends.",
+          href: "/dashboard/pricing",
+          priority: "recommended",
+          order: 25,
+        });
+      }
+
+      // Team habit — invite when solo after first classify.
+      if (
+        progress.aiClassified &&
+        teamLimits &&
+        teamLimits.memberCount <= 1 &&
+        teamLimits.pendingInvites === 0 &&
+        teamLimits.canInvite &&
+        (workload?.unassignedConversations ?? 0) >= 0
+      ) {
+        const busy = (workload?.unassignedConversations ?? 0) > 0;
+        actions.push({
+          id: "invite-teammate",
+          title: "Invite a teammate",
+          description: busy
+            ? "Unassigned chats waiting — share the queue with your sales team."
+            : "Add an agent so hot leads aren’t stuck on one phone.",
+          href: "/dashboard/settings?tab=team",
+          priority: "recommended",
+          order: busy ? 23 : 28,
         });
       }
 
