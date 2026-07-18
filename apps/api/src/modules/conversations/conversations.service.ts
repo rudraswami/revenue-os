@@ -392,13 +392,36 @@ export class ConversationsService {
 
     if (!needsClassify && !needsDraft) return;
 
-    void this.aiClassify.enqueue(
-      {
+    void this.enqueueClassifyIfNeeded(
+      organizationId,
+      conversation.id,
+      lastMsg.id,
+      conversation.leadId,
+    );
+  }
+
+  private async enqueueClassifyIfNeeded(
+    organizationId: string,
+    conversationId: string,
+    messageId: string,
+    leadId: string,
+  ) {
+    const existing = await this.prisma.aiRun.findFirst({
+      where: {
         organizationId,
-        conversationId: conversation.id,
-        messageId: lastMsg.id,
-        leadId: conversation.leadId,
+        conversationId,
+        type: { in: ["classify", "classify_refresh"] },
+        status: "COMPLETED",
+        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
       },
+      orderBy: { createdAt: "desc" },
+      select: { input: true },
+    });
+    const existingMessageId = (existing?.input as Record<string, unknown> | null)?.messageId;
+    if (existingMessageId === messageId) return;
+
+    void this.aiClassify.enqueue(
+      { organizationId, conversationId, messageId, leadId },
       { background: true },
     );
   }

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { ReplyDecision, ReplyRiskLevel } from "@growvisi/shared";
+import { isSimpleGreeting } from "@growvisi/shared";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
@@ -78,6 +79,13 @@ export class ReplyComposerService {
     }
 
     const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
+    const profile = ctx.lead.profile;
+    const intent =
+      typeof profile.lastIntent === "string" ? profile.lastIntent : undefined;
+    const summary =
+      typeof profile.summary === "string" ? profile.summary : undefined;
+    const stage = ctx.lead.stage;
+    const greeting = isSimpleGreeting(ctx.lastInbound);
     const model = this.config.get<string>("AI_CHAT_MODEL") ?? "gpt-4o-mini";
     const started = Date.now();
     const risk = input.decision?.risk ?? (input.knowledgeGap ? "high" : "medium");
@@ -120,11 +128,17 @@ export class ReplyComposerService {
                   memoryBlock,
                   knowledgeGap: Boolean(input.knowledgeGap),
                   risk,
+                  intent,
+                  summary,
+                  stage,
+                  lastInbound: ctx.lastInbound,
+                  greeting,
+                  autoSend: input.decision?.mode === "send",
                 }),
               },
               {
                 role: "user",
-                content: `Draft the next WhatsApp reply.\n\n${ctx.transcript}`,
+                content: `Draft the next WhatsApp reply. Respond directly to the customer's latest message.\n\nLatest message: "${ctx.lastInbound ?? "(none)"}"\n\nFull thread:\n${ctx.transcript}`,
               },
             ],
           }),
@@ -188,20 +202,36 @@ export class ReplyComposerService {
     memoryBlock: string;
     knowledgeGap: boolean;
     risk: ReplyRiskLevel;
+    intent?: string;
+    summary?: string;
+    stage?: string;
+    lastInbound?: string | null;
+    greeting?: boolean;
+    autoSend?: boolean;
   }): string {
     return [
-      "You draft WhatsApp replies for a sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
-      "The human rep will review and send — never imply the message was already sent.",
+      "You draft WhatsApp replies for an Indian SMB sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
+      opts.autoSend
+        ? "This reply will be sent automatically on WhatsApp — be accurate, helpful, and never invent facts."
+        : "The human rep will review and send — never imply the message was already sent.",
       "Do not invent pricing, policies, or offers beyond the business knowledge provided.",
+      opts.intent ? `Customer intent (AI): ${opts.intent}` : "",
+      opts.summary ? `Conversation so far: ${opts.summary}` : "",
+      opts.stage ? `Pipeline stage: ${opts.stage}` : "",
+      opts.greeting
+        ? `The customer just sent a short greeting ("${opts.lastInbound}"). Reply warmly in 1–2 sentences. Do not push pricing unless they asked in this message.`
+        : opts.lastInbound
+          ? `Address the customer's latest message: "${opts.lastInbound}"`
+          : "",
       opts.risk === "high"
-        ? "This is a sensitive thread — be careful, empathetic, and avoid committing to prices or policies. Draft a starting point a teammate can edit."
+        ? "This is a sensitive thread — be careful, empathetic, and avoid committing to prices or policies."
         : "",
       opts.knowledgeGap
         ? "No matching pricing/policy docs were found. Ask clarifying questions (budget, scope, timeline) without quoting specific prices."
         : "",
       opts.knowledgeBlock
         ? `Business knowledge (use when relevant):\n\n${opts.knowledgeBlock}`
-        : "",
+        : "No business knowledge documents matched — stay general and ask clarifying questions.",
       opts.memoryBlock ? `What we know about this customer:\n${opts.memoryBlock}` : "",
     ]
       .filter(Boolean)

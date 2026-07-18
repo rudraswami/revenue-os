@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import type {
   AiClassificationResult,
   KnowledgeHit,
@@ -7,6 +7,7 @@ import type {
   ReplyExecutionMode,
   ReplyRiskLevel,
 } from "@growvisi/shared";
+import { isSimpleGreeting } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import type { ConversationContext } from "./context-builder.service";
 
@@ -30,6 +31,8 @@ export interface ReplyPolicyInput {
 
 @Injectable()
 export class ReplyPolicyService {
+  private readonly logger = new Logger(ReplyPolicyService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   evaluate(input: ReplyPolicyInput): ReplyDecision {
@@ -75,6 +78,7 @@ export class ReplyPolicyService {
 
     const risk = this.assessRisk(input);
     const confidence = this.compositeConfidence(input, risk);
+    const lastInbound = input.ctx.lastInbound ?? "";
 
     if (input.classification.requiresHuman) {
       reasons.push("Flagged for you — AI will draft a starting point for your review.");
@@ -95,13 +99,22 @@ export class ReplyPolicyService {
 
     const autoEligible = this.isAutoSendEligible(input, risk, confidence);
 
-    const canAutoSend =
+    const canAutoSendFaq =
       input.workspaceAutonomy === "auto_guarded" &&
       autoEligible &&
       input.autoSendPlanOk &&
       input.recentAutoSendCount < 3;
 
-    if (canAutoSend) {
+    const canAutoSendGreeting =
+      input.workspaceAutonomy === "auto_guarded" &&
+      input.autoSendPlanOk &&
+      input.recentAutoSendCount < 3 &&
+      isSimpleGreeting(lastInbound) &&
+      !input.classification.requiresHuman &&
+      !PRICING_TOPIC.test(lastInbound) &&
+      !HIGH_RISK_INTENT.test(lastInbound);
+
+    if (canAutoSendFaq) {
       reasons.push(
         "Guarded auto-reply — grounded FAQ answer will be sent on WhatsApp from your business number.",
       );
@@ -112,16 +125,15 @@ export class ReplyPolicyService {
       return this.decision("send", confidence, risk, reasons, blockers, evaluatedAt, true);
     }
 
-    if (input.workspaceAutonomy === "auto_guarded" && autoEligible && !input.autoSendPlanOk) {
+    if (canAutoSendGreeting) {
       reasons.push(
-        "Guarded auto-reply needs Growth plan — drafting for you to send instead.",
+        "Guarded auto-reply — warm greeting will be sent on WhatsApp from your business number.",
       );
-    } else if (
-      input.workspaceAutonomy === "auto_guarded" &&
-      autoEligible &&
-      input.recentAutoSendCount >= 3
-    ) {
-      reasons.push("Auto-reply limit reached for this thread (3 per 24h) — draft only.");
+      return this.decision("send", confidence, "low", reasons, blockers, evaluatedAt, true);
+    }
+
+    if (input.workspaceAutonomy === "auto_guarded") {
+      this.appendAutoSendBlockers(input, risk, confidence, autoEligible, blockers, reasons);
     }
 
     if (input.workspaceAutonomy === "assist") {
@@ -129,6 +141,68 @@ export class ReplyPolicyService {
     }
 
     return this.decision("draft", confidence, risk, reasons, blockers, evaluatedAt, autoEligible);
+  }
+
+  private appendAutoSendBlockers(
+    input: ReplyPolicyInput,
+    risk: ReplyRiskLevel,
+    confidence: number,
+    autoEligible: boolean,
+    blockers: string[],
+    reasons: string[],
+  ) {
+    if (!input.autoSendPlanOk) {
+      pushBlockerOnce(blockers, "auto_send_plan");
+      reasons.push("Auto-reply on WhatsApp needs Growth plan or higher.");
+      return;
+    }
+
+    if (input.recentAutoSendCount >= 3) {
+      pushBlockerOnce(blockers, "auto_send_rate_limit");
+      reasons.push("Auto-reply limit reached for this thread (3 per 24h) — draft only.");
+      return;
+    }
+
+    if (isSimpleGreeting(input.ctx.lastInbound)) {
+      return;
+    }
+
+    if (!autoEligible) {
+      if (risk !== "low") {
+        pushBlockerOnce(blockers, "auto_send_risk");
+        reasons.push(
+          `Auto-reply blocked: ${risk}-risk thread (pricing/negotiation needs a human).`,
+        );
+      }
+      if (input.knowledgeHits.length === 0) {
+        pushBlockerOnce(blockers, "auto_send_no_knowledge");
+        reasons.push(
+          "Auto-reply blocked: add pricing/FAQ docs in Intelligence (≥78% match required).",
+        );
+      } else if (input.knowledgeHits[0].similarity < 0.78) {
+        pushBlockerOnce(blockers, "auto_send_low_match");
+        reasons.push(
+          `Auto-reply blocked: best doc match is ${Math.round(input.knowledgeHits[0].similarity * 100)}% (needs ≥78%).`,
+        );
+      }
+      if (confidence < 0.85) {
+        pushBlockerOnce(blockers, "auto_send_low_confidence");
+        reasons.push(
+          `Auto-reply blocked: confidence ${Math.round(confidence * 100)}% (needs ≥85%).`,
+        );
+      }
+      if (input.classification.requiresHuman) {
+        pushBlockerOnce(blockers, "auto_send_handoff");
+        reasons.push("Auto-reply blocked: conversation flagged for human review.");
+      }
+      if (input.knowledgeGap) {
+        pushBlockerOnce(blockers, "auto_send_knowledge_gap");
+      }
+    }
+
+    if (blockers.length === 0 && reasons.every((r) => !r.startsWith("Auto-reply"))) {
+      reasons.push("Guarded auto-reply: draft ready for your review — tap Send.");
+    }
   }
 
   async persistDecision(
@@ -156,10 +230,18 @@ export class ReplyPolicyService {
         } as object,
       },
     });
+
+    if (decision.mode === "draft" && decision.blockers?.length) {
+      this.logger.log(
+        `Reply policy draft-only for ${conversationId}: ${decision.blockers.join(", ")}`,
+      );
+    }
   }
 
   private assessRisk(input: ReplyPolicyInput): ReplyRiskLevel {
-    const topic = `${input.ctx.lastInbound ?? ""} ${input.classification.intent ?? ""}`;
+    const lastInbound = input.ctx.lastInbound ?? "";
+    const topic = `${lastInbound} ${input.classification.intent ?? ""}`;
+    if (isSimpleGreeting(lastInbound)) return "low";
     if (input.knowledgeGap && PRICING_TOPIC.test(topic)) return "high";
     if (input.classification.requiresHuman) return "high";
     if (HIGH_RISK_INTENT.test(topic)) return "high";
@@ -212,4 +294,8 @@ export class ReplyPolicyService {
       autoEligible,
     };
   }
+}
+
+function pushBlockerOnce(blockers: string[], key: string) {
+  if (!blockers.includes(key)) blockers.push(key);
 }

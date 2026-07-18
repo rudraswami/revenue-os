@@ -1042,7 +1042,13 @@ export default function InboxPage() {
                     onMinimize={() => setShowComposer(false)}
                     draftNote={
                       thread.aiEnabled && thread.pendingDraft?.suggestion
-                        ? replyDecision?.reasons[0] ?? copy.aiDraftNote
+                        ? [
+                            replyDecision?.reasons.find((r) =>
+                              r.startsWith("Auto-reply blocked"),
+                            ),
+                            replyDecision?.reasons[0],
+                            copy.aiDraftNote,
+                          ].find(Boolean)
                         : undefined
                     }
                   />

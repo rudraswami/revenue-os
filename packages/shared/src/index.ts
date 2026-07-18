@@ -4,6 +4,7 @@ export * from "./constants";
 export * from "./domains";
 export * from "./events";
 export * from "./intelligence";
+export * from "./reply-guards";
 export * from "./types";
 export * from "./whatsapp-go-live";
 export * from "./post-activation-coaching";

@@ -344,8 +344,22 @@ export class AiClassifyService {
 
     const apiKey = this.config.get<string>("OPENAI_API_KEY");
     if (!apiKey) {
-      this.logger.debug("OPENAI_API_KEY not set — skipping classification");
+      this.logger.warn("OPENAI_API_KEY not set — skipping classification");
       return;
+    }
+
+    if (!data.refreshAfterCorrection) {
+      const alreadyDone = await this.hasCompletedClassifyForMessage(
+        data.organizationId,
+        data.conversationId,
+        data.messageId,
+      );
+      if (alreadyDone) {
+        this.logger.debug(
+          `Skipping duplicate classify for message ${data.messageId} on ${data.conversationId}`,
+        );
+        return;
+      }
     }
 
     const ctx = await this.contextBuilder.buildForConversation(
@@ -411,6 +425,7 @@ export class AiClassifyService {
         model,
         ctx.lead.stage,
         ctx.transcript,
+        ctx.lastInbound,
         combinedContext,
         data.humanFeedback,
       );
@@ -569,6 +584,7 @@ export class AiClassifyService {
     model: string,
     currentStage: LeadStage,
     transcript: string,
+    lastInbound: string | null,
     businessContext?: string,
     humanFeedback?: ClassifyJobData["humanFeedback"],
   ): Promise<AiClassificationResult> {
@@ -612,7 +628,7 @@ Current pipeline stage: ${currentStage}.${contextBlock}${feedbackBlock}`,
             },
             {
               role: "user",
-              content: `Classify this conversation:\n\n${transcript}`,
+              content: `Classify this conversation. Weight the LATEST customer message most heavily for intent — earlier pricing context may still inform stage, but a bare greeting is not a new pricing inquiry.\n\n${transcript}\n\nLatest customer message: "${lastInbound ?? "(none)"}"`,
             },
           ],
         }),
@@ -651,6 +667,29 @@ Current pipeline stage: ${currentStage}.${contextBlock}${feedbackBlock}`,
       tags: Array.isArray(parsed.tags) ? parsed.tags.map(String).slice(0, 4) : [],
       nextAction: typeof parsed.nextAction === "string" ? parsed.nextAction.slice(0, 200) : undefined,
     };
+  }
+
+  private async hasCompletedClassifyForMessage(
+    organizationId: string,
+    conversationId: string,
+    messageId: string,
+  ): Promise<boolean> {
+    const recent = await this.prisma.aiRun.findMany({
+      where: {
+        organizationId,
+        conversationId,
+        type: { in: ["classify", "classify_refresh"] },
+        status: "COMPLETED",
+        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+      },
+      select: { input: true },
+      take: 20,
+      orderBy: { createdAt: "desc" },
+    });
+    return recent.some((run) => {
+      const input = run.input as Record<string, unknown> | null;
+      return input?.messageId === messageId;
+    });
   }
 
   private normalizeStage(value: unknown): LeadStage {
