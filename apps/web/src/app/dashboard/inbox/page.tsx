@@ -378,12 +378,27 @@ export default function InboxPage() {
   });
 
   const lastMessage = thread?.messages[thread.messages.length - 1];
+  const lastInboundMs =
+    thread?.lastInboundAt != null
+      ? new Date(thread.lastInboundAt).getTime()
+      : lastMessage?.direction === "INBOUND"
+        ? new Date(lastMessage.createdAt).getTime()
+        : 0;
+  const decisionMs = replyDecision?.evaluatedAt
+    ? new Date(replyDecision.evaluatedAt).getTime()
+    : 0;
+  const classifySettled =
+    !!replyDecision && lastInboundMs > 0 && decisionMs >= lastInboundMs - 3_000;
+
   const awaitingAiDraft =
     !!thread?.aiEnabled &&
     !thread?.pendingDraft?.suggestion &&
     !suggestMutation.isPending &&
     !aiToggleMutation.isPending &&
-    lastMessage?.direction === "INBOUND";
+    lastMessage?.direction === "INBOUND" &&
+    !classifySettled &&
+    lastInboundMs > 0 &&
+    Date.now() - lastInboundMs < 120_000;
 
   const assignMutation = useMutation({
     mutationFn: (assignToUserId: string | null) =>
@@ -1057,16 +1072,21 @@ export default function InboxPage() {
                   </div>
                 )}
                 {(replyDecision || awaitingAiDraft) && (
-                  <div className="mb-2 space-y-2">
-                    {awaitingAiDraft && !thread.pendingDraft?.suggestion && (
-                      <div className="rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                        {copy.aiDraftGenerating}
+                  <div className="mb-2">
+                    {awaitingAiDraft ? (
+                      <div className="flex items-center gap-2 rounded-lg px-1 py-0.5 text-xs text-muted-foreground">
+                        <span
+                          className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-accent/25 border-t-accent"
+                          aria-hidden
+                        />
+                        <span>{copy.aiDraftGenerating}</span>
                       </div>
+                    ) : (
+                      <InboxReplyDecision
+                        decision={replyDecision}
+                        hasDraft={!!thread.pendingDraft?.suggestion}
+                      />
                     )}
-                    <InboxReplyDecision
-                      decision={replyDecision}
-                      hasDraft={!!thread.pendingDraft?.suggestion}
-                    />
                   </div>
                 )}
                 {showComposer ? (

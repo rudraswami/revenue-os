@@ -11,7 +11,7 @@ import { BillingModule } from "../billing/billing.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { WhatsappWebhookController } from "./whatsapp-webhook.controller";
 import { WhatsappInboundProcessor } from "./processors/whatsapp-inbound.processor";
-import { WhatsappMessagingService } from "./whatsapp-messaging.service";
+import { WhatsappMessagingModule } from "./whatsapp-messaging.module";
 import { WhatsappService } from "./whatsapp.service";
 
 const registerProcessors = useBackgroundWorkers();
@@ -19,6 +19,7 @@ const registerProcessors = useBackgroundWorkers();
 @Module({
   imports: [
     BullModule.registerQueue({ name: QUEUES.WHATSAPP_INBOUND }),
+    WhatsappMessagingModule,
     EventsModule,
     RealtimeModule,
     AiModule,
@@ -28,11 +29,7 @@ const registerProcessors = useBackgroundWorkers();
     WebhooksModule,
   ],
   controllers: [WhatsappWebhookController],
-  providers: [
-    WhatsappService,
-    WhatsappMessagingService,
-    ...(registerProcessors ? [WhatsappInboundProcessor] : []),
-  ],
-  exports: [WhatsappService, WhatsappMessagingService],
+  providers: [WhatsappService, ...(registerProcessors ? [WhatsappInboundProcessor] : [])],
+  exports: [WhatsappService, WhatsappMessagingModule],
 })
 export class WhatsappModule {}

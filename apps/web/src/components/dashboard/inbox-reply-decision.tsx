@@ -55,6 +55,8 @@ export function InboxReplyDecision({
 
   if (decision.mode !== "draft" && !hasDraft) return null;
 
+  const draftMissingAfterPlan = decision.mode === "draft" && !hasDraft;
+
   const riskTone =
     decision.risk === "high"
       ? "border-amber-200/80 bg-amber-50/80 text-amber-950"
@@ -68,7 +70,11 @@ export function InboxReplyDecision({
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">
-            {hasDraft ? copy.aiDraftReady : copy.replyDraftPlanned}
+            {hasDraft
+              ? copy.aiDraftReady
+              : draftMissingAfterPlan
+                ? copy.replyDraftFailed
+                : copy.replyDraftPlanned}
             {decision.confidence > 0 ? (
               <span className="ml-1.5 font-normal opacity-75">
                 · {Math.round(decision.confidence * 100)}% confidence

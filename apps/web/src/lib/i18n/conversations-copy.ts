@@ -51,6 +51,7 @@ export function useConversationsCopy() {
       replyModeHint: t("conversations.replyModeHint"),
       aiDraftReady: t("conversations.aiDraftReady"),
       aiDraftGenerating: t("conversations.aiDraftGenerating"),
+      replyDraftFailed: t("conversations.replyDraftFailed"),
       replySkippedTitle: t("conversations.replySkippedTitle"),
       replyDraftPlanned: t("conversations.replyDraftPlanned"),
       replyAutoSentTitle: t("conversations.replyAutoSentTitle"),

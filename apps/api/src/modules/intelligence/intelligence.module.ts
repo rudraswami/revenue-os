@@ -6,7 +6,7 @@ import { EventsModule } from "../events/events.module";
 import { KnowledgeModule } from "../knowledge/knowledge.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { WebhooksModule } from "../webhooks/webhooks.module";
-import { WhatsappModule } from "../whatsapp/whatsapp.module";
+import { WhatsappMessagingModule } from "../whatsapp/whatsapp-messaging.module";
 import { ActionExecutorService } from "./action-executor.service";
 import { ActionPlannerService } from "./action-planner.service";
 import { ContextBuilderService } from "./context-builder.service";
@@ -27,7 +27,7 @@ import { SuggestReplyService } from "./suggest-reply.service";
     AssignmentModule,
     WebhooksModule,
     KnowledgeModule,
-    WhatsappModule,
+    WhatsappMessagingModule,
   ],
   providers: [
     ContextBuilderService,
