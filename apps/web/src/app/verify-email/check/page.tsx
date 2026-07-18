@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth/auth-guard";
@@ -67,9 +66,7 @@ function CheckEmailForm() {
               ? t("auth.verify.resendCooldown").replace("{n}", String(cooldownLeft))
               : t("auth.verify.resend")}
         </Button>
-        <Button asChild variant="outline" className="h-12 rounded-xl">
-          <Link href="/dashboard">{t("auth.verify.continueDashboard")}</Link>
-        </Button>
+        <p className="text-center text-xs text-muted-foreground">{t("auth.verify.checkInboxHint")}</p>
         <button
           type="button"
           className="text-center text-sm text-muted-foreground underline-offset-2 hover:underline"

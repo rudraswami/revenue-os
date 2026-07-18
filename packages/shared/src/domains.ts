@@ -10,7 +10,8 @@ export const GROWVISI_WEBHOOK_URL = `${GROWVISI_API_V1_URL}/webhooks/whatsapp`;
 /** Comma-separated for CORS_ORIGINS env. */
 export const GROWVISI_CORS_ORIGINS = `${GROWVISI_WEB_URL_APEX},${GROWVISI_WEB_URL}`;
 
-export const GROWVISI_EMAIL_FROM = "Growvisi <it@growvisi.com>";
+export const GROWVISI_EMAIL_FROM = "Growvisi <it@growvisi.in>";
+/** Public support address (inbox may be .com; Resend sends from verified @growvisi.in). */
 export const GROWVISI_EMAIL_SUPPORT = "it@growvisi.com";
 export const GROWVISI_EMAIL_PRIVACY = "privacy@growvisi.in";
 export const GROWVISI_EMAIL_LEGAL = "legal@growvisi.in";

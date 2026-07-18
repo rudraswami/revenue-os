@@ -37,6 +37,6 @@ setEnv(apiDir, "NEXT_PUBLIC_APP_URL", "https://www.growvisi.in");
 setEnv(apiDir, "CORS_ORIGINS", "https://growvisi.in,https://www.growvisi.in");
 setEnv(apiDir, "WEBHOOK_PUBLIC_URL", "https://api.growvisi.in");
 setEnv(apiDir, "EMAIL_VERIFICATION_REQUIRED", "true");
-setEnv(apiDir, "EMAIL_FROM", "Growvisi <it@growvisi.com>");
+setEnv(apiDir, "EMAIL_FROM", "Growvisi <it@growvisi.in>");
 
 console.log("Done. Redeploy web + API for changes to take effect.");

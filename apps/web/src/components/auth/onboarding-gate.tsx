@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useEmailVerified } from "@/hooks/use-email-verified";
 import { useAuthStore } from "@/stores/auth-store";
 
 const SKIP_PREFIXES = [
@@ -11,19 +12,25 @@ const SKIP_PREFIXES = [
   "/dashboard/agency",
   "/dashboard/partner",
   "/dashboard/connection",
+  "/verify-email",
 ];
 
-/** Soft gate: new workspaces without WhatsApp land on onboarding first. */
+/** Soft gate: verify email first, then WhatsApp onboarding for new workspaces. */
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const onboarding = useAuthStore((s) => s.onboarding);
   const onboardingDismissed = useAuthStore((s) => s.onboardingDismissed);
   const hydrated = useAuthStore((s) => s.hydrated);
+  const verified = useEmailVerified();
   const [checked, setChecked] = useState(false);
 
-  const shouldRedirect =
+  const onVerifyFlow = pathname.startsWith("/verify-email");
+  const shouldRedirectToVerify = hydrated && !verified && !onVerifyFlow;
+
+  const shouldRedirectToOnboarding =
     hydrated &&
+    verified &&
     !!onboarding &&
     !onboarding.whatsappConnected &&
     !onboardingDismissed &&
@@ -31,14 +38,20 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    if (shouldRedirect) {
+    if (shouldRedirectToVerify) {
+      router.replace("/verify-email/check");
+      return;
+    }
+    if (shouldRedirectToOnboarding) {
       router.replace("/onboarding");
       return;
     }
     setChecked(true);
-  }, [hydrated, shouldRedirect, router]);
+  }, [hydrated, shouldRedirectToVerify, shouldRedirectToOnboarding, router]);
 
-  if (!hydrated || (shouldRedirect && !checked)) {
+  const pending = shouldRedirectToVerify || (shouldRedirectToOnboarding && !checked);
+
+  if (!hydrated || pending) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
