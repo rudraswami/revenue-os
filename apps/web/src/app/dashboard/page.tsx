@@ -28,6 +28,7 @@ import { CTA } from "@/lib/brand-copy";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { timeGreeting } from "@/lib/greeting";
 import { useAuthStore } from "@/stores/auth-store";
+import { canViewTeamAnalytics } from "@/lib/permissions";
 
 const activityIcons: Record<string, typeof Sparkles> = {
   ai_classification: Sparkles,
@@ -49,6 +50,8 @@ function timeAgo(date: string | Date) {
 export default function DashboardPage() {
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
+  const showAnalytics = canViewTeamAnalytics(role);
 
   const { data: funnel, isLoading: funnelLoading, isError: funnelError, error: funnelErrorObj, refetch: refetchFunnel } = useQuery({
     queryKey: QUERY_KEYS.funnel("30d"),
@@ -57,7 +60,7 @@ export default function DashboardPage() {
         "/leads/metrics/funnel?period=30d",
         { token: token ?? undefined },
       ),
-    enabled: !!token,
+    enabled: !!token && showAnalytics,
     staleTime: STALE.metrics,
     placeholderData: (prev) => prev,
   });
@@ -100,7 +103,7 @@ export default function DashboardPage() {
         unansweredOver24h: number;
         targetHours: number;
       }>("/conversations/metrics/sla?period=30d", { token: token ?? undefined }),
-    enabled: !!token,
+    enabled: !!token && showAnalytics,
     staleTime: STALE.metrics,
     placeholderData: (prev) => prev,
   });
@@ -115,7 +118,7 @@ export default function DashboardPage() {
       }>("/leads/metrics/revenue?period=30d", {
         token: token ?? undefined,
       }),
-    enabled: !!token,
+    enabled: !!token && showAnalytics,
     staleTime: STALE.metrics,
     placeholderData: (prev) => prev,
   });
@@ -144,8 +147,8 @@ export default function DashboardPage() {
     placeholderData: (prev) => prev,
   });
 
-  const isLoading = funnelLoading || convLoading;
-  const dashboardError = funnelErrorObj ?? convErrorObj;
+  const isLoading = (showAnalytics && funnelLoading) || convLoading;
+  const dashboardError = showAnalytics ? funnelErrorObj ?? convErrorObj : convErrorObj;
   const trialOrPlanBlocked =
     dashboardError instanceof ApiError && (dashboardError.status === 402 || dashboardError.status === 403);
 

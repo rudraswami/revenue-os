@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { PanelRowsSkeleton } from "@/components/ui/page-loading";
 import { apiFetch } from "@/lib/api-client";
-import { canWrite } from "@/lib/permissions";
+import { canWrite, canViewTeamAnalytics } from "@/lib/permissions";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -53,6 +53,7 @@ export function HomeRecommendationsPanel() {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canEdit = canWrite(role);
+  const showInsights = canViewTeamAnalytics(role);
   const qc = useQueryClient();
   const period = "30d";
 
@@ -82,7 +83,7 @@ export function HomeRecommendationsPanel() {
           tags: string[];
         }>;
       }>(`/leads/metrics/insights?period=${period}`, { token: token ?? undefined }),
-    enabled: !!token,
+    enabled: !!token && showInsights,
     staleTime: STALE.dashboard,
     placeholderData: (prev) => prev,
   });

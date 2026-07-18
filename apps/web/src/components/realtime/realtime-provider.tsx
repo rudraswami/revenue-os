@@ -23,6 +23,15 @@ function wsBaseUrl(): string {
   return raw.replace(/\/$/, "");
 }
 
+/** Socket.IO is disabled on Vercel serverless API — see apps/api/src/main.ts */
+function realtimeEnabled(): boolean {
+  if (process.env.NEXT_PUBLIC_REALTIME_ENABLED === "false") return false;
+  if (process.env.NEXT_PUBLIC_REALTIME_ENABLED === "true") return true;
+  // Default off for production API host (no WebSocket adapter on Vercel)
+  const base = wsBaseUrl();
+  return !base.includes("growvisi.in") && !base.includes("vercel.app");
+}
+
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const organizationId = useAuthStore((s) => s.organization?.id);
@@ -31,14 +40,15 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const orgId = organizationId ?? organizationIdFromStore();
-    if (!accessToken || !orgId) {
+    if (!accessToken || !orgId || !realtimeEnabled()) {
       setConnected(false);
       return;
     }
 
     const socket: Socket = io(`${wsBaseUrl()}/realtime`, {
       auth: { token: accessToken },
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
+      reconnectionAttempts: 3,
     });
 
     socket.on("connect", () => setConnected(true));
