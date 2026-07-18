@@ -81,4 +81,6 @@ CREATE INDEX IF NOT EXISTS "learning_signals_organizationId_type_createdAt_idx" 
 ALTER TABLE "learning_signals" ADD CONSTRAINT "learning_signals_organizationId_fkey"
   FOREIGN KEY ("organizationId") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+ALTER TABLE "conversations" ALTER COLUMN "aiEnabled" SET DEFAULT false;
+
 CREATE INDEX IF NOT EXISTS "conversation_memories_conversationId_type_idx" ON "conversation_memories"("conversationId", "type");

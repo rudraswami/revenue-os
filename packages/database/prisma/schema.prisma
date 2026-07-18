@@ -381,7 +381,7 @@ model Conversation {
   status            ConversationStatus @default(OPEN)
   leadId            String?            @unique
   assignedToId      String?
-  aiEnabled         Boolean            @default(true)
+  aiEnabled         Boolean            @default(false)
   lastMessageAt     DateTime?
   lastInboundAt     DateTime?
   firstResponseAt   DateTime?
