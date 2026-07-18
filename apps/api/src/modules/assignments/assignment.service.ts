@@ -2,6 +2,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import type { LeadStage } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  withAssignmentMeta,
+  type ConversationAssignmentMeta,
+} from "../conversations/assignment-metadata";
+import {
   normalizeAssignmentRules,
   type AssignmentRulesConfig,
   type AssignmentRule,
@@ -92,9 +96,25 @@ export class AssignmentService {
 
     if (!assignee) return null;
 
+    const existingMeta =
+      conv.metadata && typeof conv.metadata === "object"
+        ? (conv.metadata as Record<string, unknown>)
+        : {};
+
+    const assignment: ConversationAssignmentMeta = {
+      source: isHandoff ? "auto_handoff" : "auto_rule",
+      reason: ctx.reason ?? (isHandoff ? "handoff" : "assignment_rule"),
+      at: new Date().toISOString(),
+      byUserId: null,
+    };
+
     await this.prisma.conversation.update({
       where: { id: ctx.conversationId },
-      data: { assignedToId: assignee, aiEnabled: false },
+      data: {
+        assignedToId: assignee,
+        aiEnabled: false,
+        metadata: withAssignmentMeta(existingMeta, assignment) as object,
+      },
     });
 
     if (lead) {

@@ -8,6 +8,8 @@ import { LEAD_STAGES } from "@/lib/crm";
 import { trackAiTrust } from "@/lib/ai-trust-analytics";
 import { trackCoaching } from "@/lib/coaching-analytics";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
+import { AssignmentExplainLine } from "@/components/dashboard/assignment-explain-line";
+import type { AssignmentExplain } from "@/lib/assignment-explain";
 import { cn } from "@/lib/utils";
 
 export interface InboxAiContext {
@@ -35,6 +37,8 @@ export function InboxAiPanel({
   aiContext,
   requiresHuman,
   handoffReason,
+  assignment,
+  showAssignmentRulesLink,
   leadStage,
   leadScore,
   canEdit,
@@ -53,6 +57,8 @@ export function InboxAiPanel({
   aiContext: InboxAiContext | null;
   requiresHuman?: boolean;
   handoffReason?: string | null;
+  assignment?: AssignmentExplain | null;
+  showAssignmentRulesLink?: boolean;
   leadStage?: string | null;
   leadScore?: number | null;
   canEdit: boolean;
@@ -161,6 +167,14 @@ export function InboxAiPanel({
             </p>
           )}
         </div>
+      )}
+
+      {assignment && (
+        <AssignmentExplainLine
+          assignment={assignment}
+          showRulesLink={showAssignmentRulesLink}
+          className="mb-2"
+        />
       )}
 
       {aiContext && (

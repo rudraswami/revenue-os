@@ -24,6 +24,7 @@ import type { MembershipRole } from "@growvisi/shared";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { cn } from "@/lib/utils";
+import { TeamRoleEducationCard } from "@/components/settings/team-role-education";
 
 interface MemberRow {
   id: string;
@@ -64,6 +65,7 @@ export function TeamMembersCard() {
   const [sent, setSent] = useState<{ email: string; emailSent: boolean } | null>(null);
   const isAdmin = canManageTeam(myRole);
   const canInvite = canInviteMembers(myRole);
+  const isManagerOnly = canInvite && !isAdmin && myRole === "MANAGER";
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["organization-members"],
@@ -195,6 +197,12 @@ export function TeamMembersCard() {
           <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
             {INVITE_ROLE_HINTS[inviteRole]}
           </p>
+          {isAdmin && inviteRole === "MANAGER" && (
+            <TeamRoleEducationCard variant="manager_invite" className="mt-3" />
+          )}
+          {isAdmin && inviteRole === "AGENT" && (
+            <TeamRoleEducationCard variant="team_invite" className="mt-3" />
+          )}
         </div>
         <Button
           type="submit"
@@ -215,6 +223,7 @@ export function TeamMembersCard() {
 
   return (
     <div className="space-y-4">
+      {isManagerOnly && <TeamRoleEducationCard variant="manager_self" />}
       {canInvite && (
         <div className="rounded-xl border border-border/70 bg-background/50 p-4">
           {limits && (

@@ -16,6 +16,11 @@ import { AiClassifyService, type HumanAiCorrectionInput } from "../ai/ai-classif
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
+import {
+  clearAssignmentMeta,
+  parseAssignmentMeta,
+  withAssignmentMeta,
+} from "./assignment-metadata";
 
 @Injectable()
 export class ConversationsService {
@@ -293,7 +298,39 @@ export class ConversationsService {
       requiresHuman: meta.requiresHuman === true,
       handoffReason: typeof meta.handoffReason === "string" ? meta.handoffReason : null,
       handoffAt: typeof meta.handoffAt === "string" ? meta.handoffAt : null,
+      assignment: await this.resolveAssignmentExplain(meta, user.organizationId),
       aiContext,
+    };
+  }
+
+  private async resolveAssignmentExplain(
+    meta: Record<string, unknown>,
+    organizationId: string,
+  ) {
+    const parsed = parseAssignmentMeta(meta);
+    if (!parsed) return null;
+    if (!parsed.byUserId) {
+      return {
+        source: parsed.source,
+        reason: parsed.reason,
+        at: parsed.at,
+        byUser: null,
+      };
+    }
+    const byUser = await this.prisma.user.findFirst({
+      where: {
+        id: parsed.byUserId,
+        memberships: { some: { organizationId } },
+      },
+      select: { id: true, name: true, email: true },
+    });
+    return {
+      source: parsed.source,
+      reason: parsed.reason,
+      at: parsed.at,
+      byUser: byUser
+        ? { id: byUser.id, name: byUser.name, email: byUser.email }
+        : { id: parsed.byUserId, name: null, email: "Teammate" },
     };
   }
 
@@ -352,13 +389,19 @@ export class ConversationsService {
       `Follow up: ${conversation.lead?.displayName ?? conversation.contactName ?? conversation.contactPhone}`;
 
     await this.prisma.$transaction(async (tx) => {
+      const assignmentMeta = withAssignmentMeta(meta, {
+        source: "takeover",
+        reason: null,
+        at: new Date().toISOString(),
+        byUserId: user.sub,
+      });
       await tx.conversation.update({
         where: { id },
         data: {
           assignedToId: user.sub,
           aiEnabled: false,
           metadata: {
-            ...meta,
+            ...assignmentMeta,
             requiresHuman: false,
             handoffResolvedAt: new Date().toISOString(),
             handoffResolvedBy: user.sub,
@@ -609,7 +652,7 @@ export class ConversationsService {
   async assign(user: JwtPayload, id: string, assignToUserId: string | null) {
     const existing = await this.prisma.conversation.findFirst({
       where: { id, organizationId: user.organizationId },
-      select: { assignedToId: true, leadId: true },
+      select: { assignedToId: true, leadId: true, metadata: true },
     });
     if (!existing) throw new NotFoundException();
 
@@ -625,11 +668,26 @@ export class ConversationsService {
       }
     }
 
+    const prevMeta =
+      existing.metadata && typeof existing.metadata === "object"
+        ? (existing.metadata as Record<string, unknown>)
+        : {};
+
+    const nextMeta = assignToUserId
+      ? withAssignmentMeta(prevMeta, {
+          source: assignToUserId === user.sub && !existing.assignedToId ? "takeover" : "manual",
+          reason: null,
+          at: new Date().toISOString(),
+          byUserId: user.sub,
+        })
+      : clearAssignmentMeta(prevMeta);
+
     const conversation = await this.prisma.conversation.updateMany({
       where: { id, organizationId: user.organizationId },
       data: {
         assignedToId: assignToUserId,
         aiEnabled: assignToUserId ? false : undefined,
+        metadata: nextMeta as object,
       },
     });
     if (conversation.count === 0) throw new NotFoundException();

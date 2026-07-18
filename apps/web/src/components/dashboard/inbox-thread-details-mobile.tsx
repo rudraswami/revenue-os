@@ -6,6 +6,8 @@ import type { LeadStage } from "@growvisi/shared";
 import { Button } from "@/components/ui/button";
 import { LEAD_STAGES, STAGE_BADGE } from "@/lib/crm";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
+import { AssignmentExplainLine } from "@/components/dashboard/assignment-explain-line";
+import type { AssignmentExplain } from "@/lib/assignment-explain";
 import { cn } from "@/lib/utils";
 
 interface TeamMember {
@@ -16,6 +18,8 @@ export function InboxThreadDetailsMobile({
   stage,
   score,
   assignedToId,
+  assignment,
+  showAssignmentRulesLink,
   teamMembers,
   canAssignOthers,
   canTakeOver,
@@ -29,6 +33,8 @@ export function InboxThreadDetailsMobile({
   stage?: LeadStage;
   score?: number;
   assignedToId: string | null;
+  assignment?: AssignmentExplain | null;
+  showAssignmentRulesLink?: boolean;
   teamMembers: TeamMember[];
   canAssignOthers?: boolean;
   canTakeOver?: boolean;
@@ -121,6 +127,13 @@ export function InboxThreadDetailsMobile({
               </p>
             )}
           </div>
+          {assignedToId && (
+            <AssignmentExplainLine
+              assignment={assignment}
+              showRulesLink={showAssignmentRulesLink}
+              className="mt-2"
+            />
+          )}
         </div>
       )}
     </div>

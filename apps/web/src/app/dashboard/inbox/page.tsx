@@ -17,6 +17,8 @@ import {
 } from "@/lib/i18n/conversations-copy";
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
 import { InboxAiPanel, type InboxAiContext, type AiCorrectionPayload } from "@/components/dashboard/inbox-ai-panel";
+import { AssignmentExplainLine } from "@/components/dashboard/assignment-explain-line";
+import type { AssignmentExplain } from "@/lib/assignment-explain";
 import { trackAiTrust } from "@/lib/ai-trust-analytics";
 import { trackCoaching } from "@/lib/coaching-analytics";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
@@ -29,7 +31,7 @@ import { InboxThreadDetailsMobile } from "@/components/dashboard/inbox-thread-de
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { canAssignToSelf, canAssignWork, canToggleInboxAi, canWrite } from "@/lib/permissions";
+import { canAssignToSelf, canAssignWork, canManageTeam, canToggleInboxAi, canWrite } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
   pickDailyQueueFilter,
@@ -65,6 +67,7 @@ interface ConversationDetail {
   aiEnabled: boolean;
   requiresHuman?: boolean;
   handoffReason?: string | null;
+  assignment?: AssignmentExplain | null;
   aiContext?: InboxAiContext | null;
   assignedTo: { id: string; name: string | null; email: string } | null;
   lead: { id: string; stage: string; score?: number; aiConfidence?: number | null; valueCents?: number | null } | null;
@@ -102,6 +105,7 @@ export default function InboxPage() {
   const myUserId = useAuthStore((s) => s.user?.id);
   const canSend = canWrite(role);
   const canAssignOthers = canAssignWork(role);
+  const canEditAssignmentRules = canAssignOthers || canManageTeam(role);
   const canTakeOver = canAssignToSelf(role);
   const canToggleAi = canToggleInboxAi(role);
   const queryClient = useQueryClient();
@@ -754,6 +758,8 @@ export default function InboxPage() {
                 stage={thread.lead?.stage as LeadStage | undefined}
                 score={thread.lead?.score}
                 assignedToId={thread.assignedTo?.id ?? null}
+                assignment={thread.assignment}
+                showAssignmentRulesLink={canEditAssignmentRules}
                 teamMembers={teamMembers ?? []}
                 canAssignOthers={canAssignOthers}
                 canTakeOver={canTakeOver}
@@ -768,6 +774,8 @@ export default function InboxPage() {
                 aiContext={thread.aiContext ?? null}
                 requiresHuman={thread.requiresHuman}
                 handoffReason={thread.handoffReason}
+                assignment={thread.assignedTo ? thread.assignment : null}
+                showAssignmentRulesLink={canEditAssignmentRules}
                 leadStage={thread.lead?.stage}
                 leadScore={thread.lead?.score}
                 canEdit={canSend}
@@ -852,6 +860,13 @@ export default function InboxPage() {
                     </span>
                   )}
                 </div>
+                {thread.assignedTo && (
+                  <AssignmentExplainLine
+                    assignment={thread.assignment}
+                    showRulesLink={canEditAssignmentRules}
+                    className="hidden md:flex md:max-w-[min(100%,20rem)]"
+                  />
+                )}
                 <span className="ml-auto text-xs text-muted-foreground">
                   {live ? "Live" : "Syncing"}
                 </span>

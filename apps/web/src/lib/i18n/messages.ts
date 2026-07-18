@@ -434,6 +434,25 @@ export const messages = {
           yourRole: "Your role:",
           contactAdmin: "Contact a workspace admin to change roles or invite teammates.",
           seatsUsed: "{used} of {limit} seats used",
+          roleEducation: {
+            canLabel: "Can do",
+            cannotLabel: "Cannot do",
+            managerSelfTitle: "Your Manager permissions",
+            managerSelfBody:
+              "You run the sales floor — assign chats, invite Team members, and use campaigns. Workspace setup stays with Admin.",
+            managerCan:
+              "Assign conversations & deals, invite Team, run campaigns & automations, view team analytics, manage tags.",
+            managerCannot:
+              "Change billing, connect WhatsApp, invite Admins/Managers, remove members, or change roles.",
+            managerInviteTitle: "Inviting a Manager",
+            managerInviteBody:
+              "Managers distribute work and coach the pipeline. They cannot change billing or workspace infrastructure.",
+            teamInviteTitle: "Inviting Team",
+            teamInviteBody:
+              "Team members reply in Inbox, update their own deals, and complete follow-ups — humans always send WhatsApp messages.",
+            teamCan:
+              "Reply in Inbox, take over unassigned chats, move own pipeline deals, create & complete tasks.",
+          },
         },
         intelligence: {
           label: "AI & replies",
@@ -732,6 +751,15 @@ export const messages = {
       autoClassify: "Auto-classify",
       assignedTo: "Assigned to",
       unassigned: "Unassigned",
+      assignmentAutoHandoff: "Routed by AI after handoff — {reason}",
+      assignmentAutoHandoffGeneric: "Routed by AI — flagged for a teammate to reply",
+      assignmentAutoNewInbound: "Routed by workspace rules — new WhatsApp message",
+      assignmentAutoRule: "Routed by workspace assignment rules",
+      assignmentManual: "Assigned by {name}",
+      assignmentManualGeneric: "Assigned by a teammate",
+      assignmentTakeover: "Taken over by {name}",
+      assignmentTakeoverGeneric: "Taken over by a teammate",
+      assignmentRulesLink: "Edit assignment rules →",
       scoreHot: "Hot lead · {n}",
       scoreWarm: "Score · {n}",
       viewOnPipeline: "View on pipeline",
@@ -1246,6 +1274,25 @@ export const messages = {
           yourRole: "आपकी भूमिका:",
           contactAdmin: "भूमिका बदलने या टीम आमंत्रित करने के लिए एडमिन से संपर्क करें।",
           seatsUsed: "{limit} में से {used} सीट उपयोग",
+          roleEducation: {
+            canLabel: "कर सकते हैं",
+            cannotLabel: "नहीं कर सकते",
+            managerSelfTitle: "आपकी Manager अनुमतियाँ",
+            managerSelfBody:
+              "आप सेल्स फ्लोर चलाते हैं — चैट असाइन करें, Team आमंत्रित करें, अभियान चलाएँ। वर्कस्पेस सेटअप Admin के पास रहता है।",
+            managerCan:
+              "बातचीत और डील असाइन करें, Team आमंत्रित करें, अभियान/ऑटोमेशन, टीम एनालिटिक्स, टैग प्रबंधन।",
+            managerCannot:
+              "बिलिंग बदलना, WhatsApp कनेक्ट करना, Admin/Manager आमंत्रित करना, सदस्य हटाना या भूमिका बदलना।",
+            managerInviteTitle: "Manager आमंत्रित कर रहे हैं",
+            managerInviteBody:
+              "Manager काम बाँटते हैं और पाइपलाइन कोच करते हैं। वे बिलिंग या इन्फ्रास्ट्रक्चर नहीं बदल सकते।",
+            teamInviteTitle: "Team आमंत्रित कर रहे हैं",
+            teamInviteBody:
+              "Team Inbox में जवाब देती है, अपनी डील अपडेट करती है, फॉलो-अप पूरा करती है — WhatsApp संदेश हमेशा इंसान भेजते हैं।",
+            teamCan:
+              "Inbox में जवाब, अनअसाइंड चैट लेना, अपनी डील मूव करना, टास्क बनाना और पूरा करना।",
+          },
         },
         intelligence: {
           label: "AI और रिप्लाई",
@@ -1543,6 +1590,15 @@ export const messages = {
       autoClassify: "ऑटो-क्लासिफाई",
       assignedTo: "असाइन किया",
       unassigned: "असाइन नहीं",
+      assignmentAutoHandoff: "AI ने हैंडऑफ के बाद रूट किया — {reason}",
+      assignmentAutoHandoffGeneric: "AI ने टीम सदस्य के जवाब के लिए फ़्लैग किया",
+      assignmentAutoNewInbound: "वर्कस्पेस नियमों से रूट — नया WhatsApp संदेश",
+      assignmentAutoRule: "वर्कस्पेस असाइनमेंट नियमों से रूट",
+      assignmentManual: "{name} ने असाइन किया",
+      assignmentManualGeneric: "टीम सदस्य ने असाइन किया",
+      assignmentTakeover: "{name} ने संभाला",
+      assignmentTakeoverGeneric: "टीम सदस्य ने संभाला",
+      assignmentRulesLink: "असाइनमेंट नियम संपादित करें →",
       scoreHot: "गर्म लीड · {n}",
       scoreWarm: "स्कोर · {n}",
       viewOnPipeline: "पाइपलाइन में देखें",

@@ -310,7 +310,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
     </div>
   );
 
-  if (embedded) return body;
+  if (embedded) return <div id="assignment-rules">{body}</div>;
 
   return (
     <div className="mt-6 border-t border-border pt-5">
