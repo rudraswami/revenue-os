@@ -242,6 +242,9 @@ model Organization {
   subscription       Subscription?
   aiRuns             AiRun[]
   usageMeters        UsageMeter[]
+  businessEvents     BusinessEvent[]
+  actionPlans        ActionPlan[]
+  learningSignals    LearningSignal[]
   invites            OrganizationInvite[]
   tags               Tag[]
   tasks              Task[]
@@ -537,13 +540,91 @@ model ConversationMemory {
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
+  @@index([conversationId, type])
   @@map("conversation_memories")
+}
+
+model BusinessEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  type           String
+  entityType     String
+  entityId       String
+  payload        Json     @default("{}")
+  correlationId  String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, type, createdAt])
+  @@index([correlationId])
+  @@map("business_events")
+}
+
+model ActionPlan {
+  id               String    @id @default(cuid())
+  organizationId   String
+  correlationId    String?
+  triggerEventId   String?
+  conversationId   String?
+  leadId           String?
+  status           String    @default("proposed")
+  proposedBy       String    @default("system")
+  confidence       Float?
+  requiresApproval Boolean   @default(false)
+  classification   Json?
+  createdAt        DateTime  @default(now())
+  completedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actions      Action[]
+
+  @@index([organizationId, conversationId, createdAt])
+  @@index([organizationId, leadId, createdAt])
+  @@map("action_plans")
+}
+
+model Action {
+  id             String    @id @default(cuid())
+  planId         String
+  organizationId String
+  type           String
+  executor       String    @default("growvisi")
+  payload        Json      @default("{}")
+  status         String    @default("pending")
+  result         Json?
+  aiRunId        String?
+  createdAt      DateTime  @default(now())
+  executedAt     DateTime?
+
+  plan ActionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([organizationId, type, createdAt])
+  @@map("actions")
+}
+
+model LearningSignal {
+  id             String   @id @default(cuid())
+  organizationId String
+  type           String
+  conversationId String?
+  aiRunId        String?
+  signal         String
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, type, createdAt])
+  @@map("learning_signals")
 }
 
 model KnowledgeDocument {
   id             String   @id @default(cuid())
   organizationId String
   title          String
+  category       String   @default("general")
   sourceType     String
   sourceUrl      String?
   rawContent     String?
