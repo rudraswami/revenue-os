@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import { AuthField } from "@/components/auth/auth-field";
+import { AuthPageTransition } from "@/components/auth/auth-page-transition";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { useAuthI18n } from "@/components/auth/auth-i18n";
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,8 @@ import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { withAuthQuery } from "@/lib/auth-links";
 import { applySession, postAuthRedirect } from "@/lib/auth-session";
 import type { AuthSession } from "@/lib/auth-types";
+
+type SubmitPhase = "idle" | "submitting" | "redirecting";
 
 function passwordStrength(
   password: string,
@@ -35,7 +39,8 @@ function RegisterForm() {
   const inviteEmail = searchParams.get("email") ?? "";
 
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<SubmitPhase>("idle");
+  const [longWait, setLongWait] = useState(false);
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState(inviteEmail);
   const [name, setName] = useState("");
@@ -49,6 +54,7 @@ function RegisterForm() {
   const strength = passwordStrength(password, t);
   const isInvite = inviteToken.length > 0;
   const loginHref = withAuthQuery("/login", searchParams);
+  const isBusy = submitPhase !== "idle";
 
   const { data: invitePreview } = useQuery({
     queryKey: ["invite-preview", inviteToken],
@@ -64,6 +70,15 @@ function RegisterForm() {
     if (inviteEmail) setEmail(inviteEmail);
   }, [inviteEmail]);
 
+  useEffect(() => {
+    if (submitPhase !== "submitting") {
+      setLongWait(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setLongWait(true), 2500);
+    return () => window.clearTimeout(timer);
+  }, [submitPhase]);
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const nextErrors: typeof fieldErrors = {};
@@ -75,7 +90,7 @@ function RegisterForm() {
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    setLoading(true);
+    setSubmitPhase("submitting");
     setError(null);
     try {
       const body: Record<string, string> = {
@@ -94,155 +109,193 @@ function RegisterForm() {
         body: JSON.stringify(body),
       });
       applySession(res);
+      setSubmitPhase("redirecting");
+      await new Promise((resolve) => window.setTimeout(resolve, 450));
       router.push(postAuthRedirect(res, isInvite));
     } catch (err) {
       setError(toUserMessage(err, t("auth.registerFailed")));
-    } finally {
-      setLoading(false);
+      setSubmitPhase("idle");
     }
   }
 
   const orgName = invitePreview?.organizationName ?? "your team";
 
+  const overlayMessage =
+    submitPhase === "redirecting"
+      ? t("auth.almostThere")
+      : longWait
+        ? t("auth.settingUpWorkspace")
+        : isInvite
+          ? t("auth.joinTeam")
+          : t("auth.createWorkspace");
+
+  const buttonLabel =
+    submitPhase === "submitting"
+      ? isInvite
+        ? t("auth.joinTeam")
+        : t("auth.createWorkspace")
+      : isInvite
+        ? t("auth.acceptInvite")
+        : t("auth.createWorkspaceCta");
+
   return (
-    <AuthShell
-      badge={isInvite ? t("auth.teamInvite") : undefined}
-      title={
-        isInvite ? t("auth.joinTeamTitle").replace("{org}", orgName) : t("auth.createWorkspaceTitle")
-      }
-      description={isInvite ? t("auth.joinTeamSubtitle") : t("auth.createWorkspaceSubtitle")}
-      showMobileHero={!isInvite}
-    >
-      <form onSubmit={onSubmit} className="auth-form space-y-4" noValidate>
-        {!isInvite && (
-          <AuthField
-            id="organizationName"
-            name="organizationName"
-            label={t("auth.companyName")}
-            variant="modern"
-            placeholder={t("auth.companyPlaceholder")}
-            autoComplete="organization"
-            value={companyName}
-            error={fieldErrors.organizationName}
-            onChange={(e) => {
-              setCompanyName(e.target.value);
-              if (fieldErrors.organizationName) {
-                setFieldErrors((p) => ({ ...p, organizationName: undefined }));
-              }
-            }}
-            required
-          />
-        )}
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <AuthField
-            id="name"
-            name="name"
-            label={t("auth.name")}
-            variant="modern"
-            placeholder={t("auth.namePlaceholder")}
-            autoComplete="name"
-            value={name}
-            error={fieldErrors.name}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: undefined }));
-            }}
-            required
-          />
-          <AuthField
-            id="email"
-            name="email"
-            label={t("auth.email")}
-            type="email"
-            variant="modern"
-            placeholder={t("auth.emailPlaceholder")}
-            autoComplete="email"
-            value={email}
-            error={fieldErrors.email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
-            }}
-            readOnly={!!inviteEmail}
-            required
-          />
-        </div>
-
-        <div>
-          <AuthField
-            id="password"
-            name="password"
-            label={t("auth.password")}
-            type="password"
-            variant="modern"
-            placeholder={t("auth.passwordPlaceholder")}
-            autoComplete="new-password"
-            minLength={8}
-            value={password}
-            error={fieldErrors.password}
-            showPasswordToggle
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
-            }}
-            required
-          />
-          {password.length > 0 && (
-            <div className="mt-2.5 px-0.5">
-              <div className="h-[3px] overflow-hidden rounded-full bg-[#e8ecf2]">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
-                  style={{ width: strength.width }}
-                />
-              </div>
-              {strength.label ? (
-                <p className="mt-1.5 text-[11px] text-muted-foreground">{strength.label}</p>
-              ) : null}
+    <AuthPageTransition>
+      <AuthShell
+        badge={isInvite ? t("auth.teamInvite") : undefined}
+        title={
+          isInvite ? t("auth.joinTeamTitle").replace("{org}", orgName) : t("auth.createWorkspaceTitle")
+        }
+        description={isInvite ? t("auth.joinTeamSubtitle") : t("auth.createWorkspaceSubtitle")}
+        showMobileHero={!isInvite}
+      >
+        <form onSubmit={onSubmit} className="auth-form relative space-y-4" noValidate>
+          {isBusy && (
+            <div
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-2xl bg-card/95 px-6 text-center backdrop-blur-[2px]"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-accent" aria-hidden />
+              <p className="text-sm font-medium text-foreground">{overlayMessage}</p>
+              {submitPhase === "redirecting" && (
+                <p className="text-xs text-muted-foreground">{t("auth.workspaceReady")}</p>
+              )}
             </div>
           )}
-        </div>
 
-        {error && (
-          <p role="alert" className="auth-banner-error">
-            {error}
+          {!isInvite && (
+            <AuthField
+              id="organizationName"
+              name="organizationName"
+              label={t("auth.companyName")}
+              variant="modern"
+              placeholder={t("auth.companyPlaceholder")}
+              autoComplete="organization"
+              value={companyName}
+              error={fieldErrors.organizationName}
+              disabled={isBusy}
+              onChange={(e) => {
+                setCompanyName(e.target.value);
+                if (fieldErrors.organizationName) {
+                  setFieldErrors((p) => ({ ...p, organizationName: undefined }));
+                }
+              }}
+              required
+            />
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <AuthField
+              id="name"
+              name="name"
+              label={t("auth.name")}
+              variant="modern"
+              placeholder={t("auth.namePlaceholder")}
+              autoComplete="name"
+              value={name}
+              error={fieldErrors.name}
+              disabled={isBusy}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: undefined }));
+              }}
+              required
+            />
+            <AuthField
+              id="email"
+              name="email"
+              label={t("auth.email")}
+              type="email"
+              variant="modern"
+              placeholder={t("auth.emailPlaceholder")}
+              autoComplete="email"
+              value={email}
+              error={fieldErrors.email}
+              disabled={isBusy}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
+              }}
+              readOnly={!!inviteEmail}
+              required
+            />
+          </div>
+
+          <div>
+            <AuthField
+              id="password"
+              name="password"
+              label={t("auth.password")}
+              type="password"
+              variant="modern"
+              placeholder={t("auth.passwordPlaceholder")}
+              autoComplete="new-password"
+              minLength={8}
+              value={password}
+              error={fieldErrors.password}
+              showPasswordToggle
+              disabled={isBusy}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
+              }}
+              required
+            />
+            {password.length > 0 && (
+              <div className="mt-2.5 px-0.5">
+                <div className="h-[3px] overflow-hidden rounded-full bg-[#e8ecf2]">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
+                    style={{ width: strength.width }}
+                  />
+                </div>
+                {strength.label ? (
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">{strength.label}</p>
+                ) : null}
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <p role="alert" className="auth-banner-error">
+              {error}
+            </p>
+          )}
+
+          <div className="space-y-3 pt-2">
+            <Button
+              type="submit"
+              className="auth-submit-modern"
+              isLoading={submitPhase === "submitting"}
+              disabled={isBusy}
+            >
+              {buttonLabel}
+            </Button>
+
+            {!isInvite && (
+              <p className="text-center text-[12px] leading-relaxed text-muted-foreground">
+                {t("auth.registerInclusions")}
+                <span className="mx-1.5 text-border">·</span>
+                {t("auth.razorpayNote")}
+              </p>
+            )}
+          </div>
+        </form>
+
+        {!isInvite && (
+          <p className="mt-5 text-center text-[12px] leading-relaxed text-muted-foreground/90">
+            {t("auth.humanReplyNote")}
           </p>
         )}
 
-        <div className="space-y-3 pt-2">
-          <Button type="submit" className="auth-submit-modern" disabled={loading}>
-            {loading
-              ? isInvite
-                ? t("auth.joinTeam")
-                : t("auth.createWorkspace")
-              : isInvite
-                ? t("auth.acceptInvite")
-                : t("auth.createWorkspaceCta")}
-          </Button>
-
-          {!isInvite && (
-            <p className="text-center text-[12px] leading-relaxed text-muted-foreground">
-              {t("auth.registerInclusions")}
-              <span className="mx-1.5 text-border">·</span>
-              {t("auth.razorpayNote")}
-            </p>
-          )}
-        </div>
-      </form>
-
-      {!isInvite && (
-        <p className="mt-5 text-center text-[12px] leading-relaxed text-muted-foreground/90">
-          {t("auth.humanReplyNote")}
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          {t("auth.hasAccount")}{" "}
+          <Link href={loginHref} className="font-semibold text-accent hover:underline">
+            {t("auth.signIn")}
+          </Link>
         </p>
-      )}
-
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        {t("auth.hasAccount")}{" "}
-        <Link href={loginHref} className="font-semibold text-accent hover:underline">
-          {t("auth.signIn")}
-        </Link>
-      </p>
-    </AuthShell>
+      </AuthShell>
+    </AuthPageTransition>
   );
 }
 

@@ -11,7 +11,8 @@ import {
   isInvalidVerificationTokenError,
   isVerificationTokenExpiredError,
 } from "@/lib/api-client";
-import { syncProfileFromServer } from "@/lib/auth-session";
+import { syncProfileFromServer, postAuthPath } from "@/lib/auth-session";
+import { broadcastEmailVerified } from "@/lib/email-verification-broadcast";
 import { useAuthStore } from "@/stores/auth-store";
 
 type VerifyState = "loading" | "success" | "already" | "expired" | "invalid" | "missing";
@@ -46,6 +47,7 @@ function VerifyEmailForm() {
         if (cancelled) return;
 
         setState(res.alreadyVerified ? "already" : "success");
+        broadcastEmailVerified(res.emailVerified);
 
         const current = useAuthStore.getState();
         if (current.accessToken && current.user) {
@@ -106,7 +108,7 @@ function VerifyEmailForm() {
       {(state === "success" || state === "already") && (
         <Button
           className="auth-submit-modern"
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push(postAuthPath(useAuthStore.getState().onboarding))}
         >
           {t("auth.verify.goDashboard")}
         </Button>
