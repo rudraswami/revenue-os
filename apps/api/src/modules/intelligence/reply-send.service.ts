@@ -29,6 +29,7 @@ export class ReplySendService {
       replyDecision: ReplyDecision;
       knowledgeGap?: boolean;
       aiRunId?: string;
+      classification?: import("@growvisi/shared").AiClassificationResult | null;
     },
   ) {
     const conversation = await this.prisma.conversation.findFirst({
@@ -44,6 +45,7 @@ export class ReplySendService {
       conversationId,
       decision: opts.replyDecision,
       knowledgeGap: opts.knowledgeGap,
+      classification: opts.classification,
     });
 
     const waMessageId = await this.whatsapp.sendText(
@@ -93,6 +95,7 @@ export class ReplySendService {
       conversationId,
       aiRunId: composed.aiRunId ?? opts.aiRunId,
       preview: composed.suggestion.slice(0, 200),
+      intent: opts.classification?.intent,
     });
 
     this.realtime.emitMessageNew(organizationId, { conversationId });

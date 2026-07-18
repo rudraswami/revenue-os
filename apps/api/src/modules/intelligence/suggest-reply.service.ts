@@ -38,6 +38,7 @@ export class SuggestReplyService {
       knowledgeGap?: boolean;
       decision?: ReplyDecision;
       manual?: boolean;
+      classification?: import("@growvisi/shared").AiClassificationResult | null;
     },
   ): Promise<DraftReplyResult | null> {
     try {
@@ -47,6 +48,7 @@ export class SuggestReplyService {
         knowledgeGap: opts?.knowledgeGap,
         decision: opts?.decision,
         manual: opts?.manual,
+        classification: opts?.classification,
       });
 
       const conversation = await this.prisma.conversation.findFirst({

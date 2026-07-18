@@ -1,7 +1,12 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { ReplyDecision, ReplyRiskLevel } from "@growvisi/shared";
+import type { ReplyDecision, ReplyRiskLevel, AiClassificationResult } from "@growvisi/shared";
 import { isSimpleGreeting } from "@growvisi/shared";
+import {
+  buildRagQuery,
+  playbookForIntent,
+  resolveReplyIntentKind,
+} from "./reply-intent";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
@@ -26,6 +31,8 @@ export interface ComposeReplyInput {
   decision?: ReplyDecision;
   knowledgeGap?: boolean;
   manual?: boolean;
+  /** Fresh classification from the same inbound turn — prefer over stale lead profile */
+  classification?: AiClassificationResult | null;
 }
 
 @Injectable()
@@ -49,17 +56,17 @@ export class ReplyComposerService {
     const ctx = await this.contextBuilder.buildForConversation(
       input.organizationId,
       input.conversationId,
-      12,
+      16,
     );
 
-    const ragQuery =
-      ctx.messages
-        .slice(-4)
-        .map((m) => m.content)
-        .filter(Boolean)
-        .join(" ") ||
-      ctx.lastInbound ||
-      "customer inquiry";
+    const classification =
+      input.classification ??
+      this.classificationFromProfile(ctx.lead.profile, ctx.lead.stage);
+
+    const intentKind = resolveReplyIntentKind(ctx.lastInbound, classification);
+    const playbook = playbookForIntent(intentKind);
+
+    const ragQuery = buildRagQuery(ctx.lastInbound, classification);
 
     const hits = await this.knowledge.retrieve({
       organizationId: input.organizationId,
@@ -79,11 +86,15 @@ export class ReplyComposerService {
     }
 
     const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
-    const profile = ctx.lead.profile;
-    const intent =
-      typeof profile.lastIntent === "string" ? profile.lastIntent : undefined;
-    const summary =
-      typeof profile.summary === "string" ? profile.summary : undefined;
+    const org = await this.prisma.organization.findUnique({
+      where: { id: input.organizationId },
+      select: { name: true },
+    });
+    const contactName = ctx.conversation.contactName ?? ctx.lead.displayName ?? "there";
+    const intent = classification?.intent;
+    const summary = classification?.summary;
+    const nextAction = classification?.nextAction;
+    const sentiment = classification?.sentiment;
     const stage = ctx.lead.stage;
     const greeting = isSimpleGreeting(ctx.lastInbound);
     const model = this.config.get<string>("AI_CHAT_MODEL") ?? "gpt-4o-mini";
@@ -103,6 +114,8 @@ export class ReplyComposerService {
           hitCount: hits.length,
           auto: !input.manual,
           risk,
+          intentKind,
+          intent: classification?.intent,
         },
       },
     });
@@ -130,10 +143,16 @@ export class ReplyComposerService {
                   risk,
                   intent,
                   summary,
+                  nextAction,
+                  sentiment,
                   stage,
                   lastInbound: ctx.lastInbound,
                   greeting,
                   autoSend: input.decision?.mode === "send",
+                  playbook,
+                  intentKind,
+                  businessName: org?.name,
+                  contactName,
                 }),
               },
               {
@@ -173,7 +192,13 @@ export class ReplyComposerService {
         where: { id: aiRun.id },
         data: {
           status: "COMPLETED",
-          output: { suggestion, sources, usedRag: hits.length > 0, risk } as object,
+          output: {
+            suggestion,
+            sources,
+            usedRag: hits.length > 0,
+            risk,
+            intentKind,
+          } as object,
           inputTokens: body.usage?.prompt_tokens,
           outputTokens: body.usage?.completion_tokens,
           latencyMs,
@@ -204,37 +229,66 @@ export class ReplyComposerService {
     risk: ReplyRiskLevel;
     intent?: string;
     summary?: string;
+    nextAction?: string;
+    sentiment?: string;
     stage?: string;
     lastInbound?: string | null;
     greeting?: boolean;
     autoSend?: boolean;
+    playbook: string;
+    intentKind: string;
+    businessName?: string | null;
+    contactName?: string;
   }): string {
     return [
-      "You draft WhatsApp replies for an Indian SMB sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
+      `You are the WhatsApp sales assistant for ${opts.businessName ?? "this business"}. Indian SMB tone: warm, clear, professional.`,
       opts.autoSend
-        ? "This reply will be sent automatically on WhatsApp. Write like a sharp sales rep: warm, specific, concise (2–4 sentences). Never invent prices, discounts, or policies."
-        : "The human rep will review and send — never imply the message was already sent.",
-      "Do not invent pricing, policies, or offers beyond the business knowledge provided.",
-      opts.intent ? `Customer intent (AI): ${opts.intent}` : "",
-      opts.summary ? `Conversation so far: ${opts.summary}` : "",
-      opts.stage ? `Pipeline stage: ${opts.stage}` : "",
-      opts.greeting
-        ? `The customer just sent a short greeting ("${opts.lastInbound}"). Reply warmly in 1–2 sentences. Do not push pricing unless they asked in this message.`
-        : opts.lastInbound
-          ? `Address the customer's latest message: "${opts.lastInbound}"`
-          : "",
-      opts.risk === "high"
-        ? "This is a sensitive thread — be careful, empathetic, and avoid committing to prices or policies."
+        ? "This goes out automatically on WhatsApp — sound like a strong rep, not a bot. 2–4 sentences max."
+        : "A teammate will review before sending.",
+      opts.playbook,
+      opts.intent ? `Thread intent: ${opts.intent}` : "",
+      opts.sentiment ? `Sentiment: ${opts.sentiment}` : "",
+      opts.summary ? `Context: ${opts.summary}` : "",
+      opts.nextAction ? `Suggested team action: ${opts.nextAction}` : "",
+      opts.stage ? `Deal stage: ${opts.stage}` : "",
+      opts.lastInbound
+        ? `Reply to this exact message from ${opts.contactName ?? "the customer"}: "${opts.lastInbound}"`
         : "",
+      "Never invent prices, discounts, or policies. Use business knowledge when present.",
       opts.knowledgeGap
-        ? "No matching pricing/policy docs were found. Ask clarifying questions (budget, scope, timeline) without quoting specific prices."
+        ? "No pricing docs matched — ask clarifying questions only."
         : "",
       opts.knowledgeBlock
-        ? `Business knowledge (use when relevant):\n\n${opts.knowledgeBlock}`
-        : "No business knowledge documents matched — stay general and ask clarifying questions.",
-      opts.memoryBlock ? `What we know about this customer:\n${opts.memoryBlock}` : "",
+        ? `Business knowledge:\n\n${opts.knowledgeBlock}`
+        : "",
+      opts.memoryBlock ? `Customer memory:\n${opts.memoryBlock}` : "",
     ]
       .filter(Boolean)
       .join("\n\n");
+  }
+
+  private classificationFromProfile(
+    profile: Record<string, unknown>,
+    stage: string,
+  ): AiClassificationResult | null {
+    const intent = typeof profile.lastIntent === "string" ? profile.lastIntent : undefined;
+    if (!intent) return null;
+    return {
+      stage: stage as AiClassificationResult["stage"],
+      confidence: typeof profile.confidence === "number" ? profile.confidence : 0.6,
+      intent,
+      sentiment: (["positive", "neutral", "negative"] as const).includes(
+        profile.lastSentiment as "positive",
+      )
+        ? (profile.lastSentiment as "positive" | "neutral" | "negative")
+        : "neutral",
+      suggestedActions: Array.isArray(profile.suggestedActions)
+        ? profile.suggestedActions.map(String)
+        : [],
+      requiresHuman: false,
+      summary: typeof profile.summary === "string" ? profile.summary : undefined,
+      nextAction: typeof profile.nextAction === "string" ? profile.nextAction : undefined,
+      tags: Array.isArray(profile.aiTags) ? profile.aiTags.map(String) : [],
+    };
   }
 }

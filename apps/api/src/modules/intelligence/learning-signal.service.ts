@@ -47,6 +47,7 @@ export class LearningSignalService {
     conversationId: string;
     aiRunId?: string;
     preview: string;
+    intent?: string;
   }) {
     await this.prisma.learningSignal.create({
       data: {
@@ -55,7 +56,10 @@ export class LearningSignalService {
         aiRunId: opts.aiRunId,
         type: "auto_send",
         signal: "auto_reply_sent",
-        metadata: { previewLength: opts.preview.length } as object,
+        metadata: {
+          previewLength: opts.preview.length,
+          intent: opts.intent ?? null,
+        } as object,
       },
     });
   }

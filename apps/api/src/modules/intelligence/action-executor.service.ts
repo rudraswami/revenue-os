@@ -332,6 +332,7 @@ export class ActionExecutorService {
           {
             knowledgeGap: payload.knowledgeGap === true,
             decision: replyDecision,
+            classification: input.classification,
           },
         );
         return { draft: draft?.suggestion ?? null };
@@ -346,6 +347,7 @@ export class ActionExecutorService {
             replyDecision,
             knowledgeGap: payload.knowledgeGap === true,
             aiRunId: action.aiRunId,
+            classification: input.classification,
           },
         );
         return { messageId: sent.messageId, content: sent.content };
