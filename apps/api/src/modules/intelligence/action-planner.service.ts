@@ -26,6 +26,8 @@ export interface ClassificationPlanInput {
   handoffType?: "complex" | "knowledge_gap" | "human_request";
   workspaceAutonomy: ReplyAutonomyMode;
   withinReplyWindow: boolean;
+  autoSendPlanOk: boolean;
+  recentAutoSendCount: number;
   automationPrefs: {
     stage: boolean;
     notify: boolean;
@@ -72,6 +74,8 @@ export class ActionPlannerService {
       knowledgeGap: input.handoffType === "knowledge_gap",
       workspaceAutonomy: input.workspaceAutonomy,
       withinReplyWindow: input.withinReplyWindow,
+      autoSendPlanOk: input.autoSendPlanOk,
+      recentAutoSendCount: input.recentAutoSendCount,
     });
 
     if (result.requiresHuman && !input.lockHandoff) {
@@ -152,7 +156,19 @@ export class ActionPlannerService {
       });
     }
 
-    if (replyDecision.mode === "draft") {
+    if (replyDecision.mode === "send") {
+      actions.push({
+        type: "reply.send",
+        executor: "growvisi",
+        payload: {
+          conversationId: ctx.conversationId,
+          leadId: ctx.leadId,
+          knowledgeGap: input.handoffType === "knowledge_gap",
+          replyDecision,
+        },
+        aiRunId,
+      });
+    } else if (replyDecision.mode === "draft") {
       actions.push({
         type: "reply.draft",
         executor: "growvisi",

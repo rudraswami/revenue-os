@@ -438,6 +438,26 @@ export class AiClassifyService {
         !!ctx.conversation.lastInboundAt &&
         Date.now() - ctx.conversation.lastInboundAt.getTime() < 24 * 60 * 60 * 1000;
 
+      let autoSendPlanOk = false;
+      if (intelligenceSettings.replyAutonomy === "auto_guarded") {
+        try {
+          await this.entitlements.assertPlanAtLeast(data.organizationId, "growth");
+          autoSendPlanOk = true;
+        } catch {
+          autoSendPlanOk = false;
+        }
+      }
+
+      const recentAutoSendCount = await this.prisma.message.count({
+        where: {
+          conversationId: data.conversationId,
+          organizationId: data.organizationId,
+          sentByAi: true,
+          direction: "OUTBOUND",
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      });
+
       const updateStage =
         prefs.stage &&
         !data.lockStage &&
@@ -477,6 +497,8 @@ export class AiClassifyService {
         handoffType: knowledgeGap ? "knowledge_gap" : "complex",
         workspaceAutonomy: intelligenceSettings.replyAutonomy,
         withinReplyWindow,
+        autoSendPlanOk,
+        recentAutoSendCount,
         automationPrefs: {
           stage: prefs.stage,
           notify: prefs.notify,

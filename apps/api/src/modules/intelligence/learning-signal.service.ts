@@ -42,6 +42,24 @@ export class LearningSignalService {
     });
   }
 
+  async recordAutoSend(opts: {
+    organizationId: string;
+    conversationId: string;
+    aiRunId?: string;
+    preview: string;
+  }) {
+    await this.prisma.learningSignal.create({
+      data: {
+        organizationId: opts.organizationId,
+        conversationId: opts.conversationId,
+        aiRunId: opts.aiRunId,
+        type: "auto_send",
+        signal: "auto_reply_sent",
+        metadata: { previewLength: opts.preview.length } as object,
+      },
+    });
+  }
+
   private overlapRatio(a: string, b: string): boolean {
     const aw = new Set(a.toLowerCase().split(/\s+/).filter(Boolean));
     const bw = new Set(b.toLowerCase().split(/\s+/).filter(Boolean));

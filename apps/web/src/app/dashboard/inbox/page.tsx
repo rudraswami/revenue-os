@@ -57,6 +57,7 @@ interface Message {
   content: string | null;
   createdAt: string;
   status: string;
+  sentByAi?: boolean;
 }
 
 interface ConversationDetail {
@@ -1015,14 +1016,21 @@ export default function InboxPage() {
                     />
                     <p
                       className={cn(
-                        "mt-1 text-xs",
+                        "mt-1 flex items-center gap-1.5 text-xs",
                         m.direction === "OUTBOUND" ? "text-emerald-800/60" : "text-muted-foreground",
                       )}
                     >
-                      {new Date(m.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {m.sentByAi && m.direction === "OUTBOUND" && (
+                        <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+                          AI
+                        </span>
+                      )}
+                      <span>
+                        {new Date(m.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
                     </p>
                   </div>
                 ))}

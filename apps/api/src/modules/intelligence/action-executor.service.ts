@@ -8,6 +8,7 @@ import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { PrismaService } from "../prisma/prisma.service";
 import type { ConversationContext } from "./context-builder.service";
 import { SuggestReplyService } from "./suggest-reply.service";
+import { ReplySendService } from "./reply-send.service";
 
 const STAGE_SCORE: Record<LeadStage, number> = {
   NEW: 10,
@@ -42,6 +43,7 @@ export class ActionExecutorService {
     private readonly assignments: AssignmentService,
     private readonly webhooks: WebhookDispatchService,
     private readonly suggestReply: SuggestReplyService,
+    private readonly replySend: ReplySendService,
   ) {}
 
   shouldUpdateStage(
@@ -209,7 +211,9 @@ export class ActionExecutorService {
 
     if (input.stageChanged) {
       this.realtime.emitInboxUpdated(input.organizationId, input.conversationId);
-    } else if (input.actions.some((a) => a.type === "reply.draft")) {
+    } else if (
+      input.actions.some((a) => a.type === "reply.draft" || a.type === "reply.send")
+    ) {
       this.realtime.emitInboxUpdated(input.organizationId, input.conversationId);
     }
 
@@ -331,6 +335,20 @@ export class ActionExecutorService {
           },
         );
         return { draft: draft?.suggestion ?? null };
+      }
+
+      case "reply.send": {
+        const replyDecision = payload.replyDecision as ReplyDecision;
+        const sent = await this.replySend.sendGuardedAutoReply(
+          input.organizationId,
+          String(payload.conversationId),
+          {
+            replyDecision,
+            knowledgeGap: payload.knowledgeGap === true,
+            aiRunId: action.aiRunId,
+          },
+        );
+        return { messageId: sent.messageId, content: sent.content };
       }
 
       default:

@@ -53,6 +53,7 @@ export function useConversationsCopy() {
       aiDraftGenerating: t("conversations.aiDraftGenerating"),
       replySkippedTitle: t("conversations.replySkippedTitle"),
       replyDraftPlanned: t("conversations.replyDraftPlanned"),
+      replyAutoSentTitle: t("conversations.replyAutoSentTitle"),
       sendAiDraft: t("conversations.sendAiDraft"),
       assignedTo: t("conversations.assignedTo"),
       unassigned: t("conversations.unassigned"),

@@ -6,6 +6,7 @@ import { EventsModule } from "../events/events.module";
 import { KnowledgeModule } from "../knowledge/knowledge.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { WebhooksModule } from "../webhooks/webhooks.module";
+import { WhatsappModule } from "../whatsapp/whatsapp.module";
 import { ActionExecutorService } from "./action-executor.service";
 import { ActionPlannerService } from "./action-planner.service";
 import { ContextBuilderService } from "./context-builder.service";
@@ -14,6 +15,7 @@ import { LearningSignalService } from "./learning-signal.service";
 import { ObservedMemoryService } from "./observed-memory.service";
 import { ReplyComposerService } from "./reply-composer.service";
 import { ReplyPolicyService } from "./reply-policy.service";
+import { ReplySendService } from "./reply-send.service";
 import { SuggestReplyService } from "./suggest-reply.service";
 
 @Module({
@@ -25,12 +27,14 @@ import { SuggestReplyService } from "./suggest-reply.service";
     AssignmentModule,
     WebhooksModule,
     KnowledgeModule,
+    WhatsappModule,
   ],
   providers: [
     ContextBuilderService,
     ObservedMemoryService,
     ReplyPolicyService,
     ReplyComposerService,
+    ReplySendService,
     ActionPlannerService,
     ActionExecutorService,
     SuggestReplyService,
@@ -42,6 +46,7 @@ import { SuggestReplyService } from "./suggest-reply.service";
     ObservedMemoryService,
     ReplyPolicyService,
     ReplyComposerService,
+    ReplySendService,
     ActionPlannerService,
     ActionExecutorService,
     SuggestReplyService,

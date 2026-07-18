@@ -22,6 +22,10 @@ export interface ReplyPolicyInput {
   knowledgeGap: boolean;
   workspaceAutonomy: ReplyAutonomyMode;
   withinReplyWindow: boolean;
+  /** Growth+ plan allows guarded auto-send */
+  autoSendPlanOk: boolean;
+  /** Outbound messages with sentByAi in the last 24h on this thread */
+  recentAutoSendCount: number;
 }
 
 @Injectable()
@@ -91,11 +95,38 @@ export class ReplyPolicyService {
 
     const autoEligible = this.isAutoSendEligible(input, risk, confidence);
 
-    if (input.workspaceAutonomy === "auto_guarded" && autoEligible) {
-      reasons.push("Eligible for guarded auto-reply (shipping in a later release — draft for now).");
+    const canAutoSend =
+      input.workspaceAutonomy === "auto_guarded" &&
+      autoEligible &&
+      input.autoSendPlanOk &&
+      input.recentAutoSendCount < 3;
+
+    if (canAutoSend) {
+      reasons.push(
+        "Guarded auto-reply — grounded FAQ answer will be sent on WhatsApp from your business number.",
+      );
+      if (input.knowledgeHits.length > 0) {
+        reasons.push(`Source: “${input.knowledgeHits[0].title}”.`);
+      }
+      reasons.push("Your team can review and continue the thread in Conversations.");
+      return this.decision("send", confidence, risk, reasons, blockers, evaluatedAt, true);
     }
 
-    reasons.push("You review and send — Growvisi never auto-sends without your tap.");
+    if (input.workspaceAutonomy === "auto_guarded" && autoEligible && !input.autoSendPlanOk) {
+      reasons.push(
+        "Guarded auto-reply needs Growth plan — drafting for you to send instead.",
+      );
+    } else if (
+      input.workspaceAutonomy === "auto_guarded" &&
+      autoEligible &&
+      input.recentAutoSendCount >= 3
+    ) {
+      reasons.push("Auto-reply limit reached for this thread (3 per 24h) — draft only.");
+    }
+
+    if (input.workspaceAutonomy === "assist") {
+      reasons.push("Review and send — AI assist never auto-sends to WhatsApp.");
+    }
 
     return this.decision("draft", confidence, risk, reasons, blockers, evaluatedAt, autoEligible);
   }

@@ -452,6 +452,19 @@ export class LeadsService {
         metadata: { kind: "hot_lead_alert" },
       });
     }
+    if (convMeta.lastAiAutoReplyAt) {
+      events.push({
+        id: `ai-reply-${lead.conversation!.id}-${convMeta.lastAiAutoReplyMessageId ?? "latest"}`,
+        type: "automation",
+        at: String(convMeta.lastAiAutoReplyAt),
+        title: "AI sent guarded WhatsApp reply",
+        detail:
+          typeof convMeta.lastAiAutoReplyPreview === "string"
+            ? convMeta.lastAiAutoReplyPreview
+            : "Automated FAQ reply from Business Knowledge",
+        metadata: { kind: "ai_auto_reply", sentByAi: true },
+      });
+    }
     if (convMeta.followupReminderSentAt) {
       events.push({
         id: `followup-${lead.conversation!.id}`,

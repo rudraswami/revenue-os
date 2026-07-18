@@ -18,6 +18,7 @@ export const ACTION_TYPES = [
   "task.create",
   "email.send",
   "reply.draft",
+  "reply.send",
   "webhook.emit",
 ] as const;
 

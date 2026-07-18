@@ -17,6 +17,24 @@ export function InboxReplyDecision({
   const copy = useConversationsCopy();
   if (!decision) return null;
 
+  if (decision.mode === "send") {
+    return (
+      <div
+        className={cn(
+          "rounded-xl border border-accent/30 bg-bento-mint/60 px-3 py-2 text-xs text-foreground",
+          className,
+        )}
+      >
+        <p className="font-semibold text-accent">{copy.replyAutoSentTitle}</p>
+        <ul className="mt-1 space-y-0.5 leading-relaxed opacity-90">
+          {decision.reasons.slice(0, 4).map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   if (decision.mode === "skip" && !hasDraft) {
     return (
       <div

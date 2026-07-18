@@ -20,9 +20,9 @@ const LABELS: Record<ReplyAutonomyMode, { title: string; description: string }> 
     description: "AI drafts replies from your Business Knowledge — your team reviews and sends.",
   },
   auto_guarded: {
-    title: "Guarded auto-reply (preview)",
+    title: "Guarded auto-reply",
     description:
-      "Same as assist today. FAQ auto-send on WhatsApp ships when policy gates are live — you stay in control.",
+      "Sends grounded FAQ answers on WhatsApp when policy gates pass (Growth+). Negotiation and pricing always need a human.",
   },
 };
 
