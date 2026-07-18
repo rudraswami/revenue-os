@@ -127,7 +127,7 @@ export const MARKETING_NAV: NavEntry[] = [
       },
     },
   },
-  { type: "link", href: "/#pricing", label: "Pricing" },
+  { type: "link", href: "/pricing", label: "Pricing" },
   { type: "link", href: "/agencies", label: "Agencies", external: true },
 ];
 

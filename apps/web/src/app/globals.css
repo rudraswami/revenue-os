@@ -963,12 +963,25 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(90deg, #006c49, #6cf8bb);
 }
 
+.layer-progress-wrap {
+  border-top: 1px solid var(--color-border);
+  background: #fafbff;
+}
+
 .layer-progress {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0;
-  border-top: 1px solid var(--color-border);
-  background: #fafbff;
+}
+
+.layer-progress-step.is-active .layer-progress-label {
+  color: var(--color-foreground);
+}
+
+.layer-film-progress {
+  height: 2px;
+  border-radius: 0;
+  background: rgb(0 108 73 / 0.08);
 }
 
 .layer-progress-step {
@@ -1000,6 +1013,422 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-muted-foreground);
+}
+
+/* ── Industries — editorial selector + live preview ── */
+.industries-section-bg {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 45% at 85% 20%, rgb(0 108 73 / 0.05), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #f8f9ff 50%, #ffffff 100%);
+}
+
+.industries-list {
+  scrollbar-width: none;
+}
+
+.industries-list::-webkit-scrollbar {
+  display: none;
+}
+
+.industries-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.industries-tab:hover {
+  background: rgb(255 255 255 / 0.7);
+  border-color: var(--color-border);
+}
+
+.industries-tab-active {
+  border-color: rgb(0 108 73 / 0.22);
+  background: white;
+  box-shadow: 0 4px 20px rgb(11 28 48 / 0.05);
+}
+
+.industries-tab-n {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: var(--color-accent);
+}
+
+.industries-tab-title {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-foreground);
+}
+
+.industries-tab:not(.industries-tab-active) .industries-tab-title {
+  color: var(--color-muted-foreground);
+  font-weight: 600;
+}
+
+.industries-tab-progress {
+  position: absolute;
+  inset: auto 0 0;
+  border-radius: 0;
+  background: rgb(0 108 73 / 0.08);
+}
+
+/* ── Customer proof — Pilot ledger ── */
+.pilot-section-bg {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 30%, rgb(0 108 73 / 0.05), transparent 55%),
+    linear-gradient(180deg, #f8f9ff 0%, #ffffff 50%, #f8f9ff 100%);
+}
+
+.pilot-canvas-shell {
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(11 28 48 / 0.12);
+  background: linear-gradient(165deg, #0b1c30 0%, #0f2438 45%, #0a1728 100%);
+  box-shadow:
+    0 1px 2px rgb(11 28 48 / 0.06),
+    0 28px 72px rgb(11 28 48 / 0.14);
+}
+
+.pilot-canvas-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  padding: 1.35rem 1.5rem;
+}
+
+.pilot-canvas-kicker {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgb(108 248 187 / 0.75);
+}
+
+.pilot-canvas-headline {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: white;
+}
+
+.pilot-cohort-badge {
+  border-radius: 9999px;
+  border: 1px solid rgb(108 248 187 / 0.25);
+  background: rgb(108 248 187 / 0.08);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6cf8bb;
+}
+
+.pilot-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.pilot-step-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  position: relative;
+  overflow: hidden;
+  border: none;
+  border-right: 1px solid rgb(255 255 255 / 0.06);
+  background: transparent;
+  padding: 1rem 1.1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.25s ease;
+}
+
+.pilot-step-tab:last-child {
+  border-right: none;
+}
+
+.pilot-step-tab:hover {
+  background: rgb(255 255 255 / 0.04);
+}
+
+.pilot-step-tab-active {
+  background: rgb(255 255 255 / 0.06);
+}
+
+.pilot-step-week {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.45);
+}
+
+.pilot-step-tab-active .pilot-step-week {
+  color: #6cf8bb;
+}
+
+.pilot-step-title {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: rgb(255 255 255 / 0.75);
+}
+
+.pilot-step-tab-active .pilot-step-title {
+  color: white;
+}
+
+.pilot-step-progress {
+  position: absolute;
+  inset: auto 0 0;
+  border-radius: 0;
+  background: rgb(108 248 187 / 0.08);
+}
+
+.pilot-step-progress .live-cycle-fill {
+  background: linear-gradient(90deg, #6cf8bb, #34d399);
+}
+
+.pilot-detail {
+  min-height: 6.5rem;
+  padding: 1.35rem 1.5rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.pilot-detail-inner {
+  max-width: 40rem;
+}
+
+.pilot-signal-pill {
+  display: inline-block;
+  border-radius: 0.35rem;
+  background: rgb(255 255 255 / 0.08);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.55);
+}
+
+.pilot-detail-text {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgb(255 255 255 / 0.88);
+}
+
+.pilot-metrics {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  transition:
+    background 0.4s ease,
+    box-shadow 0.4s ease;
+}
+
+.pilot-metrics-live {
+  background: rgb(108 248 187 / 0.04);
+  box-shadow: inset 0 0 0 1px rgb(108 248 187 / 0.12);
+}
+
+.pilot-metrics-live .pilot-metrics-label {
+  color: #6cf8bb;
+}
+
+.pilot-metrics-live .pilot-metric-cell {
+  border-color: rgb(108 248 187 / 0.18);
+}
+
+.pilot-metrics-live .pilot-metric-value {
+  color: rgb(108 248 187 / 0.5);
+}
+
+.pilot-metrics-label {
+  margin: 0 0 1rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.4);
+}
+
+.pilot-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+}
+
+.pilot-metric-cell {
+  border-radius: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.04);
+  padding: 0.85rem 1rem;
+}
+
+.pilot-metric-name {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.55);
+}
+
+.pilot-metric-value {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-sans);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: rgb(255 255 255 / 0.25);
+}
+
+.pilot-metric-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.625rem;
+  line-height: 1.45;
+  color: rgb(255 255 255 / 0.35);
+}
+
+.pilot-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.35rem 1.5rem;
+}
+
+.pilot-cta-copy {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: rgb(255 255 255 / 0.55);
+}
+
+.pilot-icp {
+  margin: 1rem 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+@media (min-width: 768px) {
+  .pilot-metrics-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .pilot-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .pilot-step-tab {
+    border-right: none;
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  }
+
+  .pilot-step-tab:last-child {
+    border-bottom: none;
+  }
+
+  .pilot-cta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* ── Live cycle progress (shared across animated sections) ── */
+.live-cycle-track {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(0 108 73 / 0.12);
+}
+
+.live-cycle-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #006c49, #6cf8bb);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+.hero-handoff-film-progress {
+  border-radius: 0;
+  background: rgb(0 108 73 / 0.06);
+}
+
+/* ── Revenue leakage calculator ── */
+.leakage-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    #006c49 0%,
+    #6cf8bb var(--range-pct, 0%),
+    rgb(0 108 73 / 0.12) var(--range-pct, 0%),
+    rgb(0 108 73 / 0.12) 100%
+  );
+  cursor: pointer;
+}
+
+.leakage-range:focus-visible {
+  outline: 2px solid rgb(0 108 73 / 0.35);
+  outline-offset: 3px;
+}
+
+.leakage-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: #006c49;
+  box-shadow: 0 2px 8px rgb(0 108 73 / 0.35);
+  cursor: grab;
+}
+
+.leakage-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: #006c49;
+  box-shadow: 0 2px 8px rgb(0 108 73 / 0.35);
+  cursor: grab;
 }
 
 @media (max-width: 767px) {

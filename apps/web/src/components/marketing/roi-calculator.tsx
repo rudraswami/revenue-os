@@ -1,115 +1,266 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { IndianRupee } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import Link from "next/link";
+import { useMemo, useState, type CSSProperties } from "react";
+import { ArrowRight, TrendingDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CTA } from "@/lib/brand-copy";
+import {
+  computeLeakage,
+  formatInr,
+  type LeakageInputs,
+  type RecoveryScenario,
+  type TeamBand,
+} from "@/lib/revenue-leakage-model";
+import { cn } from "@/lib/utils";
 
-/** Simple founder ROI model — customer fills assumptions */
-export function RoiCalculator() {
-  const [leadsPerMonth, setLeadsPerMonth] = useState(200);
-  const [winRatePct, setWinRatePct] = useState(12);
-  const [avgDealInr, setAvgDealInr] = useState(25000);
-  const [upliftPct, setUpliftPct] = useState(15);
+const SCENARIOS: { id: RecoveryScenario; label: string }[] = [
+  { id: "conservative", label: "Conservative" },
+  { id: "likely", label: "Likely" },
+  { id: "optimistic", label: "Optimistic" },
+];
 
-  const result = useMemo(() => {
-    const leads = Math.max(0, leadsPerMonth);
-    const winRate = Math.min(100, Math.max(0, winRatePct)) / 100;
-    const deal = Math.max(0, avgDealInr);
-    const uplift = Math.min(50, Math.max(0, upliftPct)) / 100;
+const TEAM_BANDS: { id: TeamBand; label: string; hint: string }[] = [
+  { id: "solo", label: "1–2 people", hint: "Owner + helper" },
+  { id: "team", label: "3–5 people", hint: "Small sales team" },
+  { id: "operator", label: "6+ / agency", hint: "Multi-client hub" },
+];
 
-    const baselineRevenue = leads * winRate * deal;
-    const incrementalRevenue = baselineRevenue * uplift;
-    const growvisiCost = 2999;
-    const roi = growvisiCost > 0 ? incrementalRevenue / growvisiCost : 0;
-
-    return { baselineRevenue, incrementalRevenue, roi };
-  }, [leadsPerMonth, winRatePct, avgDealInr, upliftPct]);
-
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(n);
+function LeakageSlider({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step,
+  format,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  format: (n: number) => string;
+  onChange: (n: number) => void;
+}) {
+  const pct = ((value - min) / (max - min)) * 100;
 
   return (
-    <div className="rounded-3xl border border-border bg-gradient-to-br from-[#f8f9ff] to-white p-6 md:p-8">
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bento-mint">
-          <IndianRupee className="h-5 w-5 text-accent" />
-        </div>
+    <div className="leakage-slider">
+      <div className="flex items-baseline justify-between gap-3">
         <div>
-          <h3 className="text-lg font-bold">Revenue impact calculator</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Estimate incremental ₹ from better follow-up and pipeline visibility — use your own
-            numbers.
-          </p>
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          {hint ? <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p> : null}
+        </div>
+        <p className="shrink-0 text-sm font-bold tabular-nums text-accent">{format(value)}</p>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="leakage-range mt-3 w-full"
+        style={{ "--range-pct": `${pct}%` } as CSSProperties}
+        aria-valuemin={min}
+        aria-valuemax={max}
+        aria-valuenow={value}
+      />
+    </div>
+  );
+}
+
+/** WhatsApp revenue leakage — plan-aware, tied to handoff + follow-up gaps */
+export function RoiCalculator({ className }: { className?: string }) {
+  const [inputs, setInputs] = useState<LeakageInputs>({
+    leadsPerMonth: 180,
+    needHumanPct: 42,
+    goColdPct: 28,
+    avgDealInr: 28_000,
+    teamBand: "team",
+    scenario: "likely",
+  });
+
+  const result = useMemo(() => computeLeakage(inputs), [inputs]);
+
+  const patch = (partial: Partial<LeakageInputs>) =>
+    setInputs((prev) => ({ ...prev, ...partial }));
+
+  return (
+    <div
+      className={cn(
+        "leakage-calc overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-[#f8f9ff] to-white",
+        className,
+      )}
+    >
+      <div className="border-b border-border/80 px-6 py-5 md:px-8 md:py-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bento-mint">
+              <TrendingDown className="h-5 w-5 text-accent" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">WhatsApp revenue leakage</h3>
+              <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                Leads that need a human but go cold in 24h — estimate what slips through before
+                you compare plans.
+              </p>
+            </div>
+          </div>
+          <div className="flex rounded-xl border border-border bg-white p-1">
+            {SCENARIOS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => patch({ scenario: s.id })}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                  inputs.scenario === s.id
+                    ? "bg-accent text-white"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="space-y-1.5 text-sm">
-          <span className="font-medium text-muted-foreground">WhatsApp leads / month</span>
-          <Input
-            type="number"
-            min={0}
-            value={leadsPerMonth}
-            onChange={(e) => setLeadsPerMonth(Number(e.target.value) || 0)}
-            className="h-10 rounded-xl"
+      <div className="grid gap-8 px-6 py-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] md:px-8 md:py-7">
+        <div className="space-y-6">
+          <LeakageSlider
+            label="Inbound WhatsApp leads / month"
+            value={inputs.leadsPerMonth}
+            min={50}
+            max={4_000}
+            step={10}
+            format={(n) => n.toLocaleString("en-IN")}
+            onChange={(leadsPerMonth) => patch({ leadsPerMonth })}
           />
-        </label>
-        <label className="space-y-1.5 text-sm">
-          <span className="font-medium text-muted-foreground">Win rate today (%)</span>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            value={winRatePct}
-            onChange={(e) => setWinRatePct(Number(e.target.value) || 0)}
-            className="h-10 rounded-xl"
+          <LeakageSlider
+            label="Need a human follow-up"
+            hint="Quotes, visits, pricing — not FAQ"
+            value={inputs.needHumanPct}
+            min={15}
+            max={75}
+            step={1}
+            format={(n) => `${n}%`}
+            onChange={(needHumanPct) => patch({ needHumanPct })}
           />
-        </label>
-        <label className="space-y-1.5 text-sm">
-          <span className="font-medium text-muted-foreground">Avg deal size (₹)</span>
-          <Input
-            type="number"
-            min={0}
-            value={avgDealInr}
-            onChange={(e) => setAvgDealInr(Number(e.target.value) || 0)}
-            className="h-10 rounded-xl"
+          <LeakageSlider
+            label="Go cold without reply in 24h"
+            hint="Today — no clear owner in Inbox"
+            value={inputs.goColdPct}
+            min={8}
+            max={55}
+            step={1}
+            format={(n) => `${n}%`}
+            onChange={(goColdPct) => patch({ goColdPct })}
           />
-        </label>
-        <label className="space-y-1.5 text-sm">
-          <span className="font-medium text-muted-foreground">Uplift from Growvisi (%)</span>
-          <Input
-            type="number"
-            min={0}
-            max={50}
-            value={upliftPct}
-            onChange={(e) => setUpliftPct(Number(e.target.value) || 0)}
-            className="h-10 rounded-xl"
+          <LeakageSlider
+            label="Average deal size"
+            value={inputs.avgDealInr}
+            min={3_000}
+            max={500_000}
+            step={1_000}
+            format={formatInr}
+            onChange={(avgDealInr) => patch({ avgDealInr })}
           />
-        </label>
+
+          <div>
+            <p className="text-sm font-medium text-foreground">Team size</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Picks the plan we compare against
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {TEAM_BANDS.map((band) => (
+                <button
+                  key={band.id}
+                  type="button"
+                  onClick={() => patch({ teamBand: band.id })}
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-left transition-colors",
+                    inputs.teamBand === band.id
+                      ? "border-accent/40 bg-bento-mint/40"
+                      : "border-border bg-white hover:border-accent/20",
+                  )}
+                >
+                  <p className="text-sm font-semibold">{band.label}</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{band.hint}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-800/70">
+              Est. lost / month
+            </p>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-amber-950">
+              {formatInr(result.lostRevenue)}
+            </p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-amber-900/65">
+              ~{result.atRiskLeads} leads at risk · assumes 12% would convert with timely follow-up
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-accent/25 bg-bento-mint/35 px-4 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+              Recoverable with Growvisi
+            </p>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-accent">
+              {formatInr(result.recoverable)}
+            </p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+              {Math.round(result.recoveryRate * 100)}% recovery · YOUR TURN + pipeline ownership
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-white px-4 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Suggested plan
+            </p>
+            <p className="mt-1 text-xl font-bold">
+              {result.planName}{" "}
+              <span className="text-base font-semibold text-muted-foreground">
+                · {formatInr(result.planCost)}/mo
+              </span>
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ≈ ₹{result.planPerDay.toLocaleString("en-IN")}/day
+              {result.paybackDays != null ? (
+                <>
+                  {" "}
+                  · one recovered deal pays back in ~{result.paybackDays} days
+                </>
+              ) : null}
+            </p>
+            <p className="mt-2 text-lg font-bold text-foreground">
+              {result.roi.toFixed(1)}× vs plan cost
+            </p>
+          </div>
+
+          <Button asChild className="mt-auto h-11 w-full">
+            <Link href="/register">
+              {CTA.startTrial}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-border/80 bg-white px-4 py-3">
-          <p className="text-xs text-muted-foreground">Baseline monthly revenue</p>
-          <p className="text-xl font-bold">{fmt(result.baselineRevenue)}</p>
-        </div>
-        <div className="rounded-2xl border border-accent/20 bg-bento-mint/30 px-4 py-3">
-          <p className="text-xs text-muted-foreground">Est. incremental / month</p>
-          <p className="text-xl font-bold text-accent">{fmt(result.incrementalRevenue)}</p>
-        </div>
-        <div className="rounded-2xl border border-border/80 bg-white px-4 py-3">
-          <p className="text-xs text-muted-foreground">vs Team plan (₹2,999/mo)</p>
-          <p className="text-xl font-bold">{result.roi.toFixed(1)}×</p>
-        </div>
-      </div>
-
-      <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-        Illustrative model only — not a guarantee. Pilot customers should track win rate and pipeline
-        ₹ before and after 30 days.
+      <p className="border-t border-border/80 px-6 py-4 text-[11px] leading-relaxed text-muted-foreground md:px-8">
+        Illustrative model — not a guarantee. Assumes better assignment and follow-up via Inbox; track
+        win rate and pipeline ₹ in your 30-day pilot.{" "}
+        <Link href="/#case-study" className="font-semibold text-accent hover:underline">
+          See pilot rollout →
+        </Link>
       </p>
     </div>
   );

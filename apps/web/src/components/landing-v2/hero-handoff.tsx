@@ -13,6 +13,9 @@ import {
   HERO_HANDOFF_COPY,
   HERO_HANDOFF_MS,
 } from "@/lib/landing-v2/hero-film";
+import { useFilmProgress } from "@/hooks/use-live-cycle";
+import { usePauseHover } from "@/hooks/use-pause-hover";
+import { LiveCycleBar } from "@/components/marketing/live-cycle-bar";
 import { cn } from "@/lib/utils";
 
 type Phase =
@@ -38,6 +41,13 @@ export function HeroHandoff({ className }: { className?: string }) {
   const [phase, setPhase] = useState<Phase>(reduce ? "hold" : "message");
   const [typed, setTyped] = useState(reduce ? human.reply : "");
   const [hasLooped, setHasLooped] = useState(false);
+  const { paused, pauseProps } = usePauseHover();
+  const filmProgress = useFilmProgress({
+    enabled: inView && !reduce,
+    durationMs: T.loop,
+    runKey: run,
+    paused,
+  });
 
   useEffect(() => {
     if (!inView || reduce) {
@@ -90,6 +100,7 @@ export function HeroHandoff({ className }: { className?: string }) {
       ref={rootRef}
       className={cn("hero-handoff-root relative mx-auto w-full max-w-[34rem]", className)}
       aria-label="WhatsApp handoff: AI understands, human replies"
+      {...pauseProps}
     >
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {isTurnPeak
@@ -350,6 +361,7 @@ export function HeroHandoff({ className }: { className?: string }) {
             )}
           </AnimatePresence>
         </div>
+        <LiveCycleBar progress={filmProgress} className="hero-handoff-film-progress" />
       </motion.div>
 
       {!reduce && hasLooped ? (

@@ -1,41 +1,42 @@
 "use client";
 
-import { PricingPlansGrid } from "@/components/pricing/pricing-plans-grid";
-import { EnterpriseCallout } from "@/components/marketing/enterprise-callout";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
+import { PricingPreview } from "@/components/marketing/pricing-preview";
 import { SectionHeader } from "./section-header";
-import { OUTCOME_TIERS, POSITIONING } from "@/lib/gtm-copy";
-import { PRICING_FOOTNOTES } from "@/lib/pricing-plans";
+import { HOME_LEAKAGE, HOME_PRICING } from "@/lib/brand-copy";
 
+/** Homepage pricing — leakage math first, then two-tier preview */
 export function Pricing() {
   return (
-    <section id="pricing" className="scroll-mt-20 border-t border-border bg-background py-20 md:py-28">
-      <div className="marketing-container max-w-[1100px]">
-        <SectionHeader
-          label="Pricing"
-          title="Solo · Team · Operator"
-          subtitle={`Outcome-based INR plans for WhatsApp sellers. ${POSITIONING.trialNote}.`}
-        />
-        <div className="mt-12">
-          <PricingPlansGrid variant="marketing" />
+    <>
+      <section
+        id="revenue-impact"
+        className="scroll-mt-20 border-t border-border bg-background py-20 md:py-28"
+      >
+        <div className="marketing-container max-w-[1100px]">
+          <SectionHeader
+            label={HOME_LEAKAGE.label}
+            title={HOME_LEAKAGE.title}
+            subtitle={HOME_LEAKAGE.subtitle}
+          />
+          <div className="mt-12">
+            <RoiCalculator />
+          </div>
         </div>
-        <EnterpriseCallout />
-        <ul className="mt-8 space-y-2 text-[12px] leading-relaxed text-muted-foreground">
-          {PRICING_FOOTNOTES.map((note) => (
-            <li key={note}>· {note}</li>
-          ))}
-        </ul>
-        <div className="mt-12">
-          <RoiCalculator />
+      </section>
+
+      <section id="pricing" className="scroll-mt-20 border-t border-border bg-[#fafbff] py-20 md:py-28">
+        <div className="marketing-container max-w-[1100px]">
+          <SectionHeader
+            label={HOME_PRICING.label}
+            title={HOME_PRICING.title}
+            subtitle={HOME_PRICING.subtitle}
+          />
+          <div className="mt-12">
+            <PricingPreview />
+          </div>
         </div>
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          Running client WhatsApp for others?{" "}
-          <a href="/agencies" className="font-semibold text-accent hover:underline">
-            See Operator for agencies →
-          </a>{" "}
-          ({OUTCOME_TIERS.operator.name} · ₹{OUTCOME_TIERS.operator.priceInr.toLocaleString("en-IN")}/mo)
-        </p>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

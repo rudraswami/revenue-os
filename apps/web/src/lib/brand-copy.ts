@@ -23,6 +23,127 @@ export const HOME_LAYER = {
     "Every message classified. Every reply owned. Every deal tracked in ₹.",
 } as const;
 
+/** Homepage — Industries */
+export const HOME_INDUSTRIES = {
+  label: "Industries",
+  title: "Built for teams that sell on WhatsApp",
+  subtitle: "Same revenue layer — shaped by how your industry closes.",
+} as const;
+
+export const INDUSTRY_STORIES = [
+  {
+    id: "real-estate",
+    title: "Real Estate",
+    context: "Site visit · Mumbai",
+    message: "Is the 3BHK in Andheri still available for a visit this weekend?",
+    classify: "Site visit request · understood",
+    outcome: "Negotiation",
+    value: "₹1.2 Cr",
+    href: "/solutions/real-estate",
+  },
+  {
+    id: "education",
+    title: "Education",
+    context: "Admissions · Bengaluru",
+    message: "Need the Class 11 fee structure and batch timings for my daughter.",
+    classify: "Admission enquiry · understood",
+    outcome: "Qualified",
+    value: "Hot lead",
+    href: "/solutions/education",
+  },
+  {
+    id: "healthcare",
+    title: "Healthcare",
+    context: "Clinic · Pune",
+    message: "Can we book a consultation for my mother this Thursday?",
+    classify: "Appointment request · understood",
+    outcome: "Your turn",
+    value: "Meera",
+    href: "/solutions/healthcare",
+  },
+  {
+    id: "automotive",
+    title: "Automotive",
+    context: "Dealership · Delhi NCR",
+    message: "Is the new model available for a test drive on Saturday?",
+    classify: "Test drive · understood",
+    outcome: "Assigned",
+    value: "Rahul",
+  },
+  {
+    id: "interior",
+    title: "Interior Design",
+    context: "Modular · Hyderabad",
+    message: "Quote for full-home modular — 3BHK, move-in in 8 weeks.",
+    classify: "Consultation · understood",
+    outcome: "Proposal",
+    value: "₹4.8L",
+  },
+  {
+    id: "d2c",
+    title: "D2C",
+    context: "WhatsApp shop · Pan India",
+    message: "Do you ship to Bangalore? Need 50 units with bulk pricing.",
+    classify: "Bulk order · understood",
+    outcome: "Negotiation",
+    value: "₹18,400",
+    href: "/solutions/d2c",
+  },
+] as const;
+
+/** Homepage — Customer proof / pilot program */
+export const HOME_PILOT = {
+  label: "Customer proof",
+  title: "Real pilots, real metrics",
+  subtitle:
+    "We're onboarding WhatsApp sales teams in India. Verified before/after data lands here — not invented case studies.",
+  cohortBadge: "Pilot cohort · open",
+  rolloutTitle: "30-day rollout",
+  ctaBody:
+    "Join the first cohort. We measure outcomes in your Analytics — with your permission, stories and numbers publish here.",
+  metricsNote: "Metrics publish after the first cohort completes",
+  icp: "Ideal fit: 3–12 people · 100+ WhatsApp leads/month · India",
+} as const;
+
+/** Homepage — revenue leakage calculator (before pricing) */
+export const HOME_LEAKAGE = {
+  label: "Revenue impact",
+  title: "What cold WhatsApp leads cost you",
+  subtitle:
+    "Leads that need a person but sit unassigned — estimate the ₹ slipping through before you pick a plan.",
+} as const;
+
+/** Homepage — slim pricing preview */
+export const HOME_PRICING = {
+  label: "Pricing",
+  title: "Less than one lost deal per month",
+  subtitle: "Start on Solo or Team. 14-day trial · no credit card · upgrade anytime on Razorpay.",
+} as const;
+
+export const PILOT_ROLLOUT = [
+  {
+    id: "w1",
+    week: "Week 1",
+    title: "Connect + first classified lead",
+    detail: "WhatsApp live on Meta Cloud API. First inbound message classified in Inbox.",
+    signal: "First AI classification",
+  },
+  {
+    id: "w2",
+    week: "Week 2–3",
+    title: "Team adopts Inbox + Pipeline",
+    detail: "Take over on handoffs. Move deals with ₹ values. Humans reply — never auto-sent.",
+    signal: "Pipeline ₹ visible",
+  },
+  {
+    id: "w4",
+    week: "Week 4",
+    title: "Compare vs baseline",
+    detail: "Win rate, response time, and pipeline value from Analytics — your data stays yours.",
+    signal: "Before / after report",
+  },
+] as const;
+
 export const CTA = {
   startTrial: "Start 14-day free trial",
   getStarted: "Get started",

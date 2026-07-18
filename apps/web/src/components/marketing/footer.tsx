@@ -6,7 +6,7 @@ const links = {
   Product: [
     { label: "Features", href: "/#product" },
     { label: "How it works", href: "/#engine" },
-    { label: "Pricing", href: "/#pricing" },
+    { label: "Pricing", href: "/pricing" },
     { label: "Demo", href: "/demo" },
   ],
   Company: [

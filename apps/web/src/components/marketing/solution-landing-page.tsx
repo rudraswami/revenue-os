@@ -207,7 +207,7 @@ export function SolutionLandingPage({ slug }: { slug: SolutionPageSlug }) {
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/#pricing">See pricing</Link>
+                <Link href="/pricing">See pricing</Link>
               </Button>
             </div>
           </div>

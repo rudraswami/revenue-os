@@ -8,8 +8,11 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import { SectionHeader } from "./section-header";
+import { LiveCycleBar } from "./live-cycle-bar";
 import { HOME_LAYER } from "@/lib/brand-copy";
 import { LAYER_FILM_COPY, LAYER_FILM_MS } from "@/lib/landing-v2/layer-film";
+import { useFilmProgress } from "@/hooks/use-live-cycle";
+import { usePauseHover } from "@/hooks/use-pause-hover";
 import { cn } from "@/lib/utils";
 
 type Phase = "message" | "sync" | "understand" | "assign" | "pipeline" | "hold";
@@ -31,6 +34,13 @@ export function HowItWorksLayer() {
   const inView = useInView(rootRef, { amount: 0.2, margin: "-40px 0px" });
   const [run, setRun] = useState(0);
   const [phase, setPhase] = useState<Phase>(reduce ? "hold" : "message");
+  const { paused, pauseProps } = usePauseHover();
+  const filmProgress = useFilmProgress({
+    enabled: inView && !reduce,
+    durationMs: T.loop,
+    runKey: run,
+    paused,
+  });
 
   // Kick film when section is already in view (e.g. #engine hash navigation)
   useEffect(() => {
@@ -84,7 +94,7 @@ export function HowItWorksLayer() {
 
         <div ref={rootRef} className="layer-canvas mx-auto mt-14 max-w-[56rem]">
           {/* Unified shell — one premium surface */}
-          <div className="layer-canvas-shell">
+          <div className="layer-canvas-shell" {...pauseProps}>
             <div className="layer-canvas-top">
               <div className="flex items-center gap-2.5">
                 <span className="layer-live-dot" aria-hidden />
@@ -247,16 +257,23 @@ export function HowItWorksLayer() {
             </div>
 
             {/* Progress rail */}
-            <div className="layer-progress">
-              {STEPS.map((step, i) => (
-                <div
-                  key={step.key}
-                  className={cn("layer-progress-step", i <= activeStep && "is-on")}
-                >
-                  <span className="layer-progress-n">0{i + 1}</span>
-                  <span className="layer-progress-label">{step.label}</span>
-                </div>
-              ))}
+            <div className="layer-progress-wrap">
+              <div className="layer-progress">
+                {STEPS.map((step, i) => (
+                  <div
+                    key={step.key}
+                    className={cn(
+                      "layer-progress-step",
+                      i <= activeStep && "is-on",
+                      i === activeStep && "is-active",
+                    )}
+                  >
+                    <span className="layer-progress-n">0{i + 1}</span>
+                    <span className="layer-progress-label">{step.label}</span>
+                  </div>
+                ))}
+              </div>
+              <LiveCycleBar progress={filmProgress} className="layer-film-progress" />
             </div>
           </div>
         </div>
