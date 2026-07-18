@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
 import type { IntelligenceWorkspaceSettings, ReplyAutonomyMode } from "@growvisi/shared";
 import { REPLY_AUTONOMY_MODES } from "@growvisi/shared";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
@@ -63,7 +62,6 @@ export function IntelligenceReplySettingsCard() {
     <DashboardPanel
       title="AI reply policy"
       description="Workspace default for Conversations. Per-thread Human / AI assist still overrides."
-      icon={Sparkles}
     >
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
