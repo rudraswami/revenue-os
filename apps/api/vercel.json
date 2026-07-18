@@ -3,11 +3,6 @@
   "framework": "nestjs",
   "installCommand": "cd ../.. && corepack enable && pnpm install --frozen-lockfile",
   "buildCommand": "cd ../.. && pnpm turbo run build --filter=@growvisi/api",
-  "functions": {
-    "src/main.ts": {
-      "maxDuration": 60
-    }
-  },
   "crons": [
     {
       "path": "/api/v1/internal/cron/whatsapp-token-reminders",
