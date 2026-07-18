@@ -7,7 +7,9 @@ export const REFRESH_COOKIE = "growvisi_rt";
 const COOKIE_PATH = "/api/v1/auth";
 
 function isProd(): boolean {
-  return process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+  // Use NODE_ENV only — local .env often copies VERCEL=1 from Vercel CLI for Turbo,
+  // which would force Secure+SameSite=None cookies on http://localhost and break refresh.
+  return process.env.NODE_ENV === "production";
 }
 
 /** Sanitized COOKIE_DOMAIN for Set-Cookie (e.g. `.growvisi.in`). */
