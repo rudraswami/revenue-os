@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@n
 import { IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
@@ -45,12 +46,14 @@ export class KnowledgeController {
   }
 
   @Post()
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateDocumentDto) {
     return this.knowledge.create(user, dto.title, dto.content);
   }
 
   @Patch(":id")
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   update(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: UpdateDocumentDto) {
     return this.knowledge.update(user, id, {
@@ -60,12 +63,14 @@ export class KnowledgeController {
   }
 
   @Delete(":id")
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   remove(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.knowledge.remove(user, id);
   }
 
   @Post(":id/reindex")
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   reindex(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.knowledge.reindex(user, id);

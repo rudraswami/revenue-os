@@ -51,6 +51,9 @@ export function toUserMessage(error: unknown, fallback = "Something went wrong. 
     return error.message || "Your trial has ended. Open Plans & pricing to upgrade and continue.";
   }
   if (error.status === 403) {
+    if (error.code === "EMAIL_NOT_VERIFIED") {
+      return error.message || "Verify your email to activate your workspace.";
+    }
     if (error.code && FRICTION_CODES.has(error.code)) {
       return error.message;
     }
@@ -71,6 +74,18 @@ export function toUserMessage(error: unknown, fallback = "Something went wrong. 
   const msg = error.message.trim();
   if (!msg || INTERNAL_ERROR_PATTERN.test(msg)) return fallback;
   return msg;
+}
+
+export function isEmailVerificationError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === "EMAIL_NOT_VERIFIED";
+}
+
+export function isVerificationTokenExpiredError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === "VERIFICATION_TOKEN_EXPIRED";
+}
+
+export function isInvalidVerificationTokenError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === "INVALID_VERIFICATION_TOKEN";
 }
 
 export function isUpgradeFrictionError(error: unknown): error is ApiError {

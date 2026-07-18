@@ -28,6 +28,7 @@ Run this **before** pushing WhatsApp onboarding + token reminder changes to prod
 | `WEBHOOK_PUBLIC_URL` | ✓ (see fix below) |
 | `CORS_ORIGINS` / `NEXT_PUBLIC_APP_URL` | ✓ |
 | `RESEND_API_KEY` / `EMAIL_FROM` | ✓ |
+| **`EMAIL_VERIFICATION_REQUIRED`** | Set to `true` when deploying email identity (or run `pnpm vercel:env:domain`) |
 | `OPENAI_API_KEY` / AI vars | ✓ |
 
 ### Missing — add before deploy ✗
@@ -153,11 +154,13 @@ curl.exe -s -H "Authorization: Bearer YOUR_CRON_SECRET" https://api.growvisi.in/
 
 ## 7. Deploy order
 
-1. Add `CRON_SECRET` on API project
-2. Re-save `WEBHOOK_PUBLIC_URL` (trim newline)
-3. Commit + push to `main` (triggers Vercel deploy)
-4. Verify API deploy → run smoke tests above
-5. Verify web deploy → onboarding wizard loads
-6. Test one real WhatsApp connect on meta-review-demo workspace
+1. **Apply DB migration** (before API deploy): `pnpm db:email-verification-migrate` or `pnpm supabase:push`
+2. Add `EMAIL_VERIFICATION_REQUIRED=true` on API project (included in `pnpm vercel:env:domain`)
+3. Add `CRON_SECRET` on API project
+4. Re-save `WEBHOOK_PUBLIC_URL` (trim newline)
+5. Commit + push to `main` (triggers Vercel deploy)
+6. Verify API deploy → run smoke tests above
+7. Verify web deploy → register → check-email → verify link flow
+8. Test one real WhatsApp connect on meta-review-demo workspace
 
 See also: [WHATSAPP-ONBOARDING.md](./WHATSAPP-ONBOARDING.md)

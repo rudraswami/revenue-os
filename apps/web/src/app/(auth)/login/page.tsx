@@ -10,7 +10,7 @@ import { useAuthI18n } from "@/components/auth/auth-i18n";
 import { Button } from "@/components/ui/button";
 import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { withAuthQuery } from "@/lib/auth-links";
-import { applySession, postAuthPath } from "@/lib/auth-session";
+import { applySession, postAuthRedirect } from "@/lib/auth-session";
 import { CTA } from "@/lib/brand-copy";
 import type { AuthSession, LoginResult, OrganizationOption } from "@/lib/auth-types";
 import { isAuthSession } from "@/lib/auth-types";
@@ -59,7 +59,7 @@ function LoginForm() {
       const next = searchParams.get("next");
       const safeNext =
         next?.startsWith("/dashboard") || next?.startsWith("/onboarding") ? next : null;
-      router.push(safeNext ?? postAuthPath(res.onboarding));
+      router.push(safeNext ?? postAuthRedirect(res as AuthSession));
     } catch (err) {
       setError(toUserMessage(err, t("auth.signInFailed")));
       setLoading(false);

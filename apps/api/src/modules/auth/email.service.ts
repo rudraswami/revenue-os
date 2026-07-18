@@ -20,6 +20,29 @@ export class EmailService {
     });
   }
 
+  async sendEmailVerification(opts: {
+    to: string;
+    firstName: string;
+    verifyUrl: string;
+  }): Promise<void> {
+    const name = opts.firstName.trim() || "there";
+    await this.sendRaw({
+      to: [opts.to],
+      subject: "Verify your email for Growvisi",
+      html: `
+        <p>Hi ${name},</p>
+        <p>Welcome to Growvisi. Verify your email to activate your workspace and connect WhatsApp.</p>
+        <p style="margin:24px 0">
+          <a href="${opts.verifyUrl}" style="display:inline-block;background:#006c49;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Verify email address</a>
+        </p>
+        <p style="font-size:13px;color:#555">This link expires in 24 hours.</p>
+        <p style="font-size:13px;color:#888">If you didn't create a Growvisi account, you can ignore this email.</p>
+        <p style="font-size:12px;color:#aaa;margin-top:24px">Growvisi · WhatsApp revenue for Indian SMBs<br/>growvisi.in</p>
+      `,
+      replyTo: "support@growvisi.in",
+    });
+  }
+
   async sendWhatsappTokenReminder(opts: {
     to: string[];
     organizationName: string;

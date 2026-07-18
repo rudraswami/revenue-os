@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/c
 import { IsNotEmpty, IsString } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
@@ -26,6 +27,7 @@ export class ApiKeysController {
   }
 
   @Post()
+  @RequireEmailVerified()
   @Roles("OWNER", "ADMIN")
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateApiKeyDto) {
     return this.apiKeys.create(user, dto.name);

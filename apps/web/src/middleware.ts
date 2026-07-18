@@ -21,6 +21,7 @@ export function middleware(request: NextRequest) {
   }
 
   const guestRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
+  const verifyFlow = pathname.startsWith("/verify-email");
   const inviteFlow =
     pathname.startsWith("/invite") ||
     request.nextUrl.searchParams.has("invite") ||
@@ -28,7 +29,8 @@ export function middleware(request: NextRequest) {
   if (
     guestRoutes.some((r) => pathname === r || pathname.startsWith(`${r}/`)) &&
     loggedIn &&
-    !inviteFlow
+    !inviteFlow &&
+    !verifyFlow
   ) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
@@ -56,5 +58,7 @@ export const config = {
     "/forgot-password",
     "/reset-password",
     "/invite",
+    "/verify-email",
+    "/verify-email/check",
   ],
 };

@@ -23,6 +23,7 @@ import {
 import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
@@ -160,6 +161,7 @@ export class CampaignsController {
   }
 
   @Post("preview")
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   preview(@CurrentUser() user: JwtPayload, @Body() dto: PreviewAudienceDto) {
     return this.campaigns.previewAudience(user, dto.audience);
@@ -171,24 +173,28 @@ export class CampaignsController {
   }
 
   @Post()
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateCampaignDto) {
     return this.campaigns.create(user, dto);
   }
 
   @Post("import")
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   import(@CurrentUser() user: JwtPayload, @Body() dto: ImportCampaignDto) {
     return this.campaigns.createFromImport(user, dto);
   }
 
   @Post(":id/send")
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   send(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.campaigns.send(user, id);
   }
 
   @Post(":id/schedule")
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   schedule(
     @CurrentUser() user: JwtPayload,
@@ -199,12 +205,14 @@ export class CampaignsController {
   }
 
   @Post(":id/cancel-schedule")
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   cancelSchedule(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.campaigns.cancelSchedule(user, id);
   }
 
   @Delete(":id")
+  @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)
   remove(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.campaigns.remove(user, id);

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@n
 import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, IsUrl, MaxLength } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
@@ -58,6 +59,7 @@ export class WebhooksController {
   }
 
   @Post()
+  @RequireEmailVerified()
   @Roles(...ADMIN_ROLES)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateWebhookDto) {
     return this.webhooks.createEndpoint(user, {
@@ -68,6 +70,7 @@ export class WebhooksController {
   }
 
   @Patch(":id")
+  @RequireEmailVerified()
   @Roles(...ADMIN_ROLES)
   update(
     @CurrentUser() user: JwtPayload,
@@ -78,12 +81,14 @@ export class WebhooksController {
   }
 
   @Delete(":id")
+  @RequireEmailVerified()
   @Roles(...ADMIN_ROLES)
   remove(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.webhooks.removeEndpoint(user, id);
   }
 
   @Post(":id/test")
+  @RequireEmailVerified()
   @Roles(...ADMIN_ROLES)
   test(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.webhooks.sendTest(user, id);

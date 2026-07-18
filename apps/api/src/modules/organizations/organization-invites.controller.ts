@@ -3,6 +3,7 @@ import { IsEmail, IsEnum, IsOptional, IsString } from "class-validator";
 import type { Response } from "express";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
@@ -43,6 +44,7 @@ export class OrganizationInvitesController {
   }
 
   @Post()
+  @RequireEmailVerified()
   @UseGuards(JwtAuthGuard, MembershipRoleGuard)
   @Roles(...ADMIN_ROLES)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateInviteDto) {

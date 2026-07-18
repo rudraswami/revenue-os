@@ -4,6 +4,7 @@ import { WebhooksModule } from "../webhooks/webhooks.module";
 import { AutomationsModule } from "../automations/automations.module";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
+import { EmailVerifiedGuard } from "../../common/guards/email-verified.guard";
 import { LeadsController } from "./leads.controller";
 import { LeadsService } from "./leads.service";
 import { RazorpayPaymentWebhookController } from "./razorpay-payment-webhook.controller";
@@ -11,7 +12,7 @@ import { RazorpayPaymentWebhookController } from "./razorpay-payment-webhook.con
 @Module({
   imports: [BillingModule, WebhooksModule, forwardRef(() => AutomationsModule)],
   controllers: [LeadsController, RazorpayPaymentWebhookController],
-  providers: [LeadsService, MembershipRoleGuard, SubscriptionGuard],
+  providers: [LeadsService, MembershipRoleGuard, SubscriptionGuard, EmailVerifiedGuard],
   exports: [LeadsService],
 })
 export class LeadsModule {}

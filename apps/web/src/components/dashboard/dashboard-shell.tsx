@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { WhatsappTokenExpiryBanner } from "@/components/dashboard/whatsapp-token-expiry-banner";
+import { EmailVerificationBanner } from "@/components/auth/email-verification-banner";
 import { DashboardAssistLayer } from "@/components/dashboard/dashboard-assist-layer";
 import {
   OnboardingBanner,
@@ -69,6 +70,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <WhatsappTokenExpiryBanner />
+          <EmailVerificationBanner />
           <TrialExpiredBanner />
           <div className="px-4 lg:px-8">
             <OnboardingBanner />

@@ -31,6 +31,7 @@ import {
   DeleteAccountDto,
   UpdateProfileDto,
   SwitchOrganizationDto,
+  VerifyEmailDto,
 } from "./dto/auth.dto";
 
 @Controller("auth")
@@ -124,6 +125,19 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto);
+  }
+
+  @Post("verify-email")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.auth.verifyEmail(dto.token);
+  }
+
+  @Post("resend-verification")
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  resendVerification(@CurrentUser() user: JwtPayload) {
+    return this.auth.resendVerification(user.sub);
   }
 
   @Delete("account")

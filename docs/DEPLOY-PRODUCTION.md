@@ -64,8 +64,9 @@ If the dashboard has **Output Directory = public**, clear it — that causes `No
 | `WHATSAPP_APP_SECRET` | Meta app secret |
 | `META_APP_ID` / `META_APP_SECRET` | Meta developer app |
 | `META_EMBEDDED_SIGNUP_CONFIG_ID` | Embedded Signup config |
-| `RESEND_API_KEY` | (password reset emails) |
+| `RESEND_API_KEY` | (password reset + **email verification**) |
 | `EMAIL_FROM` | `Growvisi <noreply@growvisi.com>` |
+| `EMAIL_VERIFICATION_REQUIRED` | `true` (set `false` only to rollback verification gating) |
 
 ### Railway
 

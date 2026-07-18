@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
+  Logger,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
@@ -12,7 +13,8 @@ import type { JwtPayload } from "@growvisi/shared";
 import { DEFAULT_PIPELINE_STAGES, GROWVISI_WEB_URL } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "./email.service";
-import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, DeleteAccountDto, UpdateProfileDto } from "./dto/auth.dto";
+import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, DeleteAccountDto, UpdateProfileDto, VerifyEmailDto } from "./dto/auth.dto";
+import { isEmailVerificationRequired } from "../../config/email-verification";
 
 export interface AuthOrganizationOption {
   id: string;
@@ -27,7 +29,13 @@ export interface OnboardingStatusResponse {
 }
 
 export interface AuthSessionResponse {
-  user: { id: string; email: string; name: string | null; locale: string };
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    locale: string;
+    emailVerified: string | null;
+  };
   organization: { id: string; name: string; slug: string; kind: string };
   role: JwtPayload["role"];
   accessToken: string;
@@ -37,6 +45,8 @@ export interface AuthSessionResponse {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -74,7 +84,9 @@ export class AuthService {
           email: dto.email.toLowerCase(),
           passwordHash,
           name: dto.name,
-          emailVerified: new Date(),
+          ...(this.isVerificationRequired()
+            ? {}
+            : { emailVerified: new Date() }),
         },
       });
 
@@ -124,6 +136,14 @@ export class AuthService {
 
       return { user, organization };
     });
+
+    if (this.isVerificationRequired() && !result.user.emailVerified) {
+      try {
+        await this.sendVerificationEmail(result.user.id, result.user.email, result.user.name);
+      } catch {
+        this.logger.warn(`Verification email failed for ${result.user.email}`);
+      }
+    }
 
     return this.buildSessionResponse(
       {
@@ -203,7 +223,7 @@ export class AuthService {
   async getMe(user: JwtPayload) {
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.sub },
-      select: { id: true, email: true, name: true, locale: true },
+      select: { id: true, email: true, name: true, locale: true, emailVerified: true },
     });
     const org = await this.prisma.organization.findUnique({
       where: { id: user.organizationId },
@@ -223,7 +243,10 @@ export class AuthService {
     });
 
     return {
-      user: dbUser,
+      user: {
+        ...dbUser,
+        emailVerified: dbUser.emailVerified?.toISOString() ?? null,
+      },
       organization: org,
       role: user.role,
       onboarding,
@@ -250,7 +273,7 @@ export class AuthService {
         name,
         ...(dto.locale ? { locale: dto.locale } : {}),
       },
-      select: { id: true, email: true, name: true, locale: true },
+      select: { id: true, email: true, name: true, locale: true, emailVerified: true },
     });
 
     const org = await this.prisma.organization.findUnique({
@@ -263,7 +286,10 @@ export class AuthService {
 
     const onboarding = await this.getOnboardingStatus(user.organizationId);
     return {
-      user: dbUser,
+      user: {
+        ...dbUser,
+        emailVerified: dbUser.emailVerified?.toISOString() ?? null,
+      },
       organization: org,
       role: user.role,
       onboarding,
@@ -340,11 +366,7 @@ export class AuthService {
         },
       });
 
-      const appUrl = (
-        this.config.get<string>("NEXT_PUBLIC_APP_URL") ??
-        (process.env.NODE_ENV === "production" ? GROWVISI_WEB_URL : "http://localhost:3000")
-      ).replace(/\/$/, "");
-      const resetUrl = `${appUrl}/reset-password?token=${plainToken}`;
+      const resetUrl = `${this.appUrl()}/reset-password?token=${plainToken}`;
 
       try {
         await this.email.sendPasswordReset(user.email, resetUrl);
@@ -357,6 +379,87 @@ export class AuthService {
       ok: true,
       message: "If an account exists for that email, we sent a reset link.",
     };
+  }
+
+  async verifyEmail(token: string) {
+    const tokenHash = this.hashToken(token);
+    const stored = await this.prisma.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!stored) {
+      throw new UnauthorizedException({
+        message: "This verification link is invalid or has expired.",
+        code: "INVALID_VERIFICATION_TOKEN",
+      });
+    }
+
+    if (stored.user.emailVerified) {
+      return {
+        ok: true,
+        alreadyVerified: true,
+        message: "Your email is already verified.",
+        emailVerified: stored.user.emailVerified.toISOString(),
+      };
+    }
+
+    if (stored.usedAt) {
+      throw new UnauthorizedException({
+        message: "This verification link is invalid or has expired.",
+        code: "INVALID_VERIFICATION_TOKEN",
+      });
+    }
+
+    if (stored.expiresAt < new Date()) {
+      throw new UnauthorizedException({
+        message: "This verification link has expired.",
+        code: "VERIFICATION_TOKEN_EXPIRED",
+      });
+    }
+
+    const verifiedAt = new Date();
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: stored.userId },
+        data: { emailVerified: verifiedAt },
+      }),
+      this.prisma.emailVerificationToken.update({
+        where: { id: stored.id },
+        data: { usedAt: verifiedAt },
+      }),
+    ]);
+
+    return {
+      ok: true,
+      message: "Email verified.",
+      emailVerified: verifiedAt.toISOString(),
+    };
+  }
+
+  async resendVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, emailVerified: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    if (user.emailVerified) {
+      throw new BadRequestException("Email is already verified.");
+    }
+
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentCount = await this.prisma.emailVerificationToken.count({
+      where: { userId: user.id, createdAt: { gte: dayAgo } },
+    });
+    if (recentCount >= 10) {
+      throw new BadRequestException("Too many verification emails sent. Try again later.");
+    }
+
+    await this.sendVerificationEmail(user.id, user.email, user.name);
+
+    return { ok: true, message: "Verification email sent." };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
@@ -446,7 +549,13 @@ export class AuthService {
 
   private async buildSessionResponse(
     payload: JwtPayload,
-    user: { id: string; email: string; name: string | null; locale?: string },
+    user: {
+      id: string;
+      email: string;
+      name: string | null;
+      locale?: string;
+      emailVerified?: Date | null;
+    },
     organization: { id: string; name: string; slug: string; kind?: string },
   ): Promise<AuthSessionResponse> {
     const tokens = await this.issueTokens(payload);
@@ -458,6 +567,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         locale: user.locale ?? "en",
+        emailVerified: user.emailVerified?.toISOString() ?? null,
       },
       organization: {
         id: organization.id,
@@ -549,6 +659,44 @@ export class AuthService {
 
   private hashToken(token: string) {
     return createHash("sha256").update(token).digest("hex");
+  }
+
+  private isVerificationRequired(): boolean {
+    return isEmailVerificationRequired(this.config);
+  }
+
+  private appUrl(): string {
+    return (
+      this.config.get<string>("NEXT_PUBLIC_APP_URL") ??
+      (process.env.NODE_ENV === "production" ? GROWVISI_WEB_URL : "http://localhost:3000")
+    ).replace(/\/$/, "");
+  }
+
+  private async sendVerificationEmail(
+    userId: string,
+    email: string,
+    name: string | null,
+  ): Promise<void> {
+    const plainToken = randomBytes(32).toString("hex");
+    const tokenHash = this.hashToken(plainToken);
+
+    await this.prisma.$transaction([
+      this.prisma.emailVerificationToken.updateMany({
+        where: { userId, usedAt: null },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.emailVerificationToken.create({
+        data: {
+          userId,
+          tokenHash,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      }),
+    ]);
+
+    const verifyUrl = `${this.appUrl()}/verify-email?token=${plainToken}`;
+    const firstName = name?.trim().split(/\s+/)[0] ?? "there";
+    await this.email.sendEmailVerification({ to: email, firstName, verifyUrl });
   }
 
   private async registerViaInvite(

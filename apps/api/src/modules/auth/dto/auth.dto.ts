@@ -98,6 +98,14 @@ export class UpdateProfileDto {
   locale?: "en" | "hi";
 }
 
+export class VerifyEmailDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(64)
+  @MaxLength(64)
+  token!: string;
+}
+
 export class SwitchOrganizationDto {
   @IsString()
   @IsNotEmpty()

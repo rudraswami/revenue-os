@@ -22,6 +22,7 @@
     "db:migrate": "dotenv -e .env -- pnpm --filter @growvisi/database migrate:dev",
     "db:push": "dotenv -e .env -- pnpm --filter @growvisi/database push",
     "db:auth-migrate": "dotenv -e .env -- node scripts/migrate-auth-production.js",
+    "db:email-verification-migrate": "dotenv -e .env -- node scripts/migrate-email-verification.js",
     "db:razorpay-migrate": "dotenv -e .env -- node scripts/migrate-razorpay-invites.js",
     "db:verify": "dotenv -e .env -- node scripts/verify-db-migration.js",
     "db:deploy": "dotenv -e .env -- pnpm --filter @growvisi/database migrate:deploy",

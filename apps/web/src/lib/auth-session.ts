@@ -5,7 +5,7 @@ import {
   refreshSession,
 } from "@/lib/auth-refresh";
 import { hasSessionHint, syncAuthCookie } from "@/lib/auth-cookie";
-import type { AuthSession, MeResponse } from "@/lib/auth-types";
+import type { AuthSession, AuthUser, MeResponse } from "@/lib/auth-types";
 import { isConclusiveAuthDeath } from "@/lib/auth-session-death";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -38,6 +38,18 @@ export function postAuthPath(onboarding?: { whatsappConnected?: boolean } | null
   return "/dashboard";
 }
 
+/** After login/register — unverified users land on check-email first. */
+export function postAuthRedirect(session: AuthSession, isInvite = false): string {
+  if (!isInvite && !session.user.emailVerified) {
+    return "/verify-email/check";
+  }
+  return postAuthPath(session.onboarding);
+}
+
+export function isEmailVerified(user: AuthUser | null | undefined): boolean {
+  return !!user?.emailVerified;
+}
+
 /** Patch user/org profile into the store without wiping the refresh token. */
 function patchProfile(me: MeResponse) {
   const current = useAuthStore.getState();
@@ -51,6 +63,18 @@ function patchProfile(me: MeResponse) {
     onboarding: me.onboarding,
   });
   syncAuthCookie(true);
+}
+
+/** Refresh profile from /auth/me — e.g. after verify in another tab. */
+export async function syncProfileFromServer(): Promise<void> {
+  const token = useAuthStore.getState().accessToken;
+  if (!token) return;
+  try {
+    const me = await apiFetch<MeResponse>("/auth/me", { token, skipAuthRetry: true });
+    patchProfile(me);
+  } catch {
+    // Non-fatal — banner may be stale until next bootstrap
+  }
 }
 
 async function fetchMe(token: string): Promise<"ok" | "auth_dead" | "transient"> {

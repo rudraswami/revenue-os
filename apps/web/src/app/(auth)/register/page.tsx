@@ -10,7 +10,7 @@ import { useAuthI18n } from "@/components/auth/auth-i18n";
 import { Button } from "@/components/ui/button";
 import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { withAuthQuery } from "@/lib/auth-links";
-import { applySession, postAuthPath } from "@/lib/auth-session";
+import { applySession, postAuthRedirect } from "@/lib/auth-session";
 import type { AuthSession } from "@/lib/auth-types";
 
 function passwordStrength(
@@ -94,7 +94,7 @@ function RegisterForm() {
         body: JSON.stringify(body),
       });
       applySession(res);
-      router.push(postAuthPath(res.onboarding));
+      router.push(postAuthRedirect(res, isInvite));
     } catch (err) {
       setError(toUserMessage(err, t("auth.registerFailed")));
     } finally {

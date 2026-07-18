@@ -11,6 +11,7 @@ import {
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
@@ -101,6 +102,7 @@ export class AgencyController {
   }
 
   @Post("clients/:organizationId/invite-owner")
+  @RequireEmailVerified()
   @Roles("OWNER", "ADMIN")
   inviteClientOwner(
     @CurrentUser() user: JwtPayload,

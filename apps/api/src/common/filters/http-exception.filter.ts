@@ -33,7 +33,16 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
             ? ((body as { message: string[] }).message).join(", ")
             : ((body as { message?: string }).message ?? exception.message);
 
-      response.status(status).json({ statusCode: status, message });
+      const code =
+        typeof body === "object" && body !== null && "code" in body
+          ? String((body as { code?: unknown }).code)
+          : undefined;
+
+      response.status(status).json({
+        statusCode: status,
+        message,
+        ...(code ? { code } : {}),
+      });
       return;
     }
 

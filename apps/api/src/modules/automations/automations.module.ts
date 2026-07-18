@@ -3,13 +3,14 @@ import { AuthModule } from "../auth/auth.module";
 import { BillingModule } from "../billing/billing.module";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
+import { EmailVerifiedGuard } from "../../common/guards/email-verified.guard";
 import { AutomationsController } from "./automations.controller";
 import { AutomationsService } from "./automations.service";
 
 @Module({
   imports: [AuthModule, BillingModule],
   controllers: [AutomationsController],
-  providers: [AutomationsService, MembershipRoleGuard, SubscriptionGuard],
+  providers: [AutomationsService, MembershipRoleGuard, SubscriptionGuard, EmailVerifiedGuard],
   exports: [AutomationsService],
 })
 export class AutomationsModule {}

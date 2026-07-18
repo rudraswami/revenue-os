@@ -368,6 +368,7 @@ export const AUTH = {
   brandFloatPipeline: "Pipeline",
   brandFloatPipelineValue: "Qualified · ₹4.2L",
   mobileWedge: "Always know whose turn it is.",
+  verifyBanner: "Verify your email to activate your workspace.",
 } as const;
 
 export const NAV = {

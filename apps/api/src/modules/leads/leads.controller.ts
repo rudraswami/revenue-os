@@ -14,6 +14,7 @@ import { IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from "class-valid
 import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
@@ -225,6 +226,7 @@ export class LeadsController {
   }
 
   @Get("export")
+  @RequireEmailVerified()
   @Roles(...WRITE_ROLES)
   async exportCsv(
     @CurrentUser() user: JwtPayload,

@@ -3,13 +3,14 @@ import { BillingModule } from "../billing/billing.module";
 import { WhatsappModule } from "../whatsapp/whatsapp.module";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
+import { EmailVerifiedGuard } from "../../common/guards/email-verified.guard";
 import { CampaignsController } from "./campaigns.controller";
 import { CampaignsService } from "./campaigns.service";
 
 @Module({
   imports: [BillingModule, WhatsappModule],
   controllers: [CampaignsController],
-  providers: [CampaignsService, MembershipRoleGuard, SubscriptionGuard],
+  providers: [CampaignsService, MembershipRoleGuard, SubscriptionGuard, EmailVerifiedGuard],
   exports: [CampaignsService],
 })
 export class CampaignsModule {}

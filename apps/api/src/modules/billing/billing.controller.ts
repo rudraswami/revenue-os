@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { IsIn, IsString } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import type { JwtPayload } from "@growvisi/shared";
 import { PAID_PLAN_IDS } from "@growvisi/shared";
@@ -23,11 +24,13 @@ export class BillingController {
   }
 
   @Post("checkout")
+  @RequireEmailVerified()
   checkout(@CurrentUser() user: JwtPayload, @Body() dto: CheckoutDto) {
     return this.billing.createCheckout(user, dto.planId);
   }
 
   @Post("cancel")
+  @RequireEmailVerified()
   cancel(@CurrentUser() user: JwtPayload) {
     return this.billing.cancelSubscription(user);
   }
