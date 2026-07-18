@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { apiDownload, apiFetch, isUpgradeFrictionError, toUserMessage } from "@/lib/api-client";
 import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
-import { canWrite, canDeleteTags } from "@/lib/permissions";
+import { canWrite, canDeleteTags, canExportContacts } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   formatInr,
@@ -77,6 +77,7 @@ export default function ContactsPage() {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canEdit = canWrite(role);
+  const canExport = canExportContacts(role);
   const canRemoveTags = canDeleteTags(role);
   const qc = useQueryClient();
   const { success, error: toastError } = useToast();
@@ -226,17 +227,19 @@ export default function ContactsPage() {
               >
                 <TagIcon className="h-3.5 w-3.5" /> Tags
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                disabled={!token || total === 0}
-                onClick={() =>
-                  token && void apiDownload("/leads/export?period=all", "growvisi-contacts.csv", token)
-                }
-              >
-                Export
-              </Button>
+              {canExport && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={!token || total === 0}
+                  onClick={() =>
+                    token && void apiDownload("/leads/export?period=all", "growvisi-contacts.csv", token)
+                  }
+                >
+                  Export
+                </Button>
+              )}
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -256,15 +259,17 @@ export default function ContactsPage() {
                   <TagIcon className="h-4 w-4" />
                   Manage tags
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!token || total === 0}
-                  onClick={() =>
-                    token && void apiDownload("/leads/export?period=all", "growvisi-contacts.csv", token)
-                  }
-                >
-                  <Download className="h-4 w-4" />
-                  Export CSV
-                </DropdownMenuItem>
+                {canExport && (
+                  <DropdownMenuItem
+                    disabled={!token || total === 0}
+                    onClick={() =>
+                      token && void apiDownload("/leads/export?period=all", "growvisi-contacts.csv", token)
+                    }
+                  >
+                    <Download className="h-4 w-4" />
+                    Export CSV
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </>

@@ -81,11 +81,17 @@ function LeadCard({
         lead.isHot && "border-accent/25 ring-1 ring-accent/10",
         lead.isStale && !lead.isHot && "border-amber-200/80 ring-1 ring-amber-100",
         !lead.isHot && !lead.isStale && "border-border",
+        !movable && "opacity-90",
         draggingId === lead.id && "scale-[1.02] opacity-60 shadow-lg ring-2 ring-accent/30",
       )}
     >
       <div className="flex items-start gap-2">
-        <GripVertical className="mt-2.5 hidden h-4 w-4 shrink-0 text-muted-foreground/35 md:block" />
+        <GripVertical
+          className={cn(
+            "mt-2.5 hidden h-4 w-4 shrink-0 md:block",
+            movable ? "text-muted-foreground/35" : "text-muted-foreground/15",
+          )}
+        />
         <AvatarInitials name={lead.displayName ?? lead.phone} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -118,6 +124,11 @@ function LeadCard({
             {lead.isStale && lead.staleLabel && (
               <span className="rounded-full bg-amber-50/80 px-2 py-0.5 text-xs font-semibold text-amber-800">
                 {lead.staleLabel}
+              </span>
+            )}
+            {!movable && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                View only
               </span>
             )}
           </div>
@@ -175,6 +186,11 @@ function LeadCard({
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
           <div className="flex items-center gap-2">
+            {lead.valueCents != null && !movable && (
+              <span className="text-xs font-semibold text-foreground">
+                {formatInr(lead.valueCents)}
+              </span>
+            )}
             {onEditValue && movable && (
               <button
                 type="button"

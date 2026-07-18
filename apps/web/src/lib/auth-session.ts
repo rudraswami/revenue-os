@@ -54,6 +54,9 @@ export function isEmailVerified(user: AuthUser | null | undefined): boolean {
 function patchProfile(me: MeResponse) {
   const current = useAuthStore.getState();
   if (!current.accessToken) return;
+  if (current.role && current.role !== me.role) {
+    useAuthStore.getState().setRoleChangeNotice(current.role, me.role);
+  }
   useAuthStore.getState().setSession({
     accessToken: current.accessToken,
     refreshToken: current.refreshToken ?? "",

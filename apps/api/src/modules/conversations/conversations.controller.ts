@@ -203,6 +203,7 @@ export class ConversationsController {
   }
 
   @Post(":id/read")
+  @Roles(...WRITE_ROLES)
   markRead(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.conversations.markRead(user, id);
   }

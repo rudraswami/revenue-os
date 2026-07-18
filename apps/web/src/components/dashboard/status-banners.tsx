@@ -106,6 +106,24 @@ export function AiCapabilitiesBanner() {
   );
 }
 
+/** One-time style notice for legacy Viewer seats — read-only, no new invites. */
+export function LegacyViewerBanner() {
+  const role = useAuthStore((s) => s.role);
+  if (role !== "VIEWER") return null;
+
+  return (
+    <div className="border-b border-blue-200/80 bg-blue-50/90 px-4 py-2.5 text-sm text-blue-950">
+      <div className="mx-auto flex max-w-6xl items-start gap-3">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" aria-hidden />
+        <p className="min-w-0 flex-1 leading-snug">
+          You have <strong>Viewer</strong> access (read-only). Ask an admin to upgrade you to{" "}
+          <strong>Team</strong> if you need to reply in Inbox or update deals.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function OnboardingBanner() {
   const token = useAuthStore((s) => s.accessToken);
 

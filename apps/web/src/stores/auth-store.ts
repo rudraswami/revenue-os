@@ -6,6 +6,11 @@ import type { LogoutReason, RefreshResultKind } from "@/lib/auth-session-death";
 import type { MembershipRole } from "@growvisi/shared";
 import type { AuthOrganization, AuthSession, AuthUser, OnboardingStatus } from "@/lib/auth-types";
 
+interface RoleChangeNotice {
+  previousRole: MembershipRole;
+  newRole: MembershipRole;
+}
+
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
@@ -13,6 +18,8 @@ interface AuthState {
   organization: AuthOrganization | null;
   role: MembershipRole | null;
   onboarding: OnboardingStatus | null;
+  /** Shown once when /auth/me reports a different role than the local store */
+  roleChangeNotice: RoleChangeNotice | null;
   /** User chose to explore dashboard before connecting WhatsApp */
   onboardingDismissed: boolean;
   hydrated: boolean;
@@ -29,6 +36,8 @@ interface AuthState {
     kind: Extract<RefreshResultKind, "NETWORK_FAILURE" | "SERVER_FAILURE"> | null,
   ) => void;
   patchOnboarding: (onboarding: OnboardingStatus) => void;
+  setRoleChangeNotice: (previousRole: MembershipRole, newRole: MembershipRole) => void;
+  clearRoleChangeNotice: () => void;
   dismissOnboarding: () => void;
   clear: (reason: LogoutReason) => void;
   isAuthenticated: () => boolean;
@@ -43,6 +52,7 @@ export const useAuthStore = create<AuthState>()(
       organization: null,
       role: null,
       onboarding: null,
+      roleChangeNotice: null,
       onboardingDismissed: false,
       hydrated: false,
       lastTransientFailure: null,
@@ -69,6 +79,9 @@ export const useAuthStore = create<AuthState>()(
       },
       setTransientFailure: (kind) => set({ lastTransientFailure: kind }),
       patchOnboarding: (onboarding) => set({ onboarding }),
+      setRoleChangeNotice: (previousRole, newRole) =>
+        set({ roleChangeNotice: { previousRole, newRole } }),
+      clearRoleChangeNotice: () => set({ roleChangeNotice: null }),
       dismissOnboarding: () => set({ onboardingDismissed: true }),
       clear: (reason) => {
         logLogout(reason);
@@ -80,6 +93,7 @@ export const useAuthStore = create<AuthState>()(
           organization: null,
           role: null,
           onboarding: null,
+          roleChangeNotice: null,
           onboardingDismissed: false,
           lastTransientFailure: null,
         });

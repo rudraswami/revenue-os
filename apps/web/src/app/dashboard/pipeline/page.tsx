@@ -11,10 +11,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { PipelineSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { apiDownload, apiFetch } from "@/lib/api-client";
+import { apiDownload, apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { CTA } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
-import { canMoveLead } from "@/lib/permissions";
+import { canExportContacts, canMoveLead } from "@/lib/permissions";
 import type { LeadStage } from "@growvisi/shared";
 import { Activity, Download, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -22,6 +22,7 @@ import { useSearchParams } from "next/navigation";
 import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { useToast } from "@/components/ui/toast";
 
 const STAGES: LeadStage[] = [
   "NEW",
@@ -89,6 +90,8 @@ export default function PipelinePage() {
   const myUserId = useAuthStore((s) => s.user?.id);
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
+  const { error: toastError } = useToast();
+  const canExport = canExportContacts(role);
   const [exporting, setExporting] = useState(false);
   const [filter, setFilter] = useState<PipelineFilter>("all");
   const [lostPrompt, setLostPrompt] = useState<{ leadId: string; name?: string | null } | null>(
@@ -179,8 +182,11 @@ export default function PipelinePage() {
       }
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       context?.previous?.forEach(([key, val]) => queryClient.setQueryData(key, val));
+      const message =
+        err instanceof ApiError ? toUserMessage(err) : "Could not move this deal. Try again.";
+      toastError(message);
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
@@ -240,7 +246,7 @@ export default function PipelinePage() {
         title="Pipeline"
         description="Drag leads between stages — synced with WhatsApp conversations and AI scoring."
         action={
-          totalLeads > 0 || workspaceLeadCount > 0 ? (
+          canExport && (totalLeads > 0 || workspaceLeadCount > 0) ? (
             <Button
               variant="outline"
               size="sm"

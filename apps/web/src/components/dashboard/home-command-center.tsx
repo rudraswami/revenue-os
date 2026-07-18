@@ -16,6 +16,8 @@ import { MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { formatInr, STAGE_LABELS } from "@/lib/crm";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
+import { canViewTeamAnalytics } from "@/lib/permissions";
+import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
 interface FunnelData {
@@ -78,6 +80,8 @@ export function HomeCommandCenter({
   teamWorkload,
 }: HomeCommandCenterProps) {
   const copy = useConversationsCopy();
+  const role = useAuthStore((s) => s.role);
+  const showAnalytics = canViewTeamAnalytics(role);
   if (isLoading) return <MetricCardsSkeleton variant="home" />;
 
   const unread = convStats?.unreadMessages ?? 0;
@@ -220,8 +224,8 @@ export function HomeCommandCenter({
                 }
                 icon={<Clock className="h-5 w-5" />}
                 variant="blue"
-                href="/dashboard/analytics"
-                actionLabel="View analytics"
+                href={showAnalytics ? "/dashboard/analytics" : "/dashboard/pipeline"}
+                actionLabel={showAnalytics ? "View analytics" : "View pipeline"}
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -244,8 +248,8 @@ export function HomeCommandCenter({
                 delta={`${wonCount} won · ${lostCount} lost (30d)`}
                 icon={<Sparkles className="h-5 w-5" />}
                 variant="violet"
-                href="/dashboard/analytics"
-                actionLabel="Revenue analytics"
+                href={showAnalytics ? "/dashboard/analytics" : "/dashboard/pipeline"}
+                actionLabel={showAnalytics ? "Revenue analytics" : "View pipeline"}
               />
             </div>
           </div>

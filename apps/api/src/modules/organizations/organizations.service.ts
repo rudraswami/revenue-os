@@ -201,7 +201,23 @@ export class OrganizationsService {
       throw new ForbiddenException("Cannot remove the workspace owner.");
     }
 
-    await this.prisma.organizationMember.delete({ where: { id: memberId } });
+    const removedUserId = member.userId;
+
+    await this.prisma.$transaction([
+      this.prisma.conversation.updateMany({
+        where: { organizationId: user.organizationId, assignedToId: removedUserId },
+        data: { assignedToId: null },
+      }),
+      this.prisma.lead.updateMany({
+        where: { organizationId: user.organizationId, ownerId: removedUserId },
+        data: { ownerId: null },
+      }),
+      this.prisma.task.updateMany({
+        where: { organizationId: user.organizationId, assignedToId: removedUserId },
+        data: { assignedToId: null },
+      }),
+      this.prisma.organizationMember.delete({ where: { id: memberId } }),
+    ]);
     return { ok: true };
   }
 

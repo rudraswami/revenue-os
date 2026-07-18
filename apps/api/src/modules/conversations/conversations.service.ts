@@ -639,7 +639,6 @@ export class ConversationsService {
         where: {
           id: existing.leadId,
           organizationId: user.organizationId,
-          ownerId: null,
         },
         data: { ownerId: assignToUserId },
       });

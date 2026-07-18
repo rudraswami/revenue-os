@@ -31,6 +31,8 @@ import {
 import { EmbeddedSignupService } from "./embedded-signup.service";
 import { WhatsappAccountsService } from "./whatsapp-accounts.service";
 
+const ADMIN_ONLY = ["OWNER", "ADMIN"] as const;
+
 @Controller("whatsapp-accounts")
 @UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class WhatsappAccountsController {
@@ -58,7 +60,7 @@ export class WhatsappAccountsController {
   @Post("embedded-signup/complete")
   @RequireEmailVerified()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   completeEmbeddedSignup(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CompleteEmbeddedSignupDto,
@@ -112,7 +114,7 @@ export class WhatsappAccountsController {
   @RequireEmailVerified()
   @SkipSubscriptionCheck()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   discoverPhones(@Body() dto: DiscoverPhonesDto) {
     return this.accounts.discoverPhones(dto.accessToken);
   }
@@ -120,7 +122,7 @@ export class WhatsappAccountsController {
   @Post("connect")
   @RequireEmailVerified()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   connect(@CurrentUser() user: JwtPayload, @Body() dto: ConnectWhatsappDto) {
     return this.accounts.connect(user, dto);
   }
@@ -129,7 +131,7 @@ export class WhatsappAccountsController {
   @RequireEmailVerified()
   @SkipSubscriptionCheck()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   quickConnect(@CurrentUser() user: JwtPayload, @Body() dto: QuickConnectWhatsappDto) {
     return this.accounts.quickConnect(user, dto);
   }
@@ -137,7 +139,7 @@ export class WhatsappAccountsController {
   @Post("verify-credentials")
   @RequireEmailVerified()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   verifyCredentials(@Body() dto: VerifyWhatsappCredentialsDto) {
     return this.accounts.verifyCredentials(dto.phoneNumberId, dto.accessToken);
   }
@@ -145,7 +147,7 @@ export class WhatsappAccountsController {
   @Post()
   @RequireEmailVerified()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateWhatsappAccountDto) {
     return this.accounts.create(user, dto);
   }
@@ -153,7 +155,7 @@ export class WhatsappAccountsController {
   @Patch(":id")
   @RequireEmailVerified()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   update(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
@@ -165,7 +167,7 @@ export class WhatsappAccountsController {
   @Post(":id/refresh-token")
   @RequireEmailVerified()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   refreshToken(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
@@ -177,7 +179,7 @@ export class WhatsappAccountsController {
   @Post(":id/verify")
   @RequireEmailVerified()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   verify(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.accounts.verifyConnection(user, id);
   }
@@ -185,7 +187,7 @@ export class WhatsappAccountsController {
   @Post(":id/sync-templates")
   @RequireEmailVerified()
   @UseGuards(MembershipRoleGuard)
-  @Roles("OWNER", "ADMIN", "MANAGER")
+  @Roles(...ADMIN_ONLY)
   syncTemplates(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.accounts.syncTemplatesForAccount(user, id);
   }

@@ -36,7 +36,7 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { applySession, logout } from "@/lib/auth-session";
 import type { AuthSession, MeResponse } from "@/lib/auth-types";
-import { canManageCampaigns, canViewTeamAnalytics } from "@/lib/permissions";
+import { canManageBilling, canManageCampaigns, canViewTeamAnalytics } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { cn } from "@/lib/utils";
@@ -236,12 +236,14 @@ function UserAccountMenu({
   userName,
   userEmail,
   whatsappConnected,
+  showPricing,
   onLogout,
   onNavigate,
 }: {
   userName: string;
   userEmail: string;
   whatsappConnected: boolean;
+  showPricing: boolean;
   onLogout: () => void;
   onNavigate?: () => void;
 }) {
@@ -294,10 +296,12 @@ function UserAccountMenu({
           <MessageCircle className="h-4 w-4 text-muted-foreground" />
           {whatsappConnected ? t("userMenu.connection") : t("conversations.connectWhatsapp")}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => go("/dashboard/pricing")}>
-          <CreditCard className="h-4 w-4 text-muted-foreground" />
-          {t("userMenu.pricing")}
-        </DropdownMenuItem>
+        {showPricing && (
+          <DropdownMenuItem onSelect={() => go("/dashboard/pricing")}>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            {t("userMenu.pricing")}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={() => go("/onboarding")}>
           <HelpCircle className="h-4 w-4 text-muted-foreground" />
           {t("userMenu.setupGuide")}
@@ -446,6 +450,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             userName={displayName}
             userEmail={user.email}
             whatsappConnected={whatsappConnected}
+            showPricing={canManageBilling(role)}
             onLogout={() => void handleLogout()}
             onNavigate={onNavigate}
           />

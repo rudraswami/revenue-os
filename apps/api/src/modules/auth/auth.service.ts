@@ -225,13 +225,21 @@ export class AuthService {
       where: { id: user.sub },
       select: { id: true, email: true, name: true, locale: true, emailVerified: true },
     });
-    const org = await this.prisma.organization.findUnique({
-      where: { id: user.organizationId },
-      select: { id: true, name: true, slug: true, kind: true },
+    const member = await this.prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: user.organizationId,
+          userId: user.sub,
+        },
+      },
+      include: {
+        organization: { select: { id: true, name: true, slug: true, kind: true } },
+      },
     });
-    if (!dbUser || !org) {
+    if (!dbUser || !member) {
       throw new UnauthorizedException();
     }
+    const org = member.organization;
 
     const onboarding = await this.getOnboardingStatus(user.organizationId);
     const memberships = await this.prisma.organizationMember.findMany({
@@ -248,7 +256,7 @@ export class AuthService {
         emailVerified: dbUser.emailVerified?.toISOString() ?? null,
       },
       organization: org,
-      role: user.role,
+      role: member.role as JwtPayload["role"],
       onboarding,
       workspaces: memberships.map((m) => ({
         id: m.organization.id,

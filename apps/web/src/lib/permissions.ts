@@ -141,3 +141,7 @@ export function canDeleteTags(role: MembershipRole | null | undefined): boolean 
 export function canViewTeamAnalytics(role: MembershipRole | null | undefined): boolean {
   return !!role && hasCapability(role, "analytics.view.team");
 }
+
+export function canExportContacts(role: MembershipRole | null | undefined): boolean {
+  return !!role && hasCapability(role, "contacts.export");
+}
