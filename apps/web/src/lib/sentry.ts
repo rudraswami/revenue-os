@@ -1,19 +1,9 @@
-/** Optional Sentry — no-op when DSN unset or package missing. */
+/**
+ * Client Sentry bootstrap placeholder.
+ * To enable: add @sentry/nextjs, set NEXT_PUBLIC_SENTRY_DSN, and follow Sentry Next.js setup.
+ */
 export function initSentryClient(): void {
   if (typeof window === "undefined") return;
-
-  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN?.trim();
-  if (!dsn) return;
-
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Sentry = require("@sentry/nextjs");
-    Sentry.init({
-      dsn,
-      environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV ?? "development",
-      tracesSampleRate: 0.1,
-    });
-  } catch {
-    console.warn("NEXT_PUBLIC_SENTRY_DSN is set but @sentry/nextjs is not installed.");
-  }
+  if (!process.env.NEXT_PUBLIC_SENTRY_DSN?.trim()) return;
+  // No-op until @sentry/nextjs is added to apps/web dependencies.
 }
