@@ -287,6 +287,8 @@ export class ConversationsService {
     const meta = (conversation.metadata ?? {}) as Record<string, unknown>;
     const profile = (conversation.lead?.profile ?? {}) as Record<string, unknown>;
 
+    this.maybeRefreshAiPipeline(user.organizationId, conversation, meta);
+
     const lastAiRun = await this.prisma.aiRun.findFirst({
       where: {
         organizationId: user.organizationId,
@@ -350,6 +352,55 @@ export class ConversationsService {
       assignment: await this.resolveAssignmentExplain(meta, user.organizationId),
       aiContext,
     };
+  }
+
+  private maybeRefreshAiPipeline(
+    organizationId: string,
+    conversation: {
+      id: string;
+      aiEnabled: boolean;
+      leadId: string | null;
+      messages: Array<{ id: string; direction: string; createdAt: Date }>;
+      lead: { lastClassifiedAt: Date | null } | null;
+    },
+    meta: Record<string, unknown>,
+  ) {
+    if (!conversation.aiEnabled || !conversation.leadId) return;
+
+    const lastMsg = conversation.messages[conversation.messages.length - 1];
+    if (!lastMsg || lastMsg.direction !== "INBOUND") return;
+
+    const inboundMs = new Date(lastMsg.createdAt).getTime();
+    if (Date.now() - inboundMs > 48 * 60 * 60 * 1000) return;
+
+    const classifiedMs = conversation.lead?.lastClassifiedAt?.getTime() ?? 0;
+    const replyDecision = meta.replyDecision as import("@growvisi/shared").ReplyDecision | undefined;
+    const decisionMs = replyDecision?.evaluatedAt
+      ? new Date(replyDecision.evaluatedAt).getTime()
+      : 0;
+
+    const pendingDraft = meta.pendingDraft;
+    const hasDraft =
+      pendingDraft &&
+      typeof pendingDraft === "object" &&
+      typeof (pendingDraft as { suggestion?: string }).suggestion === "string" &&
+      (pendingDraft as { suggestion: string }).suggestion.trim().length > 0;
+
+    const needsClassify = classifiedMs < inboundMs - 2_000 || decisionMs < inboundMs - 2_000;
+    const needsDraft =
+      replyDecision?.mode === "draft" && !hasDraft && decisionMs >= inboundMs - 5_000;
+
+    if (!needsClassify && !needsDraft) return;
+
+    void this.aiClassify.enqueue(
+      {
+        organizationId,
+        conversationId: conversation.id,
+        messageId: lastMsg.id,
+        leadId: conversation.leadId,
+      },
+      { background: true },
+    );
   }
 
   private async resolveAssignmentExplain(
@@ -745,14 +796,15 @@ export class ConversationsService {
         select: { id: true },
       });
       if (latestInbound) {
-        void this.aiClassify
-          .enqueue({
+        void this.aiClassify.enqueue(
+          {
             organizationId: user.organizationId,
             conversationId: id,
             messageId: latestInbound.id,
             leadId: updated.leadId,
-          })
-          .catch(() => undefined);
+          },
+          { background: true },
+        );
       }
     }
 

@@ -167,13 +167,16 @@ export class WhatsappService {
         });
 
         if (inbound.leadId) {
-          await this.aiClassify.enqueue({
-            organizationId: inbound.organizationId,
-            conversationId: inbound.conversationId,
-            messageId: inbound.messageId,
-            leadId: inbound.leadId,
-            correlationId,
-          });
+          await this.aiClassify.enqueue(
+            {
+              organizationId: inbound.organizationId,
+              conversationId: inbound.conversationId,
+              messageId: inbound.messageId,
+              leadId: inbound.leadId,
+              correlationId,
+            },
+            { background: true },
+          );
         }
       }
       for (const orgId of orgIds) {

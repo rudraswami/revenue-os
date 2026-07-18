@@ -20,6 +20,7 @@ import { ObservedMemoryService } from "../intelligence/observed-memory.service";
 import { ReplyPolicyService } from "../intelligence/reply-policy.service";
 import { readIntelligenceSettingsFromOrg } from "../intelligence/workspace-intelligence-settings";
 import { useBackgroundWorkers } from "../../config/workers";
+import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { withTimeout } from "../../common/utils/with-timeout";
 
 export interface ClassifyJobData {
@@ -79,9 +80,15 @@ export class AiClassifyService {
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
-  async enqueue(data: ClassifyJobData) {
+  async enqueue(data: ClassifyJobData, opts?: { background?: boolean }) {
+    const run = () => this.process(data);
+
     if (!useBackgroundWorkers()) {
-      await this.process(data);
+      if (opts?.background) {
+        deferBackgroundTask(run);
+        return;
+      }
+      await run();
       return;
     }
 
