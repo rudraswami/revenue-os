@@ -37,6 +37,7 @@ interface PipelineBoardProps {
   isPending: boolean;
   onMoveLead: (leadId: string, stage: LeadStage) => void;
   onEditValue?: (lead: PipelineLead) => void;
+  canMoveLead?: (lead: PipelineLead) => boolean;
 }
 
 function formatInr(cents: number) {
@@ -53,6 +54,7 @@ function LeadCard({
   stageLabels,
   isPending,
   draggingId,
+  movable,
   onDragStart,
   onDragEnd,
   onMoveLead,
@@ -63,6 +65,7 @@ function LeadCard({
   stageLabels: Record<LeadStage, string>;
   isPending: boolean;
   draggingId: string | null;
+  movable: boolean;
   onDragStart: (e: React.DragEvent, leadId: string) => void;
   onDragEnd: () => void;
   onMoveLead: (leadId: string, stage: LeadStage) => void;
@@ -70,7 +73,7 @@ function LeadCard({
 }) {
   return (
     <div
-      draggable={!isPending}
+      draggable={movable && !isPending}
       onDragStart={(e) => onDragStart(e, lead.id)}
       onDragEnd={onDragEnd}
       className={cn(
@@ -149,7 +152,7 @@ function LeadCard({
           <select
             className="w-full rounded-xl border border-border bg-background px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
             value={lead.stage}
-            disabled={isPending}
+            disabled={isPending || !movable}
             onChange={(e) => {
               const next = e.target.value as LeadStage;
               if (next !== lead.stage) onMoveLead(lead.id, next);
@@ -172,7 +175,7 @@ function LeadCard({
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
           <div className="flex items-center gap-2">
-            {onEditValue && (
+            {onEditValue && movable && (
               <button
                 type="button"
                 className="text-xs text-muted-foreground hover:text-accent"
@@ -218,7 +221,9 @@ export function PipelineBoard({
   isPending,
   onMoveLead,
   onEditValue,
+  canMoveLead,
 }: PipelineBoardProps) {
+  const canMove = canMoveLead ?? (() => true);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<LeadStage | null>(null);
 
@@ -244,7 +249,7 @@ export function PipelineBoard({
     const leadId = e.dataTransfer.getData("text/plain");
     if (!leadId) return;
     const lead = stages.flatMap((s) => data?.[s] ?? []).find((l) => l.id === leadId);
-    if (lead && lead.stage !== targetStage) onMoveLead(leadId, targetStage);
+    if (lead && lead.stage !== targetStage && canMove(lead)) onMoveLead(leadId, targetStage);
     setDraggingId(null);
     setDropTarget(null);
   }
@@ -302,6 +307,7 @@ export function PipelineBoard({
                     stageLabels={stageLabels}
                     isPending={isPending}
                     draggingId={draggingId}
+                    movable={canMove(lead)}
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                     onMoveLead={onMoveLead}

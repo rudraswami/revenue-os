@@ -25,6 +25,7 @@ class AcceptInviteDto {
 }
 
 const ADMIN_ROLES = ["OWNER", "ADMIN"] as const;
+const INVITE_ROLES = ["OWNER", "ADMIN", "MANAGER"] as const;
 
 /** Public invite preview — no auth */
 @Controller("organizations/invites")
@@ -38,7 +39,7 @@ export class OrganizationInvitesController {
 
   @Get()
   @UseGuards(JwtAuthGuard, MembershipRoleGuard)
-  @Roles(...ADMIN_ROLES)
+  @Roles(...INVITE_ROLES)
   list(@CurrentUser() user: JwtPayload) {
     return this.organizations.listInvites(user);
   }
@@ -46,14 +47,14 @@ export class OrganizationInvitesController {
   @Post()
   @RequireEmailVerified()
   @UseGuards(JwtAuthGuard, MembershipRoleGuard)
-  @Roles(...ADMIN_ROLES)
+  @Roles(...INVITE_ROLES)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateInviteDto) {
     return this.organizations.createInvite(user, dto.email, dto.role ?? "AGENT");
   }
 
   @Delete(":inviteId")
   @UseGuards(JwtAuthGuard, MembershipRoleGuard)
-  @Roles(...ADMIN_ROLES)
+  @Roles(...INVITE_ROLES)
   revoke(@CurrentUser() user: JwtPayload, @Param("inviteId") inviteId: string) {
     return this.organizations.revokeInvite(user, inviteId);
   }

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import { HOT_LEAD_SCORE_THRESHOLD, activationNextMilestone } from "@growvisi/shared";
+import { requireLeadOwnership } from "../../common/auth/authorization";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
@@ -289,6 +290,8 @@ export class LeadsService {
     });
     if (!lead) throw new NotFoundException();
 
+    requireLeadOwnership(user, lead.ownerId, "move");
+
     if (lead.stage === stage) return lead;
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -353,6 +356,8 @@ export class LeadsService {
       where: { id, organizationId: user.organizationId },
     });
     if (!lead) throw new NotFoundException();
+
+    requireLeadOwnership(user, lead.ownerId, "value");
 
     return this.prisma.lead.update({
       where: { id },
@@ -1326,6 +1331,14 @@ export class LeadsService {
     });
     if (!lead) throw new NotFoundException();
 
+    if (input.ownerId !== undefined && input.ownerId !== lead.ownerId) {
+      requireLeadOwnership(user, lead.ownerId, "owner");
+    }
+    requireLeadOwnership(user, lead.ownerId, "edit");
+    if (input.valueCents !== undefined) {
+      requireLeadOwnership(user, lead.ownerId, "value");
+    }
+
     if (input.ownerId) {
       const member = await this.prisma.organizationMember.findFirst({
         where: { organizationId: user.organizationId, userId: input.ownerId },
@@ -1355,9 +1368,10 @@ export class LeadsService {
   async addNote(user: JwtPayload, id: string, body: string) {
     const lead = await this.prisma.lead.findFirst({
       where: { id, organizationId: user.organizationId },
-      select: { id: true },
+      select: { id: true, ownerId: true },
     });
     if (!lead) throw new NotFoundException();
+    requireLeadOwnership(user, lead.ownerId, "edit");
     const clean = body.trim();
     if (!clean) throw new NotFoundException("Note body required");
 

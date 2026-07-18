@@ -15,6 +15,7 @@ import { Type } from "class-transformer";
 import type { Response } from "express";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireCapability } from "../../common/decorators/require-capability.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
@@ -239,6 +240,7 @@ export class ConversationsController {
   }
 
   @Patch(":id/ai")
+  @RequireCapability("inbox.ai.toggle")
   @Roles("OWNER", "ADMIN", "MANAGER")
   toggleAi(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: ToggleAiDto) {
     return this.conversations.toggleAi(user, id, dto.aiEnabled);

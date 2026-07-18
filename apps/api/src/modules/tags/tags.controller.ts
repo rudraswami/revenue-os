@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@n
 import { IsHexColor, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireCapability } from "../../common/decorators/require-capability.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
@@ -41,18 +42,21 @@ export class TagsController {
   }
 
   @Post()
+  @RequireCapability("tags.manage")
   @Roles("OWNER", "ADMIN", "MANAGER", "AGENT")
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateTagDto) {
     return this.tags.create(user, dto.name, dto.color);
   }
 
   @Patch(":id")
+  @RequireCapability("tags.manage")
   @Roles("OWNER", "ADMIN", "MANAGER", "AGENT")
   update(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: UpdateTagDto) {
     return this.tags.update(user, id, dto);
   }
 
   @Delete(":id")
+  @RequireCapability("tags.delete")
   @Roles("OWNER", "ADMIN", "MANAGER")
   remove(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.tags.remove(user, id);

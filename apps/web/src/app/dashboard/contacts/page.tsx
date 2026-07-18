@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { apiDownload, apiFetch, isUpgradeFrictionError, toUserMessage } from "@/lib/api-client";
 import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
-import { canWrite } from "@/lib/permissions";
+import { canWrite, canDeleteTags } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   formatInr,
@@ -77,6 +77,7 @@ export default function ContactsPage() {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canEdit = canWrite(role);
+  const canRemoveTags = canDeleteTags(role);
   const qc = useQueryClient();
   const { success, error: toastError } = useToast();
   const { t } = useI18n();
@@ -355,7 +356,7 @@ export default function ContactsPage() {
                       {t.name}
                     </button>
                     <span className="opacity-70">· {t.leadCount}</span>
-                    {canEdit && (
+                    {canRemoveTags && (
                       <button
                         type="button"
                         onClick={() => deleteTag.mutate(t.id)}

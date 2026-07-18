@@ -36,6 +36,7 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { applySession, logout } from "@/lib/auth-session";
 import type { AuthSession, MeResponse } from "@/lib/auth-types";
+import { canManageCampaigns, canViewTeamAnalytics } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { cn } from "@/lib/utils";
@@ -51,7 +52,11 @@ type NavGroup = {
   }>;
 };
 
-function buildNavGroups(opts: { showAgency: boolean }): NavGroup[] {
+function buildNavGroups(opts: {
+  showAgency: boolean;
+  showAutomate: boolean;
+  showIntelligence: boolean;
+}): NavGroup[] {
   const overviewItems = [
     { href: "/dashboard", labelKey: "nav.home", icon: LayoutDashboard, exact: true },
     ...(opts.showAgency
@@ -59,7 +64,7 @@ function buildNavGroups(opts: { showAgency: boolean }): NavGroup[] {
       : []),
   ];
 
-  return [
+  const groups: NavGroup[] = [
     { labelKey: "groups.overview", items: overviewItems },
     {
       labelKey: "groups.engage",
@@ -84,6 +89,13 @@ function buildNavGroups(opts: { showAgency: boolean }): NavGroup[] {
         { href: "/dashboard/automations", labelKey: "nav.automations", icon: Zap },
       ],
     },
+  ];
+
+  return [
+    groups[0],
+    groups[1],
+    ...(opts.showIntelligence ? [groups[2]] : []),
+    ...(opts.showAutomate ? [groups[3]] : []),
   ];
 }
 
@@ -315,6 +327,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
   const organization = useAuthStore((s) => s.organization);
   const { connected: live } = useRealtime();
   const [switchingId, setSwitchingId] = useState<string | null>(null);
@@ -354,8 +367,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   });
 
   const navGroups = buildNavGroups({
-    // Operator (Pro) can discover Agency hub. Partner kit lives in Agency hub + Settings → Growth.
     showAgency: !!(agencyStatus?.isAgency || agencyStatus?.canEnableAgency),
+    showAutomate: canManageCampaigns(role),
+    showIntelligence: canViewTeamAnalytics(role),
   });
 
   const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;

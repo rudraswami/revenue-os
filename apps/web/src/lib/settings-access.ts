@@ -1,5 +1,5 @@
 import type { GrowvisiPlanId, MembershipRole } from "@growvisi/shared";
-import { canManageCampaigns, canManageTeam } from "@/lib/permissions";
+import { hasCapability } from "@growvisi/shared";
 
 export type SettingsTabId =
   | "team"
@@ -53,45 +53,26 @@ export function planAtLeast(planId: string, minimum: "growth" | "pro"): boolean 
   return rank >= (minimum === "growth" ? 2 : 3);
 }
 
-function hasBillingRole(role: MembershipRole | null | undefined): boolean {
-  return !!role && (role === "OWNER" || role === "ADMIN");
-}
-
-function hasWhatsappRole(role: MembershipRole | null | undefined): boolean {
-  return !!role && role !== "VIEWER";
-}
-
-function hasDevelopersRole(role: MembershipRole | null | undefined): boolean {
-  return canManageTeam(role);
-}
-
-function hasGrowthRole(role: MembershipRole | null | undefined): boolean {
-  return canManageCampaigns(role);
-}
-
-function hasIntelligenceRole(role: MembershipRole | null | undefined): boolean {
-  return canManageCampaigns(role);
-}
-
 /** Role gate only — tab may still require a higher plan. */
 export function canAccessSettingsTabRole(
   tab: SettingsTabId,
   role: MembershipRole | null | undefined,
 ): boolean {
+  if (!role) return false;
   switch (tab) {
     case "team":
     case "account":
-      return !!role;
+      return hasCapability(role, "team.view");
     case "whatsapp":
-      return hasWhatsappRole(role);
+      return role !== "VIEWER";
     case "billing":
-      return hasBillingRole(role);
+      return hasCapability(role, "billing.view");
     case "intelligence":
-      return hasIntelligenceRole(role);
+      return hasCapability(role, "knowledge.manage") || hasCapability(role, "templates.manage");
     case "growth":
-      return hasGrowthRole(role);
+      return hasCapability(role, "campaigns.manage");
     case "developers":
-      return hasDevelopersRole(role);
+      return hasCapability(role, "developers.keys");
     default:
       return false;
   }

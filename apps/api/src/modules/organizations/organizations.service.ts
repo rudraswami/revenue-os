@@ -7,6 +7,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
+import { canInviteRole } from "@growvisi/shared";
 import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics, buildPostActivationCoaching } from "@growvisi/shared";
 import { AuthService } from "../auth/auth.service";
 import { EntitlementsService } from "../billing/entitlements.service";
@@ -133,7 +134,7 @@ export class OrganizationsService {
   }
 
   async listInvites(user: JwtPayload) {
-    this.assertAdmin(user);
+    this.assertCanManageInvites(user);
     return this.prisma.organizationInvite.findMany({
       where: { organizationId: user.organizationId, acceptedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: "desc" },
@@ -149,11 +150,14 @@ export class OrganizationsService {
   }
 
   async revokeInvite(user: JwtPayload, inviteId: string) {
-    this.assertAdmin(user);
+    this.assertCanManageInvites(user);
     const invite = await this.prisma.organizationInvite.findFirst({
       where: { id: inviteId, organizationId: user.organizationId, acceptedAt: null },
     });
     if (!invite) throw new NotFoundException("Invite not found.");
+    if (!canInviteRole(user.role, invite.role)) {
+      throw new ForbiddenException("You cannot revoke this invite.");
+    }
     await this.prisma.organizationInvite.delete({ where: { id: inviteId } });
     return { ok: true };
   }
@@ -223,6 +227,16 @@ export class OrganizationsService {
     }
   }
 
+  private assertCanManageInvites(user: JwtPayload) {
+    if (
+      user.role !== "OWNER" &&
+      user.role !== "ADMIN" &&
+      user.role !== "MANAGER"
+    ) {
+      throw new ForbiddenException("You do not have permission to manage invites.");
+    }
+  }
+
   async previewInvite(token: string) {
     const tokenHash = createHash("sha256").update(token.trim()).digest("hex");
     const invite = await this.prisma.organizationInvite.findFirst({
@@ -241,8 +255,8 @@ export class OrganizationsService {
   }
 
   async createInvite(user: JwtPayload, email: string, role: MembershipRole = "AGENT") {
-    if (user.role !== "OWNER" && user.role !== "ADMIN") {
-      throw new ForbiddenException("Only owners and admins can invite teammates.");
+    if (!canInviteRole(user.role, role)) {
+      throw new ForbiddenException("You cannot invite someone with this role.");
     }
     await this.entitlements.assertCanInviteMember(user.organizationId);
 
@@ -267,7 +281,7 @@ export class OrganizationsService {
 
     const org = await this.prisma.organization.findUnique({
       where: { id: user.organizationId },
-      select: { name: true },
+      select: { name: true, settings: true },
     });
     if (!org) throw new NotFoundException();
 
@@ -295,13 +309,9 @@ export class OrganizationsService {
       },
     });
 
-    const orgSettingsRow = await this.prisma.organization.findUnique({
-      where: { id: user.organizationId },
-      select: { settings: true },
-    });
     const inviteSettings =
-      orgSettingsRow?.settings && typeof orgSettingsRow.settings === "object"
-        ? (orgSettingsRow.settings as Record<string, unknown>)
+      org.settings && typeof org.settings === "object"
+        ? (org.settings as Record<string, unknown>)
         : {};
     if (!(inviteSettings.coaching as { firstInviteAt?: string } | undefined)?.firstInviteAt) {
       await this.prisma.organization.update({
@@ -319,14 +329,14 @@ export class OrganizationsService {
     ).replace(/\/$/, "");
     const inviteUrl = `${appUrl}/invite?token=${token}`;
 
-    await this.email.sendTeamInvite({
+    const emailSent = await this.email.sendTeamInvite({
       to: normalized,
       organizationName: org.name,
       inviteUrl,
       role,
     });
 
-    return { sent: true, email: normalized, expiresAt };
+    return { sent: true, email: normalized, expiresAt, emailSent };
   }
 
   async acceptInvite(user: JwtPayload, token: string) {

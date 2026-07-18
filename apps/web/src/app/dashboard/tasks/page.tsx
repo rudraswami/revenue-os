@@ -14,7 +14,7 @@ import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { canManageCampaigns, canWrite } from "@/lib/permissions";
+import { canManageCampaigns, canAssignTasksToOthers, canViewTeamTasks, canWrite } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   formatDate,
@@ -41,12 +41,19 @@ interface TaskRow {
 export default function TasksPage() {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
+  const myUserId = useAuthStore((s) => s.user?.id);
   const canEdit = canWrite(role);
   const canDelete = canManageCampaigns(role);
+  const canAssignOthers = canAssignTasksToOthers(role);
+  const showTeamScope = canViewTeamTasks(role);
+  const canEditTaskAssignee = (task: TaskRow) =>
+    canAssignOthers ||
+    (!task.assignedTo?.id && canEdit) ||
+    (task.assignedTo?.id === myUserId && canEdit);
   const qc = useQueryClient();
   const { success, error: toastError } = useToast();
   const { t } = useI18n();
-  const [scope, setScope] = useState<"mine" | "open" | "all">("open");
+  const [scope, setScope] = useState<"mine" | "open" | "all">(showTeamScope ? "open" : "mine");
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [assignee, setAssignee] = useState("");
@@ -183,6 +190,7 @@ export default function TasksPage() {
               ))}
             </Select>
           </Field>
+          {canAssignOthers && (
           <Field label="Assignee">
             <Select
               value={assignee}
@@ -197,6 +205,7 @@ export default function TasksPage() {
               ))}
             </Select>
           </Field>
+          )}
           <Field label="Due" className="sm:col-span-2 md:col-span-1">
             <Input
               type="date"
@@ -220,7 +229,7 @@ export default function TasksPage() {
           options={[
             { value: "open", label: "Open" },
             { value: "mine", label: "My tasks" },
-            { value: "all", label: "All" },
+            ...(showTeamScope ? [{ value: "all" as const, label: "All" }] : []),
           ]}
         />
       </div>
@@ -296,7 +305,7 @@ export default function TasksPage() {
                     {t.assignedTo && (
                       <AvatarInitials name={t.assignedTo.name ?? t.assignedTo.email} size="sm" />
                     )}
-                    {canEdit ? (
+                    {canEdit && canEditTaskAssignee(t) ? (
                     <Select
                       value={t.assignedTo?.id ?? ""}
                       onChange={(e) => reassign.mutate({ id: t.id, assignedToId: e.target.value })}

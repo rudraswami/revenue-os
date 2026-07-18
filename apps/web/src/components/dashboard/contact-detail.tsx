@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+import { canEditLead, hasCap } from "@/lib/permissions";
 import {
   formatDate,
   formatInr,
@@ -84,6 +85,8 @@ export function ContactDetailDrawer({
   onClose: () => void;
 }) {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const myUserId = useAuthStore((s) => s.user?.id);
   const qc = useQueryClient();
   const open = !!leadId;
 
@@ -258,6 +261,10 @@ export function ContactDetailDrawer({
                 Loading contact…
               </div>
             ) : (
+              (() => {
+                const editable = canEditLead(role, myUserId, contact);
+                const canReassignOwner = hasCap(role, "contacts.edit.others");
+                return (
               <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5 custom-scrollbar">
                 {/* Stage + score + value */}
                 <div className="grid grid-cols-3 gap-3">
@@ -267,6 +274,7 @@ export function ContactDetailDrawer({
                     </p>
                     <Select
                       value={contact.stage}
+                      disabled={!editable}
                       onChange={(e) => {
                         const next = e.target.value as LeadStage;
                         if (next === "LOST" && contact.stage !== "LOST") {
@@ -316,6 +324,7 @@ export function ContactDetailDrawer({
                     </p>
                     <Input
                       value={dealValue}
+                      disabled={!editable}
                       onChange={(e) => setDealValue(e.target.value)}
                       onBlur={() => {
                         const rupees = dealValue.trim() === "" ? null : Math.round(Number(dealValue) * 100);
@@ -341,7 +350,8 @@ export function ContactDetailDrawer({
                     <button
                       type="button"
                       onClick={() => setTagOpen((v) => !v)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                      disabled={!editable}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline disabled:opacity-50"
                     >
                       <TagIcon className="h-3.5 w-3.5" /> Add tag
                     </button>
@@ -385,6 +395,7 @@ export function ContactDetailDrawer({
                   <Field label="Name">
                     <Input
                       value={name}
+                      disabled={!editable}
                       onChange={(e) => setName(e.target.value)}
                       onBlur={() => name !== (contact.displayName ?? "") && saveProfile.mutate({ displayName: name })}
                       className="h-9 text-sm"
@@ -394,6 +405,7 @@ export function ContactDetailDrawer({
                   <Field label="Email">
                     <Input
                       value={email}
+                      disabled={!editable}
                       onChange={(e) => setEmail(e.target.value)}
                       onBlur={() => email !== (contact.email ?? "") && saveProfile.mutate({ email })}
                       className="h-9 text-sm"
@@ -403,6 +415,7 @@ export function ContactDetailDrawer({
                   <Field label="Company">
                     <Input
                       value={company}
+                      disabled={!editable}
                       onChange={(e) => setCompany(e.target.value)}
                       onBlur={() => company !== (contact.company ?? "") && saveProfile.mutate({ company })}
                       className="h-9 text-sm"
@@ -412,6 +425,7 @@ export function ContactDetailDrawer({
                   <Field label="Owner">
                     <Select
                       value={contact.ownerId ?? ""}
+                      disabled={!canReassignOwner}
                       onChange={(e) => setOwner.mutate(e.target.value)}
                       className="h-9 text-sm"
                     >
@@ -550,6 +564,8 @@ export function ContactDetailDrawer({
                   <p>Created: {formatDate(contact.createdAt)}</p>
                 </section>
               </div>
+                );
+              })()
             )}
 
             {contact?.conversation && (

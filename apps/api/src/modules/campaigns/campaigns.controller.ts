@@ -23,6 +23,7 @@ import {
 import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireCapability } from "../../common/decorators/require-capability.decorator";
 import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
@@ -162,6 +163,7 @@ export class CampaignsController {
 
   @Post("preview")
   @RequireEmailVerified()
+  @RequireCapability("campaigns.manage")
   @Roles(...MANAGE_ROLES)
   preview(@CurrentUser() user: JwtPayload, @Body() dto: PreviewAudienceDto) {
     return this.campaigns.previewAudience(user, dto.audience);
@@ -174,6 +176,7 @@ export class CampaignsController {
 
   @Post()
   @RequireEmailVerified()
+  @RequireCapability("campaigns.manage")
   @Roles(...MANAGE_ROLES)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateCampaignDto) {
     return this.campaigns.create(user, dto);
@@ -181,6 +184,7 @@ export class CampaignsController {
 
   @Post("import")
   @RequireEmailVerified()
+  @RequireCapability("campaigns.manage")
   @Roles(...MANAGE_ROLES)
   import(@CurrentUser() user: JwtPayload, @Body() dto: ImportCampaignDto) {
     return this.campaigns.createFromImport(user, dto);
@@ -188,6 +192,7 @@ export class CampaignsController {
 
   @Post(":id/send")
   @RequireEmailVerified()
+  @RequireCapability("campaigns.manage")
   @Roles(...MANAGE_ROLES)
   send(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.campaigns.send(user, id);
@@ -195,6 +200,7 @@ export class CampaignsController {
 
   @Post(":id/schedule")
   @RequireEmailVerified()
+  @RequireCapability("campaigns.manage")
   @Roles(...MANAGE_ROLES)
   schedule(
     @CurrentUser() user: JwtPayload,
@@ -206,6 +212,7 @@ export class CampaignsController {
 
   @Post(":id/cancel-schedule")
   @RequireEmailVerified()
+  @RequireCapability("campaigns.manage")
   @Roles(...MANAGE_ROLES)
   cancelSchedule(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.campaigns.cancelSchedule(user, id);
@@ -213,6 +220,7 @@ export class CampaignsController {
 
   @Delete(":id")
   @RequireEmailVerified()
+  @RequireCapability("campaigns.manage")
   @Roles(...MANAGE_ROLES)
   remove(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.campaigns.remove(user, id);

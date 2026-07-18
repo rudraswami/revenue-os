@@ -2,6 +2,7 @@ import { Body, Controller, Get, Patch, UseGuards } from "@nestjs/common";
 import { IsBoolean, IsOptional } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireCapability } from "../../common/decorators/require-capability.decorator";
 import { RequireEmailVerified } from "../../common/decorators/require-email-verified.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
@@ -53,6 +54,7 @@ export class AutomationsController {
 
   @Patch("preferences")
   @RequireEmailVerified()
+  @RequireCapability("automations.manage")
   @Roles(...MANAGE_ROLES)
   updatePreferences(@CurrentUser() user: JwtPayload, @Body() dto: UpdateAutomationsDto) {
     return this.automations.updatePreferences(user, dto);

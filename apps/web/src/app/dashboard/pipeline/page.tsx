@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { apiDownload, apiFetch } from "@/lib/api-client";
 import { CTA } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
+import { canMoveLead } from "@/lib/permissions";
 import type { LeadStage } from "@growvisi/shared";
 import { Activity, Download, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -84,6 +85,8 @@ function formatInr(cents: number) {
 
 export default function PipelinePage() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const myUserId = useAuthStore((s) => s.user?.id);
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [exporting, setExporting] = useState(false);
@@ -219,6 +222,7 @@ export default function PipelinePage() {
 
   function handleMoveLead(leadId: string, stage: LeadStage) {
     const lead = STAGES.flatMap((s) => grouped?.[s] ?? []).find((l) => l.id === leadId);
+    if (lead && !canMoveLead(role, myUserId, lead)) return;
     if (stage === "LOST") {
       setLostPrompt({ leadId, name: lead?.displayName });
       return;
@@ -366,6 +370,7 @@ export default function PipelinePage() {
             isPending={stageMutation.isPending || valueMutation.isPending}
             onMoveLead={handleMoveLead}
             onEditValue={setValuePrompt}
+            canMoveLead={(lead) => canMoveLead(role, myUserId, lead)}
           />
         </>
       )}

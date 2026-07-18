@@ -1,5 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import type { JwtPayload } from "@growvisi/shared";
+import { hasCapability } from "@growvisi/shared";
+import { requireTaskAssignment, requireTaskCreateAssignment } from "../../common/auth/authorization";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 
@@ -67,6 +69,9 @@ export class TasksService {
     if (filters.leadId) where.leadId = filters.leadId;
     if (filters.mine) where.assignedToId = user.sub;
     else if (filters.assignedToId) where.assignedToId = filters.assignedToId;
+    else if (!hasCapability(user.role, "tasks.view.team")) {
+      where.OR = [{ assignedToId: user.sub }, { assignedToId: null }];
+    }
     if (filters.scope !== "all" && !filters.status) {
       where.status = { in: ["OPEN", "IN_PROGRESS"] };
     }
@@ -118,6 +123,7 @@ export class TasksService {
     await this.entitlements.assertHasAccess(user.organizationId);
     const title = input.title.trim();
     if (!title) throw new ForbiddenException("Task title required");
+    requireTaskCreateAssignment(user, input.assignedToId ?? null);
     if (input.assignedToId) await this.assertMember(user.organizationId, input.assignedToId);
     if (input.leadId) await this.assertLead(user.organizationId, input.leadId);
 
@@ -141,6 +147,9 @@ export class TasksService {
       where: { id, organizationId: user.organizationId },
     });
     if (!task) throw new NotFoundException();
+    if (input.assignedToId !== undefined) {
+      requireTaskAssignment(user, task.assignedToId, input.assignedToId);
+    }
     if (input.assignedToId) await this.assertMember(user.organizationId, input.assignedToId);
 
     const becomingDone = input.status === "DONE" && task.status !== "DONE";

@@ -29,7 +29,7 @@ import { InboxThreadDetailsMobile } from "@/components/dashboard/inbox-thread-de
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
-import { canWrite } from "@/lib/permissions";
+import { canAssignToSelf, canAssignWork, canToggleInboxAi, canWrite } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
   pickDailyQueueFilter,
@@ -101,6 +101,9 @@ export default function InboxPage() {
   const role = useAuthStore((s) => s.role);
   const myUserId = useAuthStore((s) => s.user?.id);
   const canSend = canWrite(role);
+  const canAssignOthers = canAssignWork(role);
+  const canTakeOver = canAssignToSelf(role);
+  const canToggleAi = canToggleInboxAi(role);
   const queryClient = useQueryClient();
   const { connected: live } = useRealtime();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -752,6 +755,9 @@ export default function InboxPage() {
                 score={thread.lead?.score}
                 assignedToId={thread.assignedTo?.id ?? null}
                 teamMembers={teamMembers ?? []}
+                canAssignOthers={canAssignOthers}
+                canTakeOver={canTakeOver}
+                myUserId={myUserId}
                 canEditStage={canSend && !!thread.lead}
                 stagePending={stageMutation.isPending}
                 assignPending={assignMutation.isPending}
@@ -792,6 +798,7 @@ export default function InboxPage() {
                 onCorrectAi={(payload) => correctAiMutation.mutate(payload)}
               />
               <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/60 px-4 py-2 lg:px-5">
+                {canToggleAi && (
                 <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1.5">
                   <span className="text-xs font-medium text-muted-foreground">
                     {copy.autoClassify}
@@ -805,10 +812,12 @@ export default function InboxPage() {
                     />
                   </span>
                 </div>
+                )}
                 <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1.5 md:flex">
                   <label htmlFor="assign-agent" className="text-xs font-medium text-muted-foreground">
                     {copy.assignedTo}
                   </label>
+                  {canAssignOthers ? (
                   <select
                     id="assign-agent"
                     className="max-w-[120px] truncate rounded-md border-0 bg-transparent text-xs font-medium focus:outline-none"
@@ -826,6 +835,22 @@ export default function InboxPage() {
                       </option>
                     ))}
                   </select>
+                  ) : canTakeOver && !thread.assignedTo?.id ? (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      className="h-7 rounded-lg text-xs"
+                      disabled={assignMutation.isPending}
+                      onClick={() => myUserId && assignMutation.mutate(myUserId)}
+                    >
+                      {copy.assignedTo} me
+                    </Button>
+                  ) : (
+                    <span className="text-xs font-medium text-foreground">
+                      {thread.assignedTo?.name ?? thread.assignedTo?.email ?? copy.unassigned}
+                    </span>
+                  )}
                 </div>
                 <span className="ml-auto text-xs text-muted-foreground">
                   {live ? "Live" : "Syncing"}

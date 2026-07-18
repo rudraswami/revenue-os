@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { GROWVISI_EMAIL_FROM, GROWVISI_EMAIL_SUPPORT } from "@growvisi/shared";
+import { roleUiLabel, type MembershipRole } from "@growvisi/shared";
 
 @Injectable()
 export class EmailService {
@@ -290,16 +291,24 @@ export class EmailService {
     to: string;
     organizationName: string;
     inviteUrl: string;
-    role: string;
-  }): Promise<void> {
-    await this.sendRaw({
+    role: MembershipRole | string;
+  }): Promise<boolean> {
+    const roleLabel = roleUiLabel(
+      (typeof opts.role === "string" ? opts.role : opts.role) as MembershipRole,
+    );
+    return this.sendRaw({
       to: [opts.to],
       subject: `You're invited to ${opts.organizationName} on Growvisi`,
       html: `
-        <p>Hi,</p>
-        <p>You've been invited to join <strong>${opts.organizationName}</strong> on Growvisi as <strong>${opts.role.toLowerCase()}</strong>.</p>
-        <p><a href="${opts.inviteUrl}">Accept invite and create your account</a></p>
-        <p>This link expires in 7 days. Growvisi classifies WhatsApp leads and tracks pipeline ₹ — your team replies from Inbox when it matters.</p>
+        <div style="font-family:Inter,Segoe UI,sans-serif;max-width:560px;color:#0b1c30">
+          <p style="font-size:14px">Hi,</p>
+          <p style="font-size:14px">You've been invited to join <strong>${opts.organizationName}</strong> on Growvisi as <strong>${roleLabel}</strong>.</p>
+          <p style="margin:24px 0">
+            <a href="${opts.inviteUrl}" style="display:inline-block;background:#006c49;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Accept invite</a>
+          </p>
+          <p style="font-size:13px;color:#555">This link expires in 7 days. Your team replies from Inbox when customers need a human — Growvisi tracks pipeline and handoffs.</p>
+          <p style="font-size:12px;color:#aaa;margin-top:24px">Growvisi · WhatsApp revenue for Indian SMBs<br/>growvisi.in</p>
+        </div>
       `,
       replyTo: GROWVISI_EMAIL_SUPPORT,
     });
@@ -311,13 +320,17 @@ export class EmailService {
     text?: string;
     html?: string;
     replyTo?: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
     const apiKey = this.config.get<string>("RESEND_API_KEY");
     const from = this.config.get<string>("EMAIL_FROM") ?? GROWVISI_EMAIL_FROM;
+    const isProd = this.config.get<string>("NODE_ENV") === "production";
 
     if (!apiKey) {
       this.logger.warn(`Email (dev) ${opts.subject} → ${opts.to.join(", ")}`);
-      return;
+      if (isProd) {
+        throw new Error("Email service is not configured.");
+      }
+      return false;
     }
 
     const res = await fetch("https://api.resend.com/emails", {
@@ -342,5 +355,6 @@ export class EmailService {
       this.logger.error(`Resend failed (${res.status}): ${body}`);
       throw new Error("Could not send email. Try again later.");
     }
+    return true;
   }
 }

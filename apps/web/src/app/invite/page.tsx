@@ -4,12 +4,15 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { AuthPageTransition } from "@/components/auth/auth-page-transition";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
-import { applySession } from "@/lib/auth-session";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
+import { applySession, postAuthPath } from "@/lib/auth-session";
 import type { AuthSession } from "@/lib/auth-types";
+import { ROLE_LABELS } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
+import type { MembershipRole } from "@growvisi/shared";
 
 function InviteAcceptForm() {
   const router = useRouter();
@@ -22,7 +25,7 @@ function InviteAcceptForm() {
   const { data: preview, isLoading, isError } = useQuery({
     queryKey: ["invite-preview", token],
     queryFn: () =>
-      apiFetch<{ organizationName: string; email: string; role: string }>(
+      apiFetch<{ organizationName: string; email: string; role: MembershipRole }>(
         `/organizations/invites/preview?token=${encodeURIComponent(token)}`,
       ),
     enabled: token.length > 0,
@@ -38,7 +41,7 @@ function InviteAcceptForm() {
       }),
     onSuccess: (session) => {
       applySession(session);
-      router.push("/dashboard");
+      router.push(postAuthPath(session.onboarding));
     },
     onError: (e) => {
       setError(toUserMessage(e, "Could not accept invite."));
@@ -51,81 +54,95 @@ function InviteAcceptForm() {
     !!user?.email &&
     user.email.toLowerCase() !== preview.email.toLowerCase();
 
+  const roleLabel = preview ? ROLE_LABELS[preview.role] ?? preview.role : "";
+
   if (!token) {
     return (
-      <AuthShell title="Invalid invite" description="This invite link is missing a token.">
-        <Button asChild className="auth-submit">
-          <Link href="/login">Sign in</Link>
-        </Button>
-      </AuthShell>
+      <AuthPageTransition>
+        <AuthShell title="Invalid invite" description="This invite link is missing a token.">
+          <Button asChild className="auth-submit-modern">
+            <Link href="/login">Sign in</Link>
+          </Button>
+        </AuthShell>
+      </AuthPageTransition>
     );
   }
 
   if (isLoading) {
     return (
-      <AuthShell title="Loading invite…" description="Verifying your team invitation.">
-        <p className="text-sm text-muted-foreground">One moment…</p>
-      </AuthShell>
+      <AuthPageTransition>
+        <AuthShell title="Loading invite…" description="Verifying your team invitation.">
+          <p className="text-sm text-muted-foreground">One moment…</p>
+        </AuthShell>
+      </AuthPageTransition>
     );
   }
 
   if (isError || !preview) {
     return (
-      <AuthShell title="Invite expired" description="This link is invalid or has expired.">
-        <Button asChild className="auth-submit">
-          <Link href="/login">Sign in</Link>
-        </Button>
-      </AuthShell>
+      <AuthPageTransition>
+        <AuthShell title="Invite expired" description="This link is invalid or has expired.">
+          <Button asChild className="auth-submit-modern">
+            <Link href="/login">Sign in</Link>
+          </Button>
+        </AuthShell>
+      </AuthPageTransition>
     );
   }
 
   if (!accessToken) {
     return (
-      <AuthShell
-        title={`Join ${preview.organizationName}`}
-        description={`Invited as ${preview.role.toLowerCase()}. Use ${preview.email} to continue.`}
-      >
-        <div className="flex flex-col gap-3">
-          <Button asChild className="auth-submit">
-            <Link href={`/register?invite=${token}&email=${encodeURIComponent(preview.email)}`}>
-              Create account
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-xl">
-            <Link href={`/login?invite=${token}&email=${encodeURIComponent(preview.email)}`}>
-              Sign in
-            </Link>
-          </Button>
-        </div>
-      </AuthShell>
+      <AuthPageTransition>
+        <AuthShell
+          title={`Join ${preview.organizationName}`}
+          description={`Invited as ${roleLabel}. Use ${preview.email} to continue.`}
+        >
+          <div className="flex flex-col gap-3">
+            <Button asChild className="auth-submit-modern">
+              <Link href={`/register?invite=${token}&email=${encodeURIComponent(preview.email)}`}>
+                Create account
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="h-12 rounded-xl">
+              <Link href={`/login?invite=${token}&email=${encodeURIComponent(preview.email)}`}>
+                Sign in
+              </Link>
+            </Button>
+          </div>
+        </AuthShell>
+      </AuthPageTransition>
     );
   }
 
   return (
-    <AuthShell
-      title={`Join ${preview.organizationName}`}
-      description={
-        emailMismatch
-          ? `You're signed in as ${user?.email}. Sign out and use ${preview.email} to accept.`
-          : `Accept to switch into the ${preview.organizationName} workspace.`
-      }
-    >
-      {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
-      {emailMismatch ? (
-        <Button asChild variant="outline" className="rounded-xl">
-          <Link href={`/login?invite=${token}&email=${encodeURIComponent(preview.email)}`}>Switch account</Link>
-        </Button>
-      ) : (
-        <Button
-         
-          className="auth-submit"
-          disabled={acceptMutation.isPending}
-          onClick={() => acceptMutation.mutate()}
-        >
-          {acceptMutation.isPending ? "Joining…" : "Accept invite"}
-        </Button>
-      )}
-    </AuthShell>
+    <AuthPageTransition>
+      <AuthShell
+        title={`Join ${preview.organizationName}`}
+        description={
+          emailMismatch
+            ? `You're signed in as ${user?.email}. Sign out and use ${preview.email} to accept.`
+            : `Accept to switch into the ${preview.organizationName} workspace as ${roleLabel}.`
+        }
+      >
+        {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+        {emailMismatch ? (
+          <Button asChild variant="outline" className="h-12 rounded-xl">
+            <Link href={`/login?invite=${token}&email=${encodeURIComponent(preview.email)}`}>
+              Switch account
+            </Link>
+          </Button>
+        ) : (
+          <Button
+            className="auth-submit-modern"
+            isLoading={acceptMutation.isPending}
+            disabled={acceptMutation.isPending}
+            onClick={() => acceptMutation.mutate()}
+          >
+            {acceptMutation.isPending ? "Joining…" : "Accept invite"}
+          </Button>
+        )}
+      </AuthShell>
+    </AuthPageTransition>
   );
 }
 
@@ -133,7 +150,7 @@ export default function InvitePage() {
   return (
     <Suspense
       fallback={
-        <div className="grid min-h-screen place-items-center bg-[#f8f9ff]">
+        <div className="grid min-h-screen place-items-center bg-[#fafbfc]">
           <p className="text-sm text-muted-foreground">Loading…</p>
         </div>
       }

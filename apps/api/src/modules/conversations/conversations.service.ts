@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { ConfigService } from "@nestjs/config";
 import { LeadStage, type Prisma } from "@prisma/client";
 import type { JwtPayload } from "@growvisi/shared";
+import { requireConversationAssignment } from "../../common/auth/authorization";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import {
@@ -606,6 +607,14 @@ export class ConversationsService {
   }
 
   async assign(user: JwtPayload, id: string, assignToUserId: string | null) {
+    const existing = await this.prisma.conversation.findFirst({
+      where: { id, organizationId: user.organizationId },
+      select: { assignedToId: true, leadId: true },
+    });
+    if (!existing) throw new NotFoundException();
+
+    requireConversationAssignment(user, existing.assignedToId, assignToUserId);
+
     if (assignToUserId) {
       const member = await this.prisma.organizationMember.findFirst({
         where: { organizationId: user.organizationId, userId: assignToUserId },
@@ -624,6 +633,18 @@ export class ConversationsService {
       },
     });
     if (conversation.count === 0) throw new NotFoundException();
+
+    if (assignToUserId && existing.leadId) {
+      await this.prisma.lead.updateMany({
+        where: {
+          id: existing.leadId,
+          organizationId: user.organizationId,
+          ownerId: null,
+        },
+        data: { ownerId: assignToUserId },
+      });
+    }
+
     return this.getById(user, id);
   }
 
