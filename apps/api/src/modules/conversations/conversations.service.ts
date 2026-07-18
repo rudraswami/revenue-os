@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { LeadStage, type Prisma } from "@prisma/client";
 import type { JwtPayload } from "@growvisi/shared";
+import { hasCapability } from "@growvisi/shared";
 import { requireConversationAssignment } from "../../common/auth/authorization";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
@@ -44,6 +45,30 @@ export class ConversationsService {
       /** We ingest via webhooks; outbound send is optional human takeover only */
       primaryUseCase: "conversation_intelligence" as const,
     };
+  }
+
+  /** Team members without inbox.view.team may only see unassigned + own threads. */
+  private inboxListScope(user: JwtPayload): Prisma.ConversationWhereInput | null {
+    if (hasCapability(user.role, "inbox.view.team")) return null;
+    if (!hasCapability(user.role, "inbox.reply")) {
+      throw new ForbiddenException("You do not have permission to view conversations.");
+    }
+    return {
+      OR: [{ assignedToId: user.sub }, { assignedToId: null }],
+    };
+  }
+
+  private assertInboxThreadAccess(
+    user: JwtPayload,
+    conversation: { assignedToId: string | null },
+  ): void {
+    if (hasCapability(user.role, "inbox.view.team")) return;
+    if (!hasCapability(user.role, "inbox.reply")) {
+      throw new ForbiddenException("You do not have permission to view this conversation.");
+    }
+    if (conversation.assignedToId && conversation.assignedToId !== user.sub) {
+      throw new ForbiddenException("This conversation is assigned to someone else.");
+    }
   }
 
   async getStats(user: JwtPayload, period?: MetricsPeriod) {
@@ -158,6 +183,9 @@ export class ConversationsService {
 
     const and: Prisma.ConversationWhereInput[] = [{ organizationId: user.organizationId }];
 
+    const inboxScope = this.inboxListScope(user);
+    if (inboxScope) and.push(inboxScope);
+
     if (filter === "handoff") {
       and.push({ metadata: { path: ["requiresHuman"], equals: true } });
     }
@@ -248,6 +276,8 @@ export class ConversationsService {
       },
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
+
+    this.assertInboxThreadAccess(user, conversation);
 
     const meta = (conversation.metadata ?? {}) as Record<string, unknown>;
     const profile = (conversation.lead?.profile ?? {}) as Record<string, unknown>;
@@ -412,6 +442,13 @@ export class ConversationsService {
       });
 
       if (conversation.leadId) {
+        await tx.lead.updateMany({
+          where: {
+            id: conversation.leadId,
+            organizationId: user.organizationId,
+          },
+          data: { ownerId: user.sub },
+        });
         await tx.task.create({
           data: {
             organizationId: user.organizationId,

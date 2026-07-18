@@ -3,6 +3,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
+import { ProactiveTokenRefresh } from "@/components/auth/proactive-token-refresh";
+import { SentryInit } from "@/components/auth/sentry-init";
 import { CookieConsent } from "@/components/marketing/cookie-consent";
 import { RealtimeProvider } from "@/components/realtime/realtime-provider";
 import { ToastProvider } from "@/components/ui/toast";
@@ -26,6 +28,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <AuthBootstrap>
+        <ProactiveTokenRefresh />
+        <SentryInit />
         <ToastProvider>
           <RealtimeProvider>
             {children}

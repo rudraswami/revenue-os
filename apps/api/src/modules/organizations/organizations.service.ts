@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
+import { Prisma } from "@prisma/client";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
 import { canInviteRole } from "@growvisi/shared";
 import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics, buildPostActivationCoaching } from "@growvisi/shared";
@@ -388,28 +389,32 @@ export class OrganizationsService {
     }
 
     const access = await this.entitlements.getAccess(invite.organizationId);
-    const memberCount = await this.prisma.organizationMember.count({
-      where: { organizationId: invite.organizationId },
-    });
-    if (memberCount >= access.limits.teamMembers) {
-      throw new BadRequestException(
-        "This workspace has reached its team member limit. Ask the owner to upgrade the plan.",
-      );
-    }
 
-    await this.prisma.$transaction([
-      this.prisma.organizationMember.create({
-        data: {
-          organizationId: invite.organizationId,
-          userId: user.sub,
-          role: invite.role,
-        },
-      }),
-      this.prisma.organizationInvite.update({
-        where: { id: invite.id },
-        data: { acceptedAt: new Date() },
-      }),
-    ]);
+    await this.prisma.$transaction(
+      async (tx) => {
+        const memberCount = await tx.organizationMember.count({
+          where: { organizationId: invite.organizationId },
+        });
+        if (memberCount >= access.limits.teamMembers) {
+          throw new BadRequestException(
+            "This workspace has reached its team member limit. Ask the owner to upgrade the plan.",
+          );
+        }
+
+        await tx.organizationMember.create({
+          data: {
+            organizationId: invite.organizationId,
+            userId: user.sub,
+            role: invite.role,
+          },
+        });
+        await tx.organizationInvite.update({
+          where: { id: invite.id },
+          data: { acceptedAt: new Date() },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     const session = await this.auth.switchOrganization(user.sub, invite.organizationId);
     return { ...session, alreadyMember: false };

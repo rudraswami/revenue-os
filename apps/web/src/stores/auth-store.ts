@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { syncAuthCookie } from "@/lib/auth-cookie";
+import { clearRefreshCoordination } from "@/lib/auth-refresh-lock";
 import { logLogout } from "@/lib/auth-observability";
 import type { LogoutReason, RefreshResultKind } from "@/lib/auth-session-death";
 import type { MembershipRole } from "@growvisi/shared";
@@ -86,6 +87,7 @@ export const useAuthStore = create<AuthState>()(
       clear: (reason) => {
         logLogout(reason);
         syncAuthCookie(false);
+        clearRefreshCoordination();
         set({
           accessToken: null,
           refreshToken: null,

@@ -178,26 +178,31 @@ export class LeadsController {
   }
 
   @Get("metrics/funnel")
+  @RequireCapability("analytics.view.team")
   funnel(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
     return this.leads.funnelMetrics(user, period);
   }
 
   @Get("metrics/revenue")
+  @RequireCapability("analytics.view.team")
   revenue(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
     return this.leads.getRevenueMetrics(user, period);
   }
 
   @Get("metrics/lost-deals")
+  @RequireCapability("analytics.view.team")
   lostDeals(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
     return this.leads.lostDealMetrics(user, period);
   }
 
   @Get("metrics/won-deals")
+  @RequireCapability("analytics.view.team")
   wonDeals(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
     return this.leads.wonDealMetrics(user, period);
   }
 
   @Get("metrics/insights")
+  @RequireCapability("analytics.view.team")
   insights(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
     return this.leads.getInsights(user, period);
   }
@@ -209,18 +214,21 @@ export class LeadsController {
   }
 
   @Post("metrics/insights/actions/assign-handoffs")
+  @RequireCapability("analytics.insights.act")
   @Roles(...WRITE_ROLES)
   assignHandoffs(@CurrentUser() user: JwtPayload, @Body() dto: AssignHandoffsDto) {
     return this.leads.assignHandoffConversations(user, dto.assignToUserId);
   }
 
   @Post("metrics/insights/actions/create-tasks")
+  @RequireCapability("analytics.insights.act")
   @Roles(...WRITE_ROLES)
   createInsightTasks(@CurrentUser() user: JwtPayload, @Body() dto: CreateInsightTasksDto) {
     return this.leads.createInsightTasks(user, dto.insightId);
   }
 
   @Post("metrics/insights/actions/lead-task/:leadId")
+  @RequireCapability("analytics.insights.act")
   @Roles(...WRITE_ROLES)
   createLeadTask(@CurrentUser() user: JwtPayload, @Param("leadId") leadId: string) {
     return this.leads.createTaskForLead(user, leadId);

@@ -160,6 +160,7 @@ export class WhatsappService {
         where: { id: eventId },
         data: { error: message },
       });
+      throw err;
     }
   }
 

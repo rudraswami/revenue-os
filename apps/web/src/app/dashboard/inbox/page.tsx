@@ -30,6 +30,7 @@ import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
 import { InboxThreadDetailsMobile } from "@/components/dashboard/inbox-thread-details-mobile";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { canAssignToSelf, canAssignWork, canManageTeam, canToggleInboxAi, canWrite } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -110,6 +111,10 @@ export default function InboxPage() {
   const canToggleAi = canToggleInboxAi(role);
   const queryClient = useQueryClient();
   const { connected: live } = useRealtime();
+  const { error: toastError } = useToast();
+  const showMutationError = (e: unknown, fallback: string) => {
+    toastError(toUserMessage(e, fallback));
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
@@ -326,6 +331,7 @@ export default function InboxPage() {
     onSuccess: (updated) => {
       queryClient.setQueryData(["conversation", selectedId], updated);
     },
+    onError: (e) => showMutationError(e, "Could not update AI settings."),
   });
 
   const assignMutation = useMutation({
@@ -339,6 +345,7 @@ export default function InboxPage() {
       queryClient.setQueryData(["conversation", selectedId], updated);
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
+    onError: (e) => showMutationError(e, "Could not assign this conversation."),
   });
 
   const stageMutation = useMutation({
@@ -354,6 +361,7 @@ export default function InboxPage() {
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       if (leadId) void queryClient.invalidateQueries({ queryKey: ["lead-timeline", leadId] });
     },
+    onError: (e) => showMutationError(e, "Could not update pipeline stage."),
   });
 
   function handleStageChange(next: LeadStage) {
@@ -382,6 +390,7 @@ export default function InboxPage() {
         }),
       }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+    onError: (e) => showMutationError(e, "Could not create follow-up task."),
   });
 
   const resolveHandoffMutation = useMutation({
@@ -397,6 +406,7 @@ export default function InboxPage() {
       void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
       if (doneId) advanceAfterAction(doneId);
     },
+    onError: (e) => showMutationError(e, "Could not resolve handoff."),
   });
 
   const correctAiMutation = useMutation({
@@ -417,6 +427,7 @@ export default function InboxPage() {
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       if (leadId) void queryClient.invalidateQueries({ queryKey: ["lead-timeline", leadId] });
     },
+    onError: (e) => showMutationError(e, "Could not save AI correction."),
   });
 
   const takeoverMutation = useMutation({
@@ -435,6 +446,7 @@ export default function InboxPage() {
       void queryClient.invalidateQueries({ queryKey: ["pending-setup-actions"] });
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
+    onError: (e) => showMutationError(e, "Could not take over this conversation."),
   });
 
   const sendMutation = useMutation({

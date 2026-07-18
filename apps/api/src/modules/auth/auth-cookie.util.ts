@@ -1,4 +1,5 @@
 import type { CookieOptions, Request, Response } from "express";
+import { sanitizeEnvValue } from "../../config/cors-origins";
 
 export const REFRESH_COOKIE = "growvisi_rt";
 
@@ -7,6 +8,20 @@ const COOKIE_PATH = "/api/v1/auth";
 
 function isProd(): boolean {
   return process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+}
+
+/** Sanitized COOKIE_DOMAIN for Set-Cookie (e.g. `.growvisi.in`). */
+export function cookieDomain(): string | undefined {
+  const raw = sanitizeEnvValue(process.env.COOKIE_DOMAIN);
+  if (!raw) return undefined;
+  // Leading dot shares cookie across subdomains (www ↔ api).
+  if (isProd() && !raw.startsWith(".")) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[auth-cookie] COOKIE_DOMAIN="${raw}" should start with "." in production (e.g. .growvisi.in).`,
+    );
+  }
+  return raw;
 }
 
 function refreshMaxAgeMs(): number {
@@ -31,7 +46,7 @@ function baseOptions(): CookieOptions {
     httpOnly: true,
     secure: prod,
     sameSite: prod ? "none" : "lax",
-    domain: process.env.COOKIE_DOMAIN?.trim() || undefined,
+    domain: cookieDomain(),
     path: COOKIE_PATH,
   };
 }

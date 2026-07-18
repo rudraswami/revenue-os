@@ -154,10 +154,35 @@ export class BillingService {
     const entity = payload.payload?.subscription?.entity;
     if (!entity?.id) return { handled: false };
 
+    const dedupeKey = `razorpay:${entity.id}:${payload.event}:${entity.current_end ?? entity.status ?? ""}`;
+    const prior = await this.prisma.webhookEvent.findFirst({
+      where: {
+        source: "razorpay",
+        eventType: dedupeKey,
+        processedAt: { not: null },
+      },
+      select: { id: true },
+    });
+    if (prior) return { handled: true, duplicate: true };
+
+    const eventRecord = await this.prisma.webhookEvent.create({
+      data: {
+        source: "razorpay",
+        eventType: dedupeKey,
+        payload: payload as object,
+      },
+    });
+
     const sub = await this.prisma.subscription.findFirst({
       where: { razorpaySubscriptionId: entity.id },
     });
-    if (!sub) return { handled: false };
+    if (!sub) {
+      await this.prisma.webhookEvent.update({
+        where: { id: eventRecord.id },
+        data: { error: "subscription_not_found" },
+      });
+      return { handled: false };
+    }
 
     const status = this.mapStatus(entity.status, payload.event);
 
@@ -172,17 +197,37 @@ export class BillingService {
         ? validNotesPlan ?? sub.planId
         : sub.planId;
 
+    const nextPeriodEnd = entity.current_end
+      ? new Date(entity.current_end * 1000)
+      : sub.currentPeriodEnd;
+
+    if (
+      sub.status === (status as typeof sub.status) &&
+      sub.planId === resolvedPlanId &&
+      (!entity.current_end ||
+        sub.currentPeriodEnd?.getTime() === nextPeriodEnd?.getTime())
+    ) {
+      await this.prisma.webhookEvent.update({
+        where: { id: eventRecord.id },
+        data: { processedAt: new Date(), organizationId: sub.organizationId },
+      });
+      return { handled: true, duplicate: true, status };
+    }
+
     await this.prisma.subscription.update({
       where: { id: sub.id },
       data: {
         status: status as never,
         planId: resolvedPlanId as string,
-        currentPeriodEnd: entity.current_end
-          ? new Date(entity.current_end * 1000)
-          : sub.currentPeriodEnd,
+        currentPeriodEnd: nextPeriodEnd,
         cancelAtPeriodEnd:
           status === "CANCELED" ? false : sub.cancelAtPeriodEnd,
       },
+    });
+
+    await this.prisma.webhookEvent.update({
+      where: { id: eventRecord.id },
+      data: { processedAt: new Date(), organizationId: sub.organizationId },
     });
 
     return { handled: true, status };

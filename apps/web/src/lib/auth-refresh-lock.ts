@@ -12,7 +12,6 @@ const WAIT_TIMEOUT_MS = 15_000;
 export type SharedAccessPayload = {
   type: "ACCESS_TOKEN";
   accessToken: string;
-  refreshToken?: string;
   at: number;
 };
 
@@ -159,25 +158,28 @@ export async function withRefreshLock<T>(run: () => Promise<T>): Promise<{
   }
 }
 
-export function shareAccessToken(accessToken: string, refreshToken?: string): void {
+export function clearRefreshCoordination(): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(LOCK_KEY);
+  localStorage.removeItem(RESULT_KEY);
+}
+
+export function shareAccessToken(accessToken: string): void {
   publishAccess({
     type: "ACCESS_TOKEN",
     accessToken,
-    refreshToken,
     at: Date.now(),
   });
 }
 
 /** Subscribe to peer access-token updates (other tabs). Returns unsubscribe. */
-export function subscribePeerAccessTokens(
-  onToken: (accessToken: string, refreshToken?: string) => void,
-): () => void {
+export function subscribePeerAccessTokens(onToken: (accessToken: string) => void): () => void {
   if (typeof window === "undefined") return () => {};
 
   const handle = (data: unknown) => {
     const payload = data as SharedAccessPayload;
     if (payload?.type === "ACCESS_TOKEN" && payload.accessToken) {
-      onToken(payload.accessToken, payload.refreshToken);
+      onToken(payload.accessToken);
     }
   };
 

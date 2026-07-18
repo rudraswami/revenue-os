@@ -1,6 +1,7 @@
 import type { AuthSession } from "@/lib/auth-types";
 import { logRefreshAttempt } from "@/lib/auth-observability";
 import {
+  clearRefreshCoordination,
   shareAccessToken,
   subscribePeerAccessTokens,
   withRefreshLock,
@@ -22,8 +23,8 @@ let peerSubAttached = false;
 function ensurePeerSubscription() {
   if (peerSubAttached || typeof window === "undefined") return;
   peerSubAttached = true;
-  subscribePeerAccessTokens((accessToken, refreshToken) => {
-    useAuthStore.getState().patchAccessToken(accessToken, refreshToken);
+  subscribePeerAccessTokens((accessToken) => {
+    useAuthStore.getState().patchAccessToken(accessToken);
   });
 }
 
@@ -41,17 +42,21 @@ async function waitForOnline(timeoutMs = 30_000): Promise<boolean> {
   });
 }
 
-async function performRefreshRequest(retryCount: number): Promise<RefreshResult> {
+async function performRefreshRequest(
+  retryCount: number,
+  opts?: { cookieOnly?: boolean },
+): Promise<RefreshResult> {
   const started = Date.now();
   const { refreshToken } = useAuthStore.getState();
+  const useBodyToken = !opts?.cookieOnly && !!refreshToken;
 
   try {
     const session = await rawFetchForAuth<AuthSession>("/auth/refresh", {
       method: "POST",
-      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined,
+      body: useBodyToken ? JSON.stringify({ refreshToken }) : undefined,
     });
     useAuthStore.getState().setSession(session);
-    shareAccessToken(session.accessToken, session.refreshToken);
+    shareAccessToken(session.accessToken);
     return {
       kind: "SUCCESS",
       accessToken: session.accessToken,
@@ -60,10 +65,21 @@ async function performRefreshRequest(retryCount: number): Promise<RefreshResult>
     };
   } catch (err) {
     const latencyMs = Date.now() - started;
-    if (err instanceof ApiError) {
-      return classifyRefreshFailure(err.status, err.message, latencyMs, retryCount);
+    const classified =
+      err instanceof ApiError
+        ? classifyRefreshFailure(err.status, err.message, latencyMs, retryCount)
+        : classifyRefreshFailure(0, "Refresh failed", latencyMs, retryCount);
+
+    // Multi-tab race: another tab rotated the HttpOnly cookie while we still
+    // had a stale refreshToken in memory — retry once with cookie only.
+    if (
+      useBodyToken &&
+      !opts?.cookieOnly &&
+      isConclusiveAuthDeath(classified.kind)
+    ) {
+      return performRefreshRequest(retryCount + 1, { cookieOnly: true });
     }
-    return classifyRefreshFailure(0, "Refresh failed", latencyMs, retryCount);
+    return classified;
   }
 }
 
@@ -145,6 +161,7 @@ export function endSessionFromRefresh(result: RefreshResult): boolean {
   if (result.kind === "SUCCESS") return false;
   if (!isConclusiveAuthDeath(result.kind)) return false;
   useAuthStore.getState().clear(logoutReasonFromRefresh(result.kind));
+  clearRefreshCoordination();
   return true;
 }
 

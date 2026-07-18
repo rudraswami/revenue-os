@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import type { Response } from "express";
+import { captureSentryException } from "../sentry.util";
 
 /**
  * Node's `fetch` throws bare `TypeError`s (no HTTP status) for network-level
@@ -16,6 +17,27 @@ import type { Response } from "express";
  */
 const UPSTREAM_NETWORK_ERROR_PATTERN =
   /ECONNREFUSED|ECONNRESET|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT_HAS_EXPIRED|fetch failed|timed out|timeout/i;
+
+const ENTITLEMENT_RESPONSE_KEYS = [
+  "reason",
+  "limit",
+  "used",
+  "planId",
+  "suggestedPlan",
+] as const;
+
+function entitlementFields(body: object): Record<string, string | number | null> {
+  const src = body as Record<string, unknown>;
+  const out: Record<string, string | number | null> = {};
+  for (const key of ENTITLEMENT_RESPONSE_KEYS) {
+    const value = src[key];
+    if (value === undefined) continue;
+    if (typeof value === "string" || typeof value === "number" || value === null) {
+      out[key] = value;
+    }
+  }
+  return out;
+}
 
 @Catch()
 export class GlobalHttpExceptionFilter implements ExceptionFilter {
@@ -38,15 +60,20 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
           ? String((body as { code?: unknown }).code)
           : undefined;
 
+      const extra =
+        typeof body === "object" && body !== null ? entitlementFields(body) : {};
+
       response.status(status).json({
         statusCode: status,
         message,
         ...(code ? { code } : {}),
+        ...extra,
       });
       return;
     }
 
     console.error(exception);
+    captureSentryException(exception);
 
     const causeChain = [exception, (exception as { cause?: unknown })?.cause]
       .map((e) => (e instanceof Error ? `${e.message} ${e.name}` : ""))

@@ -143,6 +143,7 @@ export class ConversationsController {
   constructor(private readonly conversations: ConversationsService) {}
 
   @Get("stats")
+  @RequireCapability("inbox.reply")
   stats(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
     return this.conversations.getStats(user, period);
   }
@@ -153,11 +154,13 @@ export class ConversationsController {
   }
 
   @Get("metrics/sla")
+  @RequireCapability("analytics.view.team")
   slaMetrics(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
     return this.conversations.getSlaMetrics(user, period);
   }
 
   @Get()
+  @RequireCapability("inbox.reply")
   list(@CurrentUser() user: JwtPayload, @Query() query: ListQueryDto) {
     return this.conversations.list(user, query.page, query.pageSize, query.q, query.filter, query.scope);
   }
@@ -182,6 +185,7 @@ export class ConversationsController {
   }
 
   @Get(":id")
+  @RequireCapability("inbox.reply")
   get(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.conversations.getById(user, id);
   }

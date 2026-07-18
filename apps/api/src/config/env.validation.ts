@@ -102,6 +102,11 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   RAZORPAY_PLAN_PRO?: string;
+
+  /** Parent domain for refresh cookie (e.g. `.growvisi.in` for www ↔ api). */
+  @IsString()
+  @IsOptional()
+  COOKIE_DOMAIN?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
@@ -122,6 +127,22 @@ export function validateEnv(config: Record<string, unknown>) {
 
   const isProd = config.NODE_ENV === "production" || config.VERCEL === "1";
   if (isProd) {
+    const cookieDomain = String(config.COOKIE_DOMAIN ?? "")
+      .replace(/\r/g, "")
+      .trim();
+    if (!cookieDomain) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[env] COOKIE_DOMAIN is not set — refresh cookies will not be shared across " +
+          "subdomains (www.growvisi.in ↔ api.growvisi.in). Users may be logged out after access JWT expiry.",
+      );
+    } else if (!cookieDomain.startsWith(".")) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[env] COOKIE_DOMAIN="${cookieDomain}" should start with "." (e.g. .growvisi.in) for subdomain sharing.`,
+      );
+    }
+
     const recommended: Array<[string, unknown]> = [
       ["WHATSAPP_APP_SECRET / META_APP_SECRET", validated.WHATSAPP_APP_SECRET ?? validated.META_APP_SECRET],
       ["WHATSAPP_VERIFY_TOKEN", validated.WHATSAPP_VERIFY_TOKEN],

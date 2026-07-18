@@ -21,6 +21,15 @@ export { refreshAccessToken, refreshSession } from "@/lib/auth-refresh";
 const INTERNAL_ERROR_PATTERN =
   /requiresHuman|prisma|ECONNREFUSED|localhost|127\.0\.0\.1|pnpm dev|Graph API|OPENAI|nestjs|META_APP_ID|WHATSAPP_VERIFY/i;
 
+/** Auth routes that should still retry refresh on 401 (expired access JWT). */
+const AUTH_RETRY_ON_401 = new Set(["/auth/me", "/auth/switch-organization"]);
+
+function mayRetryAuthOn401(path: string): boolean {
+  if (!path.startsWith("/auth/")) return true;
+  const base = path.split("?")[0] ?? path;
+  return AUTH_RETRY_ON_401.has(base);
+}
+
 const FRICTION_CODES = new Set([
   "TEAM_SEAT_LIMIT",
   "WHATSAPP_NUMBER_LIMIT",
@@ -113,7 +122,7 @@ export async function apiFetch<T>(
       err.status === 401 &&
       token &&
       !skipAuthRetry &&
-      !path.startsWith("/auth/")
+      mayRetryAuthOn401(path)
     ) {
       const newToken = await refreshAccessToken("api_401");
       if (newToken) {

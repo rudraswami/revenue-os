@@ -73,7 +73,7 @@ export async function syncProfileFromServer(): Promise<void> {
   const token = useAuthStore.getState().accessToken;
   if (!token) return;
   try {
-    const me = await apiFetch<MeResponse>("/auth/me", { token, skipAuthRetry: true });
+    const me = await apiFetch<MeResponse>("/auth/me", { token });
     patchProfile(me);
   } catch {
     // Non-fatal — banner may be stale until next bootstrap

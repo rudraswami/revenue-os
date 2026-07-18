@@ -11,6 +11,7 @@ import {
 import { IsOptional, IsString, MaxLength } from "class-validator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RequireCapability } from "../../common/decorators/require-capability.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
@@ -66,6 +67,7 @@ export class TrackingController {
 
   @Get("tracking/metrics")
   @UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
+  @RequireCapability("analytics.view.team")
   @Roles(...MANAGE_ROLES)
   metrics(@CurrentUser() user: JwtPayload) {
     return this.tracking.metricsByCampaign(user.organizationId);
