@@ -112,7 +112,6 @@ export class AssignmentService {
       where: { id: ctx.conversationId },
       data: {
         assignedToId: assignee,
-        aiEnabled: false,
         metadata: withAssignmentMeta(existingMeta, assignment) as object,
       },
     });

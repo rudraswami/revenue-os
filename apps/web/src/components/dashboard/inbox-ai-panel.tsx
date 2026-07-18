@@ -34,6 +34,7 @@ export type AiCorrectionPayload = {
 };
 
 export function InboxAiPanel({
+  aiEnabled = true,
   aiContext,
   requiresHuman,
   handoffReason,
@@ -55,6 +56,7 @@ export function InboxAiPanel({
   assignPending,
   resolvePending,
 }: {
+  aiEnabled?: boolean;
   aiContext: InboxAiContext | null;
   requiresHuman?: boolean;
   handoffReason?: string | null;
@@ -105,6 +107,7 @@ export function InboxAiPanel({
     setFixOpen(false);
   }, [aiContext?.classifiedAt, leadStage, leadScore, requiresHuman, aiContext?.intent]);
 
+  if (!requiresHuman && (!aiEnabled || !aiContext)) return null;
   if (!aiContext && !requiresHuman) return null;
 
   const confidencePct =

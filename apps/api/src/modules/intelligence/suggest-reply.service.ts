@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
@@ -22,6 +22,8 @@ export interface DraftReplyResult {
 
 @Injectable()
 export class SuggestReplyService {
+  private readonly logger = new Logger(SuggestReplyService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -40,9 +42,10 @@ export class SuggestReplyService {
   async generateAndStoreDraft(
     organizationId: string,
     conversationId: string,
+    opts?: { knowledgeGap?: boolean },
   ): Promise<DraftReplyResult | null> {
     try {
-      const draft = await this.generateDraft(organizationId, conversationId);
+      const draft = await this.generateDraft(organizationId, conversationId, opts);
       const conversation = await this.prisma.conversation.findFirst({
         where: { id: conversationId, organizationId },
         select: { metadata: true },
@@ -69,9 +72,11 @@ export class SuggestReplyService {
         },
       });
 
-      this.realtime.emitInboxUpdated(organizationId);
+      this.realtime.emitInboxUpdated(organizationId, conversationId);
       return draft;
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Draft generation failed for ${conversationId}: ${message}`);
       return null;
     }
   }
@@ -99,6 +104,7 @@ export class SuggestReplyService {
   private async generateDraft(
     organizationId: string,
     conversationId: string,
+    opts?: { knowledgeGap?: boolean },
   ): Promise<DraftReplyResult> {
     await this.entitlements.assertHasAccess(organizationId);
 
@@ -175,6 +181,9 @@ export class SuggestReplyService {
                   "You draft WhatsApp replies for a sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
                   "The human rep will review and send — never imply the message was already sent.",
                   "Do not invent pricing, policies, or offers beyond the business knowledge provided.",
+                  opts?.knowledgeGap
+                    ? "No matching pricing/policy docs were found. Draft a helpful reply that asks clarifying questions (budget, scope, timeline) without quoting specific prices or discounts."
+                    : "",
                   knowledgeBlock
                     ? `Business knowledge (use when relevant):\n\n${knowledgeBlock}`
                     : "",

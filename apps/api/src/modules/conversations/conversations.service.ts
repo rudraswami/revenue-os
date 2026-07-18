@@ -444,7 +444,6 @@ export class ConversationsService {
         where: { id },
         data: {
           assignedToId: user.sub,
-          aiEnabled: false,
           metadata: {
             ...assignmentMeta,
             requiresHuman: false,
@@ -621,7 +620,14 @@ export class ConversationsService {
   }
 
   async suggestReply(user: JwtPayload, conversationId: string) {
-    return this.suggestReplyService.suggest(user, conversationId);
+    const draft = await this.suggestReplyService.generateAndStoreDraft(
+      user.organizationId,
+      conversationId,
+    );
+    if (!draft) {
+      throw new BadRequestException("Could not generate a reply suggestion. Check AI settings.");
+    }
+    return draft;
   }
 
   async getIntelligence(user: JwtPayload, conversationId: string) {
@@ -665,7 +671,6 @@ export class ConversationsService {
       where: { id, organizationId: user.organizationId },
       data: {
         assignedToId: assignToUserId,
-        aiEnabled: assignToUserId ? false : undefined,
         metadata: nextMeta as object,
       },
     });

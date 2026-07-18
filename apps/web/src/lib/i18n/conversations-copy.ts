@@ -49,6 +49,8 @@ export function useConversationsCopy() {
       replyModeHuman: t("conversations.replyModeHuman"),
       replyModeAiAssist: t("conversations.replyModeAiAssist"),
       replyModeHint: t("conversations.replyModeHint"),
+      aiDraftReady: t("conversations.aiDraftReady"),
+      aiDraftGenerating: t("conversations.aiDraftGenerating"),
       assignedTo: t("conversations.assignedTo"),
       unassigned: t("conversations.unassigned"),
       scoreHot: (n: number) => formatMessage(t("conversations.scoreHot"), { n }),

@@ -265,7 +265,7 @@ export default function InboxPage() {
     queryFn: () =>
       apiFetch<ConversationDetail>(`/conversations/${selectedId}`, { token: token ?? undefined }),
     enabled: !!token && !!selectedId,
-    refetchInterval: live ? false : 8_000,
+    refetchInterval: live ? false : 4_000,
   });
 
   const leadId = thread?.lead?.id;
@@ -319,6 +319,7 @@ export default function InboxPage() {
   useEffect(() => {
     const pending = thread?.pendingDraft;
     if (!pending?.suggestion || !thread?.aiEnabled) return;
+    setShowComposer(true);
     setDraft(pending.suggestion);
     setDraftMeta({
       aiRunId: pending.aiRunId,
@@ -350,6 +351,7 @@ export default function InboxPage() {
       setDraft(res.suggestion);
       setDraftMeta({ aiRunId: res.aiRunId, sources: res.sources ?? [] });
       setSendError(null);
+      void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
     },
     onError: (e) => {
       setSendError(toUserMessage(e, "Could not suggest a reply."));
@@ -368,6 +370,14 @@ export default function InboxPage() {
     },
     onError: (e) => showMutationError(e, "Could not update AI settings."),
   });
+
+  const lastMessage = thread?.messages[thread.messages.length - 1];
+  const awaitingAiDraft =
+    !!thread?.aiEnabled &&
+    !thread?.pendingDraft?.suggestion &&
+    !suggestMutation.isPending &&
+    !aiToggleMutation.isPending &&
+    lastMessage?.direction === "INBOUND";
 
   const assignMutation = useMutation({
     mutationFn: (assignToUserId: string | null) =>
@@ -756,6 +766,39 @@ export default function InboxPage() {
                   </div>
                 </div>
                 <div className="hidden shrink-0 flex-wrap items-center justify-end gap-1.5 md:flex">
+                  {canToggleAi && (
+                    <div
+                      className="flex items-center rounded-full bg-muted/60 p-0.5"
+                      title={copy.replyModeHint}
+                    >
+                      <button
+                        type="button"
+                        disabled={aiToggleMutation.isPending}
+                        onClick={() => thread.aiEnabled && aiToggleMutation.mutate(false)}
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition",
+                          !thread.aiEnabled
+                            ? "bg-card text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {copy.replyModeHuman}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={aiToggleMutation.isPending}
+                        onClick={() => !thread.aiEnabled && aiToggleMutation.mutate(true)}
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition",
+                          thread.aiEnabled
+                            ? "bg-card text-accent shadow-sm"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {copy.replyModeAiAssist}
+                      </button>
+                    </div>
+                  )}
                   {thread.lead?.score != null && thread.lead.score > 0 && (
                     <span
                       className={cn(
@@ -823,6 +866,7 @@ export default function InboxPage() {
                 onAssign={(userId) => assignMutation.mutate(userId)}
               />
               <InboxAiPanel
+                aiEnabled={thread.aiEnabled}
                 aiContext={thread.aiContext ?? null}
                 requiresHuman={thread.requiresHuman}
                 handoffReason={thread.handoffReason}
@@ -858,50 +902,15 @@ export default function InboxPage() {
                 onCorrectAi={(payload) => correctAiMutation.mutate(payload)}
                 knowledgeGaps={intelligence?.knowledgeGaps ?? []}
               />
-              <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/60 px-4 py-2 lg:px-5">
-                {canToggleAi && (
-                <div className="flex flex-col gap-1 rounded-lg border border-border/50 bg-card px-2.5 py-1.5">
-                  <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-0.5">
-                    <button
-                      type="button"
-                      disabled={aiToggleMutation.isPending}
-                      onClick={() => thread.aiEnabled && aiToggleMutation.mutate(false)}
-                      className={cn(
-                        "rounded-md px-2.5 py-1 text-xs font-semibold transition",
-                        !thread.aiEnabled
-                          ? "bg-card text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {copy.replyModeHuman}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={aiToggleMutation.isPending}
-                      onClick={() => !thread.aiEnabled && aiToggleMutation.mutate(true)}
-                      className={cn(
-                        "rounded-md px-2.5 py-1 text-xs font-semibold transition",
-                        thread.aiEnabled
-                          ? "bg-card text-accent shadow-sm"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {copy.replyModeAiAssist}
-                    </button>
-                  </div>
-                  <p className="max-w-xs text-[10px] leading-snug text-muted-foreground">
-                    {copy.replyModeHint}
-                  </p>
-                </div>
-                )}
-                <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1.5 md:flex">
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/60 px-4 py-1.5 lg:px-5">
+                <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1 md:flex">
                   <label htmlFor="assign-agent" className="text-xs font-medium text-muted-foreground">
                     {copy.assignedTo}
                   </label>
                   {canAssignOthers ? (
                   <select
                     id="assign-agent"
-                    className="max-w-[120px] truncate rounded-md border-0 bg-transparent text-xs font-medium focus:outline-none"
+                    className="max-w-[140px] truncate rounded-md border-0 bg-transparent text-xs font-medium focus:outline-none"
                     value={thread.assignedTo?.id ?? ""}
                     disabled={assignMutation.isPending}
                     onChange={(e) => {
@@ -940,8 +949,38 @@ export default function InboxPage() {
                     className="hidden md:flex md:max-w-[min(100%,20rem)]"
                   />
                 )}
+                {canToggleAi && (
+                  <div className="flex w-full items-center gap-1 rounded-lg bg-muted/60 p-0.5 md:hidden">
+                    <button
+                      type="button"
+                      disabled={aiToggleMutation.isPending}
+                      onClick={() => thread.aiEnabled && aiToggleMutation.mutate(false)}
+                      className={cn(
+                        "flex-1 rounded-md px-2 py-1 text-xs font-semibold transition",
+                        !thread.aiEnabled
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {copy.replyModeHuman}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={aiToggleMutation.isPending}
+                      onClick={() => !thread.aiEnabled && aiToggleMutation.mutate(true)}
+                      className={cn(
+                        "flex-1 rounded-md px-2 py-1 text-xs font-semibold transition",
+                        thread.aiEnabled
+                          ? "bg-card text-accent shadow-sm"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {copy.replyModeAiAssist}
+                    </button>
+                  </div>
+                )}
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {live ? "Live" : "Syncing"}
+                  {live ? copy.live : "Syncing"}
                 </span>
               </div>
             </div>
@@ -997,6 +1036,16 @@ export default function InboxPage() {
                       </button>{" "}
                       with an approved WhatsApp template to re-engage.
                     </p>
+                  </div>
+                )}
+                {thread.aiEnabled && thread.pendingDraft?.suggestion && (
+                  <div className="mb-2 rounded-xl border border-accent/25 bg-bento-mint/60 px-3 py-2 text-xs text-foreground">
+                    <span className="font-semibold text-accent">{copy.aiDraftReady}</span>
+                  </div>
+                )}
+                {awaitingAiDraft && (
+                  <div className="mb-2 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    {copy.aiDraftGenerating}
                   </div>
                 )}
                 {showComposer ? (

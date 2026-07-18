@@ -69,8 +69,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       refresh(payload?.conversationId);
     });
 
-    socket.on("inbox.updated", () => {
-      refresh();
+    socket.on("lead.classified", (payload: { conversationId?: string }) => {
+      refresh(payload?.conversationId);
+    });
+
+    socket.on("inbox.updated", (payload: { conversationId?: string }) => {
+      refresh(payload?.conversationId);
+      void queryClient.invalidateQueries({ queryKey: ["conversation"] });
     });
 
     socket.on("lead.stage.changed", (payload: { leadId?: string }) => {

@@ -135,11 +135,11 @@ export class ActionPlannerService {
       });
     }
 
+  // Draft even on handoff / knowledge gap — human still sends; assist mode proposes text.
     if (
       ctx.conversation.aiEnabled &&
-      !result.requiresHuman &&
-      !input.lockHandoff &&
-      input.handoffType !== "knowledge_gap"
+      ctx.lead.stage !== "WON" &&
+      ctx.lead.stage !== "LOST"
     ) {
       actions.push({
         type: "reply.draft",
@@ -148,6 +148,7 @@ export class ActionPlannerService {
           conversationId: ctx.conversationId,
           leadId: ctx.leadId,
           defer: true,
+          knowledgeGap: input.handoffType === "knowledge_gap",
         },
         aiRunId,
       });

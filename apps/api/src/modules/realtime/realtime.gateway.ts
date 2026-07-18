@@ -73,8 +73,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server?.to(`org:${organizationId}`).emit("message.new", data);
   }
 
-  emitInboxUpdated(organizationId: string) {
-    this.server?.to(`org:${organizationId}`).emit("inbox.updated", {});
+  emitInboxUpdated(organizationId: string, conversationId?: string) {
+    this.server?.to(`org:${organizationId}`).emit("inbox.updated", {
+      conversationId: conversationId ?? undefined,
+    });
   }
 
   emitWhatsappSetupUpdated(

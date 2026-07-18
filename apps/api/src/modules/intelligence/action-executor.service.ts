@@ -208,7 +208,9 @@ export class ActionExecutorService {
     });
 
     if (input.stageChanged) {
-      this.realtime.emitInboxUpdated(input.organizationId);
+      this.realtime.emitInboxUpdated(input.organizationId, input.conversationId);
+    } else if (input.actions.some((a) => a.type === "reply.draft")) {
+      this.realtime.emitInboxUpdated(input.organizationId, input.conversationId);
     }
 
     return { planId: plan.id, results };
@@ -322,6 +324,7 @@ export class ActionExecutorService {
         const draft = await this.suggestReply.generateAndStoreDraft(
           input.organizationId,
           String(payload.conversationId),
+          { knowledgeGap: payload.knowledgeGap === true },
         );
         return { draft: draft?.suggestion ?? null };
       }
