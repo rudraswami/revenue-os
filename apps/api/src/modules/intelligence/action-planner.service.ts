@@ -1,12 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import type {
   AiClassificationResult,
-  KnowledgeCategory,
   KnowledgeHit,
   ProposedAction,
+  ReplyDecision,
+  ReplyAutonomyMode,
 } from "@growvisi/shared";
 import { HOT_LEAD_SCORE_THRESHOLD } from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
+import { ReplyPolicyService } from "./reply-policy.service";
 
 const PRICING_TOPIC =
   /pric|cost|fee|rate|package|₹|rs\.?\s*\d|discount|quote|emi|payment/i;
@@ -22,6 +24,8 @@ export interface ClassificationPlanInput {
   stageChanged: boolean;
   score: number;
   handoffType?: "complex" | "knowledge_gap" | "human_request";
+  workspaceAutonomy: ReplyAutonomyMode;
+  withinReplyWindow: boolean;
   automationPrefs: {
     stage: boolean;
     notify: boolean;
@@ -31,6 +35,7 @@ export interface ClassificationPlanInput {
 
 @Injectable()
 export class ActionPlannerService {
+  constructor(private readonly replyPolicy: ReplyPolicyService) {}
   detectKnowledgeGap(ctx: ConversationContext, knowledgeHits: KnowledgeHit[]): boolean {
     const topic = `${ctx.lastInbound ?? ""} ${ctx.ragQuery}`;
     if (!PRICING_TOPIC.test(topic)) return false;
@@ -53,9 +58,21 @@ export class ActionPlannerService {
     };
   }
 
-  buildFromClassification(input: ClassificationPlanInput): ProposedAction[] {
+  buildFromClassification(input: ClassificationPlanInput): {
+    actions: ProposedAction[];
+    replyDecision: ReplyDecision;
+  } {
     const actions: ProposedAction[] = [];
     const { ctx, result, aiRunId, stageChanged, score, automationPrefs } = input;
+
+    const replyDecision = this.replyPolicy.evaluate({
+      ctx,
+      classification: result,
+      knowledgeHits: input.knowledgeHits,
+      knowledgeGap: input.handoffType === "knowledge_gap",
+      workspaceAutonomy: input.workspaceAutonomy,
+      withinReplyWindow: input.withinReplyWindow,
+    });
 
     if (result.requiresHuman && !input.lockHandoff) {
       actions.push({
@@ -135,12 +152,7 @@ export class ActionPlannerService {
       });
     }
 
-  // Draft even on handoff / knowledge gap — human still sends; assist mode proposes text.
-    if (
-      ctx.conversation.aiEnabled &&
-      ctx.lead.stage !== "WON" &&
-      ctx.lead.stage !== "LOST"
-    ) {
+    if (replyDecision.mode === "draft") {
       actions.push({
         type: "reply.draft",
         executor: "growvisi",
@@ -149,12 +161,13 @@ export class ActionPlannerService {
           leadId: ctx.leadId,
           defer: true,
           knowledgeGap: input.handoffType === "knowledge_gap",
+          replyDecision,
         },
         aiRunId,
       });
     }
 
-    return actions;
+    return { actions, replyDecision };
   }
 
   knowledgeGapTopics(hits: KnowledgeHit[], ctx: ConversationContext): string[] {

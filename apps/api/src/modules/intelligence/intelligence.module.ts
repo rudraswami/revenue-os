@@ -12,6 +12,8 @@ import { ContextBuilderService } from "./context-builder.service";
 import { IntelligenceQueryService } from "./intelligence-query.service";
 import { LearningSignalService } from "./learning-signal.service";
 import { ObservedMemoryService } from "./observed-memory.service";
+import { ReplyComposerService } from "./reply-composer.service";
+import { ReplyPolicyService } from "./reply-policy.service";
 import { SuggestReplyService } from "./suggest-reply.service";
 
 @Module({
@@ -27,6 +29,8 @@ import { SuggestReplyService } from "./suggest-reply.service";
   providers: [
     ContextBuilderService,
     ObservedMemoryService,
+    ReplyPolicyService,
+    ReplyComposerService,
     ActionPlannerService,
     ActionExecutorService,
     SuggestReplyService,
@@ -36,6 +40,8 @@ import { SuggestReplyService } from "./suggest-reply.service";
   exports: [
     ContextBuilderService,
     ObservedMemoryService,
+    ReplyPolicyService,
+    ReplyComposerService,
     ActionPlannerService,
     ActionExecutorService,
     SuggestReplyService,

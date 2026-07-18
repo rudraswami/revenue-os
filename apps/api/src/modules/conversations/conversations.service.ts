@@ -343,6 +343,10 @@ export class ConversationsService {
               createdAt?: string;
             })
           : null,
+      replyDecision:
+        meta.replyDecision && typeof meta.replyDecision === "object"
+          ? (meta.replyDecision as import("@growvisi/shared").ReplyDecision)
+          : null,
       assignment: await this.resolveAssignmentExplain(meta, user.organizationId),
       aiContext,
     };
@@ -632,6 +636,10 @@ export class ConversationsService {
 
   async getIntelligence(user: JwtPayload, conversationId: string) {
     return this.intelligenceQuery.getConversationIntelligence(user, conversationId);
+  }
+
+  async getReplyDecision(user: JwtPayload, conversationId: string) {
+    return this.intelligenceQuery.getReplyDecision(user, conversationId);
   }
 
   async assign(user: JwtPayload, id: string, assignToUserId: string | null) {

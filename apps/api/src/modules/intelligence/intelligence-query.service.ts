@@ -37,6 +37,19 @@ export class IntelligenceQueryService {
 
     const observedMemory = await this.memory.listForConversation(conversationId);
 
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId: user.organizationId },
+      select: { metadata: true },
+    });
+    const meta =
+      conv?.metadata && typeof conv.metadata === "object"
+        ? (conv.metadata as Record<string, unknown>)
+        : {};
+    const replyDecision =
+      meta.replyDecision && typeof meta.replyDecision === "object"
+        ? (meta.replyDecision as import("@growvisi/shared").ReplyDecision)
+        : null;
+
     return {
       actionPlan: plan
         ? {
@@ -65,6 +78,28 @@ export class IntelligenceQueryService {
         : null,
       observedMemory,
       knowledgeGaps: this.planner.knowledgeGapTopics(hits, ctx),
+      replyDecision,
     };
+  }
+
+  async getReplyDecision(user: JwtPayload, conversationId: string) {
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId: user.organizationId },
+      select: { metadata: true, aiEnabled: true, lastInboundAt: true, lead: { select: { stage: true } } },
+    });
+    if (!conv) return { replyDecision: null };
+
+    const meta =
+      conv.metadata && typeof conv.metadata === "object"
+        ? (conv.metadata as Record<string, unknown>)
+        : {};
+    const stored =
+      meta.replyDecision && typeof meta.replyDecision === "object"
+        ? (meta.replyDecision as import("@growvisi/shared").ReplyDecision)
+        : null;
+
+    if (stored) return { replyDecision: stored };
+
+    return { replyDecision: null };
   }
 }

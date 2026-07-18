@@ -68,4 +68,37 @@ export interface ConversationIntelligenceView {
     createdAt: string;
   }>;
   knowledgeGaps: string[];
+  replyDecision?: ReplyDecision | null;
 }
+
+/** Workspace default for how Growvisi handles customer replies. */
+export const REPLY_AUTONOMY_MODES = ["intel_only", "assist", "auto_guarded"] as const;
+export type ReplyAutonomyMode = (typeof REPLY_AUTONOMY_MODES)[number];
+
+export const REPLY_EXECUTION_MODES = ["skip", "draft", "send"] as const;
+export type ReplyExecutionMode = (typeof REPLY_EXECUTION_MODES)[number];
+
+export type ReplyRiskLevel = "low" | "medium" | "high";
+
+export interface ReplyDecision {
+  mode: ReplyExecutionMode;
+  /** 0–1 composite confidence for this decision */
+  confidence: number;
+  risk: ReplyRiskLevel;
+  /** Human-readable reasons shown in Inbox */
+  reasons: string[];
+  /** When mode is skip — primary blocker codes */
+  blockers?: string[];
+  evaluatedAt: string;
+  /** Phase 2: would auto-send if workspace allowed */
+  autoEligible?: boolean;
+}
+
+export interface IntelligenceWorkspaceSettings {
+  /** Default for new threads — per-thread aiEnabled still overrides assist vs human */
+  replyAutonomy: ReplyAutonomyMode;
+}
+
+export const DEFAULT_INTELLIGENCE_SETTINGS: IntelligenceWorkspaceSettings = {
+  replyAutonomy: "assist",
+};

@@ -17,6 +17,11 @@ import { EmailService } from "../auth/email.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 import { normalizePaymentIntegration } from "./payment-integration";
 import { mergeCoachingSettings, normalizeWorkspaceOpsSettings } from "./workspace-settings";
+import {
+  normalizeIntelligenceSettings,
+  readIntelligenceSettingsFromOrg,
+} from "../intelligence/workspace-intelligence-settings";
+import type { IntelligenceWorkspaceSettings } from "@growvisi/shared";
 
 export interface ReplyTemplate {
   id: string;
@@ -108,6 +113,41 @@ export class OrganizationsService {
     if (!org) throw new NotFoundException("Organization not found");
     const settings = (org.settings ?? {}) as Record<string, unknown>;
     return { templates: normalizeTemplates(settings.replyTemplates) };
+  }
+
+  async getIntelligenceSettings(user: JwtPayload) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { settings: true },
+    });
+    if (!org) throw new NotFoundException("Organization not found");
+    const settings = (org.settings ?? {}) as Record<string, unknown>;
+    return readIntelligenceSettingsFromOrg(settings);
+  }
+
+  async updateIntelligenceSettings(
+    user: JwtPayload,
+    patch: Partial<IntelligenceWorkspaceSettings>,
+  ) {
+    this.assertAdmin(user);
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { settings: true },
+    });
+    if (!org) throw new NotFoundException("Organization not found");
+    const settings = (org.settings ?? {}) as Record<string, unknown>;
+    const current = readIntelligenceSettingsFromOrg(settings);
+    const next = normalizeIntelligenceSettings({ ...current, ...patch });
+    await this.prisma.organization.update({
+      where: { id: user.organizationId },
+      data: {
+        settings: {
+          ...settings,
+          intelligence: next,
+        } as object,
+      },
+    });
+    return next;
   }
 
   async updateReplyTemplates(

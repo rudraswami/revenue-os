@@ -17,6 +17,8 @@ import { ActionExecutorService } from "../intelligence/action-executor.service";
 import { ActionPlannerService } from "../intelligence/action-planner.service";
 import { ContextBuilderService } from "../intelligence/context-builder.service";
 import { ObservedMemoryService } from "../intelligence/observed-memory.service";
+import { ReplyPolicyService } from "../intelligence/reply-policy.service";
+import { readIntelligenceSettingsFromOrg } from "../intelligence/workspace-intelligence-settings";
 import { useBackgroundWorkers } from "../../config/workers";
 import { withTimeout } from "../../common/utils/with-timeout";
 
@@ -72,6 +74,7 @@ export class AiClassifyService {
     private readonly knowledge: KnowledgeRetrievalService,
     private readonly memory: ObservedMemoryService,
     private readonly planner: ActionPlannerService,
+    private readonly replyPolicy: ReplyPolicyService,
     private readonly executor: ActionExecutorService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
@@ -422,6 +425,19 @@ export class AiClassifyService {
       });
 
       const prefs = await this.automations.getPreferencesForOrg(data.organizationId);
+      const org = await this.prisma.organization.findUnique({
+        where: { id: data.organizationId },
+        select: { settings: true },
+      });
+      const orgSettings =
+        org?.settings && typeof org.settings === "object"
+          ? (org.settings as Record<string, unknown>)
+          : {};
+      const intelligenceSettings = readIntelligenceSettingsFromOrg(orgSettings);
+      const withinReplyWindow =
+        !!ctx.conversation.lastInboundAt &&
+        Date.now() - ctx.conversation.lastInboundAt.getTime() < 24 * 60 * 60 * 1000;
+
       const updateStage =
         prefs.stage &&
         !data.lockStage &&
@@ -448,7 +464,7 @@ export class AiClassifyService {
         ctx.lead.score,
       );
 
-      const actions = this.planner.buildFromClassification({
+      const { actions, replyDecision } = this.planner.buildFromClassification({
         ctx,
         result,
         knowledgeHits,
@@ -459,12 +475,20 @@ export class AiClassifyService {
         stageChanged,
         score,
         handoffType: knowledgeGap ? "knowledge_gap" : "complex",
+        workspaceAutonomy: intelligenceSettings.replyAutonomy,
+        withinReplyWindow,
         automationPrefs: {
           stage: prefs.stage,
           notify: prefs.notify,
           handoff: prefs.handoff,
         },
       });
+
+      await this.replyPolicy.persistDecision(
+        data.organizationId,
+        data.conversationId,
+        replyDecision,
+      );
 
       const event = await this.events.emit({
         organizationId: data.organizationId,

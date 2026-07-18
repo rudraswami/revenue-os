@@ -14,6 +14,12 @@ import { OrganizationsService } from "./organizations.service";
 import type { AssignmentRulesConfig } from "./assignment-rules";
 import type { WorkspaceOpsSettings } from "./workspace-settings";
 
+class UpdateIntelligenceSettingsDto {
+  @IsOptional()
+  @IsEnum(["intel_only", "assist", "auto_guarded"])
+  replyAutonomy?: "intel_only" | "assist" | "auto_guarded";
+}
+
 class UpdateReplyTemplatesDto {
   @IsOptional()
   templates?: Array<{ id?: string; title: string; body: string }>;
@@ -200,6 +206,20 @@ export class OrganizationsController {
   @Roles(...ADMIN_ROLES)
   updateReplyTemplates(@CurrentUser() user: JwtPayload, @Body() dto: UpdateReplyTemplatesDto) {
     return this.organizations.updateReplyTemplates(user, dto.templates);
+  }
+
+  @Get("intelligence-settings")
+  getIntelligenceSettings(@CurrentUser() user: JwtPayload) {
+    return this.organizations.getIntelligenceSettings(user);
+  }
+
+  @Patch("intelligence-settings")
+  @Roles(...ADMIN_ROLES)
+  updateIntelligenceSettings(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateIntelligenceSettingsDto,
+  ) {
+    return this.organizations.updateIntelligenceSettings(user, dto);
   }
 
   @Get("ops-settings")

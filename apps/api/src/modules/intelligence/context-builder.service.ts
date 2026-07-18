@@ -28,6 +28,7 @@ export interface ConversationContext {
     aiEnabled: boolean;
     metadata: Record<string, unknown>;
     contactName: string | null;
+    lastInboundAt: Date | null;
   };
   messages: ConversationContextMessage[];
   transcript: string;
@@ -104,6 +105,7 @@ export class ContextBuilderService {
         aiEnabled: conversation.aiEnabled,
         metadata,
         contactName: conversation.contactName,
+        lastInboundAt: conversation.lastInboundAt,
       },
       messages: ordered.map((m) => ({
         id: m.id,

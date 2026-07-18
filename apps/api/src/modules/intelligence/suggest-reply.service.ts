@@ -1,12 +1,8 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import type { JwtPayload } from "@growvisi/shared";
-import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
-import { EntitlementsService } from "../billing/entitlements.service";
-import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
+import type { JwtPayload, ReplyDecision } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
-import { ContextBuilderService } from "./context-builder.service";
+import { ReplyComposerService } from "./reply-composer.service";
 
 export interface DraftReplyResult {
   suggestion: string;
@@ -18,6 +14,7 @@ export interface DraftReplyResult {
   }>;
   usedRag: boolean;
   aiRunId: string;
+  decision?: ReplyDecision;
 }
 
 @Injectable()
@@ -26,31 +23,37 @@ export class SuggestReplyService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService,
-    private readonly entitlements: EntitlementsService,
-    private readonly contextBuilder: ContextBuilderService,
-    private readonly knowledge: KnowledgeRetrievalService,
+    private readonly composer: ReplyComposerService,
     private readonly realtime: RealtimeGateway,
   ) {}
 
   async suggest(user: JwtPayload, conversationId: string) {
-    await this.entitlements.assertHasAccess(user.organizationId);
-    return this.generateDraft(user.organizationId, conversationId);
+    return this.generateAndStoreDraft(user.organizationId, conversationId, { manual: true });
   }
 
-  /** Generate a draft reply and persist on the conversation for AI-assist mode. */
   async generateAndStoreDraft(
     organizationId: string,
     conversationId: string,
-    opts?: { knowledgeGap?: boolean },
+    opts?: {
+      knowledgeGap?: boolean;
+      decision?: ReplyDecision;
+      manual?: boolean;
+    },
   ): Promise<DraftReplyResult | null> {
     try {
-      const draft = await this.generateDraft(organizationId, conversationId, opts);
+      const draft = await this.composer.compose({
+        organizationId,
+        conversationId,
+        knowledgeGap: opts?.knowledgeGap,
+        decision: opts?.decision,
+        manual: opts?.manual,
+      });
+
       const conversation = await this.prisma.conversation.findFirst({
         where: { id: conversationId, organizationId },
         select: { metadata: true },
       });
-      if (!conversation) return draft;
+      if (!conversation) return { ...draft, decision: opts?.decision };
 
       const meta =
         conversation.metadata && typeof conversation.metadata === "object"
@@ -67,13 +70,14 @@ export class SuggestReplyService {
               sources: draft.sources,
               aiRunId: draft.aiRunId,
               createdAt: new Date().toISOString(),
+              decision: opts?.decision ?? meta.replyDecision,
             },
-          },
+          } as object,
         },
       });
 
       this.realtime.emitInboxUpdated(organizationId, conversationId);
-      return draft;
+      return { ...draft, decision: opts?.decision };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Draft generation failed for ${conversationId}: ${message}`);
@@ -99,159 +103,5 @@ export class SuggestReplyService {
       where: { id: conversationId },
       data: { metadata: rest as object },
     });
-  }
-
-  private async generateDraft(
-    organizationId: string,
-    conversationId: string,
-    opts?: { knowledgeGap?: boolean },
-  ): Promise<DraftReplyResult> {
-    await this.entitlements.assertHasAccess(organizationId);
-
-    const apiKey = this.config.get<string>("OPENAI_API_KEY");
-    if (!apiKey) {
-      throw new BadRequestException("Smart replies are not available on this workspace.");
-    }
-
-    const ctx = await this.contextBuilder.buildForConversation(
-      organizationId,
-      conversationId,
-      12,
-    );
-
-    const ragQuery =
-      ctx.messages
-        .slice(-4)
-        .map((m) => m.content)
-        .filter(Boolean)
-        .join(" ") ||
-      ctx.lastInbound ||
-      "customer inquiry";
-
-    const hits = await this.knowledge.retrieve({
-      organizationId,
-      query: ragQuery,
-      limit: 5,
-    });
-
-    let knowledgeBlock = hits.length
-      ? hits.map((h) => `### ${h.title}\n${h.content}`).join("\n\n")
-      : "";
-
-    if (!knowledgeBlock) {
-      const fallback = await this.knowledge.fallbackDocuments(organizationId, 3);
-      knowledgeBlock = fallback
-        .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 800)}`)
-        .join("\n\n");
-    }
-
-    const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
-    const model = this.config.get<string>("AI_CHAT_MODEL") ?? "gpt-4o-mini";
-    const started = Date.now();
-
-    const aiRun = await this.prisma.aiRun.create({
-      data: {
-        organizationId,
-        conversationId,
-        type: "suggest_reply",
-        provider: "openai",
-        model,
-        status: "RUNNING",
-        input: { ragQuery, hitCount: hits.length, auto: true },
-      },
-    });
-
-    try {
-      const res = await fetchWithTimeout(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            temperature: 0.4,
-            max_tokens: 180,
-            messages: [
-              {
-                role: "system",
-                content: [
-                  "You draft WhatsApp replies for a sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
-                  "The human rep will review and send — never imply the message was already sent.",
-                  "Do not invent pricing, policies, or offers beyond the business knowledge provided.",
-                  opts?.knowledgeGap
-                    ? "No matching pricing/policy docs were found. Draft a helpful reply that asks clarifying questions (budget, scope, timeline) without quoting specific prices or discounts."
-                    : "",
-                  knowledgeBlock
-                    ? `Business knowledge (use when relevant):\n\n${knowledgeBlock}`
-                    : "",
-                  memoryBlock
-                    ? `What we know about this customer:\n${memoryBlock}`
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join("\n\n"),
-              },
-              {
-                role: "user",
-                content: `Draft the next reply.\n\n${ctx.transcript}`,
-              },
-            ],
-          }),
-        },
-        25_000,
-      );
-
-      const body = (await res.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-        usage?: { prompt_tokens?: number; completion_tokens?: number };
-        error?: { message?: string };
-      };
-
-      if (!res.ok) {
-        throw new BadRequestException(body.error?.message ?? "Could not generate a suggestion.");
-      }
-
-      const suggestion = body.choices?.[0]?.message?.content?.trim();
-      if (!suggestion) {
-        throw new BadRequestException("No suggestion returned.");
-      }
-
-      const latencyMs = Date.now() - started;
-      const sources = hits.map((h) => ({
-        chunkId: h.chunkId,
-        title: h.title,
-        similarity: h.similarity,
-        citation: h.citation,
-      }));
-
-      await this.prisma.aiRun.update({
-        where: { id: aiRun.id },
-        data: {
-          status: "COMPLETED",
-          output: { suggestion, sources, usedRag: hits.length > 0 } as object,
-          inputTokens: body.usage?.prompt_tokens,
-          outputTokens: body.usage?.completion_tokens,
-          latencyMs,
-          completedAt: new Date(),
-        },
-      });
-
-      return {
-        suggestion,
-        sources,
-        usedRag: hits.length > 0,
-        aiRunId: aiRun.id,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      await this.prisma.aiRun.update({
-        where: { id: aiRun.id },
-        data: { status: "FAILED", error: message, completedAt: new Date() },
-      });
-      throw error;
-    }
   }
 }

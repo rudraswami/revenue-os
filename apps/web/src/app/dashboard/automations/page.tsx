@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { DailyDigestCard } from "@/components/dashboard/daily-digest-card";
+import { IntelligenceReplySettingsCard } from "@/components/dashboard/intelligence-reply-settings-card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -195,8 +196,9 @@ export default function AutomationsPage() {
         }
       />
 
-      <div className="mb-8">
+      <div className="mb-8 grid gap-6 lg:grid-cols-2">
         <DailyDigestCard />
+        <IntelligenceReplySettingsCard />
       </div>
 
       {/* Stats bar */}

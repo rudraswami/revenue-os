@@ -218,6 +218,12 @@ export class ConversationsController {
     return this.conversations.getIntelligence(user, id);
   }
 
+  @Get(":id/reply-decision")
+  @RequireCapability("inbox.reply")
+  getReplyDecision(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.conversations.getReplyDecision(user, id);
+  }
+
   @Post(":id/suggest-reply")
   @Roles(...WRITE_ROLES)
   suggestReply(@CurrentUser() user: JwtPayload, @Param("id") id: string) {

@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { LEAD_STAGES, STAGE_BADGE, formatInr } from "@/lib/crm";
-import { HOT_LEAD_SCORE_THRESHOLD, type LeadStage } from "@growvisi/shared";
+import { HOT_LEAD_SCORE_THRESHOLD, type LeadStage, type ReplyDecision } from "@growvisi/shared";
 import {
   useConversationsCopy,
   type InboxListFilter,
@@ -23,6 +23,7 @@ import { trackCoaching } from "@/lib/coaching-analytics";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
 import { InboxComposer } from "@/components/dashboard/inbox-composer";
+import { InboxReplyDecision } from "@/components/dashboard/inbox-reply-decision";
 import { InboxTimeline } from "@/components/dashboard/inbox-timeline";
 import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
@@ -66,6 +67,7 @@ interface ConversationDetail {
   lastInboundAt?: string | null;
   aiEnabled: boolean;
   replyMode?: "human" | "ai_assist";
+  replyDecision?: ReplyDecision | null;
   pendingDraft?: {
     suggestion: string;
     sources?: Array<{ title: string; citation?: string; similarity: number }>;
@@ -333,9 +335,12 @@ export default function InboxPage() {
       apiFetch<{
         knowledgeGaps: string[];
         observedMemory: Array<{ id: string; type: string; content: string }>;
+        replyDecision?: ReplyDecision | null;
       }>(`/conversations/${selectedId}/intelligence`, { token: token ?? undefined }),
     enabled: !!token && !!selectedId,
   });
+
+  const replyDecision = thread?.replyDecision ?? intelligence?.replyDecision ?? null;
 
   const suggestMutation = useMutation({
     mutationFn: () =>
@@ -584,6 +589,11 @@ export default function InboxPage() {
     const text = draft.trim();
     if (!text || !selectedId || sendMutation.isPending) return;
     sendMutation.mutate(text);
+  }
+
+  function handleSendDraft() {
+    if (!draft.trim() || sendMutation.isPending) return;
+    handleSend({ preventDefault: () => undefined } as React.FormEvent);
   }
 
   const withinMessagingWindow = (() => {
@@ -1038,14 +1048,17 @@ export default function InboxPage() {
                     </p>
                   </div>
                 )}
-                {thread.aiEnabled && thread.pendingDraft?.suggestion && (
-                  <div className="mb-2 rounded-xl border border-accent/25 bg-bento-mint/60 px-3 py-2 text-xs text-foreground">
-                    <span className="font-semibold text-accent">{copy.aiDraftReady}</span>
-                  </div>
-                )}
-                {awaitingAiDraft && (
-                  <div className="mb-2 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                    {copy.aiDraftGenerating}
+                {(replyDecision || awaitingAiDraft) && (
+                  <div className="mb-2 space-y-2">
+                    {awaitingAiDraft && !thread.pendingDraft?.suggestion && (
+                      <div className="rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                        {copy.aiDraftGenerating}
+                      </div>
+                    )}
+                    <InboxReplyDecision
+                      decision={replyDecision}
+                      hasDraft={!!thread.pendingDraft?.suggestion}
+                    />
                   </div>
                 )}
                 {showComposer ? (
@@ -1063,6 +1076,14 @@ export default function InboxPage() {
                     templates={replyTemplates?.templates}
                     composeRef={composeRef}
                     onMinimize={() => setShowComposer(false)}
+                    showSendDraft={
+                      thread.aiEnabled &&
+                      !!draft.trim() &&
+                      !windowClosed &&
+                      canSend &&
+                      replyDecision?.mode === "draft"
+                    }
+                    onSendDraft={handleSendDraft}
                   />
                 ) : (
                   <button

@@ -19,6 +19,8 @@ export function InboxComposer({
   templates,
   composeRef,
   onMinimize,
+  showSendDraft,
+  onSendDraft,
 }: {
   draft: string;
   onDraftChange: (v: string) => void;
@@ -33,6 +35,8 @@ export function InboxComposer({
   templates?: Array<{ id: string; title: string; body: string }>;
   composeRef?: React.RefObject<HTMLTextAreaElement | null>;
   onMinimize: () => void;
+  showSendDraft?: boolean;
+  onSendDraft?: () => void;
 }) {
   const copy = useConversationsCopy();
 
@@ -124,6 +128,18 @@ export function InboxComposer({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            {showSendDraft && onSendDraft && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-9 rounded-lg border-accent/40 text-xs font-semibold text-accent"
+                disabled={!draft.trim() || sendPending || sendDisabled}
+                onClick={onSendDraft}
+              >
+                {copy.sendAiDraft}
+              </Button>
+            )}
             <button
               type="button"
               onClick={onMinimize}

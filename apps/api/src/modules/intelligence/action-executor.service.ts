@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { AiClassificationResult, LeadStage, ProposedAction } from "@growvisi/shared";
+import type { AiClassificationResult, LeadStage, ProposedAction, ReplyDecision } from "@growvisi/shared";
 import { LEAD_STAGE_ORDER } from "@growvisi/shared";
 import { AutomationsService } from "../automations/automations.service";
 import { AssignmentService } from "../assignments/assignment.service";
@@ -321,10 +321,14 @@ export class ActionExecutorService {
       }
 
       case "reply.draft": {
+        const replyDecision = payload.replyDecision as ReplyDecision | undefined;
         const draft = await this.suggestReply.generateAndStoreDraft(
           input.organizationId,
           String(payload.conversationId),
-          { knowledgeGap: payload.knowledgeGap === true },
+          {
+            knowledgeGap: payload.knowledgeGap === true,
+            decision: replyDecision,
+          },
         );
         return { draft: draft?.suggestion ?? null };
       }
