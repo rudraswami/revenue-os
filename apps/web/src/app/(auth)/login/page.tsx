@@ -2,22 +2,23 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Building2, Lock, Mail } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { Suspense, useState } from "react";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { useAuthI18n } from "@/components/auth/auth-i18n";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
+import { withAuthQuery } from "@/lib/auth-links";
 import { applySession, postAuthPath } from "@/lib/auth-session";
 import { CTA } from "@/lib/brand-copy";
 import type { AuthSession, LoginResult, OrganizationOption } from "@/lib/auth-types";
 import { isAuthSession } from "@/lib/auth-types";
-import { useI18n } from "@/lib/i18n/locale-provider";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useI18n();
+  const { t } = useAuthI18n();
   const resetDone = searchParams.get("reset") === "1";
   const deletedDone = searchParams.get("deleted") === "1";
   const inviteToken = searchParams.get("invite") ?? "";
@@ -29,6 +30,8 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
+
+  const registerHref = withAuthQuery("/register", searchParams);
 
   async function submitLogin(organizationId?: string) {
     setLoading(true);
@@ -74,27 +77,24 @@ function LoginForm() {
   }
 
   return (
-    <AuthShell title={t("auth.loginTitle")} description={t("auth.loginSubtitle")}>
+    <AuthShell title={t("auth.loginTitle")} description={t("auth.loginSubtitle")} showMobileHero>
       {resetDone && (
-        <p className="mb-5 rounded-xl border border-success/30 bg-[#ecfdf5] px-3.5 py-2.5 text-sm text-success">
-          {t("auth.passwordUpdated")}
-        </p>
+        <p className="auth-banner-success mb-5">{t("auth.passwordUpdated")}</p>
       )}
       {deletedDone && (
-        <p className="mb-5 rounded-xl border border-success/30 bg-[#ecfdf5] px-3.5 py-2.5 text-sm text-success">
-          {t("auth.accountDeleted")}
-        </p>
+        <p className="auth-banner-success mb-5">{t("auth.accountDeleted")}</p>
       )}
+
       {!organizations ? (
-        <form onSubmit={onSubmit} className="space-y-5" noValidate>
+        <form onSubmit={onSubmit} className="auth-form space-y-4" noValidate>
           <AuthField
             id="email"
             name="email"
             label={t("auth.email")}
             type="email"
-            icon={Mail}
+            variant="modern"
             autoComplete="email"
-            placeholder="you@company.com"
+            placeholder={t("auth.emailPlaceholder")}
             value={email}
             error={fieldErrors.email}
             onChange={(e) => {
@@ -108,59 +108,66 @@ function LoginForm() {
             name="password"
             label={t("auth.password")}
             type="password"
-            icon={Lock}
+            variant="modern"
             autoComplete="current-password"
-            placeholder="Your password"
+            placeholder={t("auth.loginPasswordPlaceholder")}
             value={password}
             error={fieldErrors.password}
+            showPasswordToggle
             onChange={(e) => {
               setPassword(e.target.value);
               if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
             }}
             labelExtra={
-              <Link href="/forgot-password" className="text-xs font-medium text-accent hover:underline">
+              <Link href="/forgot-password" className="text-[12px] font-medium text-accent hover:underline">
                 {t("auth.forgotPassword")}
               </Link>
             }
             required
           />
-          {error && (
-            <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          <Button type="submit" className="auth-submit" disabled={loading}>
-            {loading ? t("auth.signingIn") : t("auth.signIn")}
-          </Button>
+          {error && <p className="auth-banner-error" role="alert">{error}</p>}
+          <div className="pt-2">
+            <Button type="submit" className="auth-submit-modern" disabled={loading}>
+              {loading ? t("auth.signingIn") : t("auth.signIn")}
+            </Button>
+          </div>
         </form>
       ) : (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t("auth.chooseWorkspace")}</p>
+        <div className="auth-form space-y-4">
+          <p className="text-[14px] text-muted-foreground">{t("auth.chooseWorkspace")}</p>
           <ul className="space-y-2">
             {organizations.map((org) => (
               <li key={org.id}>
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  className="h-auto w-full justify-start rounded-xl border-border py-3.5 hover:border-accent/30 hover:bg-[#ecfdf5]/50"
+                  className="auth-workspace-btn flex w-full items-center gap-3 rounded-xl bg-[#f4f6fa] px-4 py-3.5 text-left ring-1 ring-[#e2e8f0] transition-all hover:bg-white hover:ring-accent/25 disabled:opacity-60"
                   disabled={loading}
                   onClick={() => void submitLogin(org.id)}
                 >
-                  <Building2 className="mr-2 h-4 w-4 text-accent" />
-                  <span className="font-medium">{org.name}</span>
-                </Button>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                    <Building2 className="h-4 w-4" />
+                  </span>
+                  <span className="text-[14px] font-semibold text-foreground">{org.name}</span>
+                </button>
               </li>
             ))}
           </ul>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setOrganizations(null)}>
+          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setOrganizations(null)}>
             {t("auth.back")}
           </Button>
         </div>
       )}
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-5 text-center text-[12px] text-muted-foreground">
+        {t("auth.tryDemo")}{" "}
+        <Link href="/demo" className="font-semibold text-accent hover:underline">
+          {t("auth.tryDemoLink")}
+        </Link>
+      </p>
+
+      <p className="mt-4 text-center text-sm text-muted-foreground">
         {t("auth.noAccount")}{" "}
-        <Link href="/register" className="font-semibold text-accent hover:underline">
+        <Link href={registerHref} className="font-semibold text-accent hover:underline">
           {CTA.createWorkspace}
         </Link>
       </p>
@@ -169,15 +176,13 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
-  const { t } = useI18n();
+  const { t } = useAuthI18n();
 
   return (
     <Suspense
       fallback={
-        <div className="grid min-h-screen place-items-center bg-[#f8f9ff]">
-          <div className="rounded-2xl border border-border bg-white px-8 py-6 text-sm text-muted-foreground shadow-sm">
-            {t("auth.loading")}
-          </div>
+        <div className="grid min-h-screen place-items-center bg-[#fafbfc]">
+          <p className="text-sm text-muted-foreground">{t("auth.loading")}</p>
         </div>
       }
     >

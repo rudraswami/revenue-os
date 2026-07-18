@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { useState } from "react";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { useAuthI18n } from "@/components/auth/auth-i18n";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
 
 export default function ForgotPasswordPage() {
+  const { t } = useAuthI18n();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,60 +28,48 @@ export default function ForgotPasswordPage() {
       });
       setSent(true);
     } catch (err) {
-      setError(toUserMessage(err, "Something went wrong. Try again."));
+      setError(toUserMessage(err, t("auth.forgotFailed")));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <AuthShell
-      title="Reset your password"
-      description="Enter your work email and we'll send a secure reset link."
-    >
+    <AuthShell title={t("auth.forgotTitle")} description={t("auth.forgotSubtitle")} showMobileHero={false}>
       {sent ? (
-        <div className="space-y-5 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#ecfdf5] text-accent">
+        <div className="auth-form space-y-5 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#ecfdf5] text-accent ring-1 ring-accent/15">
             <Mail className="h-5 w-5" />
           </div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            If an account exists for that email, we sent a reset link. Check your inbox and spam
-            folder.
-          </p>
-          <Button className="auth-submit" asChild>
-            <Link href="/login">Back to sign in</Link>
+          <p className="text-[14px] leading-relaxed text-muted-foreground">{t("auth.forgotSent")}</p>
+          <Button className="auth-submit-modern" asChild>
+            <Link href="/login">{t("auth.backToSignIn")}</Link>
           </Button>
         </div>
       ) : (
-        <form onSubmit={onSubmit} className="space-y-5">
+        <form onSubmit={onSubmit} className="auth-form space-y-4">
           <AuthField
             id="email"
             type="email"
-            label="Work email"
-            icon={Mail}
+            label={t("auth.email")}
+            variant="modern"
             autoComplete="email"
-            placeholder="you@company.com"
+            placeholder={t("auth.emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          {error && (
-            <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error}
+          {error && <p className="auth-banner-error" role="alert">{error}</p>}
+          <div className="space-y-3 pt-2">
+            <Button type="submit" className="auth-submit-modern" disabled={loading}>
+              {loading ? t("auth.sending") : t("auth.sendResetLink")}
+            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              <Link href="/login" className="font-semibold text-accent hover:underline">
+                {t("auth.backToSignIn")}
+              </Link>
             </p>
-          )}
-          <Button type="submit" className="auth-submit" disabled={loading}>
-            {loading ? "Sending…" : "Send reset link"}
-          </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-1 font-medium text-accent hover:underline"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to sign in
-            </Link>
-          </p>
+          </div>
         </form>
       )}
     </AuthShell>

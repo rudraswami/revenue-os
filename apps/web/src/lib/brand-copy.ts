@@ -346,6 +346,30 @@ export const CTA = {
   requestDemo: "Request demo",
 } as const;
 
+/** Auth / signup / login — aligned with landing YOUR TURN wedge */
+export const AUTH = {
+  trialBadge: "14-day free trial",
+  trialBullets: "500 leads · 1 WhatsApp number · No credit card",
+  humanReplyNote:
+    "Your team replies on WhatsApp — Growvisi never auto-messages customers.",
+  stepLabel: "Step 1 of 2 · Create workspace",
+  whatsNextTitle: "What happens next",
+  whatsNextSteps: [
+    "Create your workspace",
+    "Connect WhatsApp in onboarding (skippable)",
+    "First lead classified in Inbox",
+  ],
+  brandBadge: "YOUR TURN on WhatsApp",
+  brandHeadline: "WhatsApp conversations in. Pipeline ₹ out.",
+  brandBody:
+    "When a customer writes, Growvisi shows who should respond and tracks the deal — so nothing slips while your team is busy.",
+  brandFloatHandoff: "Handoff flagged",
+  brandFloatHandoffValue: "YOUR TURN · Meera",
+  brandFloatPipeline: "Pipeline",
+  brandFloatPipelineValue: "Qualified · ₹4.2L",
+  mobileWedge: "Always know whose turn it is.",
+} as const;
+
 export const NAV = {
   home: "Home",
   conversations: "Conversations",

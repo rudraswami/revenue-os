@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock } from "lucide-react";
 import { Suspense, useState } from "react";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { useAuthI18n } from "@/components/auth/auth-i18n";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
 
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useAuthI18n();
   const token = searchParams.get("token") ?? "";
 
   const [password, setPassword] = useState("");
@@ -21,7 +22,7 @@ function ResetPasswordForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) {
-      setError("Invalid reset link. Request a new one.");
+      setError(t("auth.invalidResetLink"));
       return;
     }
     setLoading(true);
@@ -34,7 +35,7 @@ function ResetPasswordForm() {
       });
       router.replace("/login?reset=1");
     } catch (err) {
-      setError(toUserMessage(err, "Could not reset password."));
+      setError(toUserMessage(err, t("auth.resetFailed")));
     } finally {
       setLoading(false);
     }
@@ -42,46 +43,47 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="space-y-5 text-center">
-        <p className="text-sm text-destructive">This reset link is invalid or missing.</p>
-        <Button className="auth-submit" asChild>
-          <Link href="/forgot-password">Request a new link</Link>
+      <div className="auth-form space-y-5 text-center">
+        <p className="text-sm text-destructive">{t("auth.invalidResetLink")}</p>
+        <Button className="auth-submit-modern" asChild>
+          <Link href="/forgot-password">{t("auth.requestNewLink")}</Link>
         </Button>
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <form onSubmit={onSubmit} className="auth-form space-y-4">
       <AuthField
         id="password"
         type="password"
-        label="New password"
-        icon={Lock}
+        label={t("auth.newPassword")}
+        variant="modern"
         autoComplete="new-password"
-        placeholder="At least 8 characters"
+        placeholder={t("auth.passwordPlaceholder")}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        hint="Use at least 8 characters with a mix of letters and numbers."
+        hint={t("auth.passwordHint")}
         minLength={8}
+        showPasswordToggle
         required
       />
-      {error && (
-        <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      <Button type="submit" className="auth-submit" disabled={loading}>
-        {loading ? "Updating…" : "Update password"}
-      </Button>
+      {error && <p className="auth-banner-error" role="alert">{error}</p>}
+      <div className="pt-2">
+        <Button type="submit" className="auth-submit-modern" disabled={loading}>
+          {loading ? t("auth.updating") : t("auth.updatePassword")}
+        </Button>
+      </div>
     </form>
   );
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useAuthI18n();
+
   return (
-    <AuthShell title="Choose a new password" description="Pick a strong password for your workspace.">
-      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
+    <AuthShell title={t("auth.resetTitle")} description={t("auth.resetSubtitle")} showMobileHero={false}>
+      <Suspense fallback={<p className="text-sm text-muted-foreground">{t("auth.loading")}</p>}>
         <ResetPasswordForm />
       </Suspense>
     </AuthShell>

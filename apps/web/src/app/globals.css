@@ -335,6 +335,31 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(165deg, #0b1c30 0%, #0a2a22 45%, #006c49 100%);
 }
 
+.auth-mobile-hero {
+  padding: 0 0.25rem;
+}
+
+.auth-banner-success {
+  @apply rounded-xl px-3.5 py-2.5 text-sm text-[#0b5c40] ring-1 ring-accent/15;
+  background: #ecfdf5;
+}
+
+.auth-banner-error {
+  @apply rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-destructive ring-1 ring-red-100;
+}
+
+.auth-submit-modern {
+  @apply h-[3.25rem] w-full rounded-xl text-[15px] font-semibold shadow-[0_1px_2px_rgb(11_28_48/0.06),0_8px_24px_rgb(0_108_73/0.22)] transition-all duration-200;
+}
+.auth-submit-modern:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgb(0 108 73 / 0.28);
+}
+.auth-submit-modern:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 .auth-form-card {
   @apply rounded-2xl bg-card p-6 sm:p-7;
   border: 1px solid var(--color-border);
