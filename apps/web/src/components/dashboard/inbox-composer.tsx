@@ -19,8 +19,7 @@ export function InboxComposer({
   templates,
   composeRef,
   onMinimize,
-  showSendDraft,
-  onSendDraft,
+  draftNote,
 }: {
   draft: string;
   onDraftChange: (v: string) => void;
@@ -35,8 +34,7 @@ export function InboxComposer({
   templates?: Array<{ id: string; title: string; body: string }>;
   composeRef?: React.RefObject<HTMLTextAreaElement | null>;
   onMinimize: () => void;
-  showSendDraft?: boolean;
-  onSendDraft?: () => void;
+  draftNote?: string | null;
 }) {
   const copy = useConversationsCopy();
 
@@ -87,6 +85,10 @@ export function InboxComposer({
         </div>
       )}
 
+      {draftNote && (
+        <p className="mb-1.5 text-xs text-muted-foreground">{draftNote}</p>
+      )}
+
       {(draftSources?.length ?? 0) > 0 && (
         <p className="mb-2 text-xs text-muted-foreground">
           <span className="font-semibold text-accent">Sources:</span>{" "}
@@ -122,24 +124,14 @@ export function InboxComposer({
                 {suggestPending ? copy.drafting : copy.draftWithAi}
               </button>
             )}
-            <p className="hidden truncate text-xs text-muted-foreground sm:block">
-              {copy.composeFooter}
-            </p>
+            {!draftNote && (
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                {copy.composeFooter}
+              </p>
+            )}
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            {showSendDraft && onSendDraft && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-9 rounded-lg border-accent/40 text-xs font-semibold text-accent"
-                disabled={!draft.trim() || sendPending || sendDisabled}
-                onClick={onSendDraft}
-              >
-                {copy.sendAiDraft}
-              </Button>
-            )}
             <button
               type="button"
               onClick={onMinimize}
@@ -167,9 +159,11 @@ export function InboxComposer({
         </div>
       </div>
 
-      <p className="mt-1.5 text-center text-xs text-muted-foreground sm:hidden">
-        {copy.composeFooter}
-      </p>
+      {!draftNote && (
+        <p className="mt-1.5 text-center text-xs text-muted-foreground sm:hidden">
+          {copy.composeFooter}
+        </p>
+      )}
     </form>
   );
 }

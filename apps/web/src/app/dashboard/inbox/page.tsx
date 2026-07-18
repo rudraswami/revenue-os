@@ -15,10 +15,8 @@ import {
   type InboxListScope,
 } from "@/lib/i18n/conversations-copy";
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
-import { InboxAiPanel, type InboxAiContext, type AiCorrectionPayload } from "@/components/dashboard/inbox-ai-panel";
-import { AssignmentExplainLine } from "@/components/dashboard/assignment-explain-line";
+import { InboxAiPanel, type InboxAiContext } from "@/components/dashboard/inbox-ai-panel";
 import type { AssignmentExplain } from "@/lib/assignment-explain";
-import { trackAiTrust } from "@/lib/ai-trust-analytics";
 import { trackCoaching } from "@/lib/coaching-analytics";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
@@ -443,22 +441,6 @@ export default function InboxPage() {
     stageMutation.mutate({ stage: next });
   }
 
-  const createTaskMutation = useMutation({
-    mutationFn: (title: string) =>
-      apiFetch("/tasks", {
-        method: "POST",
-        token: token ?? undefined,
-        body: JSON.stringify({
-          title: title.slice(0, 120),
-          priority: "HIGH",
-          leadId: thread?.lead?.id,
-          assignedToId: myUserId,
-        }),
-      }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["tasks"] }),
-    onError: (e) => showMutationError(e, "Could not create follow-up task."),
-  });
-
   const resolveHandoffMutation = useMutation({
     mutationFn: () =>
       apiFetch(`/conversations/${selectedId}/resolve-handoff`, {
@@ -473,27 +455,6 @@ export default function InboxPage() {
       if (doneId) advanceAfterAction(doneId);
     },
     onError: (e) => showMutationError(e, "Could not resolve handoff."),
-  });
-
-  const correctAiMutation = useMutation({
-    mutationFn: (payload: AiCorrectionPayload) =>
-      apiFetch<{ conversation: ConversationDetail }>(`/conversations/${selectedId}/ai-correction`, {
-        method: "POST",
-        token: token ?? undefined,
-        body: JSON.stringify(payload),
-      }),
-    onSuccess: (res) => {
-      trackAiTrust("ai_correction_success", {
-        stage: res.conversation.lead?.stage,
-        score: res.conversation.lead?.score,
-      });
-      queryClient.setQueryData(["conversation", selectedId], res.conversation);
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
-      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
-      if (leadId) void queryClient.invalidateQueries({ queryKey: ["lead-timeline", leadId] });
-    },
-    onError: (e) => showMutationError(e, "Could not save AI correction."),
   });
 
   const takeoverMutation = useMutation({
@@ -605,11 +566,6 @@ export default function InboxPage() {
     const text = draft.trim();
     if (!text || !selectedId || sendMutation.isPending) return;
     sendMutation.mutate(text);
-  }
-
-  function handleSendDraft() {
-    if (!draft.trim() || sendMutation.isPending) return;
-    handleSend({ preventDefault: () => undefined } as React.FormEvent);
   }
 
   const withinMessagingWindow = (() => {
@@ -892,20 +848,12 @@ export default function InboxPage() {
                 onAssign={(userId) => assignMutation.mutate(userId)}
               />
               <InboxAiPanel
-                aiEnabled={thread.aiEnabled}
                 aiContext={thread.aiContext ?? null}
                 requiresHuman={thread.requiresHuman}
                 handoffReason={thread.handoffReason}
-                assignment={thread.assignedTo ? thread.assignment : null}
-                showAssignmentRulesLink={canEditAssignmentRules}
-                leadStage={thread.lead?.stage}
-                leadScore={thread.lead?.score}
                 canEdit={canSend}
                 takeoverPending={takeoverMutation.isPending}
-                taskPending={createTaskMutation.isPending}
-                assignPending={assignMutation.isPending}
                 resolvePending={resolveHandoffMutation.isPending}
-                correctionPending={correctAiMutation.isPending}
                 coachTakeover={coachTakeover}
                 onTakeover={(title) => {
                   const t =
@@ -914,18 +862,7 @@ export default function InboxPage() {
                     `Follow up: ${thread.contactName ?? thread.contactPhone}`;
                   takeoverMutation.mutate(t);
                 }}
-                onCreateTask={(title) => {
-                  const t =
-                    title ||
-                    thread.aiContext?.nextAction ||
-                    `Follow up: ${thread.contactName ?? thread.contactPhone}`;
-                  createTaskMutation.mutate(t);
-                }}
-                onAssignToMe={() => {
-                  if (myUserId) assignMutation.mutate(myUserId);
-                }}
                 onResolveHandoff={() => resolveHandoffMutation.mutate()}
-                onCorrectAi={(payload) => correctAiMutation.mutate(payload)}
                 knowledgeGaps={intelligence?.knowledgeGaps ?? []}
               />
               <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/60 px-4 py-1.5 lg:px-5">
@@ -968,13 +905,6 @@ export default function InboxPage() {
                     </span>
                   )}
                 </div>
-                {thread.assignedTo && (
-                  <AssignmentExplainLine
-                    assignment={thread.assignment}
-                    showRulesLink={canEditAssignmentRules}
-                    className="hidden md:flex md:max-w-[min(100%,20rem)]"
-                  />
-                )}
                 {canToggleAi && (
                   <div className="flex w-full items-center gap-1 rounded-lg bg-muted/60 p-0.5 md:hidden">
                     <button
@@ -1097,21 +1027,24 @@ export default function InboxPage() {
                     sendPending={sendMutation.isPending}
                     sendDisabled={!thread.whatsappAccount.isActive || windowClosed || !canSend}
                     sendError={sendError}
-                    showAiSuggest={!!capabilities?.aiSuggestReply && thread.aiEnabled && !windowClosed}
+                    showAiSuggest={
+                      !!capabilities?.aiSuggestReply &&
+                      !thread.aiEnabled &&
+                      !windowClosed
+                    }
                     suggestPending={suggestMutation.isPending}
                     onSuggest={() => suggestMutation.mutate()}
                     draftSources={draftMeta?.sources}
-                    templates={replyTemplates?.templates}
+                    templates={
+                      thread.pendingDraft?.suggestion ? undefined : replyTemplates?.templates
+                    }
                     composeRef={composeRef}
                     onMinimize={() => setShowComposer(false)}
-                    showSendDraft={
-                      thread.aiEnabled &&
-                      !!draft.trim() &&
-                      !windowClosed &&
-                      canSend &&
-                      replyDecision?.mode === "draft"
+                    draftNote={
+                      thread.aiEnabled && thread.pendingDraft?.suggestion
+                        ? replyDecision?.reasons[0] ?? copy.aiDraftNote
+                        : undefined
                     }
-                    onSendDraft={handleSendDraft}
                   />
                 ) : (
                   <button

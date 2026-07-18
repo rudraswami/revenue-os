@@ -50,6 +50,7 @@ export function useConversationsCopy() {
       replyModeAiAssist: t("conversations.replyModeAiAssist"),
       replyModeHint: t("conversations.replyModeHint"),
       aiDraftReady: t("conversations.aiDraftReady"),
+      aiDraftNote: t("conversations.aiDraftNote"),
       aiDraftGenerating: t("conversations.aiDraftGenerating"),
       replyDraftFailed: t("conversations.replyDraftFailed"),
       replySkippedTitle: t("conversations.replySkippedTitle"),

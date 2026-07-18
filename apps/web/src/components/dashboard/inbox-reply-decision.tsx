@@ -55,6 +55,9 @@ export function InboxReplyDecision({
 
   if (decision.mode !== "draft" && !hasDraft) return null;
 
+  // Draft is already in the composer — no duplicate banner in the thread.
+  if (decision.mode === "draft" && hasDraft) return null;
+
   const draftMissingAfterPlan = decision.mode === "draft" && !hasDraft;
 
   const riskTone =
@@ -70,11 +73,7 @@ export function InboxReplyDecision({
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">
-            {hasDraft
-              ? copy.aiDraftReady
-              : draftMissingAfterPlan
-                ? copy.replyDraftFailed
-                : copy.replyDraftPlanned}
+            {draftMissingAfterPlan ? copy.replyDraftFailed : copy.replyDraftPlanned}
             {decision.confidence > 0 ? (
               <span className="ml-1.5 font-normal opacity-75">
                 · {Math.round(decision.confidence * 100)}% confidence
