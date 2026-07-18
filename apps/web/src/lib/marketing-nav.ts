@@ -24,7 +24,7 @@ export type NavDropdown = {
   items: NavLinkItem[];
   featured?: { href: string; label: string; description: string };
   /** Wider panel with live preview (product / solutions menus) */
-  variant?: "default" | "product" | "solution";
+  variant?: "default" | "product" | "solution" | "workflow";
 };
 
 export type NavEntry =
@@ -77,6 +77,7 @@ export const MARKETING_NAV: NavEntry[] = [
     dropdown: {
       id: "how-it-works",
       label: "How it works",
+      variant: "workflow",
       items: [
         {
           href: "/#engine",

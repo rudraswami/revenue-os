@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Building2, CheckCircle2, Handshake, Layers, Users } from "lucide-react";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
+import { MarketingPageChrome } from "@/components/marketing/marketing-page-chrome";
 import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 import { OUTCOME_TIERS, POSITIONING } from "@/lib/gtm-copy";
@@ -54,7 +55,7 @@ export default function AgenciesPage() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="px-8">
-                <Link href="/contact">{CTA.bookDemo}</Link>
+                <Link href="/contact#enterprise">{CTA.bookDemo}</Link>
               </Button>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
@@ -106,6 +107,7 @@ export default function AgenciesPage() {
         </section>
       </main>
       <MarketingFooter />
+      <MarketingPageChrome />
     </div>
   );
 }

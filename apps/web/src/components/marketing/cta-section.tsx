@@ -4,11 +4,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { CTA } from "@/lib/brand-copy";
+import { CTA, HOME_CTA } from "@/lib/brand-copy";
 
 export function CtaSection() {
   return (
-    <section className="relative overflow-hidden bg-primary py-20 md:py-28">
+    <section id="cta" className="relative overflow-hidden bg-primary py-20 md:py-28">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(0_108_73/0.2),transparent_65%)]" />
       <motion.div
         className="absolute left-1/2 top-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#6cf8bb]/5 blur-3xl"
@@ -24,14 +24,10 @@ export function CtaSection() {
           transition={{ duration: 0.6 }}
         >
           <p className="text-[12px] font-semibold uppercase tracking-widest text-accent-light">
-            {CTA.getStarted}
+            {HOME_CTA.label}
           </p>
-          <h2 className="display-lg mt-3 text-white">
-            Turn WhatsApp into your best sales channel
-          </h2>
-          <p className="mt-4 text-[16px] leading-relaxed text-white/70">
-            Join teams across India closing more deals with less chaos.
-          </p>
+          <h2 className="display-lg mt-3 text-white">{HOME_CTA.title}</h2>
+          <p className="mt-4 text-[16px] leading-relaxed text-white/70">{HOME_CTA.body}</p>
           <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Button asChild size="lg" className="shadow-lg shadow-accent/25">
               <Link href="/register">
@@ -40,7 +36,7 @@ export function CtaSection() {
               </Link>
             </Button>
             <Link
-              href="/contact"
+              href="/contact#inquiry"
               className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/5 px-8 py-3.5 text-[15px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10"
             >
               {CTA.bookDemo}

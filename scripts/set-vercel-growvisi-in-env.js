@@ -30,6 +30,7 @@ console.log("Updating Vercel web (revenue-os-web)…");
 setEnv(webDir, "NEXT_PUBLIC_APP_URL", "https://www.growvisi.in");
 setEnv(webDir, "NEXT_PUBLIC_API_URL", "https://api.growvisi.in/api/v1");
 setEnv(webDir, "NEXT_PUBLIC_WS_URL", "wss://api.growvisi.in");
+setEnv(webDir, "NEXT_PUBLIC_GROWVISI_SALES_WHATSAPP", "8660838896");
 
 console.log("Updating Vercel API (revenue-os-api)…");
 setEnv(apiDir, "NEXT_PUBLIC_APP_URL", "https://www.growvisi.in");

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 import { MarketingHeader } from "./header";
 import { MarketingFooter } from "./footer";
+import { MarketingPageChrome } from "./marketing-page-chrome";
 import {
   AnalyticsPreview,
   AutomationsPreview,
@@ -59,7 +60,7 @@ export function ProductLandingPage({ slug }: { slug: ProductPageSlug }) {
                   </Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link href="/contact">{CTA.bookDemo}</Link>
+                  <Link href="/contact#inquiry">{CTA.bookDemo}</Link>
                 </Button>
               </div>
               <p className="mt-4 text-sm text-muted-foreground">{product.proofLine}</p>
@@ -125,6 +126,7 @@ export function ProductLandingPage({ slug }: { slug: ProductPageSlug }) {
         </section>
       </main>
       <MarketingFooter />
+      <MarketingPageChrome />
     </div>
   );
 }

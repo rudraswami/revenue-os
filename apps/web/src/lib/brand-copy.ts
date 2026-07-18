@@ -15,6 +15,10 @@ export const HOME_HERO = {
   trialNote: "14-day trial · No card required",
 } as const;
 
+/** Sticky header promo — YOUR TURN wedge */
+export const HOME_HEADER_PROMO =
+  "YOUR TURN when customers need a human · Pipeline ₹ tracked · 14-day trial";
+
 /** Homepage — How it works / The Layer */
 export const HOME_LAYER = {
   label: "How it works",
@@ -118,6 +122,193 @@ export const HOME_PRICING = {
   label: "Pricing",
   title: "Less than one lost deal per month",
   subtitle: "Start on Solo or Team. 14-day trial · no credit card · upgrade anytime on Razorpay.",
+} as const;
+
+/** Homepage — problem (no invented funnel %) */
+export const HOME_PROBLEM = {
+  label: "The problem",
+  title: "WhatsApp sells. Chaos loses deals.",
+  subtitle:
+    "Leads land on personal phones. No one owns the follow-up. Pipeline lives in memory — not in ₹.",
+  cta: "Model your leakage",
+  pains: [
+    {
+      title: "No ownership",
+      desc: "“Someone will reply” — but nobody is assigned when it’s their turn.",
+    },
+    {
+      title: "No pipeline ₹",
+      desc: "Managers can’t see deals, stages, or what’s waiting on the team.",
+    },
+    {
+      title: "Hot leads wait",
+      desc: "Buyers with intent sit behind cold chats and broadcast replies.",
+    },
+    {
+      title: "Deals die quietly",
+      desc: "No follow-up task, no alert — revenue leaks in 24 hours.",
+    },
+  ],
+  bridge:
+    "Growvisi is the revenue layer after the chat: classify, assign YOUR TURN, track pipeline ₹.",
+} as const;
+
+/** Homepage — Meta in-chat AI vs Growvisi */
+export const HOME_META_COMPARE = {
+  label: "Why not just Meta AI?",
+  title: "Meta helps you reply. Growvisi helps you close.",
+  subtitle:
+    "In-chat AI answers faster. Growvisi records who should reply, what stage the deal is in, and how much pipeline ₹ is at stake.",
+  metaTitle: "Meta Business Agent",
+  growvisiTitle: "Growvisi revenue layer",
+  rows: [
+    { topic: "Replies in WhatsApp", meta: true, growvisi: "Human team (optional Meta FAQ bot)" },
+    { topic: "Shared team inbox", meta: false, growvisi: true },
+    { topic: "YOUR TURN — who owns the reply", meta: false, growvisi: true },
+    { topic: "Pipeline + deal ₹ in INR", meta: false, growvisi: true },
+    { topic: "Win / loss analytics", meta: false, growvisi: true },
+    { topic: "Growvisi auto-replies customers", meta: "n/a", growvisi: "Never" },
+  ],
+} as const;
+
+/** Homepage — trust strip */
+export const HOME_TRUST = {
+  items: [
+    "Meta WhatsApp Cloud API",
+    "Razorpay · INR billing",
+    "Humans reply — Growvisi never auto-messages customers",
+    "14-day trial · no credit card",
+  ],
+} as const;
+
+/** Homepage + marketing FAQ */
+export const HOME_FAQ = [
+  {
+    q: "Can I keep my existing WhatsApp business number?",
+    a: "Yes. Growvisi connects to your existing WhatsApp Business number on Meta's Cloud API. Your customers keep messaging the same number.",
+  },
+  {
+    q: "Does AI reply to customers automatically?",
+    a: "No. Growvisi AI classifies and scores — it does not auto-send replies. Your team sends human messages from Conversations (or replies in WhatsApp directly). Optional Meta Business Agent can handle first-line FAQ in the WhatsApp app.",
+  },
+  {
+    q: "What is YOUR TURN?",
+    a: "When a customer needs a person — quote, visit, complaint, high intent — the thread is flagged for your team. Conversations shows a Your turn filter; Home and digest alert you. Take over assigns the deal, creates a task, and clears the alert. You reply as a human.",
+  },
+  {
+    q: "How long does setup take?",
+    a: "Most teams connect WhatsApp and see their first AI-classified lead within 15 minutes. Meta API Setup or Embedded Signup — we guide you step by step.",
+  },
+  {
+    q: "Can multiple agents use one WhatsApp number?",
+    a: "Yes. Everyone shares one inbox with full history, lead scores, and pipeline stages.",
+  },
+  {
+    q: "How does billing work?",
+    a: "INR plans from ₹999/mo via Razorpay after a 14-day free trial (500 leads, 1 WhatsApp number, no credit card). Upgrade or cancel from dashboard settings.",
+  },
+  {
+    q: "Do I need an OpenAI key?",
+    a: "AI classification uses your workspace OpenAI API key in Settings. You control usage and cost.",
+  },
+] as const;
+
+/** Homepage — final CTA */
+export const HOME_CTA = {
+  label: "Pilot cohort open",
+  title: "Track your own before/after in 30 days",
+  body: "14-day trial · 500 leads · no credit card. Join teams measuring win rate and pipeline ₹ on WhatsApp — not invented case studies.",
+} as const;
+
+/** Marketing WhatsApp + on-site AI assistant */
+export const MARKETING_SUPPORT = {
+  dockTitle: "Questions?",
+  whatsAppTitle: "WhatsApp us",
+  whatsAppBody: "Sales and setup — a human on our team replies, usually Mon–Sat IST.",
+  whatsAppCta: "Open WhatsApp",
+  aiTitle: "Product assistant",
+  aiBody:
+    "AI answers pricing and product FAQs on this site. For sales or Meta setup help, message us on WhatsApp — we never auto-reply your customers.",
+  aiPlaceholder: "Ask about pricing, trial, YOUR TURN…",
+  aiPlaceholderHi: "कीमत, ट्रायल, YOUR TURN…",
+  localeEn: "EN",
+  localeHi: "हिं",
+  whatsAppEscalate: "Continue on WhatsApp with our team",
+  aiOffline:
+    "Assistant is offline — message us on WhatsApp or email support@growvisi.in.",
+  defaultWhatsAppMessage:
+    "Hi Growvisi — I'd like to know more about WhatsApp pipeline for my team.",
+  quickQuestions: [
+    "What is YOUR TURN?",
+    "Does Growvisi auto-reply?",
+    "How does the 14-day trial work?",
+    "Starter vs Growth pricing",
+  ],
+  fabTeaser: "Questions about YOUR TURN or pricing?",
+  fabGreeting: "I'm Priya from Growvisi",
+  fabSubtext: "Ask how YOUR TURN, Pipeline ₹, and trial work — our team replies on WhatsApp.",
+  fabWhatsAppLink: "Talk to our team on WhatsApp →",
+  fabTeaserCta: "Tap to ask Priya",
+  fabSectionTeasers: {
+    hero: "See YOUR TURN when a lead writes",
+    problem: "Stop the 'did anyone reply?' chaos",
+    engine: "Inbox → Pipeline → YOUR TURN",
+    industries: "YOUR TURN for your industry",
+    "case-study": "Week one with YOUR TURN live",
+    "revenue-impact": "Pipeline ₹ you're leaving on WhatsApp",
+    pricing: "Starter vs Growth — quick answer",
+    "meta-compare": "Meta Inbox vs Growvisi YOUR TURN",
+    compare: "CRM vs YOUR TURN on WhatsApp",
+    product: "Inbox, Pipeline & YOUR TURN tour",
+    trust: "Humans reply — never auto-sent",
+    faq: "Ask before your 14-day trial",
+    cta: "Start with YOUR TURN today",
+    default: "Questions about YOUR TURN?",
+  },
+} as const;
+
+/** Contact / talk to us page */
+export const CONTACT_PAGE = {
+  heroLabel: "Talk to us",
+  heroTitle: "Demo, WhatsApp, or email — your choice",
+  heroSubtitle:
+    "One WhatsApp flow for sales demos and enterprise rollouts — fill your details, scan the QR, and send. Humans reply — never a bot.",
+  emailSectionTitle: "Request a demo by email",
+  inquirySectionTitle: "Message us on WhatsApp",
+  inquirySectionSubtitle:
+    "Pick demo or enterprise, fill your details — scan the QR or tap Open WhatsApp. Your message is ready to send.",
+} as const;
+
+export const WHATSAPP_INQUIRY = {
+  typeLabel: "What are you reaching out for?",
+  types: {
+    sales: {
+      label: "Demo & sales",
+      short: "Demo",
+      cta: "Open WhatsApp with my details",
+      teamLabel: "Team size",
+      messagePlaceholder: "What should we know before the call? (optional)",
+    },
+    enterprise: {
+      label: "Enterprise & agency",
+      short: "Enterprise",
+      cta: "Open WhatsApp — enterprise inquiry",
+      teamLabel: "Scale (clients / locations)",
+      messagePlaceholder: "Franchise, agency hub, SLA needs… (optional)",
+    },
+  },
+  fields: {
+    name: "Your name",
+    company: "Company",
+    phone: "Your WhatsApp number",
+    phoneHint: "10-digit mobile — included in the message to our team",
+  },
+  qrCaption: "Scan with your phone camera",
+  steps: ["Fill your details", "Scan QR or tap below", "Send — a human replies"],
+  previewLabel: "Message preview",
+  previewEmpty: "Complete the form to generate your WhatsApp message and QR code.",
+  humanReply: "Mon–Sat IST · human replies only",
+  configureHint: "WhatsApp is being configured — email",
 } as const;
 
 export const PILOT_ROLLOUT = [

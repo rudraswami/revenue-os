@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
+import { MarketingPageChrome } from "@/components/marketing/marketing-page-chrome";
 import { Button } from "@/components/ui/button";
 import { CTA, TAGLINE } from "@/lib/brand-copy";
 import { POSITIONING } from "@/lib/gtm-copy";
@@ -48,13 +49,14 @@ export default function AboutPage() {
                 <Link href="/register">{CTA.startTrial}</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/contact">{CTA.bookDemo}</Link>
+                <Link href="/contact#inquiry">{CTA.bookDemo}</Link>
               </Button>
             </div>
           </ScrollReveal>
         </div>
       </main>
       <MarketingFooter />
+      <MarketingPageChrome />
     </div>
   );
 }

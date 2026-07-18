@@ -16,9 +16,9 @@ const inter = Inter({
   weight: ["400", "500", "600", "700"],
 });
 
-const siteTitle = "Growvisi — AI Revenue Engine for WhatsApp Sales Teams";
+const siteTitle = "Growvisi — Always know whose turn it is on WhatsApp";
 const siteDescription =
-  "Turn WhatsApp conversations into revenue. Growvisi analyzes intent, scores leads, updates your pipeline, and helps your team close more deals.";
+  "WhatsApp conversations in. Pipeline ₹ out. AI classifies every lead — YOUR TURN when a human should reply. 14-day trial, INR via Razorpay.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(GROWVISI_WEB_URL),

@@ -3,39 +3,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
+import { HOME_FAQ } from "@/lib/brand-copy";
 import { cn } from "@/lib/utils";
 import { SectionHeader } from "./section-header";
-
-const faqs = [
-  {
-    q: "Can I keep my existing WhatsApp business number?",
-    a: "Yes. Growvisi connects to your existing WhatsApp Business number on Meta's Cloud API. Your customers keep messaging the same number.",
-  },
-  {
-    q: "How long does setup take?",
-    a: "Most teams connect WhatsApp and get their first AI-classified lead within 15 minutes.",
-  },
-  {
-    q: "Does AI reply to customers automatically?",
-    a: "No. Growvisi AI classifies and scores — it does not auto-send replies. Your team sends human messages from the Inbox (or replies in WhatsApp directly). If you use Meta Business Agent, that optional bot can handle first-line chat in the WhatsApp app.",
-  },
-  {
-    q: "What is a human handoff?",
-    a: "When AI decides a customer needs a person — complex question, high intent, or frustration — the thread is flagged “needs human.” Your team sees it in Inbox, gets alerts on Home/digest, and can Take over: assign the deal, create a task, and reply as a human.",
-  },
-  {
-    q: "Can multiple agents use one WhatsApp number?",
-    a: "Yes. Everyone shares one inbox with full history, lead scores, and pipeline stages.",
-  },
-  {
-    q: "Do I need Meta approval?",
-    a: "You need WhatsApp Business on Meta's Cloud API. Growvisi guides you through setup step by step.",
-  },
-  {
-    q: "Is there a free trial?",
-    a: "Yes — 14 days, full access, no credit card required.",
-  },
-];
 
 export function Faq() {
   const [open, setOpen] = useState<number | null>(0);
@@ -46,7 +16,7 @@ export function Faq() {
         <SectionHeader title="Common questions" subtitle="Everything teams ask before switching." />
 
         <div className="mt-10 overflow-hidden rounded-3xl border border-border bg-[#f8f9ff]/50 divide-y divide-[#dce9ff]">
-          {faqs.map((faq, i) => (
+          {HOME_FAQ.map((faq, i) => (
             <div key={faq.q}>
               <button
                 type="button"

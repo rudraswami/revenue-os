@@ -99,13 +99,13 @@ export function PricingPlansGrid({
                 className="mt-6 w-full"
                 variant={plan.popular ? "default" : "outline"}
               >
-                <Link href={plan.custom ? "/contact" : "/register"}>
+                <Link href={plan.custom ? "/contact#enterprise" : "/register"}>
                   {plan.custom ? "Contact sales" : CTA.startTrial}
                 </Link>
               </Button>
             ) : plan.custom ? (
               <Button asChild className="mt-6 w-full" variant="outline">
-                <Link href="/contact">Contact sales</Link>
+                <Link href="/contact#inquiry">Contact sales</Link>
               </Button>
             ) : (
               <Button

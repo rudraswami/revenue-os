@@ -11,6 +11,7 @@ import { CTA } from "@/lib/brand-copy";
 import { HANDOFF_EXPLAINER } from "@/lib/gtm-copy";
 import { MarketingHeader } from "./header";
 import { MarketingFooter } from "./footer";
+import { MarketingPageChrome } from "./marketing-page-chrome";
 import { SolutionHeroVisual, SolutionWorkflowDiagram } from "./solution-visuals";
 
 export function SolutionLandingPage({ slug }: { slug: SolutionPageSlug }) {
@@ -68,7 +69,7 @@ export function SolutionLandingPage({ slug }: { slug: SolutionPageSlug }) {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
-                  href="/contact"
+                  href="/contact#inquiry"
                   className="inline-flex items-center rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
                 >
                   {CTA.bookDemo}
@@ -240,6 +241,7 @@ export function SolutionLandingPage({ slug }: { slug: SolutionPageSlug }) {
         </section>
       </main>
       <MarketingFooter />
+      <MarketingPageChrome />
     </div>
   );
 }

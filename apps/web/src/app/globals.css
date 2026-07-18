@@ -1389,6 +1389,44 @@ h1, h2, h3, h4, h5, h6 {
   background: rgb(0 108 73 / 0.06);
 }
 
+/* ── WhatsApp inquiry (contact page) ── */
+.wa-qr-frame {
+  position: relative;
+}
+
+.wa-qr-wa-badge {
+  position: absolute;
+  right: 50%;
+  bottom: 1.25rem;
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  translate: 50% 50%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #25d366;
+  box-shadow: 0 4px 14px rgb(37 211 102 / 0.45);
+}
+
+.wa-qr-frame-inactive .wa-qr-frame-inner {
+  opacity: 0.85;
+}
+
+.wa-inquiry-preview pre {
+  scrollbar-width: thin;
+}
+
+.wa-inquiry-qr-col {
+  min-height: 100%;
+}
+
+@media (max-width: 1023px) {
+  .wa-inquiry-qr-col {
+    border-top: 1px solid var(--color-border);
+  }
+}
+
 /* ── Revenue leakage calculator ── */
 .leakage-range {
   -webkit-appearance: none;

@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowRight, ChevronDown, Menu, Sparkles, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowRight, ChevronDown, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 import { MARKETING_NAV } from "@/lib/marketing-nav";
-import { MarketingIcon } from "@/lib/marketing-icons";
 import { NavMegaMenu } from "./nav-mega-menu";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
@@ -16,6 +15,26 @@ export function MarketingHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
+  const navCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelNavClose = useCallback(() => {
+    if (navCloseTimer.current) {
+      clearTimeout(navCloseTimer.current);
+      navCloseTimer.current = null;
+    }
+  }, []);
+
+  const scheduleNavClose = useCallback(() => {
+    cancelNavClose();
+    navCloseTimer.current = setTimeout(() => setOpenMenu(null), 280);
+  }, [cancelNavClose]);
+
+  const closeMenuNow = useCallback(() => {
+    cancelNavClose();
+    setOpenMenu(null);
+  }, [cancelNavClose]);
+
+  useEffect(() => () => cancelNavClose(), [cancelNavClose]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -28,39 +47,44 @@ export function MarketingHeader() {
     <div className="sticky top-0 z-50">
       <Link
         href="/register"
-        className="group flex items-center justify-center gap-2 bg-accent px-4 py-2 text-center text-sm font-medium text-accent-foreground transition-colors hover:bg-[var(--color-accent-hover)]"
+        className="group flex items-center justify-center gap-2 border-b border-accent/20 bg-[#0b1c30] px-4 py-2 text-center text-[13px] font-medium text-white/90 transition-colors hover:bg-[#0f2438]"
       >
-        <Sparkles className="h-3.5 w-3.5 text-accent-light" />
-        <span>From ₹999/mo · Human inbox + pipeline ₹ — 14-day trial, 500 leads</span>
-        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+        <span className="font-semibold text-[#6cf8bb]">YOUR TURN</span>
+        <span className="hidden sm:inline"> when customers need a human · Pipeline ₹ tracked · 14-day trial</span>
+        <ArrowRight className="h-3.5 w-3.5 text-[#6cf8bb] transition-transform group-hover:translate-x-0.5" />
       </Link>
 
       <header
         className={cn(
           "border-b transition-all duration-300",
           scrolled
-            ? "border-border bg-white/90 shadow-[0_4px_24px_rgb(11_28_48/0.06)] backdrop-blur-md"
-            : "border-transparent bg-white/70 backdrop-blur-sm",
+            ? "border-border/80 bg-white/95 shadow-[0_1px_0_rgb(11_28_48/0.04)] backdrop-blur-md"
+            : "border-transparent bg-white/80 backdrop-blur-sm",
         )}
       >
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between px-6 py-3.5 lg:px-8">
+        <div className="mx-auto flex h-[3.75rem] max-w-[1280px] items-center justify-between px-6 lg:px-8">
           <Logo />
 
-          <nav className="hidden items-center gap-6 lg:flex">
+          <nav className="hidden items-center gap-0.5 lg:flex">
             {MARKETING_NAV.map((entry) =>
               entry.type === "dropdown" ? (
                 <NavMegaMenu
                   key={entry.dropdown.id}
                   menu={entry.dropdown}
                   open={openMenu === entry.dropdown.id}
-                  onOpen={() => setOpenMenu(entry.dropdown.id)}
-                  onClose={() => setOpenMenu(null)}
+                  onActivate={() => {
+                    cancelNavClose();
+                    setOpenMenu(entry.dropdown.id);
+                  }}
+                  onScheduleClose={scheduleNavClose}
+                  onCancelClose={cancelNavClose}
+                  onCloseNow={closeMenuNow}
                 />
               ) : entry.external ? (
                 <Link
                   key={entry.href}
                   href={entry.href}
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="rounded-md px-2 py-1.5 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {entry.label}
                 </Link>
@@ -68,7 +92,7 @@ export function MarketingHeader() {
                 <a
                   key={entry.href}
                   href={entry.href}
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="rounded-md px-2 py-1.5 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {entry.label}
                 </a>
@@ -76,17 +100,17 @@ export function MarketingHeader() {
             )}
           </nav>
 
-          <div className="hidden items-center gap-5 lg:flex">
+          <div className="hidden items-center gap-3 lg:flex">
             <Link
               href="/login"
-              className="text-sm font-semibold text-foreground transition-colors hover:text-accent"
+              className="rounded-md px-3 py-2 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               {CTA.signIn}
             </Link>
-            <Button asChild>
+            <Button asChild size="sm" className="h-9 px-4">
               <Link href="/register">
                 {CTA.getStarted}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
           </div>
@@ -129,19 +153,21 @@ export function MarketingHeader() {
                     />
                   </button>
                   {mobileExpanded === entry.dropdown.id && (
-                    <div className="space-y-1 pb-2 pl-2">
+                    <div className="divide-y divide-border/50">
                       {entry.dropdown.items.map((item) => {
                         const isInternal = item.href.startsWith("/") && !item.external;
+                        const rowClass =
+                          "block px-1 py-3 text-left transition-colors hover:bg-[#fafbff]";
                         if (isInternal || item.external) {
                           return (
                             <Link
                               key={item.href}
                               href={item.href}
-                              className="flex items-center gap-2.5 py-2 text-sm text-muted-foreground hover:text-foreground"
+                              className={rowClass}
                               onClick={() => setOpen(false)}
                             >
-                              <MarketingIcon name={item.icon} className="h-4 w-4 shrink-0 text-accent" strokeWidth={2} />
-                              {item.label}
+                              <p className="text-[14px] font-semibold">{item.label}</p>
+                              <p className="mt-0.5 text-[12px] text-muted-foreground">{item.description}</p>
                             </Link>
                           );
                         }
@@ -149,13 +175,24 @@ export function MarketingHeader() {
                           <a
                             key={item.href}
                             href={item.href}
-                            className="block py-2 text-sm text-muted-foreground"
+                            className={rowClass}
                             onClick={() => setOpen(false)}
                           >
-                            {item.label}
+                            <p className="text-[14px] font-semibold">{item.label}</p>
+                            <p className="mt-0.5 text-[12px] text-muted-foreground">{item.description}</p>
                           </a>
                         );
                       })}
+                      {entry.dropdown.featured ? (
+                        <Link
+                          href={entry.dropdown.featured.href}
+                          className="mt-2 inline-flex items-center gap-1 pl-3 text-[12px] font-semibold text-accent"
+                          onClick={() => setOpen(false)}
+                        >
+                          {entry.dropdown.featured.label}
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -179,8 +216,8 @@ export function MarketingHeader() {
                 </a>
               ),
             )}
-            <div className="flex flex-col gap-3 border-t border-border pt-4 mt-2">
-              <Link href="/login" onClick={() => setOpen(false)}>
+            <div className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
+              <Link href="/login" className="text-[15px] font-medium" onClick={() => setOpen(false)}>
                 {CTA.signIn}
               </Link>
               <Button asChild className="w-full">

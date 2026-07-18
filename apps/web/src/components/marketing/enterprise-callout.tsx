@@ -17,13 +17,13 @@ export function EnterpriseCallout() {
           <h3 className="mt-4 text-xl font-bold md:text-2xl">{ENTERPRISE_OFFERING.tagline}</h3>
           <p className="mt-2 text-sm text-white/70">{ENTERPRISE_OFFERING.forWho}</p>
         </div>
-        <Link
-          href="/contact"
-          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#6cf8bb] px-5 py-2.5 text-sm font-semibold text-[#0b1c30] hover:bg-[#5ae8ab]"
-        >
-          Contact sales
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+          <Link
+            href="/contact#enterprise"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#6cf8bb] px-5 py-2.5 text-sm font-semibold text-[#0b1c30] hover:bg-[#5ae8ab]"
+          >
+            Enterprise on WhatsApp
+            <ArrowRight className="h-4 w-4" />
+          </Link>
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">

@@ -5,6 +5,7 @@ import { CTA } from "@/lib/brand-copy";
 import { MarketingHeader } from "@/components/marketing/header";
 import { ProductShowcase } from "@/components/marketing/product-showcase";
 import { MarketingFooter } from "@/components/marketing/footer";
+import { MarketingPageChrome } from "@/components/marketing/marketing-page-chrome";
 
 export const metadata = {
   title: "Demo — Growvisi",
@@ -31,7 +32,7 @@ export default function DemoPage() {
                   </Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link href="/contact">{CTA.bookDemo}</Link>
+                  <Link href="/contact#inquiry">{CTA.bookDemo}</Link>
                 </Button>
               </div>
             </div>
@@ -42,6 +43,7 @@ export default function DemoPage() {
         </section>
       </main>
       <MarketingFooter />
+      <MarketingPageChrome />
     </div>
   );
 }

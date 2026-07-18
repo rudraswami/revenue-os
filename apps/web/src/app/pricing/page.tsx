@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
 import { PricingPageContent } from "@/components/marketing/pricing-page-content";
+import { MarketingPageChrome } from "@/components/marketing/marketing-page-chrome";
 import { POSITIONING } from "@/lib/gtm-copy";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function PricingPage() {
         <PricingPageContent />
       </main>
       <MarketingFooter />
+      <MarketingPageChrome />
     </div>
   );
 }

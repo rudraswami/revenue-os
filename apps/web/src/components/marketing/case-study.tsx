@@ -121,7 +121,7 @@ export function CaseStudy() {
                   </Link>
                 </Button>
                 <Link
-                  href="/contact"
+                  href="/contact#inquiry"
                   className="inline-flex h-11 items-center rounded-md border border-white/15 bg-white/5 px-6 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
                   {CTA.bookDemo}
