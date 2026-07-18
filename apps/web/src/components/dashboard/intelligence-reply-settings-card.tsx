@@ -22,7 +22,7 @@ const LABELS: Record<ReplyAutonomyMode, { title: string; description: string }> 
   auto_guarded: {
     title: "Guarded auto-reply",
     description:
-      "Sends grounded FAQ answers on WhatsApp only when confidence is high and docs match (Growth+). Pricing, negotiation, and complaints always stay draft-only for your team.",
+      "AI replies on WhatsApp automatically from your business number. Pauses only for complaints, refunds, or when a human is requested.",
   },
 };
 

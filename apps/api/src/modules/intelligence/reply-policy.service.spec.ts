@@ -31,30 +31,61 @@ function baseInput(overrides: Partial<ReplyPolicyInput> = {}): ReplyPolicyInput 
 describe("ReplyPolicyService", () => {
   const service = new ReplyPolicyService({} as never);
 
-  it("auto-sends warm greeting on auto_guarded + Growth without knowledge docs", () => {
+  it("auto-sends on auto_guarded for Hello without knowledge docs", () => {
+    const decision = service.evaluate(baseInput());
+    expect(decision.mode).toBe("send");
+  });
+
+  it("auto-sends Hello test in negotiation thread without KB", () => {
     const decision = service.evaluate(
       baseInput({
-        ctx: {
-          ...baseInput().ctx,
-          lastInbound: "Hello",
-        },
+        ctx: { ...baseInput().ctx, lastInbound: "Hello test" },
       }),
     );
     expect(decision.mode).toBe("send");
-    expect(decision.reasons.some((r) => r.includes("greeting"))).toBe(true);
   });
 
-  it("drafts (not sends) pricing threads without knowledge docs", () => {
+  it("auto-sends pricing questions without KB (composer enforces no invented prices)", () => {
     const decision = service.evaluate(
       baseInput({
         ctx: {
           ...baseInput().ctx,
           lastInbound: "What is your pricing for 10 users?",
         },
+        knowledgeGap: true,
+      }),
+    );
+    expect(decision.mode).toBe("send");
+  });
+
+  it("drafts when customer explicitly needs a human", () => {
+    const decision = service.evaluate(
+      baseInput({
+        classification: {
+          ...baseInput().classification,
+          requiresHuman: true,
+        },
       }),
     );
     expect(decision.mode).toBe("draft");
-    expect(decision.blockers).toContain("auto_send_no_knowledge");
+    expect(decision.blockers).toContain("auto_send_handoff");
+  });
+
+  it("drafts on refund/complaint in latest message", () => {
+    const decision = service.evaluate(
+      baseInput({
+        ctx: { ...baseInput().ctx, lastInbound: "I want a refund now" },
+      }),
+    );
+    expect(decision.mode).toBe("draft");
+    expect(decision.blockers).toContain("auto_send_sensitive");
+  });
+
+  it("assist mode never auto-sends", () => {
+    const decision = service.evaluate(
+      baseInput({ workspaceAutonomy: "assist" }),
+    );
+    expect(decision.mode).toBe("draft");
   });
 
   it("skips when human reply mode is on", () => {

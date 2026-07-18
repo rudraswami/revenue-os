@@ -212,7 +212,7 @@ export class ReplyComposerService {
     return [
       "You draft WhatsApp replies for an Indian SMB sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
       opts.autoSend
-        ? "This reply will be sent automatically on WhatsApp — be accurate, helpful, and never invent facts."
+        ? "This reply will be sent automatically on WhatsApp. Write like a sharp sales rep: warm, specific, concise (2–4 sentences). Never invent prices, discounts, or policies."
         : "The human rep will review and send — never imply the message was already sent.",
       "Do not invent pricing, policies, or offers beyond the business knowledge provided.",
       opts.intent ? `Customer intent (AI): ${opts.intent}` : "",

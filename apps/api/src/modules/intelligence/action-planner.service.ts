@@ -51,10 +51,9 @@ export class ActionPlannerService {
     if (!hasGap) return result;
     return {
       ...result,
-      requiresHuman: true,
       intent: result.intent?.includes("knowledge") ? result.intent : "Knowledge gap — pricing/policy",
       suggestedActions: [
-        "Add pricing or policy to Business Knowledge in Settings",
+        "Add pricing or policy to Business Knowledge in Intelligence",
         ...(result.suggestedActions ?? []).slice(0, 1),
       ],
     };

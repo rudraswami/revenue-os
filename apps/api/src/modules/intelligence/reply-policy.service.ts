@@ -7,14 +7,12 @@ import type {
   ReplyExecutionMode,
   ReplyRiskLevel,
 } from "@growvisi/shared";
-import { isSimpleGreeting } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import type { ConversationContext } from "./context-builder.service";
 
-const HIGH_RISK_INTENT =
-  /negotiat|discount|refund|complaint|angry|legal|lawyer|cancel|fraud|chargeback|sue|police/i;
-const PRICING_TOPIC =
-  /pric|cost|fee|rate|package|₹|rs\.?\s*\d|discount|quote|emi|payment/i;
+/** Hard block — only scan the customer's latest message, not pipeline stage or thread history. */
+const HARD_BLOCK_INBOUND =
+  /refund|complaint|angry|furious|legal|lawyer|cancel\s+order|fraud|chargeback|sue|police|speak\s+to\s+(a\s+)?(human|person|manager|agent)/i;
 
 export interface ReplyPolicyInput {
   ctx: ConversationContext;
@@ -23,9 +21,7 @@ export interface ReplyPolicyInput {
   knowledgeGap: boolean;
   workspaceAutonomy: ReplyAutonomyMode;
   withinReplyWindow: boolean;
-  /** Growth+ plan allows guarded auto-send */
   autoSendPlanOk: boolean;
-  /** Outbound messages with sentByAi in the last 24h on this thread */
   recentAutoSendCount: number;
 }
 
@@ -39,9 +35,10 @@ export class ReplyPolicyService {
     const reasons: string[] = [];
     const blockers: string[] = [];
     const evaluatedAt = new Date().toISOString();
+    const lastInbound = input.ctx.lastInbound?.trim() ?? "";
 
     const pushBlocker = (code: string, reason: string) => {
-      blockers.push(code);
+      if (!blockers.includes(code)) blockers.push(code);
       reasons.push(reason);
     };
 
@@ -51,158 +48,89 @@ export class ReplyPolicyService {
     }
 
     if (input.workspaceAutonomy === "intel_only") {
-      pushBlocker(
-        "workspace_intel_only",
-        "Workspace is set to classify only — enable AI assist in Conversations to get drafts.",
-      );
+      pushBlocker("workspace_intel_only", "Classify only — no replies composed.");
       return this.decision("skip", 1, "low", reasons, blockers, evaluatedAt, false);
     }
 
     if (input.ctx.lead.stage === "WON" || input.ctx.lead.stage === "LOST") {
-      pushBlocker("terminal_stage", "Deal is closed — no automated reply suggested.");
+      pushBlocker("terminal_stage", "Deal is closed — no automated reply.");
       return this.decision("skip", 1, "low", reasons, blockers, evaluatedAt, false);
     }
 
     if (!input.withinReplyWindow) {
-      pushBlocker(
-        "reply_window_closed",
-        "24-hour WhatsApp window closed — use a template from New message.",
-      );
+      pushBlocker("reply_window_closed", "24-hour WhatsApp window closed — use a template.");
       return this.decision("skip", 0.9, "medium", reasons, blockers, evaluatedAt, false);
     }
 
-    if (!input.ctx.lastInbound?.trim()) {
+    if (!lastInbound) {
       pushBlocker("no_inbound", "Waiting for the customer to message first.");
       return this.decision("skip", 1, "low", reasons, blockers, evaluatedAt, false);
     }
 
     const risk = this.assessRisk(input);
     const confidence = this.compositeConfidence(input, risk);
-    const lastInbound = input.ctx.lastInbound ?? "";
-
-    if (input.classification.requiresHuman) {
-      reasons.push("Flagged for you — AI will draft a starting point for your review.");
-    }
-
-    if (input.knowledgeGap) {
-      reasons.push(
-        "Pricing or policy question without matching docs — draft asks clarifying questions only.",
-      );
-    }
 
     if (input.knowledgeHits.length > 0) {
       const top = input.knowledgeHits[0];
       reasons.push(`Grounded in “${top.title}” (${Math.round(top.similarity * 100)}% match).`);
-    } else if (!input.knowledgeGap) {
-      reasons.push("No business knowledge matched — draft stays general and cautious.");
-    }
-
-    const autoEligible = this.isAutoSendEligible(input, risk, confidence);
-
-    const canAutoSendFaq =
-      input.workspaceAutonomy === "auto_guarded" &&
-      autoEligible &&
-      input.autoSendPlanOk &&
-      input.recentAutoSendCount < 3;
-
-    const canAutoSendGreeting =
-      input.workspaceAutonomy === "auto_guarded" &&
-      input.autoSendPlanOk &&
-      input.recentAutoSendCount < 3 &&
-      isSimpleGreeting(lastInbound) &&
-      !input.classification.requiresHuman &&
-      !PRICING_TOPIC.test(lastInbound) &&
-      !HIGH_RISK_INTENT.test(lastInbound);
-
-    if (canAutoSendFaq) {
+    } else if (input.knowledgeGap) {
       reasons.push(
-        "Guarded auto-reply — grounded FAQ answer will be sent on WhatsApp from your business number.",
+        "No pricing docs matched — reply will ask clarifying questions (no invented prices).",
       );
-      if (input.knowledgeHits.length > 0) {
-        reasons.push(`Source: “${input.knowledgeHits[0].title}”.`);
-      }
-      reasons.push("Your team can review and continue the thread in Conversations.");
-      return this.decision("send", confidence, risk, reasons, blockers, evaluatedAt, true);
-    }
-
-    if (canAutoSendGreeting) {
-      reasons.push(
-        "Guarded auto-reply — warm greeting will be sent on WhatsApp from your business number.",
-      );
-      return this.decision("send", confidence, "low", reasons, blockers, evaluatedAt, true);
-    }
-
-    if (input.workspaceAutonomy === "auto_guarded") {
-      this.appendAutoSendBlockers(input, risk, confidence, autoEligible, blockers, reasons);
     }
 
     if (input.workspaceAutonomy === "assist") {
-      reasons.push("Review and send — AI assist never auto-sends to WhatsApp.");
+      reasons.push("AI assist — review the draft and tap Send.");
+      return this.decision("draft", confidence, risk, reasons, blockers, evaluatedAt, false);
     }
 
-    return this.decision("draft", confidence, risk, reasons, blockers, evaluatedAt, autoEligible);
+    // auto_guarded: send on WhatsApp by default. Quality is enforced in the composer prompt.
+    const hardBlock = this.autoSendHardBlock(input, lastInbound);
+    if (hardBlock) {
+      pushBlocker(hardBlock.code, hardBlock.reason);
+      return this.decision("draft", confidence, risk, reasons, blockers, evaluatedAt, false);
+    }
+
+    reasons.push(
+      "Guarded auto-reply — AI will send this on WhatsApp from your business number.",
+    );
+    if (input.knowledgeHits.length > 0) {
+      reasons.push(`Source: “${input.knowledgeHits[0].title}”.`);
+    }
+    reasons.push("Your team can take over anytime in Conversations.");
+
+    return this.decision("send", confidence, risk, reasons, blockers, evaluatedAt, true);
   }
 
-  private appendAutoSendBlockers(
+  private autoSendHardBlock(
     input: ReplyPolicyInput,
-    risk: ReplyRiskLevel,
-    confidence: number,
-    autoEligible: boolean,
-    blockers: string[],
-    reasons: string[],
-  ) {
+    lastInbound: string,
+  ): { code: string; reason: string } | null {
     if (!input.autoSendPlanOk) {
-      pushBlockerOnce(blockers, "auto_send_plan");
-      reasons.push("Auto-reply on WhatsApp needs Growth plan or higher.");
-      return;
+      return {
+        code: "auto_send_plan",
+        reason: "Auto-reply on WhatsApp needs Growth plan or higher.",
+      };
     }
-
-    if (input.recentAutoSendCount >= 3) {
-      pushBlockerOnce(blockers, "auto_send_rate_limit");
-      reasons.push("Auto-reply limit reached for this thread (3 per 24h) — draft only.");
-      return;
+    if (input.recentAutoSendCount >= 5) {
+      return {
+        code: "auto_send_rate_limit",
+        reason: "Auto-reply limit for this thread (5 per 24h) — draft only.",
+      };
     }
-
-    if (isSimpleGreeting(input.ctx.lastInbound)) {
-      return;
+    if (input.classification.requiresHuman) {
+      return {
+        code: "auto_send_handoff",
+        reason: "Customer needs a human — AI drafted a starting point for you.",
+      };
     }
-
-    if (!autoEligible) {
-      if (risk !== "low") {
-        pushBlockerOnce(blockers, "auto_send_risk");
-        reasons.push(
-          `Auto-reply blocked: ${risk}-risk thread (pricing/negotiation needs a human).`,
-        );
-      }
-      if (input.knowledgeHits.length === 0) {
-        pushBlockerOnce(blockers, "auto_send_no_knowledge");
-        reasons.push(
-          "Auto-reply blocked: add pricing/FAQ docs in Intelligence (≥78% match required).",
-        );
-      } else if (input.knowledgeHits[0].similarity < 0.78) {
-        pushBlockerOnce(blockers, "auto_send_low_match");
-        reasons.push(
-          `Auto-reply blocked: best doc match is ${Math.round(input.knowledgeHits[0].similarity * 100)}% (needs ≥78%).`,
-        );
-      }
-      if (confidence < 0.85) {
-        pushBlockerOnce(blockers, "auto_send_low_confidence");
-        reasons.push(
-          `Auto-reply blocked: confidence ${Math.round(confidence * 100)}% (needs ≥85%).`,
-        );
-      }
-      if (input.classification.requiresHuman) {
-        pushBlockerOnce(blockers, "auto_send_handoff");
-        reasons.push("Auto-reply blocked: conversation flagged for human review.");
-      }
-      if (input.knowledgeGap) {
-        pushBlockerOnce(blockers, "auto_send_knowledge_gap");
-      }
+    if (HARD_BLOCK_INBOUND.test(lastInbound)) {
+      return {
+        code: "auto_send_sensitive",
+        reason: "Sensitive message (complaint/refund/legal) — human should reply.",
+      };
     }
-
-    if (blockers.length === 0 && reasons.every((r) => !r.startsWith("Auto-reply"))) {
-      reasons.push("Guarded auto-reply: draft ready for your review — tap Send.");
-    }
+    return null;
   }
 
   async persistDecision(
@@ -224,28 +152,20 @@ export class ReplyPolicyService {
     await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
-        metadata: {
-          ...meta,
-          replyDecision: decision,
-        } as object,
+        metadata: { ...meta, replyDecision: decision } as object,
       },
     });
 
-    if (decision.mode === "draft" && decision.blockers?.length) {
-      this.logger.log(
-        `Reply policy draft-only for ${conversationId}: ${decision.blockers.join(", ")}`,
-      );
-    }
+    this.logger.log(
+      `Reply policy ${conversationId}: mode=${decision.mode} risk=${decision.risk} confidence=${decision.confidence}`,
+    );
   }
 
   private assessRisk(input: ReplyPolicyInput): ReplyRiskLevel {
     const lastInbound = input.ctx.lastInbound ?? "";
-    const topic = `${lastInbound} ${input.classification.intent ?? ""}`;
-    if (isSimpleGreeting(lastInbound)) return "low";
-    if (input.knowledgeGap && PRICING_TOPIC.test(topic)) return "high";
+    if (HARD_BLOCK_INBOUND.test(lastInbound)) return "high";
     if (input.classification.requiresHuman) return "high";
-    if (HIGH_RISK_INTENT.test(topic)) return "high";
-    if (input.classification.confidence < 0.65) return "medium";
+    if (input.knowledgeGap) return "medium";
     if (input.knowledgeHits.length === 0) return "medium";
     return "low";
   }
@@ -256,23 +176,8 @@ export class ReplyPolicyService {
       score = Math.min(1, score * 0.6 + input.knowledgeHits[0].similarity * 0.4);
     }
     if (risk === "high") score *= 0.75;
-    if (risk === "medium") score *= 0.9;
+    if (risk === "medium") score *= 0.92;
     return Math.round(score * 100) / 100;
-  }
-
-  private isAutoSendEligible(
-    input: ReplyPolicyInput,
-    risk: ReplyRiskLevel,
-    confidence: number,
-  ): boolean {
-    if (risk !== "low") return false;
-    if (input.classification.requiresHuman) return false;
-    if (input.knowledgeGap) return false;
-    if (confidence < 0.85) return false;
-    if (input.knowledgeHits.length === 0) return false;
-    if (input.knowledgeHits[0].similarity < 0.78) return false;
-    if (HIGH_RISK_INTENT.test(input.ctx.lastInbound ?? "")) return false;
-    return true;
   }
 
   private decision(
@@ -294,8 +199,4 @@ export class ReplyPolicyService {
       autoEligible,
     };
   }
-}
-
-function pushBlockerOnce(blockers: string[], key: string) {
-  if (!blockers.includes(key)) blockers.push(key);
 }
