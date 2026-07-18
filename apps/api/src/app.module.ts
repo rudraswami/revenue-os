@@ -30,6 +30,8 @@ import { TasksModule } from "./modules/tasks/tasks.module";
 import { CampaignsModule } from "./modules/campaigns/campaigns.module";
 import { AgencyModule } from "./modules/agency/agency.module";
 import { SupportModule } from "./modules/support/support.module";
+import { IntelligenceModule } from "./modules/intelligence/intelligence.module";
+import { EventsModule } from "./modules/events/events.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
 
@@ -55,6 +57,7 @@ import { QUEUES } from "@growvisi/shared";
     BullModule.registerQueue(
       { name: QUEUES.WHATSAPP_INBOUND },
       { name: QUEUES.AI_CLASSIFY },
+      { name: QUEUES.AI_EMBED },
     ),
     PrismaModule,
     HealthModule,
@@ -82,6 +85,8 @@ import { QUEUES } from "@growvisi/shared";
     CampaignsModule,
     AgencyModule,
     SupportModule,
+    EventsModule,
+    IntelligenceModule,
   ],
   providers: [
     {

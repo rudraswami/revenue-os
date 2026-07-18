@@ -4,15 +4,19 @@ import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { createHash } from "crypto";
 import type { AiClassificationResult, JwtPayload, LeadStage } from "@growvisi/shared";
-import { LEAD_STAGE_ORDER, QUEUES } from "@growvisi/shared";
+import { DOMAIN_EVENTS, LEAD_STAGE_ORDER, QUEUES } from "@growvisi/shared";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 import { AutomationsService } from "../automations/automations.service";
-import { AssignmentService } from "../assignments/assignment.service";
-import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { EntitlementsService } from "../billing/entitlements.service";
-import { KnowledgeEmbedService } from "../knowledge/knowledge-embed.service";
+import { BusinessEventService } from "../events/business-event.service";
+import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
+import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
+import { ActionExecutorService } from "../intelligence/action-executor.service";
+import { ActionPlannerService } from "../intelligence/action-planner.service";
+import { ContextBuilderService } from "../intelligence/context-builder.service";
+import { ObservedMemoryService } from "../intelligence/observed-memory.service";
 import { useBackgroundWorkers } from "../../config/workers";
 import { withTimeout } from "../../common/utils/with-timeout";
 
@@ -21,7 +25,7 @@ export interface ClassifyJobData {
   conversationId: string;
   messageId: string;
   leadId: string;
-  /** After human correction — refresh summary/nextAction without overriding stage/score/handoff. */
+  correlationId?: string;
   refreshAfterCorrection?: boolean;
   lockStage?: boolean;
   lockHandoff?: boolean;
@@ -59,12 +63,16 @@ export class AiClassifyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-    private readonly realtime: RealtimeGateway,
     private readonly automations: AutomationsService,
     private readonly entitlements: EntitlementsService,
-    private readonly assignments: AssignmentService,
+    private readonly events: BusinessEventService,
+    private readonly realtime: RealtimeGateway,
     private readonly webhooks: WebhookDispatchService,
-    private readonly knowledge: KnowledgeEmbedService,
+    private readonly contextBuilder: ContextBuilderService,
+    private readonly knowledge: KnowledgeRetrievalService,
+    private readonly memory: ObservedMemoryService,
+    private readonly planner: ActionPlannerService,
+    private readonly executor: ActionExecutorService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -83,8 +91,6 @@ export class AiClassifyService {
       .digest("hex");
 
     try {
-      // Bounded: a configured-but-unreachable Redis makes ioredis buffer the
-      // command and wait forever, hanging whatever request triggered this.
       await withTimeout(
         this.classifyQueue.add("classify", data, {
           jobId,
@@ -104,10 +110,6 @@ export class AiClassifyService {
     }
   }
 
-  /**
-   * AI Trust Loop: human corrects stage/score/handoff, then soft-reclassify
-   * refreshes summary/nextAction without undoing the correction.
-   */
   async applyHumanCorrection(
     user: JwtPayload,
     conversationId: string,
@@ -151,8 +153,7 @@ export class AiClassifyService {
 
     const nextStage = input.stage ?? (lead.stage as LeadStage);
     const nextScore =
-      input.score ??
-      (input.stage ? STAGE_SCORE[input.stage] : lead.score);
+      input.score ?? (input.stage ? STAGE_SCORE[input.stage] : lead.score);
     const nextIntent =
       input.intent?.trim() ||
       (typeof prevProfile.lastIntent === "string" ? prevProfile.lastIntent : undefined);
@@ -245,6 +246,22 @@ export class AiClassifyService {
       }
     });
 
+    await this.memory.recordHumanCorrection(conversationId, {
+      intent: nextIntent,
+      note: input.note,
+      stage: nextStage,
+      score: nextScore,
+      correctionId: correctionRun.id,
+    });
+
+    void this.events.emit({
+      organizationId: user.organizationId,
+      type: DOMAIN_EVENTS.CONVERSATION_AI_CORRECTION,
+      entityType: "conversation",
+      entityId: conversationId,
+      payload: { leadId: lead.id, correctionId: correctionRun.id },
+    });
+
     if (input.stage && input.stage !== lead.stage) {
       this.realtime.emitLeadStageChanged(user.organizationId, {
         leadId: lead.id,
@@ -274,7 +291,6 @@ export class AiClassifyService {
 
     this.realtime.emitInboxUpdated(user.organizationId);
 
-    // Soft reclassify: refresh narrative with correction as ground truth.
     const latestMessage = await this.prisma.message.findFirst({
       where: { conversationId },
       orderBy: { createdAt: "desc" },
@@ -322,60 +338,41 @@ export class AiClassifyService {
       return;
     }
 
-    const conversation = await this.prisma.conversation.findFirst({
-      where: { id: data.conversationId, organizationId: data.organizationId },
-      include: {
-        lead: true,
-        messages: { orderBy: { createdAt: "desc" }, take: 16 },
-      },
-    });
+    const ctx = await this.contextBuilder.buildForConversation(
+      data.organizationId,
+      data.conversationId,
+    );
 
-    if (!conversation?.lead) {
-      this.logger.warn(`No lead for conversation ${data.conversationId}`);
-      return;
-    }
-
-    if (!conversation.aiEnabled && !data.refreshAfterCorrection) {
+    if (!ctx.conversation.aiEnabled && !data.refreshAfterCorrection) {
       this.logger.debug(`AI disabled for conversation ${data.conversationId} — skipping`);
       return;
     }
 
-    const lead = conversation.lead;
-    if ((lead.stage === "WON" || lead.stage === "LOST") && !data.refreshAfterCorrection) {
+    if (
+      (ctx.lead.stage === "WON" || ctx.lead.stage === "LOST") &&
+      !data.refreshAfterCorrection
+    ) {
       return;
     }
 
-    const ordered = [...conversation.messages].reverse();
-    const transcript = ordered
-      .map((m) => {
-        const who =
-          m.direction === "INBOUND"
-            ? "Customer"
-            : m.sentByAi
-              ? "AI"
-              : "Business";
-        return `${who}: ${m.content ?? "(media)"}`;
-      })
-      .join("\n");
-
-    if (!transcript.trim()) {
+    if (!ctx.transcript.trim()) {
       return;
     }
 
+    const correlationId = data.correlationId ?? this.events.createCorrelationId();
     const model = this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini";
     const started = Date.now();
 
-    const lastInbound = [...ordered]
-      .reverse()
-      .find((m) => m.direction === "INBOUND")?.content;
-    const ragQuery = (lastInbound ?? transcript).slice(0, 600);
-    const ragChunks = await this.knowledge.search(data.organizationId, ragQuery, 4);
-    const businessContext =
-      ragChunks.length > 0
-        ? ragChunks
-            .map((c) => `- ${c.title}: ${c.content.slice(0, 320)}`)
-            .join("\n")
-        : "";
+    const knowledgeHits = await this.knowledge.retrieve({
+      organizationId: data.organizationId,
+      query: ctx.ragQuery,
+      limit: 4,
+    });
+    const businessContext = this.knowledge.formatForPrompt(knowledgeHits);
+    const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
+    const combinedContext = [businessContext, memoryBlock ? `Observed facts:\n${memoryBlock}` : ""]
+      .filter(Boolean)
+      .join("\n\n");
 
     const aiRun = await this.prisma.aiRun.create({
       data: {
@@ -389,21 +386,31 @@ export class AiClassifyService {
           messageId: data.messageId,
           leadId: data.leadId,
           humanFeedback: data.humanFeedback ?? null,
+          knowledgeSources: knowledgeHits.map((h) => ({
+            chunkId: h.chunkId,
+            title: h.title,
+            similarity: h.similarity,
+          })),
         },
       },
     });
 
     try {
-      const result = await this.callOpenAi(
+      let result = await this.callOpenAi(
         apiKey,
         model,
-        lead.stage as LeadStage,
-        transcript,
-        businessContext,
+        ctx.lead.stage,
+        ctx.transcript,
+        combinedContext,
         data.humanFeedback,
       );
-      const latencyMs = Date.now() - started;
 
+      const knowledgeGap = this.planner.detectKnowledgeGap(ctx, knowledgeHits);
+      if (knowledgeGap) {
+        result = this.planner.applyKnowledgeGapGuard(result, true);
+      }
+
+      const latencyMs = Date.now() - started;
       await this.prisma.aiRun.update({
         where: { id: aiRun.id },
         data: {
@@ -415,80 +422,81 @@ export class AiClassifyService {
       });
 
       const prefs = await this.automations.getPreferencesForOrg(data.organizationId);
-      const stageChanged = await this.applyClassification(
+      const updateStage =
+        prefs.stage &&
+        !data.lockStage &&
+        this.executor.shouldUpdateStage(ctx.lead.stage, result.stage, result.confidence);
+
+      const stageChanged = await this.executor.applyLeadProfileUpdate(
         data.organizationId,
-        lead.id,
-        lead.stage as LeadStage,
+        data.leadId,
         result,
-        aiRun.id,
-        prefs.stage && !data.lockStage,
-        data.lockStage,
+        {
+          updateStage,
+          preserveScore: Boolean(data.lockStage),
+          currentStage: ctx.lead.stage,
+          currentScore: ctx.lead.score,
+          aiRunId: aiRun.id,
+        },
       );
 
-      if (result.requiresHuman && !data.lockHandoff) {
-        const conv = await this.prisma.conversation.findUnique({
-          where: { id: data.conversationId },
-          select: { metadata: true },
-        });
-        const existingMeta =
-          conv?.metadata && typeof conv.metadata === "object" ? conv.metadata : {};
-        await this.prisma.conversation.update({
-          where: { id: data.conversationId },
-          data: {
-            metadata: {
-              ...(existingMeta as Record<string, unknown>),
-              requiresHuman: true,
-              handoffReason: result.intent,
-              handoffAt: new Date().toISOString(),
-            },
-          },
-        });
-        this.realtime.emitLeadHandoff(data.organizationId, {
-          conversationId: data.conversationId,
-          leadId: lead.id,
-          reason: result.intent,
-        });
+      await this.memory.syncFromClassification(ctx, result, aiRun.id);
 
-        const assigneeUserId = await this.assignments.applyAutoAssign(data.organizationId, {
-          conversationId: data.conversationId,
-          leadId: lead.id,
-          handoff: true,
-          reason: result.intent,
-        });
+      const score = this.executor.computeScore(
+        result,
+        Boolean(data.lockStage),
+        ctx.lead.score,
+      );
 
-        void this.automations.handleHandoff({
-          organizationId: data.organizationId,
-          conversationId: data.conversationId,
-          leadId: lead.id,
-          leadName: lead.displayName,
-          leadPhone: lead.phone,
-          reason: result.intent || result.summary || "Complex or sensitive request",
-          assigneeUserId,
-        });
-      }
+      const actions = this.planner.buildFromClassification({
+        ctx,
+        result,
+        knowledgeHits,
+        aiRunId: aiRun.id,
+        autoStageEnabled: prefs.stage,
+        lockStage: Boolean(data.lockStage),
+        lockHandoff: Boolean(data.lockHandoff),
+        stageChanged,
+        score,
+        handoffType: knowledgeGap ? "knowledge_gap" : "complex",
+        automationPrefs: {
+          stage: prefs.stage,
+          notify: prefs.notify,
+          handoff: prefs.handoff,
+        },
+      });
 
-      this.realtime.emitLeadClassified(data.organizationId, {
-        leadId: lead.id,
+      const event = await this.events.emit({
+        organizationId: data.organizationId,
+        type: DOMAIN_EVENTS.LEAD_CLASSIFIED,
+        entityType: "lead",
+        entityId: data.leadId,
+        correlationId,
+        payload: {
+          conversationId: data.conversationId,
+          messageId: data.messageId,
+          aiRunId: aiRun.id,
+        },
+      });
+
+      await this.executor.executePlan({
+        organizationId: data.organizationId,
         conversationId: data.conversationId,
-        stage: result.stage,
-        confidence: result.confidence,
+        leadId: data.leadId,
+        correlationId,
+        triggerEventId: event.eventId,
+        classification: result,
+        actions,
+        ctx,
         stageChanged,
       });
 
-      if (stageChanged) {
-        this.realtime.emitInboxUpdated(data.organizationId);
-      }
-
-      const score = Math.max(
-        STAGE_SCORE[result.stage],
-        Math.round(result.confidence * 100),
-      );
       void this.automations.handlePostClassification({
         organizationId: data.organizationId,
         conversationId: data.conversationId,
-        leadId: lead.id,
-        leadName: lead.displayName,
-        leadPhone: lead.phone,
+        leadId: data.leadId,
+        leadName: ctx.lead.displayName,
+        leadPhone: ctx.lead.phone,
         score,
         stageChanged,
         newStage: result.stage,
@@ -592,136 +600,8 @@ Current pipeline stage: ${currentStage}.${contextBlock}${feedbackBlock}`,
     };
   }
 
-  private async autoAssignTags(organizationId: string, leadId: string, tagNames: string[]) {
-    for (const name of tagNames) {
-      const clean = name.trim().toLowerCase().slice(0, 40);
-      if (!clean) continue;
-      try {
-        const tag = await this.prisma.tag.upsert({
-          where: { organizationId_name: { organizationId, name: clean } },
-          create: { organizationId, name: clean, color: "#006c49" },
-          update: {},
-        });
-        await this.prisma.leadTag.upsert({
-          where: { leadId_tagId: { leadId, tagId: tag.id } },
-          create: { leadId, tagId: tag.id },
-          update: {},
-        });
-      } catch {
-        // Tag creation can race — safe to skip
-      }
-    }
-  }
-
   private normalizeStage(value: unknown): LeadStage {
     const stage = String(value ?? "NEW").toUpperCase() as LeadStage;
     return LEAD_STAGE_ORDER.includes(stage) ? stage : "NEW";
-  }
-
-  private shouldUpdateStage(
-    current: LeadStage,
-    suggested: LeadStage,
-    confidence: number,
-  ): boolean {
-    if (current === "WON" || current === "LOST") return false;
-    if (confidence < 0.55) return false;
-    if (suggested === "LOST" && confidence >= 0.65) return true;
-    if (suggested === "WON" && confidence >= 0.75) return true;
-
-    const currentIdx = LEAD_STAGE_ORDER.indexOf(current);
-    const suggestedIdx = LEAD_STAGE_ORDER.indexOf(suggested);
-    if (suggested === "LOST" || suggested === "WON") {
-      return confidence >= 0.7;
-    }
-    return suggestedIdx > currentIdx;
-  }
-
-  private async applyClassification(
-    organizationId: string,
-    leadId: string,
-    currentStage: LeadStage,
-    result: AiClassificationResult,
-    aiRunId: string,
-    autoStageEnabled = true,
-    preserveScore = false,
-  ): Promise<boolean> {
-    const updateStage =
-      autoStageEnabled && this.shouldUpdateStage(currentStage, result.stage, result.confidence);
-    const score = preserveScore
-      ? undefined
-      : Math.max(STAGE_SCORE[result.stage], Math.round(result.confidence * 100));
-
-    const existing = await this.prisma.lead.findUnique({
-      where: { id: leadId },
-      select: { profile: true, score: true },
-    });
-    const prevProfile =
-      existing?.profile && typeof existing.profile === "object"
-        ? (existing.profile as Record<string, unknown>)
-        : {};
-
-    await this.prisma.lead.update({
-      where: { id: leadId },
-      data: {
-        ...(score != null ? { score } : {}),
-        aiConfidence: result.confidence,
-        lastClassifiedAt: new Date(),
-        profile: {
-          ...prevProfile,
-          lastIntent: result.intent,
-          lastSentiment: result.sentiment,
-          suggestedActions: result.suggestedActions,
-          summary: result.summary,
-          nextAction: result.nextAction,
-          aiTags: result.tags,
-        },
-        ...(updateStage
-          ? {
-              stage: result.stage as never,
-              wonAt: result.stage === "WON" ? new Date() : undefined,
-              lostAt: result.stage === "LOST" ? new Date() : undefined,
-            }
-          : {}),
-      },
-    });
-
-    if (result.tags?.length) {
-      await this.autoAssignTags(organizationId, leadId, result.tags);
-    }
-
-    if (updateStage) {
-      await this.prisma.leadStageHistory.create({
-        data: {
-          leadId,
-          fromStage: currentStage as never,
-          toStage: result.stage as never,
-          reason: `AI: ${result.intent} (${Math.round(result.confidence * 100)}% confidence)`,
-          aiRunId,
-        },
-      });
-      this.realtime.emitLeadStageChanged(organizationId, {
-        leadId,
-        fromStage: currentStage,
-        toStage: result.stage,
-        confidence: result.confidence,
-      });
-
-      const lead = await this.prisma.lead.findUnique({
-        where: { id: leadId },
-        select: { phone: true, displayName: true },
-      });
-      void this.webhooks.emit(organizationId, "lead.stage.changed", {
-        leadId,
-        fromStage: currentStage,
-        toStage: result.stage,
-        phone: lead?.phone,
-        displayName: lead?.displayName,
-        isAi: true,
-        at: new Date().toISOString(),
-      });
-      return true;
-    }
-
-    return false;
   }
 }

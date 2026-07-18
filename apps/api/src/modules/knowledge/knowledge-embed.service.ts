@@ -45,7 +45,7 @@ export class KnowledgeEmbedService {
   async embedDocument(documentId: string, organizationId: string) {
     const doc = await this.prisma.knowledgeDocument.findFirst({
       where: { id: documentId, organizationId },
-      select: { id: true, rawContent: true },
+      select: { id: true, rawContent: true, title: true, category: true },
     });
     if (!doc?.rawContent?.trim()) {
       await this.prisma.knowledgeChunk.deleteMany({ where: { documentId } });
@@ -78,13 +78,18 @@ export class KnowledgeEmbedService {
 
       const id = `kc_${randomBytes(8).toString("hex")}`;
       const vectorLiteral = `[${vector.join(",")}]`;
+      const metadata = JSON.stringify({
+        category: doc.category ?? "general",
+        documentTitle: doc.title,
+      });
 
       await this.prisma.$executeRawUnsafe(
         `INSERT INTO knowledge_chunks (id, "documentId", content, metadata, embedding)
-         VALUES ($1, $2, $3, '{}'::jsonb, $4::extensions.vector)`,
+         VALUES ($1, $2, $3, $4::jsonb, $5::extensions.vector)`,
         id,
         documentId,
         content,
+        metadata,
         vectorLiteral,
       );
       indexed += 1;
@@ -99,6 +104,20 @@ export class KnowledgeEmbedService {
   }
 
   async search(organizationId: string, query: string, limit = 5) {
+    const rows = await this.searchDetailed(organizationId, query, limit);
+    return rows.map((r) => ({
+      content: r.content,
+      title: r.title,
+      similarity: r.similarity,
+    }));
+  }
+
+  async searchDetailed(
+    organizationId: string,
+    query: string,
+    limit = 5,
+    categories?: string[],
+  ) {
     const apiKey = this.config.get<string>("OPENAI_API_KEY");
     if (!apiKey || !query.trim()) return [];
 
@@ -109,16 +128,32 @@ export class KnowledgeEmbedService {
     const vectorLiteral = `[${vector.join(",")}]`;
     const take = Math.min(Math.max(limit, 1), 8);
 
+    const categoryFilter =
+      categories && categories.length > 0
+        ? `AND COALESCE(kc.metadata->>'category', kd.category, 'general') IN (${categories
+            .map((c) => `'${c.replace(/'/g, "''")}'`)
+            .join(",")})`
+        : "";
+
     const rows = await this.prisma.$queryRawUnsafe<
-      Array<{ content: string; title: string; similarity: number }>
+      Array<{
+        chunkId: string;
+        documentId: string;
+        content: string;
+        title: string;
+        similarity: number;
+        category: string;
+      }>
     >(
-      `SELECT kc.content, kd.title,
+      `SELECT kc.id AS "chunkId", kd.id AS "documentId", kc.content, kd.title,
+        COALESCE(kc.metadata->>'category', kd.category, 'general') AS category,
         1 - (kc.embedding <=> $1::extensions.vector) AS similarity
       FROM knowledge_chunks kc
       INNER JOIN knowledge_documents kd ON kd.id = kc."documentId"
       WHERE kd."organizationId" = $2
-        AND kd.status IN ('active', 'indexed')
+        AND kd.status IN ('active', 'indexed', 'pending')
         AND kc.embedding IS NOT NULL
+        ${categoryFilter}
       ORDER BY kc.embedding <=> $1::vector
       LIMIT $3`,
       vectorLiteral,

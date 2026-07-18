@@ -1,15 +1,25 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import type { JwtPayload } from "@growvisi/shared";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
+import type { JwtPayload, KnowledgeCategory } from "@growvisi/shared";
+import { DOMAIN_EVENTS, QUEUES } from "@growvisi/shared";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { BusinessEventService } from "../events/business-event.service";
 import { KnowledgeEmbedService } from "./knowledge-embed.service";
+import { KnowledgeRetrievalService } from "./knowledge-retrieval.service";
+import { useBackgroundWorkers } from "../../config/workers";
+import { withTimeout } from "../../common/utils/with-timeout";
 
 @Injectable()
 export class KnowledgeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly embed: KnowledgeEmbedService,
+    private readonly retrieval: KnowledgeRetrievalService,
     private readonly entitlements: EntitlementsService,
+    private readonly events: BusinessEventService,
+    @InjectQueue(QUEUES.AI_EMBED) private readonly embedQueue: Queue,
   ) {}
 
   async list(user: JwtPayload) {
@@ -19,6 +29,7 @@ export class KnowledgeService {
       select: {
         id: true,
         title: true,
+        category: true,
         sourceType: true,
         status: true,
         createdAt: true,
@@ -31,6 +42,7 @@ export class KnowledgeService {
     return docs.map((d) => ({
       id: d.id,
       title: d.title,
+      category: d.category,
       sourceType: d.sourceType,
       status: d.status,
       createdAt: d.createdAt,
@@ -40,19 +52,26 @@ export class KnowledgeService {
     }));
   }
 
-  async create(user: JwtPayload, title: string, content: string) {
+  async create(
+    user: JwtPayload,
+    title: string,
+    content: string,
+    category: KnowledgeCategory = "general",
+  ) {
     await this.entitlements.assertHasAccess(user.organizationId);
     const doc = await this.prisma.knowledgeDocument.create({
       data: {
         organizationId: user.organizationId,
         title: title.trim(),
         rawContent: content.trim(),
+        category,
         sourceType: "manual",
         status: "pending",
       },
       select: {
         id: true,
         title: true,
+        category: true,
         sourceType: true,
         status: true,
         createdAt: true,
@@ -61,14 +80,21 @@ export class KnowledgeService {
       },
     });
 
-    const { chunks } = await this.embed.embedDocument(doc.id, user.organizationId);
-    return { ...doc, status: chunks > 0 ? "indexed" : "active", chunkCount: chunks };
+    const chunkCount = await this.scheduleEmbed(doc.id, user.organizationId);
+    void this.events.emit({
+      organizationId: user.organizationId,
+      type: DOMAIN_EVENTS.KNOWLEDGE_DOCUMENT_UPDATED,
+      entityType: "knowledge",
+      entityId: doc.id,
+      payload: { action: "created" },
+    });
+    return { ...doc, chunkCount, status: chunkCount > 0 ? "indexed" : "pending" };
   }
 
   async update(
     user: JwtPayload,
     id: string,
-    patch: { title?: string; content?: string },
+    patch: { title?: string; content?: string; category?: KnowledgeCategory },
   ) {
     await this.entitlements.assertHasAccess(user.organizationId);
     const existing = await this.prisma.knowledgeDocument.findFirst({
@@ -81,11 +107,13 @@ export class KnowledgeService {
       data: {
         title: patch.title?.trim() ?? undefined,
         rawContent: patch.content?.trim() ?? undefined,
+        category: patch.category ?? undefined,
         status: "pending",
       },
       select: {
         id: true,
         title: true,
+        category: true,
         sourceType: true,
         status: true,
         createdAt: true,
@@ -94,8 +122,15 @@ export class KnowledgeService {
       },
     });
 
-    const { chunks } = await this.embed.embedDocument(doc.id, user.organizationId);
-    return { ...doc, status: chunks > 0 ? "indexed" : "active", chunkCount: chunks };
+    const chunkCount = await this.scheduleEmbed(id, user.organizationId);
+    void this.events.emit({
+      organizationId: user.organizationId,
+      type: DOMAIN_EVENTS.KNOWLEDGE_DOCUMENT_UPDATED,
+      entityType: "knowledge",
+      entityId: id,
+      payload: { action: "updated" },
+    });
+    return { ...doc, chunkCount, status: chunkCount > 0 ? "indexed" : "pending" };
   }
 
   async reindex(user: JwtPayload, id: string) {
@@ -105,8 +140,8 @@ export class KnowledgeService {
     });
     if (!existing) throw new NotFoundException("Document not found");
 
-    const { chunks } = await this.embed.embedDocument(id, user.organizationId);
-    return { ok: true, chunkCount: chunks };
+    const chunkCount = await this.scheduleEmbed(id, user.organizationId, true);
+    return { ok: true, chunkCount };
   }
 
   async remove(user: JwtPayload, id: string) {
@@ -116,6 +151,53 @@ export class KnowledgeService {
     });
     if (!existing) throw new NotFoundException("Document not found");
     await this.prisma.knowledgeDocument.delete({ where: { id } });
+    void this.events.emit({
+      organizationId: user.organizationId,
+      type: DOMAIN_EVENTS.KNOWLEDGE_DOCUMENT_UPDATED,
+      entityType: "knowledge",
+      entityId: id,
+      payload: { action: "deleted" },
+    });
     return { deleted: true };
+  }
+
+  async testRetrieve(user: JwtPayload, query: string, limit = 5) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    return this.retrieval.retrieve({
+      organizationId: user.organizationId,
+      query,
+      limit,
+    });
+  }
+
+  async health(user: JwtPayload) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    return this.retrieval.getHealth(user.organizationId);
+  }
+
+  private async scheduleEmbed(
+    documentId: string,
+    organizationId: string,
+    forceInline = false,
+  ): Promise<number> {
+    if (useBackgroundWorkers() && !forceInline) {
+      try {
+        await withTimeout(
+          this.embedQueue.add(
+            "embed",
+            { documentId, organizationId },
+            { jobId: `embed:${documentId}`, removeOnComplete: 500, removeOnFail: 2000 },
+          ),
+          5_000,
+          "Embed queue unavailable",
+        );
+        return 0;
+      } catch {
+        // fall through to inline
+      }
+    }
+
+    const { chunks } = await this.embed.embedDocument(documentId, organizationId);
+    return chunks;
   }
 }

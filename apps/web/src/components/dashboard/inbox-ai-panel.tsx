@@ -48,6 +48,7 @@ export function InboxAiPanel({
   onResolveHandoff,
   onCorrectAi,
   correctionPending,
+  knowledgeGaps = [],
   coachTakeover,
   takeoverPending,
   taskPending,
@@ -68,6 +69,7 @@ export function InboxAiPanel({
   onResolveHandoff: () => void;
   onCorrectAi?: (payload: AiCorrectionPayload) => void;
   correctionPending?: boolean;
+  knowledgeGaps?: string[];
   /** Post-activation coaching: emphasize Reply now until first takeover */
   coachTakeover?: boolean;
   takeoverPending?: boolean;
@@ -130,6 +132,16 @@ export function InboxAiPanel({
 
   return (
     <div className="border-t border-border/50 bg-background/80 px-4 py-2.5 lg:px-5">
+      {knowledgeGaps.length > 0 && (
+        <div className="mb-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+          <p className="font-semibold">Add Business Knowledge</p>
+          <p className="mt-0.5 leading-relaxed text-amber-900/90">
+            Customers asked about {knowledgeGaps.join(", ")} but no matching docs were found. Add
+            pricing or policies in Settings → Intelligence.
+          </p>
+        </div>
+      )}
+
       {requiresHuman && (
         <div className="mb-2 rounded-xl border border-amber-200/90 bg-card elev-1 px-3 py-3 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-2">

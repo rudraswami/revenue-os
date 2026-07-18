@@ -16,8 +16,11 @@ export const DOMAIN_EVENTS = {
   MESSAGE_SENT: "message.sent",
   MESSAGE_STATUS_UPDATED: "message.status.updated",
   LEAD_STAGE_CHANGED: "lead.stage.changed",
+  LEAD_CLASSIFIED: "lead.classified",
   CONVERSATION_ASSIGNED: "conversation.assigned",
   CONVERSATION_AI_HANDOFF: "conversation.ai.handoff",
+  CONVERSATION_AI_CORRECTION: "conversation.ai.correction",
+  KNOWLEDGE_DOCUMENT_UPDATED: "knowledge.document.updated",
   AUTOMATION_TRIGGERED: "automation.triggered",
 } as const;
 

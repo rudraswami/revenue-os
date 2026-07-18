@@ -2,6 +2,7 @@ import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { useBackgroundWorkers } from "../../config/workers";
 import { QUEUES } from "@growvisi/shared";
+import { EventsModule } from "../events/events.module";
 import { AiModule } from "../ai/ai.module";
 import { AssignmentModule } from "../assignments/assignment.module";
 import { TrackingModule } from "../tracking/tracking.module";
@@ -18,6 +19,7 @@ const registerProcessors = useBackgroundWorkers();
 @Module({
   imports: [
     BullModule.registerQueue({ name: QUEUES.WHATSAPP_INBOUND }),
+    EventsModule,
     RealtimeModule,
     AiModule,
     BillingModule,

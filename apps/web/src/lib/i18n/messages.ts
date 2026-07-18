@@ -749,6 +749,9 @@ export const messages = {
       selectBody:
         "See messages, AI insights, and deal stage in one place. When it's your turn, reply here or continue in WhatsApp.",
       autoClassify: "Auto-classify",
+      replyModeHuman: "Human reply",
+      replyModeAiAssist: "AI assist",
+      replyModeHint: "You send every message. AI assist classifies and drafts — never auto-sends on WhatsApp.",
       assignedTo: "Assigned to",
       unassigned: "Unassigned",
       assignmentAutoHandoff: "Routed by AI after handoff — {reason}",
@@ -1588,6 +1591,9 @@ export const messages = {
       selectBody:
         "संदेश, AI जानकारी और डील स्टेज एक जगह। जब आपकी बारी हो, यहाँ या WhatsApp में जवाब दें।",
       autoClassify: "ऑटो-क्लासिफाई",
+      replyModeHuman: "मानव जवाब",
+      replyModeAiAssist: "AI सहायता",
+      replyModeHint: "आप ही संदेश भेजते हैं। AI सहायता वर्गीकरण और ड्राफ्ट देती है — WhatsApp पर कभी ऑटो-भेजती नहीं।",
       assignedTo: "असाइन किया",
       unassigned: "असाइन नहीं",
       assignmentAutoHandoff: "AI ने हैंडऑफ के बाद रूट किया — {reason}",

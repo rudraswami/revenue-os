@@ -4,7 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { createHash } from "crypto";
-import { QUEUES } from "@growvisi/shared";
+import { DOMAIN_EVENTS, QUEUES } from "@growvisi/shared";
 import { isProductionDeploy } from "../../config/production";
 import { useBackgroundWorkers } from "../../config/workers";
 import { withTimeout } from "../../common/utils/with-timeout";
@@ -39,9 +39,12 @@ export interface InboundMessageEvent {
   conversationId: string;
   messageId: string;
   leadId: string | null;
+  contactPhone: string;
+  waMessageId: string;
 }
 
 import { AiClassifyService } from "../ai/ai-classify.service";
+import { BusinessEventService } from "../events/business-event.service";
 import { AssignmentService } from "../assignments/assignment.service";
 import { TrackingService } from "../tracking/tracking.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
@@ -62,6 +65,7 @@ export class WhatsappService {
     private readonly assignments: AssignmentService,
     private readonly tracking: TrackingService,
     private readonly webhooks: WebhookDispatchService,
+    private readonly businessEvents: BusinessEventService,
   ) {}
 
   verifySignature(rawBody: Buffer, signature: string | undefined): boolean {
@@ -146,8 +150,30 @@ export class WhatsappService {
         this.realtime.emitMessageNew(inbound.organizationId, {
           conversationId: inbound.conversationId,
         });
+
+        const correlationId = this.businessEvents.createCorrelationId();
+        void this.businessEvents.emit({
+          organizationId: inbound.organizationId,
+          type: DOMAIN_EVENTS.MESSAGE_RECEIVED,
+          entityType: "message",
+          entityId: inbound.messageId,
+          correlationId,
+          payload: {
+            conversationId: inbound.conversationId,
+            leadId: inbound.leadId,
+            waMessageId: inbound.waMessageId,
+            contactPhone: inbound.contactPhone,
+          },
+        });
+
         if (inbound.leadId) {
-          await this.aiClassify.enqueue(inbound as typeof inbound & { leadId: string });
+          await this.aiClassify.enqueue({
+            organizationId: inbound.organizationId,
+            conversationId: inbound.conversationId,
+            messageId: inbound.messageId,
+            leadId: inbound.leadId,
+            correlationId,
+          });
         }
       }
       for (const orgId of orgIds) {
@@ -441,6 +467,8 @@ export class WhatsappService {
       conversationId: conversation.id,
       messageId: message.id,
       leadId: lead?.id ?? null,
+      contactPhone: from,
+      waMessageId,
     };
   }
 

@@ -1,0 +1,25 @@
+import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { Logger } from "@nestjs/common";
+import { Job } from "bullmq";
+import { QUEUES } from "@growvisi/shared";
+import { KnowledgeEmbedService } from "../knowledge-embed.service";
+
+export interface EmbedJobData {
+  documentId: string;
+  organizationId: string;
+}
+
+@Processor(QUEUES.AI_EMBED)
+export class AiEmbedProcessor extends WorkerHost {
+  private readonly logger = new Logger(AiEmbedProcessor.name);
+
+  constructor(private readonly embed: KnowledgeEmbedService) {
+    super();
+  }
+
+  async process(job: Job<EmbedJobData>) {
+    const { documentId, organizationId } = job.data;
+    this.logger.debug(`Embedding document ${documentId}`);
+    await this.embed.embedDocument(documentId, organizationId);
+  }
+}

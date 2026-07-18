@@ -7,11 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
+import { KNOWLEDGE_CATEGORIES } from "@growvisi/shared";
 import { useAuthStore } from "@/stores/auth-store";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  general: "General",
+  pricing: "Pricing",
+  policy: "Policy",
+  faq: "FAQ",
+  product: "Product",
+};
 
 interface KnowledgeDoc {
   id: string;
   title: string;
+  category?: string;
   rawContent: string | null;
   sourceType: string;
   status: string;
@@ -26,6 +36,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [category, setCategory] = useState("general");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -41,7 +52,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
       apiFetch<KnowledgeDoc>("/knowledge/documents", {
         method: "POST",
         token: token ?? undefined,
-        body: JSON.stringify({ title, content }),
+        body: JSON.stringify({ title, content, category }),
       }),
     onSuccess: () => {
       setTitle("");
@@ -99,7 +110,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
           <div>
             <p className="text-sm font-semibold">Business context</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Pricing, policies, and FAQs — indexed for semantic search in smart reply drafts.
+              Pricing, policies, and FAQs — powers classification, handoff decisions, and reply drafts.
               {indexedTotal > 0 && (
                 <span className="ml-1 inline-flex items-center gap-1 font-medium text-accent">
                   <Sparkles className="h-3 w-3" />
@@ -128,6 +139,17 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
             onChange={(e) => setTitle(e.target.value)}
             className="h-9 text-sm"
           />
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="h-9 w-full rounded-lg border border-input bg-card px-2 text-sm"
+          >
+            {KNOWLEDGE_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {CATEGORY_LABELS[c] ?? c}
+              </option>
+            ))}
+          </select>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -215,6 +237,11 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium">{doc.title}</p>
+                      {doc.category && doc.category !== "general" && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          {CATEGORY_LABELS[doc.category] ?? doc.category}
+                        </span>
+                      )}
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                           doc.status === "indexed"

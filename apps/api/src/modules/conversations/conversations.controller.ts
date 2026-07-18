@@ -69,6 +69,15 @@ class SendMessageDto {
   @IsString()
   @IsNotEmpty()
   content!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  draftText?: string;
+
+  @IsOptional()
+  @IsString()
+  aiRunId?: string;
 }
 
 class TakeoverDto {
@@ -197,7 +206,16 @@ export class ConversationsController {
     @Param("id") id: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.conversations.sendMessage(user, id, dto.content);
+    return this.conversations.sendMessage(user, id, dto.content, {
+      draftText: dto.draftText,
+      aiRunId: dto.aiRunId,
+    });
+  }
+
+  @Get(":id/intelligence")
+  @RequireCapability("inbox.reply")
+  getIntelligence(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.conversations.getIntelligence(user, id);
   }
 
   @Post(":id/suggest-reply")

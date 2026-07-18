@@ -1,11 +1,12 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
-import { QUEUES } from "@growvisi/shared";
+import { DOMAIN_EVENTS, QUEUES } from "@growvisi/shared";
 import { PrismaService } from "../../prisma/prisma.service";
+import { AiClassifyService } from "../../ai/ai-classify.service";
+import { BusinessEventService } from "../../events/business-event.service";
 import { RealtimeGateway } from "../../realtime/realtime.gateway";
 import { WhatsappService, type WhatsappWebhookPayload } from "../whatsapp.service";
-import { AiClassifyService } from "../../ai/ai-classify.service";
 
 interface InboundJobData {
   webhookEventId: string;
@@ -21,6 +22,7 @@ export class WhatsappInboundProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly aiClassify: AiClassifyService,
+    private readonly businessEvents: BusinessEventService,
   ) {
     super();
   }
@@ -40,8 +42,30 @@ export class WhatsappInboundProcessor extends WorkerHost {
         this.realtime.emitMessageNew(event.organizationId, {
           conversationId: event.conversationId,
         });
+
+        const correlationId = this.businessEvents.createCorrelationId();
+        void this.businessEvents.emit({
+          organizationId: event.organizationId,
+          type: DOMAIN_EVENTS.MESSAGE_RECEIVED,
+          entityType: "message",
+          entityId: event.messageId,
+          correlationId,
+          payload: {
+            conversationId: event.conversationId,
+            leadId: event.leadId,
+            waMessageId: event.waMessageId,
+            contactPhone: event.contactPhone,
+          },
+        });
+
         if (event.leadId) {
-          await this.aiClassify.enqueue(event as typeof event & { leadId: string });
+          await this.aiClassify.enqueue({
+            organizationId: event.organizationId,
+            conversationId: event.conversationId,
+            messageId: event.messageId,
+            leadId: event.leadId,
+            correlationId,
+          });
         }
       }
       for (const orgId of orgIds) {

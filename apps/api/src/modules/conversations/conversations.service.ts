@@ -2,17 +2,19 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { ConfigService } from "@nestjs/config";
 import { LeadStage, type Prisma } from "@prisma/client";
 import type { JwtPayload } from "@growvisi/shared";
-import { hasCapability } from "@growvisi/shared";
+import { DOMAIN_EVENTS, hasCapability } from "@growvisi/shared";
 import { requireConversationAssignment } from "../../common/auth/authorization";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
-import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import {
   formatDurationMs,
   mergeCoachingSettings,
   normalizeWorkspaceOpsSettings,
 } from "../organizations/workspace-settings";
 import { EntitlementsService } from "../billing/entitlements.service";
-import { KnowledgeEmbedService } from "../knowledge/knowledge-embed.service";
+import { IntelligenceQueryService } from "../intelligence/intelligence-query.service";
+import { LearningSignalService } from "../intelligence/learning-signal.service";
+import { SuggestReplyService } from "../intelligence/suggest-reply.service";
+import { BusinessEventService } from "../events/business-event.service";
 import { AiClassifyService, type HumanAiCorrectionInput } from "../ai/ai-classify.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
@@ -31,7 +33,10 @@ export class ConversationsService {
     private readonly config: ConfigService,
     private readonly realtime: RealtimeGateway,
     private readonly entitlements: EntitlementsService,
-    private readonly knowledgeEmbed: KnowledgeEmbedService,
+    private readonly suggestReplyService: SuggestReplyService,
+    private readonly intelligenceQuery: IntelligenceQueryService,
+    private readonly learningSignals: LearningSignalService,
+    private readonly businessEvents: BusinessEventService,
     private readonly aiClassify: AiClassifyService,
   ) {}
 
@@ -325,9 +330,19 @@ export class ConversationsService {
 
     return {
       ...conversation,
+      replyMode: conversation.aiEnabled ? ("ai_assist" as const) : ("human" as const),
       requiresHuman: meta.requiresHuman === true,
       handoffReason: typeof meta.handoffReason === "string" ? meta.handoffReason : null,
       handoffAt: typeof meta.handoffAt === "string" ? meta.handoffAt : null,
+      pendingDraft:
+        meta.pendingDraft && typeof meta.pendingDraft === "object"
+          ? (meta.pendingDraft as {
+              suggestion: string;
+              sources?: Array<{ title: string; citation?: string; similarity: number }>;
+              aiRunId?: string;
+              createdAt?: string;
+            })
+          : null,
       assignment: await this.resolveAssignmentExplain(meta, user.organizationId),
       aiContext,
     };
@@ -517,7 +532,12 @@ export class ConversationsService {
     return { ok: true };
   }
 
-  async sendMessage(user: JwtPayload, conversationId: string, content: string) {
+  async sendMessage(
+    user: JwtPayload,
+    conversationId: string,
+    content: string,
+    opts?: { draftText?: string; aiRunId?: string },
+  ) {
     await this.entitlements.assertHasAccess(user.organizationId);
 
     const text = content.trim();
@@ -577,113 +597,35 @@ export class ConversationsService {
     this.realtime.emitMessageNew(user.organizationId, { conversationId });
     this.realtime.emitInboxUpdated(user.organizationId);
 
+    void this.businessEvents.emit({
+      organizationId: user.organizationId,
+      type: DOMAIN_EVENTS.MESSAGE_SENT,
+      entityType: "message",
+      entityId: message.id,
+      payload: { conversationId, content: text },
+    });
+
+    if (opts?.draftText?.trim()) {
+      void this.learningSignals.recordDraftFeedback({
+        organizationId: user.organizationId,
+        conversationId,
+        aiRunId: opts.aiRunId,
+        draft: opts.draftText,
+        final: text,
+      });
+    }
+
+    await this.suggestReplyService.clearPendingDraft(conversationId, user.organizationId);
+
     return message;
   }
 
   async suggestReply(user: JwtPayload, conversationId: string) {
-    await this.entitlements.assertHasAccess(user.organizationId);
+    return this.suggestReplyService.suggest(user, conversationId);
+  }
 
-    const apiKey = this.config.get<string>("OPENAI_API_KEY");
-    if (!apiKey) {
-      throw new BadRequestException("Smart replies are not available on this workspace.");
-    }
-
-    const conversation = await this.prisma.conversation.findFirst({
-      where: { id: conversationId, organizationId: user.organizationId },
-      include: {
-        messages: { orderBy: { createdAt: "desc" }, take: 12 },
-      },
-    });
-    if (!conversation) throw new NotFoundException("Conversation not found");
-
-    const ordered = [...conversation.messages].reverse();
-    const transcriptSnippet = ordered
-      .slice(-4)
-      .map((m) => m.content)
-      .filter(Boolean)
-      .join(" ");
-
-    const ragChunks = await this.knowledgeEmbed.search(
-      user.organizationId,
-      transcriptSnippet || ordered.at(-1)?.content || "customer inquiry",
-      5,
-    );
-
-    const knowledgeBlock =
-      ragChunks.length > 0
-        ? ragChunks.map((c) => `### ${c.title}\n${c.content}`).join("\n\n")
-        : (
-            await this.prisma.knowledgeDocument.findMany({
-              where: { organizationId: user.organizationId },
-              orderBy: { updatedAt: "desc" },
-              take: 3,
-              select: { title: true, rawContent: true },
-            })
-          )
-            .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 800)}`)
-            .join("\n\n");
-
-    const transcript = ordered
-      .map((m) => {
-        const who = m.direction === "INBOUND" ? "Customer" : "Business";
-        return `${who}: ${m.content ?? "(media)"}`;
-      })
-      .join("\n");
-
-    const model = this.config.get<string>("AI_CHAT_MODEL") ?? "gpt-4o-mini";
-    const res = await fetchWithTimeout(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          temperature: 0.4,
-          max_tokens: 180,
-          messages: [
-            {
-              role: "system",
-              content: [
-                "You draft WhatsApp replies for a sales team. Write one short, warm, professional message. Plain text only. No quotes or labels.",
-                knowledgeBlock
-                  ? `Use this business context when relevant:\n\n${knowledgeBlock}`
-                  : "",
-              ]
-                .filter(Boolean)
-                .join("\n\n"),
-            },
-            {
-              role: "user",
-              content: `Draft the next reply.\n\n${transcript}`,
-            },
-          ],
-        }),
-      },
-      25_000,
-    );
-
-    const body = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      error?: { message?: string };
-    };
-
-    if (!res.ok) {
-      throw new BadRequestException(body.error?.message ?? "Could not generate a suggestion.");
-    }
-
-    const suggestion = body.choices?.[0]?.message?.content?.trim();
-    if (!suggestion) {
-      throw new BadRequestException("No suggestion returned.");
-    }
-
-    return {
-      suggestion,
-      sources: ragChunks.map((c) => ({ title: c.title, similarity: c.similarity })),
-      usedRag: ragChunks.length > 0,
-    };
+  async getIntelligence(user: JwtPayload, conversationId: string) {
+    return this.intelligenceQuery.getConversationIntelligence(user, conversationId);
   }
 
   async assign(user: JwtPayload, id: string, assignToUserId: string | null) {
@@ -772,11 +714,36 @@ export class ConversationsService {
   }
 
   async toggleAi(user: JwtPayload, id: string, aiEnabled: boolean) {
+    if (!aiEnabled) {
+      await this.suggestReplyService.clearPendingDraft(id, user.organizationId);
+    }
+
     await this.prisma.conversation.updateMany({
       where: { id, organizationId: user.organizationId },
       data: { aiEnabled },
     });
-    return this.getById(user, id);
+
+    const updated = await this.getById(user, id);
+
+    if (aiEnabled && updated.leadId) {
+      const latestInbound = await this.prisma.message.findFirst({
+        where: { conversationId: id, direction: "INBOUND" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+      if (latestInbound) {
+        void this.aiClassify
+          .enqueue({
+            organizationId: user.organizationId,
+            conversationId: id,
+            messageId: latestInbound.id,
+            leadId: updated.leadId,
+          })
+          .catch(() => undefined);
+      }
+    }
+
+    return updated;
   }
 
   /**

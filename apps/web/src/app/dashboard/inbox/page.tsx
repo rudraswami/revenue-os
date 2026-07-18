@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { LEAD_STAGES, STAGE_BADGE, formatInr } from "@/lib/crm";
 import { HOT_LEAD_SCORE_THRESHOLD, type LeadStage } from "@growvisi/shared";
@@ -66,6 +65,13 @@ interface ConversationDetail {
   unreadCount: number;
   lastInboundAt?: string | null;
   aiEnabled: boolean;
+  replyMode?: "human" | "ai_assist";
+  pendingDraft?: {
+    suggestion: string;
+    sources?: Array<{ title: string; citation?: string; similarity: number }>;
+    aiRunId?: string;
+    createdAt?: string;
+  } | null;
   requiresHuman?: boolean;
   handoffReason?: string | null;
   assignment?: AssignmentExplain | null;
@@ -117,6 +123,10 @@ export default function InboxPage() {
   };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [draftMeta, setDraftMeta] = useState<{
+    aiRunId?: string;
+    sources: Array<{ title: string; citation?: string; similarity: number }>;
+  } | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [showComposer, setShowComposer] = useState(true);
   const [showTimeline, setShowTimeline] = useState(true);
@@ -306,14 +316,39 @@ export default function InboxPage() {
     }
   }, [thread?.requiresHuman, thread?.id, showComposer]);
 
+  useEffect(() => {
+    const pending = thread?.pendingDraft;
+    if (!pending?.suggestion || !thread?.aiEnabled) return;
+    setDraft(pending.suggestion);
+    setDraftMeta({
+      aiRunId: pending.aiRunId,
+      sources: pending.sources ?? [],
+    });
+  }, [thread?.id, thread?.pendingDraft?.createdAt, thread?.aiEnabled]);
+
+  const { data: intelligence } = useQuery({
+    queryKey: ["conversation-intelligence", selectedId],
+    queryFn: () =>
+      apiFetch<{
+        knowledgeGaps: string[];
+        observedMemory: Array<{ id: string; type: string; content: string }>;
+      }>(`/conversations/${selectedId}/intelligence`, { token: token ?? undefined }),
+    enabled: !!token && !!selectedId,
+  });
+
   const suggestMutation = useMutation({
     mutationFn: () =>
-      apiFetch<{ suggestion: string }>(`/conversations/${selectedId}/suggest-reply`, {
+      apiFetch<{
+        suggestion: string;
+        aiRunId?: string;
+        sources: Array<{ title: string; citation?: string; similarity: number }>;
+      }>(`/conversations/${selectedId}/suggest-reply`, {
         method: "POST",
         token: token ?? undefined,
       }),
     onSuccess: (res) => {
       setDraft(res.suggestion);
+      setDraftMeta({ aiRunId: res.aiRunId, sources: res.sources ?? [] });
       setSendError(null);
     },
     onError: (e) => {
@@ -454,10 +489,15 @@ export default function InboxPage() {
       apiFetch(`/conversations/${selectedId}/messages`, {
         method: "POST",
         token: token ?? undefined,
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          content,
+          draftText: draftMeta?.aiRunId ? draft : undefined,
+          aiRunId: draftMeta?.aiRunId,
+        }),
       }),
     onSuccess: () => {
       setDraft("");
+      setDraftMeta(null);
       setSendError(null);
       void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
@@ -816,21 +856,42 @@ export default function InboxPage() {
                 }}
                 onResolveHandoff={() => resolveHandoffMutation.mutate()}
                 onCorrectAi={(payload) => correctAiMutation.mutate(payload)}
+                knowledgeGaps={intelligence?.knowledgeGaps ?? []}
               />
               <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/60 px-4 py-2 lg:px-5">
                 {canToggleAi && (
-                <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {copy.autoClassify}
-                  </span>
-                  <span className="scale-90">
-                    <Switch
-                      checked={thread.aiEnabled}
+                <div className="flex flex-col gap-1 rounded-lg border border-border/50 bg-card px-2.5 py-1.5">
+                  <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-0.5">
+                    <button
+                      type="button"
                       disabled={aiToggleMutation.isPending}
-                      onCheckedChange={(v) => aiToggleMutation.mutate(v)}
-                      aria-label={copy.autoClassify}
-                    />
-                  </span>
+                      onClick={() => thread.aiEnabled && aiToggleMutation.mutate(false)}
+                      className={cn(
+                        "rounded-md px-2.5 py-1 text-xs font-semibold transition",
+                        !thread.aiEnabled
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {copy.replyModeHuman}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={aiToggleMutation.isPending}
+                      onClick={() => !thread.aiEnabled && aiToggleMutation.mutate(true)}
+                      className={cn(
+                        "rounded-md px-2.5 py-1 text-xs font-semibold transition",
+                        thread.aiEnabled
+                          ? "bg-card text-accent shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {copy.replyModeAiAssist}
+                    </button>
+                  </div>
+                  <p className="max-w-xs text-[10px] leading-snug text-muted-foreground">
+                    {copy.replyModeHint}
+                  </p>
                 </div>
                 )}
                 <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1.5 md:flex">
@@ -946,9 +1007,10 @@ export default function InboxPage() {
                     sendPending={sendMutation.isPending}
                     sendDisabled={!thread.whatsappAccount.isActive || windowClosed || !canSend}
                     sendError={sendError}
-                    showAiSuggest={!!capabilities?.aiSuggestReply && !windowClosed}
+                    showAiSuggest={!!capabilities?.aiSuggestReply && thread.aiEnabled && !windowClosed}
                     suggestPending={suggestMutation.isPending}
                     onSuggest={() => suggestMutation.mutate()}
+                    draftSources={draftMeta?.sources}
                     templates={replyTemplates?.templates}
                     composeRef={composeRef}
                     onMinimize={() => setShowComposer(false)}

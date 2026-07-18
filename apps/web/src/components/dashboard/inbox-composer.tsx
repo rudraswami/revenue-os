@@ -15,6 +15,7 @@ export function InboxComposer({
   showAiSuggest,
   suggestPending,
   onSuggest,
+  draftSources,
   templates,
   composeRef,
   onMinimize,
@@ -28,6 +29,7 @@ export function InboxComposer({
   showAiSuggest: boolean;
   suggestPending: boolean;
   onSuggest: () => void;
+  draftSources?: Array<{ title: string; citation?: string }>;
   templates?: Array<{ id: string; title: string; body: string }>;
   composeRef?: React.RefObject<HTMLTextAreaElement | null>;
   onMinimize: () => void;
@@ -79,6 +81,13 @@ export function InboxComposer({
             </button>
           ))}
         </div>
+      )}
+
+      {(draftSources?.length ?? 0) > 0 && (
+        <p className="mb-2 text-xs text-muted-foreground">
+          <span className="font-semibold text-accent">Sources:</span>{" "}
+          {draftSources!.map((s) => s.citation ?? s.title).join(" · ")}
+        </p>
       )}
 
       <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_1px_8px_rgb(11_28_48/0.05)]">
