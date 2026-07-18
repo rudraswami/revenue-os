@@ -97,7 +97,7 @@ export class MarketingHelpService {
         return result;
       }
       throw new ServiceUnavailableException(
-        "Assistant is offline — message us on WhatsApp or email support@growvisi.in.",
+        "Assistant is offline — message us on WhatsApp or email it@growvisi.com.",
       );
     }
 
@@ -112,7 +112,7 @@ export class MarketingHelpService {
       locale === "hi"
         ? "Reply in simple Hindi when asked; keep product terms in English when natural."
         : "Reply in clear, concise English (2–4 sentences).",
-      "If they want a demo, enterprise pricing, or Meta token help, suggest WhatsApp or support@growvisi.in.",
+      "If they want a demo, enterprise pricing, or Meta token help, suggest WhatsApp or it@growvisi.com.",
       "",
       MARKETING_HELP_EXCERPT,
       "",

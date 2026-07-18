@@ -40,8 +40,8 @@ export default function AboutPage() {
             <p>{POSITIONING.replyNote}</p>
             <p>
               <strong className="text-foreground">Contact:</strong>{" "}
-              <a href="mailto:support@growvisi.in" className="text-primary hover:underline">
-                support@growvisi.in
+              <a href="mailto:it@growvisi.com" className="text-primary hover:underline">
+                it@growvisi.com
               </a>
             </p>
             <div className="flex flex-wrap gap-3 pt-4">

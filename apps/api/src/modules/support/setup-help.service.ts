@@ -87,7 +87,7 @@ export class SetupHelpService {
         ? "Reply in Hindi (simple, clear). Keep product terms like Conversations, Pipeline, Meta API Setup in English when natural."
         : "Reply in clear English.",
       "Be concise (2–5 sentences). Use numbered steps when helpful.",
-      "If Meta token/auth is failing or you are unsure, suggest booking a free setup call or email support@growvisi.in.",
+      "If Meta token/auth is failing or you are unsure, suggest booking a free setup call or email it@growvisi.com.",
       "",
       `Context screen: ${input.context}`,
       "",

@@ -56,7 +56,7 @@ export default function ContactPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(toUserMessage(err, "Could not send request. Email support@growvisi.in"));
+      setError(toUserMessage(err, "Could not send request. Email it@growvisi.com"));
     } finally {
       setLoading(false);
     }

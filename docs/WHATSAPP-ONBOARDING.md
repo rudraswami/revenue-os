@@ -95,7 +95,7 @@ Schedule is defined in `apps/api/vercel.json` (daily on Hobby; every 6h on Pro):
 ```bash
 CRON_SECRET=<openssl rand -base64 32>
 RESEND_API_KEY=<resend key>
-EMAIL_FROM=Growvisi <noreply@growvisi.in>
+EMAIL_FROM=Growvisi <it@growvisi.com>
 META_APP_ID=1694805491426991
 META_APP_SECRET=<app secret>
 WHATSAPP_EMBEDDED_SIGNUP_LIVE=true   # after App Review (false hides Facebook CTA)

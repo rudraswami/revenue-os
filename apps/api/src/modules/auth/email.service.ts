@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { GROWVISI_EMAIL_FROM } from "@growvisi/shared";
+import { GROWVISI_EMAIL_FROM, GROWVISI_EMAIL_SUPPORT } from "@growvisi/shared";
 
 @Injectable()
 export class EmailService {
@@ -39,7 +39,7 @@ export class EmailService {
         <p style="font-size:13px;color:#888">If you didn't create a Growvisi account, you can ignore this email.</p>
         <p style="font-size:12px;color:#aaa;margin-top:24px">Growvisi · WhatsApp revenue for Indian SMBs<br/>growvisi.in</p>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 
@@ -59,9 +59,9 @@ export class EmailService {
         <p>Meta API Setup tokens expire about every 24 hours. Paste a new token in Growvisi — you do not need to disconnect your number.</p>
         <p><a href="${opts.settingsUrl}">Refresh token in Settings</a></p>
         <p>Steps: Meta Developer → WhatsApp → API Setup → Generate access token → paste under <strong>Refresh access token</strong>.</p>
-        <p>Need help? Reply to this email or contact support@growvisi.in</p>
+        <p>Need help? Reply to this email or contact ${GROWVISI_EMAIL_SUPPORT}</p>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 
@@ -80,9 +80,9 @@ export class EmailService {
         <p>Your Meta API Setup token for <strong>${opts.organizationName}</strong> (${opts.displayPhoneNumber}) will expire in about ${Math.ceil(opts.hoursRemaining)} hours.</p>
         <p>Refresh it now to avoid gaps in message ingestion — paste a new token in Growvisi (no need to disconnect).</p>
         <p><a href="${opts.settingsUrl}">Refresh token in Settings</a></p>
-        <p>Need help? Reply to support@growvisi.in</p>
+        <p>Need help? Reply to ${GROWVISI_EMAIL_SUPPORT}</p>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 
@@ -103,7 +103,7 @@ export class EmailService {
         <p><strong>${opts.leadLabel}</strong> — score ${opts.score}, stage ${opts.stage.replace("_", " ")}.</p>
         <p><a href="${opts.inboxUrl}">Open conversation</a></p>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 
@@ -124,7 +124,7 @@ export class EmailService {
         <p>A follow-up task was created in Growvisi. Reply from Inbox when you take over, or continue in WhatsApp.</p>
         <p><a href="${opts.inboxUrl}">Open conversation</a></p>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 
@@ -142,7 +142,7 @@ export class EmailService {
         <p>${opts.count} WhatsApp conversation${opts.count > 1 ? "s have" : " has"} been waiting over 24 hours without a team reply.</p>
         <p><a href="${opts.inboxUrl}">Review conversations</a></p>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 
@@ -170,7 +170,7 @@ export class EmailService {
           <a href="${opts.inboxUrl}">Open conversation</a>
         </p>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 
@@ -194,7 +194,7 @@ export class EmailService {
           <a href="${opts.tasksUrl}">Open tasks</a>
         </p>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 
@@ -282,7 +282,7 @@ export class EmailService {
           <p style="font-size:11px;color:#888">Growvisi tracks pipeline and team actions. Your team replies from Inbox when customers need a human. Turn off this email in Automations → Daily digest.</p>
         </div>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 
@@ -301,7 +301,7 @@ export class EmailService {
         <p><a href="${opts.inviteUrl}">Accept invite and create your account</a></p>
         <p>This link expires in 7 days. Growvisi classifies WhatsApp leads and tracks pipeline ₹ — your team replies from Inbox when it matters.</p>
       `,
-      replyTo: "support@growvisi.in",
+      replyTo: GROWVISI_EMAIL_SUPPORT,
     });
   }
 

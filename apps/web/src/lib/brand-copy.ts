@@ -235,7 +235,7 @@ export const MARKETING_SUPPORT = {
   localeHi: "हिं",
   whatsAppEscalate: "Continue on WhatsApp with our team",
   aiOffline:
-    "Assistant is offline — message us on WhatsApp or email support@growvisi.in.",
+    "Assistant is offline — message us on WhatsApp or email it@growvisi.com.",
   defaultWhatsAppMessage:
     "Hi Growvisi — I'd like to know more about WhatsApp pipeline for my team.",
   quickQuestions: [

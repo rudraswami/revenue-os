@@ -261,8 +261,8 @@ export function WhatsAppInquiryPanel({
             ) : (
               <p className="text-center text-sm text-muted-foreground">
                 {WHATSAPP_INQUIRY.configureHint}{" "}
-                <Link href="mailto:support@growvisi.in" className="font-semibold text-accent">
-                  support@growvisi.in
+                <Link href="mailto:it@growvisi.com" className="font-semibold text-accent">
+                  it@growvisi.com
                 </Link>
               </p>
             )}

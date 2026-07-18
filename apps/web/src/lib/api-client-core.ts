@@ -12,7 +12,7 @@ function resolveApiBase(): string {
 export const API_URL = resolveApiBase();
 
 export const CUSTOMER_NETWORK_ERROR =
-  "We couldn't reach Growvisi. Check your internet connection and try again, or email support@growvisi.in.";
+  "We couldn't reach Growvisi. Check your internet connection and try again, or email it@growvisi.com.";
 
 export const CUSTOMER_TIMEOUT_ERROR =
   "That took too long to respond. Please try again in a moment.";

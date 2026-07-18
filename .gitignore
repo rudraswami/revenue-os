@@ -23,6 +23,7 @@ packages/database/prisma/migrations/**/migration_lock.toml
 # Track empty root `.env` (Edge placeholder). Secrets stay in .env.local / Vercel.
 .env.*
 !.env
+!.env.supabase.new.example
 # Local/Vercel env dumps — never commit secrets or OIDC tokens
 .env.vercel*
 .env.api.*

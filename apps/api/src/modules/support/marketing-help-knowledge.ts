@@ -19,7 +19,7 @@ export const MARKETING_HELP_FAQ = [
   {
     id: "setup",
     q: "WhatsApp setup help",
-    a: "Connect via Meta API Setup token or Embedded Signup. Most teams see first classified inbound within 15 minutes. Email support@growvisi.in or message sales on WhatsApp for setup help.",
+    a: "Connect via Meta API Setup token or Embedded Signup. Most teams see first classified inbound within 15 minutes. Email it@growvisi.com or message sales on WhatsApp for setup help.",
   },
   {
     id: "your-turn",

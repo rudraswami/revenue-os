@@ -254,7 +254,7 @@ export default function AiStudioPage() {
               <strong className="text-foreground">Classification:</strong>{" "}
               {capabilities?.aiClassification
                 ? "On — runs on every inbound message"
-                : "Setting up — contact support@growvisi.in if this persists after WhatsApp is connected"}
+                : "Setting up — contact it@growvisi.com if this persists after WhatsApp is connected"}
             </li>
             <li>
               <strong className="text-foreground">{CONVERSATIONS.yourTurn}:</strong> Flags chats that need a real reply — use {CONVERSATIONS.replyNow} in Conversations

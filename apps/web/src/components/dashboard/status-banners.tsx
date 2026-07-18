@@ -99,7 +99,7 @@ export function AiCapabilitiesBanner() {
         <p className="font-semibold">AI classification is being set up</p>
         <p className="mt-1 text-sm text-amber-900/85">
           Classification starts automatically once your workspace is configured. Use the help button
-          (bottom-right) or email support@growvisi.in if this persists after WhatsApp is connected.
+          (bottom-right) or email it@growvisi.com if this persists after WhatsApp is connected.
         </p>
       </div>
     </div>

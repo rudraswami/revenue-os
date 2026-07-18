@@ -1,6 +1,9 @@
-import { RequestMethod, ValidationPipe } from "@nestjs/common";
+import { INestApplication, RequestMethod, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { ExpressAdapter } from "@nestjs/platform-express";
 import { IoAdapter } from "@nestjs/platform-socket.io";
+import type { Express, Request, Response } from "express";
+import express from "express";
 import cookieParser = require("cookie-parser");
 import helmet from "helmet";
 import { AppModule } from "./app.module";
@@ -8,14 +11,7 @@ import { GlobalHttpExceptionFilter } from "./common/filters/http-exception.filte
 import { isAllowedCorsOrigin } from "./config/cors-origins";
 import { initSentry } from "./config/sentry";
 
-async function bootstrap() {
-  initSentry();
-  const app = await NestFactory.create(AppModule, {
-    rawBody: true,
-  });
-
-  // Behind Railway/Vercel proxies — trust the first proxy hop so rate limiting
-  // and logging see the real client IP (X-Forwarded-For) instead of the proxy.
+async function configureApp(app: INestApplication): Promise<void> {
   const httpAdapter = app.getHttpAdapter().getInstance() as {
     set?: (key: string, value: unknown) => void;
   };
@@ -50,10 +46,43 @@ async function bootstrap() {
       transform: true,
     }),
   );
+}
+
+let vercelServerPromise: Promise<Express> | null = null;
+
+async function getVercelServer(): Promise<Express> {
+  if (!vercelServerPromise) {
+    vercelServerPromise = (async () => {
+      initSentry();
+      const expressApp = express();
+      const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), {
+        rawBody: true,
+      });
+      await configureApp(app);
+      await app.init();
+      return expressApp;
+    })();
+  }
+  return vercelServerPromise;
+}
+
+async function bootstrap(): Promise<void> {
+  initSentry();
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+  });
+  await configureApp(app);
 
   const port = process.env.PORT ?? process.env.API_PORT ?? 4000;
   await app.listen(port);
   console.log(`Growvisi API listening on http://localhost:${port}/api/v1`);
 }
 
-bootstrap();
+if (process.env.VERCEL !== "1") {
+  bootstrap();
+}
+
+export default async function handler(req: Request, res: Response): Promise<void> {
+  const server = await getVercelServer();
+  server(req, res);
+}

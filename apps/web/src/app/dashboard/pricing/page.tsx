@@ -193,7 +193,7 @@ export default function PricingPage() {
 
       {checkoutMutation.isError && (
         <p className="mt-4 text-sm text-destructive">
-          {toUserMessage(checkoutMutation.error, "Checkout failed. Try again or contact support@growvisi.in.")}
+          {toUserMessage(checkoutMutation.error, "Checkout failed. Try again or contact it@growvisi.com.")}
         </p>
       )}
 

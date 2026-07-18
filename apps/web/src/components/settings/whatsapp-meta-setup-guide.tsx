@@ -91,7 +91,7 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
 
       <p className="text-center text-xs text-muted-foreground">
         Stuck?{" "}
-        <a href="mailto:support@growvisi.in" className="font-medium text-accent hover:underline">
+        <a href="mailto:it@growvisi.com" className="font-medium text-accent hover:underline">
           Book a 15-min setup call
         </a>
       </p>

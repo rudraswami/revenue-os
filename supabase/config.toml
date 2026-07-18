@@ -1,7 +1,7 @@
 # Growvisi — Supabase CLI configuration
 # Docs: https://supabase.com/docs/guides/cli/config
 
-project_id = "growvisi"
+project_id = "treezkwkkdkvdqaozqhu"
 
 [api]
 enabled = true

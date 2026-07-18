@@ -48,7 +48,7 @@ Pricing: 14-day free trial, then from ₹999/mo INR via Razorpay. WhatsApp conne
 
 Agency (Pro): connect client numbers from Agency → Clients without switching workspace (Facebook or token).
 
-Human help: book setup call via onboarding help or email support@growvisi.in
+Human help: book setup call via onboarding help or email it@growvisi.com
 `.trim();
 
 export function formatFaqForPrompt(): string {

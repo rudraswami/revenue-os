@@ -55,7 +55,7 @@ export class RazorpayService {
   }): Promise<{ subscriptionId: string; checkoutUrl: string; customerId: string }> {
     if (!this.isConfigured()) {
       throw new BadRequestException(
-        "Razorpay is not configured on this deployment. Contact support@growvisi.in.",
+        "Razorpay is not configured on this deployment. Contact it@growvisi.com.",
       );
     }
 
