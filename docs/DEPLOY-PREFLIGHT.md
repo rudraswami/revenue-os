@@ -13,7 +13,15 @@ Run this **before** pushing WhatsApp onboarding + token reminder changes to prod
 
 ## 1. API env vars (revenue-os-api)
 
-### Already set on production ✓
+**Sync all production vars from local `.env` files:**
+
+```bash
+pnpm vercel:env:production
+```
+
+This sets domain URLs, `LATENCY_PROBE_ENABLED=false`, AI models, Meta/WhatsApp keys from `.env`, removes `SEED_*` from production, and skips empty secrets (keeps existing Vercel values for `REDIS_URL`, `JWT_SECRET`, `TOKEN_ENCRYPTION_KEY` if not in local `.env`).
+
+### Required on production ✓
 
 | Variable | Status |
 |----------|--------|
@@ -30,14 +38,26 @@ Run this **before** pushing WhatsApp onboarding + token reminder changes to prod
 | `RESEND_API_KEY` / `EMAIL_FROM` | ✓ |
 | **`EMAIL_VERIFICATION_REQUIRED`** | Set to `true` when deploying email identity (or run `pnpm vercel:env:domain`) |
 | `OPENAI_API_KEY` / AI vars | ✓ |
+| **`LATENCY_PROBE_ENABLED`** | `false` (set by `pnpm vercel:env:production`) |
+| **`COOKIE_DOMAIN`** | `.growvisi.in` |
+| **`CRON_SECRET`** | ✓ (cron auth) |
+| **`TOKEN_ENCRYPTION_KEY`** | ✓ |
 
-### Missing — add before deploy ✗
+### Add manually when ready
 
 | Variable | Why |
 |----------|-----|
-| **`CRON_SECRET`** | Required for `/api/v1/internal/cron/*` (token reminders, follow-up automations). Generate: `openssl rand -base64 32` |
-| **`SENTRY_DSN`** | Optional — error tracking when `@sentry/node` is installed on API |
-| **`RAZORPAY_*`** | Required for paid upgrades — run `pnpm vercel:env:razorpay` after adding keys to root `.env` |
+| **`SENTRY_DSN`** | Error tracking — create project at sentry.io, add to `.env`, re-run `pnpm vercel:env:production` |
+| **`NEXT_PUBLIC_SENTRY_DSN`** | Same DSN on web project |
+| **`RAZORPAY_*`** | Paid upgrades — `pnpm vercel:env:razorpay` after adding keys to `.env` |
+
+### Removed from production (security)
+
+| Variable | Why |
+|----------|-----|
+| `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` / `SEED_ORG_NAME` | Never belong on production |
+
+### Previously listed as missing — now addressed
 
 ### Fix in Vercel dashboard
 
