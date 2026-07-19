@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   Building2,
+  BookOpen,
   CheckCircle2,
   Circle,
   CreditCard,
@@ -103,8 +104,16 @@ export function WorkspaceHome({ bootstrap, bootstrapLoading }: WorkspaceHomeProp
           href="/dashboard/settings?tab=billing"
         />
         <HealthCard
+          icon={BookOpen}
+          title="AI & replies"
+          loading={bootstrapLoading}
+          status="Business knowledge"
+          tone="muted"
+          href="/dashboard/settings?tab=intelligence"
+        />
+        <HealthCard
           icon={Building2}
-          title="Setup"
+          title="Setup progress"
           loading={bootstrapLoading}
           status={
             setupComplete

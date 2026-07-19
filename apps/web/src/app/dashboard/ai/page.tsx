@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { KnowledgeHealthCard } from "@/components/dashboard/knowledge-health-card";
+import { KnowledgeSettingsLink } from "@/components/settings/knowledge-settings-link";
 import { apiFetch } from "@/lib/api-client";
 import { CTA, CONVERSATIONS } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
@@ -277,9 +278,16 @@ export default function AiStudioPage() {
             </li>
             <li>
               <strong className="text-foreground">Business context (RAG):</strong>{" "}
-              {ragChunks > 0
-                ? `${ragChunks} knowledge chunks indexed${kbHealth && kbHealth.gapRiskScore >= 50 ? " — some topics may still be missing" : ""}`
-                : "Add docs in Automations → Business Knowledge"}
+              {ragChunks > 0 ? (
+                <>
+                  {ragChunks} knowledge chunks indexed
+                  {kbHealth && kbHealth.gapRiskScore >= 50 ? " — some topics may still be missing" : ""}
+                </>
+              ) : (
+                <>
+                  Add docs in <KnowledgeSettingsLink />
+                </>
+              )}
             </li>
           </ul>
         </DashboardPanel>

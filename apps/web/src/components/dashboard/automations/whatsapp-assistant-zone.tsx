@@ -22,6 +22,8 @@ import { AUTONOMY_OPTIONS, PRESET_OPTIONS } from "@/lib/automation-scenarios";
 import { AssistantTrustPanel } from "@/components/dashboard/automations/assistant-trust-panel";
 import { AutonomyModeIcon } from "@/components/dashboard/automations/autonomy-mode-icons";
 import { ConversationPreview } from "@/components/dashboard/automations/conversation-preview";
+import { IndustryHandbookPicker } from "@/components/dashboard/industry-handbook-picker";
+import { KnowledgeSettingsLink } from "@/components/settings/knowledge-settings-link";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -279,6 +281,8 @@ export function WhatsAppAssistantZone() {
 
       <AssistantTrustPanel />
 
+      <KnowledgeSettingsLink variant="banner" />
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
         {/* Decisions */}
         <div className="space-y-5">
@@ -381,11 +385,7 @@ export function WhatsAppAssistantZone() {
                     />
                   </div>
                   <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                    Add pricing &amp; FAQs in{" "}
-                    <Link href="/dashboard/ai" className="font-semibold text-accent hover:underline">
-                      Intelligence
-                    </Link>{" "}
-                    to unlock broader auto-send.
+                    Add pricing &amp; FAQs in <KnowledgeSettingsLink /> to unlock broader auto-send.
                   </p>
                 </div>
               ) : null}
@@ -662,74 +662,5 @@ function GreetingBubble({
         {text || "Tap to add a greeting…"}
       </div>
     </button>
-  );
-}
-
-function IndustryHandbookPicker({
-  canManage,
-  currentIndustryId,
-  token,
-}: {
-  canManage: boolean;
-  currentIndustryId?: string;
-  token: string | null;
-}) {
-  const queryClient = useQueryClient();
-  const { success, error: toastError } = useToast();
-
-  const { data: handbooks } = useQuery({
-    queryKey: ["industry-handbooks"],
-    queryFn: () =>
-      apiFetch<Array<{ id: string; label: string; description: string }>>(
-        "/organizations/industry-handbooks",
-        { token: token ?? undefined },
-      ),
-    enabled: !!token,
-  });
-
-  const applyMutation = useMutation({
-    mutationFn: (industryId: string) =>
-      apiFetch<{ message: string; intelligence: IntelligenceWorkspaceSettings }>(
-        "/organizations/apply-industry-handbook",
-        {
-          method: "POST",
-          token: token ?? undefined,
-          body: JSON.stringify({ industryId, seedKnowledge: true }),
-        },
-      ),
-    onSuccess: (res) => {
-      queryClient.setQueryData(["intelligence-settings"], res.intelligence);
-      queryClient.invalidateQueries({ queryKey: ["knowledge-health"] });
-      success(res.message);
-    },
-    onError: () => toastError("Could not apply industry template."),
-  });
-
-  if (!handbooks?.length) return null;
-
-  return (
-    <div>
-      <p className="mb-2 text-xs font-medium text-foreground">Industry template</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {handbooks.map((hb) => (
-          <button
-            key={hb.id}
-            type="button"
-            disabled={!canManage || applyMutation.isPending}
-            onClick={() => canManage && applyMutation.mutate(hb.id)}
-            className={cn(
-              "rounded-xl border px-3 py-2.5 text-left transition",
-              currentIndustryId === hb.id
-                ? "border-accent/35 bg-bento-mint/40"
-                : "border-border/50 bg-card hover:border-accent/20",
-              !canManage && "cursor-not-allowed opacity-70",
-            )}
-          >
-            <p className="text-xs font-semibold text-foreground">{hb.label}</p>
-            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hb.description}</p>
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }

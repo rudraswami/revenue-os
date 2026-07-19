@@ -48,16 +48,15 @@ export function SettingsSection({
 
 export function SettingsTabLoader({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading">
-      <div className="h-5 w-40 animate-pulse rounded-md bg-muted" />
+    <div className="min-h-[480px] w-full space-y-5" aria-busy="true" aria-label="Loading">
       <div className="overflow-hidden rounded-2xl border border-border/80 bg-card elev-1">
         <div className="border-b border-border/60 bg-background px-5 py-4">
-          <div className="h-4 w-32 animate-pulse rounded-md bg-muted" />
-          <div className="mt-2 h-3 w-56 animate-pulse rounded-md bg-muted" />
+          <div className="h-4 w-40 animate-pulse rounded-md bg-muted" />
+          <div className="mt-2.5 h-3 w-64 animate-pulse rounded-md bg-muted" />
         </div>
         <div className="space-y-3 p-5">
           {Array.from({ length: rows }).map((_, i) => (
-            <div key={i} className="h-12 animate-pulse rounded-xl bg-muted/80" />
+            <div key={i} className="h-[4.5rem] animate-pulse rounded-xl bg-muted/80" />
           ))}
         </div>
       </div>

@@ -233,3 +233,7 @@ export const PRESET_OPTIONS: Array<{
 export function autonomyLabel(mode: ReplyAutonomyMode): string {
   return AUTONOMY_OPTIONS.find((o) => o.mode === mode)?.title ?? "Draft for me";
 }
+
+export function presetLabel(preset: AutomationPolicyPreset): string {
+  return PRESET_OPTIONS.find((p) => p.preset === preset)?.title ?? "FAQs from your docs";
+}

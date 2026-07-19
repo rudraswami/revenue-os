@@ -10,6 +10,15 @@ import { canManageCampaigns } from "@/lib/permissions";
 import { KNOWLEDGE_CATEGORIES } from "@growvisi/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
+const MAX_CONTENT_CHARS = 20_000;
+
+const EMPTY_STATE_SUGGESTIONS = [
+  "Rate card or price list",
+  "Delivery & refund policy",
+  "Common FAQs",
+  "Product / service catalog",
+] as const;
+
 const CATEGORY_LABELS: Record<string, string> = {
   general: "General",
   pricing: "Pricing",
@@ -47,6 +56,11 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
     enabled: !!token,
   });
 
+  const invalidateKnowledge = () => {
+    void queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] });
+    void queryClient.invalidateQueries({ queryKey: ["knowledge-health"] });
+  };
+
   const createMutation = useMutation({
     mutationFn: () =>
       apiFetch<KnowledgeDoc>("/knowledge/documents", {
@@ -57,7 +71,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
     onSuccess: () => {
       setTitle("");
       setContent("");
-      void queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] });
+      invalidateKnowledge();
     },
   });
 
@@ -70,7 +84,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
       }),
     onSuccess: () => {
       setEditingId(null);
-      void queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] });
+      invalidateKnowledge();
     },
   });
 
@@ -80,7 +94,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
         method: "POST",
         token: token ?? undefined,
       }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] }),
+    onSuccess: invalidateKnowledge,
   });
 
   const deleteMutation = useMutation({
@@ -89,7 +103,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
         method: "DELETE",
         token: token ?? undefined,
       }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] }),
+    onSuccess: invalidateKnowledge,
   });
 
   const indexedTotal = (docs ?? []).reduce((n, d) => n + (d.chunkCount ?? 0), 0);
@@ -126,7 +140,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
         <p className="text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1 font-medium text-accent">
             <Sparkles className="h-3 w-3" />
-            {indexedTotal} chunks indexed for AI reply drafts
+            {indexedTotal} chunks indexed — used for drafts and guarded auto-send
           </span>
         </p>
       )}
@@ -134,7 +148,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
       {canManage && (
         <div className="space-y-2 rounded-xl border border-border/80 bg-background/40 p-3">
           <Input
-            placeholder="Title — e.g. Pricing sheet"
+            placeholder="Title — e.g. 2BHK interior pricing"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="h-9 text-sm"
@@ -152,16 +166,33 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
           </select>
           <textarea
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => setContent(e.target.value.slice(0, MAX_CONTENT_CHARS))}
             placeholder="Paste product details, offers, or policies your sales team should know…"
-            rows={3}
-            className="w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm"
+            rows={embedded ? 5 : 3}
+            className="w-full resize-y rounded-lg border border-input bg-card px-3 py-2 text-sm"
           />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] text-muted-foreground">
+              Paste text for now — up to {MAX_CONTENT_CHARS.toLocaleString("en-IN")} characters per doc.
+            </p>
+            <p
+              className={`text-[11px] tabular-nums ${
+                content.length > MAX_CONTENT_CHARS * 0.9 ? "text-amber-700" : "text-muted-foreground"
+              }`}
+            >
+              {content.length.toLocaleString("en-IN")} / {MAX_CONTENT_CHARS.toLocaleString("en-IN")}
+            </p>
+          </div>
           <Button
             type="button"
             size="sm"
             className="rounded-xl"
-            disabled={!title.trim() || !content.trim() || createMutation.isPending}
+            disabled={
+              !title.trim() ||
+              !content.trim() ||
+              content.length > MAX_CONTENT_CHARS ||
+              createMutation.isPending
+            }
             onClick={() => createMutation.mutate()}
           >
             {createMutation.isPending ? (
@@ -179,9 +210,26 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
       {isLoading ? (
         <div className="h-16 animate-pulse rounded-xl bg-muted" />
       ) : (docs?.length ?? 0) === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          {canManage ? "No documents yet." : "No business context documents in this workspace."}
-        </p>
+        <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-5">
+          <p className="text-sm font-medium text-foreground">No documents yet</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {canManage
+              ? "Start with the docs your team quotes from most often. Growvisi indexes them within a few seconds."
+              : "No business knowledge documents in this workspace yet."}
+          </p>
+          {canManage && (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {EMPTY_STATE_SUGGESTIONS.map((label) => (
+                <li
+                  key={label}
+                  className="rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
+                >
+                  {label}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       ) : (
         <ul className="space-y-2">
           {docs!.map((doc) => (

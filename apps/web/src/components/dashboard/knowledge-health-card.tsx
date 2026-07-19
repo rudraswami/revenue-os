@@ -51,7 +51,7 @@ export function KnowledgeHealthCard({ className }: { className?: string }) {
         </div>
       ) : isError || !data ? (
         <p className="text-sm text-muted-foreground">
-          Could not load knowledge health. Check Business Knowledge in Automations.
+          Could not load knowledge health. Check business knowledge in Settings → AI & replies.
         </p>
       ) : (
         <div className="space-y-4">
@@ -96,10 +96,10 @@ export function KnowledgeHealthCard({ className }: { className?: string }) {
           </p>
 
           <Link
-            href="/dashboard/automations"
+            href="/dashboard/settings?tab=intelligence"
             className="inline-flex text-sm font-semibold text-accent hover:underline"
           >
-            Manage Business Knowledge →
+            Manage business knowledge →
           </Link>
         </div>
       )}

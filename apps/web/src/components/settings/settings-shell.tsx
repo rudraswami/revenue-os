@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
   BookOpen,
   CreditCard,
@@ -12,7 +12,6 @@ import {
   Lock,
   LogOut,
   MessageCircle,
-  Sparkles,
   User,
   Users,
 } from "lucide-react";
@@ -26,8 +25,10 @@ import { BusinessContextCard } from "@/components/settings/business-context-card
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
-import { IntelligenceReplySettingsCard } from "@/components/dashboard/intelligence-reply-settings-card";
+import { IntelligenceKnowledgeExplainer } from "@/components/settings/intelligence-knowledge-explainer";
+import { IntelligenceStatusOverview } from "@/components/settings/intelligence-status-overview";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { SettingsAccessPanel } from "@/components/settings/settings-plan-gate";
 import { SettingsTabSkeleton } from "@/components/settings/settings-tab-skeletons";
 import { WorkspaceHome } from "@/components/settings/workspace-home";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
@@ -94,83 +95,6 @@ function resolveTabFromLocation(search: string, hash: string): SettingsTabId | n
   const hashKey = hash.replace("#", "");
   if (hashKey && SETTINGS_HASH_TO_TAB[hashKey]) return SETTINGS_HASH_TO_TAB[hashKey];
   return normalizeSettingsTab(new URLSearchParams(search).get("tab"));
-}
-
-function settingsTabRoleHint(tab: SettingsTabId): string {
-  switch (tab) {
-    case "billing":
-    case "developers":
-      return "owners and admins";
-    case "whatsapp":
-      return "agents and above";
-    case "intelligence":
-    case "growth":
-      return "managers and above";
-    default:
-      return "your role";
-  }
-}
-
-function SettingsAccessPanel({
-  tab,
-  ctx,
-}: {
-  tab: SettingsTabId;
-  ctx: SettingsAccessContext;
-}) {
-  const { t } = useI18n();
-  const tabLabel = buildTabMeta(tab, t).label;
-  const planReq = settingsTabPlanRequirement(tab);
-  const roleOk = canAccessSettingsTabRole(tab, ctx.role);
-
-  if (!roleOk) {
-    return (
-      <SettingsSection>
-        <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
-          <Lock className="h-5 w-5 text-muted-foreground" />
-        </div>
-        <p className="mt-4 text-base font-semibold">You don&apos;t have access to this area</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {tabLabel} is limited to {settingsTabRoleHint(tab)}. Ask an owner or admin if
-          you need access.
-        </p>
-        <Button variant="outline" size="sm" className="mt-5 rounded-xl" asChild>
-          <Link href="/dashboard/settings">Back to settings</Link>
-        </Button>
-        </div>
-      </SettingsSection>
-    );
-  }
-
-  if (planReq) {
-    const planName = planReq === "growth" ? "Growth" : "Pro";
-    return (
-      <SettingsSection>
-        <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10">
-          <Sparkles className="h-5 w-5 text-accent" />
-        </div>
-        <p className="mt-4 text-base font-semibold">{planName} plan required</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {tabLabel} is included on the {planName} plan and above.
-        </p>
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <Button size="sm" className="rounded-xl" asChild>
-            <Link href="/dashboard/pricing">View plans</Link>
-          </Button>
-          {canAccessSettingsTabRole("billing", ctx.role) && (
-            <Button variant="outline" size="sm" className="rounded-xl" asChild>
-              <Link href="/dashboard/settings?tab=billing">Billing</Link>
-            </Button>
-          )}
-        </div>
-        </div>
-      </SettingsSection>
-    );
-  }
-
-  return null;
 }
 
 function SettingsTabContent({
@@ -245,20 +169,26 @@ function SettingsTabContent({
       return (
         <div className="space-y-5">
           <SettingsSection
-            title="Reply policy"
-            description="How Growvisi handles inbound messages — classify, suggest drafts, or guarded auto-send on Growth."
+            title="How it works"
+            description="Business knowledge powers classification and reply drafts. Your team sends customer messages — Growvisi never auto-replies without your Automations policy."
           >
-            <IntelligenceReplySettingsCard />
+            <IntelligenceKnowledgeExplainer />
           </SettingsSection>
           <SettingsSection
-            title="Business context"
-            description="Pricing, policies, and FAQs — indexed for AI-assisted reply drafts in Conversations."
+            title="Current setup"
+            description="Read-only snapshot. Change reply mode and auto-send presets in Automations."
+          >
+            <IntelligenceStatusOverview />
+          </SettingsSection>
+          <SettingsSection
+            title="Business knowledge"
+            description="Pricing, policies, and FAQs — indexed so Growvisi can draft grounded replies and support guarded auto-send."
           >
             <BusinessContextCard embedded />
           </SettingsSection>
           <SettingsSection
             title="Quick replies"
-            description="Saved templates your team picks when replying in Conversations."
+            description="Saved templates your team picks in Conversations — separate from WhatsApp auto-send."
           >
             <ReplyTemplatesCard embedded />
           </SettingsSection>
@@ -359,6 +289,7 @@ export function SettingsShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
+  const [isTabPending, startTabTransition] = useTransition();
   const role = useAuthStore((s) => s.role);
   const isAdmin = canManageTeam(role);
   const roleReady = !!role;
@@ -412,16 +343,21 @@ export function SettingsShell() {
   const tabAllowed = canAccessSettingsTab(activeTab, accessCtx);
   const showAccessPanel = !tabAllowed && roleReady;
   const contentLoading = bootstrapLoading && !bootstrap;
-  const showTabSkeleton = !roleReady || (contentLoading && activeTab === "workspace");
+  const showTabSkeleton =
+    !roleReady ||
+    isTabPending ||
+    (contentLoading && activeTab === "workspace");
 
   function selectTab(id: SettingsTabId) {
     if (!canAccessSettingsTabRole(id, role) || id === activeTab) return;
-    setActiveTab(id);
-    const params = new URLSearchParams(window.location.search);
-    if (id === "workspace") params.delete("tab");
-    else params.set("tab", id);
-    const qs = params.toString();
-    router.replace(qs ? `/dashboard/settings?${qs}` : "/dashboard/settings", { scroll: false });
+    startTabTransition(() => {
+      setActiveTab(id);
+      const params = new URLSearchParams(window.location.search);
+      if (id === "workspace") params.delete("tab");
+      else params.set("tab", id);
+      const qs = params.toString();
+      router.replace(qs ? `/dashboard/settings?${qs}` : "/dashboard/settings", { scroll: false });
+    });
   }
 
   function navTabLocked(id: SettingsTabId): boolean {
@@ -533,11 +469,16 @@ export function SettingsShell() {
             </div>
           </div>
 
-          <div className="min-h-[640px]">
+          <div className="min-h-[640px] w-full">
             {showTabSkeleton ? (
               <SettingsTabSkeleton tab={activeTab} />
             ) : showAccessPanel ? (
-              <SettingsAccessPanel tab={activeTab} ctx={accessCtx} />
+              <SettingsAccessPanel
+                tab={activeTab}
+                tabLabel={current.label}
+                tabDescription={current.description}
+                ctx={accessCtx}
+              />
             ) : (
               <SettingsTabContent
                 tab={activeTab}

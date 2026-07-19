@@ -1,5 +1,7 @@
 "use client";
 
+import { KnowledgeSettingsLink } from "@/components/settings/knowledge-settings-link";
+
 import { useEffect } from "react";
 import { UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -79,15 +81,15 @@ export function InboxAiPanel({
       {kbHealth && kbHealth.chunkCount === 0 && (
         <div className="mb-2 rounded-lg border border-amber-200/70 bg-amber-50/70 px-3 py-2 text-xs text-amber-950">
           <p className="leading-relaxed text-amber-900/90">
-            Business Knowledge is empty — Growvisi can greet customers but cannot auto-answer
-            questions yet. Add docs in Intelligence.
+            Business knowledge is empty — Growvisi can greet customers but cannot draft grounded
+            answers yet. Add docs in <KnowledgeSettingsLink />.
           </p>
         </div>
       )}
       {knowledgeGaps.length > 0 && (
         <div className="mb-2 rounded-lg border border-amber-200/70 bg-amber-50/70 px-3 py-2 text-xs text-amber-950">
           <p className="leading-relaxed text-amber-900/90">
-            No docs matched for {knowledgeGaps.join(", ")}. Add them in Intelligence for
+            No docs matched for {knowledgeGaps.join(", ")}. Add them in <KnowledgeSettingsLink /> for
             grounded replies.
           </p>
         </div>
