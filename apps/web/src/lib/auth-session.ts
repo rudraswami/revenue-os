@@ -52,7 +52,7 @@ export function isEmailVerified(user: AuthUser | null | undefined): boolean {
 }
 
 /** Patch user/org profile into the store without wiping the refresh token. */
-function patchProfile(me: MeResponse) {
+export function applyMeResponse(me: MeResponse) {
   const current = useAuthStore.getState();
   if (!current.accessToken) return;
   if (current.role && current.role !== me.role) {
@@ -75,7 +75,7 @@ export async function syncProfileFromServer(): Promise<void> {
   if (!token) return;
   try {
     const me = await apiFetch<MeResponse>("/auth/me", { token });
-    patchProfile(me);
+    applyMeResponse(me);
   } catch {
     // Non-fatal — banner may be stale until next bootstrap
   }
@@ -84,7 +84,7 @@ export async function syncProfileFromServer(): Promise<void> {
 async function fetchMe(token: string): Promise<"ok" | "auth_dead" | "transient"> {
   try {
     const me = await apiFetch<MeResponse>("/auth/me", { token, skipAuthRetry: true });
-    patchProfile(me);
+    applyMeResponse(me);
     return "ok";
   } catch (err) {
     if (err instanceof ApiError) {
@@ -99,6 +99,18 @@ async function fetchMe(token: string): Promise<"ok" | "auth_dead" | "transient">
  * Restore session on app load.
  * Never clears auth on network/server failures — only on conclusive AUTH_*.
  */
+let bootstrapInFlight: Promise<void> | null = null;
+
+/** Idempotent — safe to call from bootstrap, guards, and focus handlers. */
+export function startBootstrapAuth(): Promise<void> {
+  if (!bootstrapInFlight) {
+    bootstrapInFlight = bootstrapAuth().finally(() => {
+      bootstrapInFlight = null;
+    });
+  }
+  return bootstrapInFlight;
+}
+
 export async function bootstrapAuth(): Promise<void> {
   const state = useAuthStore.getState();
   if (!state.refreshToken && !state.accessToken && !hasSessionHint()) {

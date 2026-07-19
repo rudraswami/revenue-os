@@ -27,6 +27,7 @@ import { formatActivityLabel } from "@/lib/activity-labels";
 import { CTA } from "@/lib/brand-copy";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { timeGreeting } from "@/lib/greeting";
+import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
 import { useAuthStore } from "@/stores/auth-store";
 import { canViewTeamAnalytics } from "@/lib/permissions";
 
@@ -52,6 +53,7 @@ export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   const showAnalytics = canViewTeamAnalytics(role);
+  const activityPollInterval = useVisibleRefetchInterval(15_000);
 
   const { data: funnel, isLoading: funnelLoading, isError: funnelError, error: funnelErrorObj, refetch: refetchFunnel } = useQuery({
     queryKey: QUERY_KEYS.funnel("30d"),
@@ -90,7 +92,7 @@ export default function DashboardPage() {
       ),
     enabled: !!token,
     staleTime: STALE.live,
-    refetchInterval: 15_000,
+    refetchInterval: activityPollInterval,
     placeholderData: (prev) => prev,
   });
 

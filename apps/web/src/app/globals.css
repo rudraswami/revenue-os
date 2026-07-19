@@ -283,6 +283,28 @@ h1, h2, h3, h4, h5, h6 {
   .hero-live-border {
     animation: none !important;
   }
+  .gv-logo-loader {
+    animation: none !important;
+    opacity: 1;
+    transform: none !important;
+  }
+}
+
+@keyframes growvisi-logo-breathe {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.gv-logo-loader {
+  animation: growvisi-logo-breathe 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
 }
 
 .marketing-container {

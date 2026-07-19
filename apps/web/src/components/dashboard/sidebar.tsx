@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuthMe } from "@/hooks/use-auth-me";
+import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
 import {
   BarChart3,
   Bot,
@@ -34,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { apiFetch } from "@/lib/api-client";
+import { QUERY_KEYS } from "@/lib/query-config";
 import { applySession, logout } from "@/lib/auth-session";
 import type { AuthSession, MeResponse } from "@/lib/auth-types";
 import { canManageBilling, canManageCampaigns, canViewTeamAnalytics } from "@/lib/permissions";
@@ -334,14 +337,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const role = useAuthStore((s) => s.role);
   const organization = useAuthStore((s) => s.organization);
   const { connected: live } = useRealtime();
+  const statsPollInterval = useVisibleRefetchInterval(live ? false : 30_000);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
 
-  const { data: me } = useQuery({
-    queryKey: ["auth-me"],
-    queryFn: () => apiFetch<MeResponse>("/auth/me", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: 120_000,
-  });
+  const { data: me } = useAuthMe();
 
   const { data: accounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -353,11 +352,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   });
 
   const { data: stats } = useQuery({
-    queryKey: ["conversation-stats"],
+    queryKey: QUERY_KEYS.conversationQueueStats,
     queryFn: () =>
-      apiFetch<{ unreadMessages: number }>("/conversations/stats", { token: token ?? undefined }),
+      apiFetch<{ unreadMessages: number }>("/conversations/stats?scope=queue", {
+        token: token ?? undefined,
+      }),
     enabled: !!token,
-    refetchInterval: live ? false : 30_000,
+    refetchInterval: statsPollInterval,
   });
 
   const { data: agencyStatus } = useQuery({

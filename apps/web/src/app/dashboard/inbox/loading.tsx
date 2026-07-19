@@ -1,5 +1,4 @@
-import { InboxListSkeleton } from "@/components/ui/skeleton";
-import { Skeleton } from "@/components/ui/skeleton";
+import { InboxListSkeleton, InboxThreadSkeleton, Skeleton } from "@/components/ui/skeleton";
 
 export default function InboxLoading() {
   return (
@@ -11,7 +10,7 @@ export default function InboxLoading() {
         <InboxListSkeleton />
       </div>
       <div className="hidden flex-1 md:block">
-        <Skeleton className="m-6 h-full min-h-[320px] rounded-2xl" />
+        <InboxThreadSkeleton />
       </div>
     </div>
   );

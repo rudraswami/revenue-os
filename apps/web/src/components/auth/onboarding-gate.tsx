@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useEmailVerified } from "@/hooks/use-email-verified";
+import { GrowvisiLogoLoader } from "@/components/ui/loading";
 import { useAuthStore } from "@/stores/auth-store";
 
 const SKIP_PREFIXES = [
@@ -53,8 +54,8 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
   if (!hydrated || pending) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-background" aria-busy="true">
+        <GrowvisiLogoLoader size="md" />
       </div>
     );
   }

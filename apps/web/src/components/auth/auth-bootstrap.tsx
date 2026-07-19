@@ -1,35 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
+import { GrowvisiLogoLoader } from "@/components/ui/loading";
 import { hasSessionHint } from "@/lib/auth-cookie";
-import { bootstrapAuth } from "@/lib/auth-session";
+import { shouldRunBootstrapOnHydrate } from "@/lib/auth-bootstrap-policy";
+import { startBootstrapAuth } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 
-/** Runs once after persist rehydration to refresh tokens and sync /auth/me. */
+/**
+ * Rehydrates persisted auth, then refreshes tokens in the background.
+ * Never blocks the app on bootstrap — dashboard shell renders from cache immediately.
+ */
 export function AuthBootstrap({ children }: { children: React.ReactNode }) {
   const hydrated = useAuthStore((s) => s.hydrated);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
 
     const state = useAuthStore.getState();
-    const hasAnySession =
-      !!state.refreshToken || !!state.accessToken || hasSessionHint();
-
-    if (!hasAnySession) {
-      setReady(true);
+    if (
+      !shouldRunBootstrapOnHydrate({
+        refreshToken: state.refreshToken,
+        accessToken: state.accessToken,
+        hasSessionHint: hasSessionHint(),
+      })
+    ) {
       return;
     }
 
-    void bootstrapAuth().finally(() => setReady(true));
+    void startBootstrapAuth();
   }, [hydrated]);
 
-  if (!hydrated || !ready) {
+  if (!hydrated) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex min-h-screen items-center justify-center surface-lavender" aria-busy="true">
+        <GrowvisiLogoLoader size="lg" />
       </div>
     );
   }

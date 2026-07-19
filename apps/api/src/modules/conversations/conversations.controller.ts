@@ -153,8 +153,12 @@ export class ConversationsController {
 
   @Get("stats")
   @RequireCapability("inbox.reply")
-  stats(@CurrentUser() user: JwtPayload, @Query("period") period?: MetricsPeriod) {
-    return this.conversations.getStats(user, period);
+  stats(
+    @CurrentUser() user: JwtPayload,
+    @Query("period") period?: MetricsPeriod,
+    @Query("scope") scope?: string,
+  ) {
+    return this.conversations.getStats(user, period, scope);
   }
 
   @Get("capabilities")
@@ -178,6 +182,18 @@ export class ConversationsController {
   @Roles(...WRITE_ROLES)
   startOutbound(@CurrentUser() user: JwtPayload, @Body() dto: StartOutboundDto) {
     return this.conversations.startOutbound(user, dto);
+  }
+
+  @Get(":id/messages")
+  @RequireCapability("inbox.reply")
+  listMessages(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Query("before") before?: string,
+    @Query("limit") limit?: string,
+  ) {
+    const parsedLimit = limit ? Number.parseInt(limit, 10) : 50;
+    return this.conversations.listMessages(user, id, before, parsedLimit);
   }
 
   @Get(":id/messages/:messageId/media")
@@ -210,6 +226,18 @@ export class ConversationsController {
       draftText: dto.draftText,
       aiRunId: dto.aiRunId,
     });
+  }
+
+  @Get(":id/inbox-context")
+  @RequireCapability("inbox.reply")
+  getInboxContext(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.conversations.getInboxContext(user, id);
+  }
+
+  @Get(":id/knowledge-gaps")
+  @RequireCapability("inbox.reply")
+  getKnowledgeGaps(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.conversations.getKnowledgeGaps(user, id);
   }
 
   @Get(":id/intelligence")

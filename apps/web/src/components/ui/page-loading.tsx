@@ -1,11 +1,12 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { GrowvisiLogoLoader } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 /** Centered inline loader for buttons and small areas */
 export function InlineLoader({ label = "Loading…" }: { label?: string }) {
   return (
     <span className="inline-flex items-center gap-2 text-sm text-muted-foreground" aria-busy="true">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-accent" />
+      <GrowvisiLogoLoader size="xs" />
       {label}
     </span>
   );

@@ -651,6 +651,51 @@ export class OrganizationsService {
     return this.getPaymentIntegration(user);
   }
 
+  /** Coaching slice only — for inbox takeover nudge without full activation scan. */
+  async getOnboardingCoaching(organizationId: string) {
+    const [org, classifiedLead, handoffsWaiting, inviteCount, teamMembers] = await Promise.all([
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { settings: true },
+      }),
+      this.prisma.lead.findFirst({
+        where: { organizationId, lastClassifiedAt: { not: null } },
+        select: { id: true },
+      }),
+      this.prisma.conversation.count({
+        where: {
+          organizationId,
+          metadata: { path: ["requiresHuman"], equals: true },
+        },
+      }),
+      this.prisma.organizationInvite.count({ where: { organizationId } }),
+      this.prisma.organizationMember.count({ where: { organizationId } }),
+    ]);
+
+    const prevSettings =
+      org?.settings && typeof org.settings === "object"
+        ? (org.settings as Record<string, unknown>)
+        : {};
+    const opsSettings = normalizeWorkspaceOpsSettings(prevSettings.ops);
+    const coachingPersist =
+      prevSettings.coaching && typeof prevSettings.coaching === "object"
+        ? (prevSettings.coaching as Record<string, unknown>)
+        : {};
+    const hasTeam =
+      teamMembers > 1 || !!coachingPersist.firstInviteAt || inviteCount > 0;
+    const hasTakeover = !!coachingPersist.firstTakeoverAt;
+
+    const coaching = buildPostActivationCoaching({
+      firstValue: !!classifiedLead,
+      digestEnabled: opsSettings.digest.enabled,
+      hasTeam,
+      hasTakeover,
+      handoffsWaiting,
+    });
+
+    return { coaching };
+  }
+
   async getOnboardingProgress(organizationId: string) {
     const [
       whatsappAccount,

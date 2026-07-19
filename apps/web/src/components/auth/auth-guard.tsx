@@ -4,23 +4,34 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { hasSessionHint } from "@/lib/auth-cookie";
-import { customerMessageForRefresh } from "@/lib/auth-session-death";
+import { canRenderDashboardWhileRestoringSession } from "@/lib/auth-bootstrap-policy";
 import { refreshSession } from "@/lib/auth-refresh";
+import { customerMessageForRefresh } from "@/lib/auth-session-death";
+import { startBootstrapAuth } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
   const transient = useAuthStore((s) => s.lastTransientFailure);
+  const sessionHint = hasSessionHint();
+  const restoringSession = !accessToken && (!!sessionHint || !!transient);
 
   useEffect(() => {
     if (!hydrated) return;
     if (accessToken) return;
-    // Recoverable: cookie/hint still present or last refresh was transient
-    if (hasSessionHint() || transient) return;
+    if (sessionHint || transient) return;
     router.replace("/login");
-  }, [hydrated, accessToken, transient, router]);
+  }, [hydrated, accessToken, sessionHint, transient, router]);
+
+  useEffect(() => {
+    if (!hydrated || accessToken) return;
+    if (sessionHint || transient) {
+      void startBootstrapAuth();
+    }
+  }, [hydrated, accessToken, sessionHint, transient]);
 
   useEffect(() => {
     if (!hydrated || accessToken || !transient) return;
@@ -28,7 +39,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       void refreshSession("auth_guard_online");
     };
     window.addEventListener("online", onOnline);
-    // Opportunistic retry while showing reconnecting UI
     const timer = window.setTimeout(() => {
       void refreshSession("auth_guard_retry");
     }, 2000);
@@ -42,17 +52,25 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return <LoadingScreen message="Loading your workspace…" />;
   }
 
-  if (!accessToken) {
-    if (hasSessionHint() || transient) {
-      const msg = transient
-        ? customerMessageForRefresh(transient)
-        : "Reconnecting to your workspace…";
-      return <LoadingScreen message={msg} />;
-    }
-    return <LoadingScreen message="Loading your workspace…" />;
+  if (
+    canRenderDashboardWhileRestoringSession({
+      accessToken,
+      user,
+      hasSessionHint: sessionHint,
+      hasTransientFailure: !!transient,
+    })
+  ) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  if (restoringSession) {
+    const msg = transient
+      ? customerMessageForRefresh(transient)
+      : "Reconnecting to your workspace…";
+    return <LoadingScreen message={msg} />;
+  }
+
+  return <LoadingScreen message="Loading your workspace…" />;
 }
 
 export function GuestGuard({ children }: { children: React.ReactNode }) {

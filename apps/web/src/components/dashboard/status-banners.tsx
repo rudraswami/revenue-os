@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { AlertTriangle, CreditCard } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { shouldShowWhatsappConnectBanner } from "@/lib/whatsapp-connection-state";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface BillingEntitlements {
@@ -126,6 +127,7 @@ export function LegacyViewerBanner() {
 
 export function OnboardingBanner() {
   const token = useAuthStore((s) => s.accessToken);
+  const persistedWhatsappConnected = useAuthStore((s) => s.onboarding?.whatsappConnected);
 
   const { data: agencyStatus } = useQuery({
     queryKey: ["agency-status"],
@@ -142,8 +144,13 @@ export function OnboardingBanner() {
     enabled: !!token && !agencyStatus?.isAgency,
   });
 
-  const connected = accounts?.some((a) => a.isActive) ?? false;
-  if (agencyStatus?.isAgency || connected || !token) return null;
+  const showBanner = shouldShowWhatsappConnectBanner({
+    hasToken: !!token,
+    isAgency: !!agencyStatus?.isAgency,
+    accounts,
+    persistedWhatsappConnected,
+  });
+  if (!showBanner) return null;
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/25 bg-bento-mint/50 px-4 py-3 lg:mb-6">

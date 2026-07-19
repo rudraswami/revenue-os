@@ -28,7 +28,9 @@ import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
 import { InboxThreadDetailsMobile } from "@/components/dashboard/inbox-thread-details-mobile";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { QUERY_KEYS } from "@/lib/query-config";
 import { useToast } from "@/components/ui/toast";
+import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
 import { useAuthStore } from "@/stores/auth-store";
 import { canAssignToSelf, canAssignWork, canManageTeam, canToggleInboxAi, canWrite } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -36,6 +38,18 @@ import {
   pickDailyQueueFilter,
   trackQueue,
 } from "@/lib/conversation-queue-analytics";
+import {
+  appendOptimisticOutboundMessage,
+  createOptimisticOutboundMessage,
+  OPTIMISTIC_MESSAGE_PREFIX,
+  patchConversationAsRead,
+  patchConversationHandoffResolved,
+  patchConversationListsAfterOutbound,
+  patchThreadLeadStage,
+  prependOlderMessages,
+  replaceOptimisticOutboundMessage,
+  type InboxThreadMessage,
+} from "@/lib/inbox-query-cache";
 
 interface ConversationRow {
   id: string;
@@ -80,6 +94,7 @@ interface ConversationDetail {
   assignedTo: { id: string; name: string | null; email: string } | null;
   lead: { id: string; stage: string; score?: number; aiConfidence?: number | null; valueCents?: number | null } | null;
   messages: Message[];
+  hasOlderMessages?: boolean;
   whatsappAccount: { displayPhoneNumber: string; isActive: boolean };
 }
 
@@ -118,6 +133,10 @@ export default function InboxPage() {
   const canToggleAi = canToggleInboxAi(role);
   const queryClient = useQueryClient();
   const { connected: live } = useRealtime();
+  const listPollInterval = useVisibleRefetchInterval(live ? 5_000 : 8_000);
+  const statsPollInterval = useVisibleRefetchInterval(live ? 20_000 : 30_000);
+  const threadPollInterval = useVisibleRefetchInterval(live ? false : 4_000);
+  const timelinePollInterval = useVisibleRefetchInterval(live ? false : 12_000);
   const { error: toastError } = useToast();
   const showMutationError = (e: unknown, fallback: string) => {
     toastError(toUserMessage(e, fallback));
@@ -139,10 +158,16 @@ export default function InboxPage() {
   const [listFilter, setListFilter] = useState<InboxListFilter>("all");
   const [listScope, setListScope] = useState<InboxListScope>("active");
   const [queueDefaultReady, setQueueDefaultReady] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasOlderOverride, setHasOlderOverride] = useState<boolean | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const queueDefaultedRef = useRef(false);
   const urlHadFilterRef = useRef(false);
+
+  useEffect(() => {
+    setHasOlderOverride(null);
+  }, [selectedId]);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
@@ -192,26 +217,26 @@ export default function InboxPage() {
       });
     },
     enabled: !!token,
-    refetchInterval: live ? 5_000 : 8_000,
+    refetchInterval: listPollInterval,
   });
 
   const { data: convStats } = useQuery({
-    queryKey: ["conversation-stats"],
+    queryKey: QUERY_KEYS.conversationQueueStats,
     queryFn: () =>
       apiFetch<{
         humanHandoffRecommended: number;
         unreadMessages: number;
         queue?: { yourTurn: number; mine: number; unassigned: number };
-      }>("/conversations/stats", {
+      }>("/conversations/stats?scope=queue", {
         token: token ?? undefined,
       }),
     enabled: !!token,
     staleTime: 15_000,
-    refetchInterval: live ? 20_000 : 30_000,
+    refetchInterval: statsPollInterval,
   });
 
   const { data: coachingProgress } = useQuery({
-    queryKey: ["onboarding-progress"],
+    queryKey: QUERY_KEYS.onboardingCoaching,
     queryFn: () =>
       apiFetch<{
         coaching?: {
@@ -219,7 +244,7 @@ export default function InboxPage() {
           hasTakeover?: boolean;
           next: null | { id: string };
         };
-      }>("/organizations/onboarding-progress", { token: token ?? undefined }),
+      }>("/organizations/onboarding-progress?scope=coaching", { token: token ?? undefined }),
     enabled: !!token,
     staleTime: 30_000,
   });
@@ -267,7 +292,7 @@ export default function InboxPage() {
     queryFn: () =>
       apiFetch<ConversationDetail>(`/conversations/${selectedId}`, { token: token ?? undefined }),
     enabled: !!token && !!selectedId,
-    refetchInterval: live ? false : 4_000,
+    refetchInterval: threadPollInterval,
   });
 
   const leadId = thread?.lead?.id;
@@ -277,7 +302,7 @@ export default function InboxPage() {
     queryFn: () =>
       apiFetch<LeadTimeline>(`/leads/${leadId}/timeline`, { token: token ?? undefined }),
     enabled: !!token && !!leadId,
-    refetchInterval: live ? false : 12_000,
+    refetchInterval: timelinePollInterval,
   });
 
   const { data: capabilities } = useQuery({
@@ -308,9 +333,10 @@ export default function InboxPage() {
     staleTime: 120_000,
   });
 
+  const lastMsgId = thread?.messages[thread.messages.length - 1]?.id;
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [thread?.messages.length]);
+  }, [lastMsgId]);
 
   useEffect(() => {
     if (thread?.requiresHuman && showComposer) {
@@ -329,21 +355,36 @@ export default function InboxPage() {
     });
   }, [thread?.id, thread?.pendingDraft?.createdAt, thread?.aiEnabled]);
 
-  const { data: intelligence } = useQuery({
-    queryKey: ["conversation-intelligence", selectedId],
+  const { data: inboxContext } = useQuery({
+    queryKey: ["conversation-inbox-context", selectedId],
     queryFn: () =>
       apiFetch<{
-        knowledgeGaps: string[];
-        observedMemory: Array<{ id: string; type: string; content: string }>;
+        knowledgeGaps?: string[];
         replyDecision?: ReplyDecision | null;
-        customerNeeds?: string[];
         workingMemory?: import("@growvisi/shared").WorkingMemory;
         kbHealth?: import("@growvisi/shared").KnowledgeHealthSummary;
-      }>(`/conversations/${selectedId}/intelligence`, { token: token ?? undefined }),
+      }>(`/conversations/${selectedId}/inbox-context`, { token: token ?? undefined }),
     enabled: !!token && !!selectedId,
+    staleTime: 60_000,
   });
 
-  const replyDecision = thread?.replyDecision ?? intelligence?.replyDecision ?? null;
+  const shouldLoadKnowledgeGaps =
+    !!thread &&
+    inboxContext != null &&
+    (inboxContext.kbHealth?.chunkCount ?? 0) > 0 &&
+    (thread.requiresHuman || thread.aiEnabled);
+
+  const { data: knowledgeGapsData } = useQuery({
+    queryKey: ["conversation-knowledge-gaps", selectedId],
+    queryFn: () =>
+      apiFetch<{ knowledgeGaps: string[] }>(`/conversations/${selectedId}/knowledge-gaps`, {
+        token: token ?? undefined,
+      }),
+    enabled: !!token && !!selectedId && shouldLoadKnowledgeGaps,
+    staleTime: 120_000,
+  });
+
+  const replyDecision = thread?.replyDecision ?? inboxContext?.replyDecision ?? null;
 
   const suggestMutation = useMutation({
     mutationFn: () =>
@@ -423,13 +464,35 @@ export default function InboxPage() {
         token: token ?? undefined,
         body: JSON.stringify({ stage, reason }),
       }),
-    onSuccess: () => {
+    onMutate: async ({ stage }) => {
+      if (!selectedId) return;
+      await queryClient.cancelQueries({ queryKey: ["conversation", selectedId] });
+      await queryClient.cancelQueries({ queryKey: ["conversations"] });
+      const previousThread = queryClient.getQueryData<ConversationDetail>([
+        "conversation",
+        selectedId,
+      ]);
+      const previousLists = queryClient.getQueriesData<{ data: ConversationRow[] }>({
+        queryKey: ["conversations"],
+      });
+      patchThreadLeadStage(queryClient, selectedId, stage);
+      return { previousThread, previousLists };
+    },
+    onError: (e, _vars, context) => {
+      if (selectedId && context?.previousThread) {
+        queryClient.setQueryData(["conversation", selectedId], context.previousThread);
+      }
+      context?.previousLists?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+      showMutationError(e, "Could not update pipeline stage.");
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       if (leadId) void queryClient.invalidateQueries({ queryKey: ["lead-timeline", leadId] });
     },
-    onError: (e) => showMutationError(e, "Could not update pipeline stage."),
   });
 
   function handleStageChange(next: LeadStage) {
@@ -451,14 +514,46 @@ export default function InboxPage() {
         method: "POST",
         token: token ?? undefined,
       }),
-    onSuccess: () => {
-      const doneId = selectedId;
+    onMutate: async () => {
+      if (!selectedId) return;
+      await queryClient.cancelQueries({ queryKey: ["conversation", selectedId] });
+      await queryClient.cancelQueries({ queryKey: ["conversations"] });
+      const previousThread = queryClient.getQueryData<ConversationDetail>([
+        "conversation",
+        selectedId,
+      ]);
+      const previousLists = queryClient.getQueriesData<{ data: ConversationRow[] }>({
+        queryKey: ["conversations"],
+      });
+      const previousStats = {
+        full: queryClient.getQueryData(QUERY_KEYS.conversationStats()),
+        queue: queryClient.getQueryData(QUERY_KEYS.conversationQueueStats),
+      };
+      patchConversationHandoffResolved(queryClient, selectedId);
+      return { previousThread, previousLists, previousStats, doneId: selectedId };
+    },
+    onSuccess: (_data, _vars, context) => {
+      if (context?.doneId) advanceAfterAction(context.doneId);
+    },
+    onError: (e, _vars, context) => {
+      if (selectedId && context?.previousThread) {
+        queryClient.setQueryData(["conversation", selectedId], context.previousThread);
+      }
+      context?.previousLists?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+      if (context?.previousStats) {
+        queryClient.setQueryData(QUERY_KEYS.conversationStats(), context.previousStats.full);
+        queryClient.setQueryData(QUERY_KEYS.conversationQueueStats, context.previousStats.queue);
+      }
+      showMutationError(e, "Could not resolve handoff.");
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
-      if (doneId) advanceAfterAction(doneId);
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationStats() });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
     },
-    onError: (e) => showMutationError(e, "Could not resolve handoff."),
   });
 
   const takeoverMutation = useMutation({
@@ -472,35 +567,111 @@ export default function InboxPage() {
       trackCoaching("coaching_takeover_complete");
       queryClient.setQueryData(["conversation", selectedId], updated);
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
-      void queryClient.invalidateQueries({ queryKey: ["onboarding-progress"] });
-      void queryClient.invalidateQueries({ queryKey: ["pending-setup-actions"] });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.onboardingCoaching });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.onboardingProgress });
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
     onError: (e) => showMutationError(e, "Could not take over this conversation."),
   });
 
   const sendMutation = useMutation({
-    mutationFn: (content: string) =>
-      apiFetch(`/conversations/${selectedId}/messages`, {
+    mutationFn: ({
+      content,
+      draftText,
+      aiRunId,
+    }: {
+      content: string;
+      draftText?: string;
+      aiRunId?: string;
+    }) =>
+      apiFetch<InboxThreadMessage>(`/conversations/${selectedId}/messages`, {
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({
           content,
-          draftText: draftMeta?.aiRunId ? draft : undefined,
-          aiRunId: draftMeta?.aiRunId,
+          draftText,
+          aiRunId,
         }),
       }),
-    onSuccess: () => {
+    onMutate: async ({ content }) => {
+      if (!selectedId) return;
+
+      await queryClient.cancelQueries({ queryKey: ["conversation", selectedId] });
+      await queryClient.cancelQueries({ queryKey: ["conversations"] });
+
+      const previousThread = queryClient.getQueryData<ConversationDetail>([
+        "conversation",
+        selectedId,
+      ]);
+      const previousLists = queryClient.getQueriesData<{ data: ConversationRow[] }>({
+        queryKey: ["conversations"],
+      });
+      const savedDraft = draft;
+      const savedDraftMeta = draftMeta;
+      const optimisticId = `${OPTIMISTIC_MESSAGE_PREFIX}${Date.now()}`;
+
+      if (!previousThread) {
+        return { previousThread, previousLists, savedDraft, savedDraftMeta, optimisticId: null };
+      }
+
+      const optimisticMessage = createOptimisticOutboundMessage(content, optimisticId);
+
       setDraft("");
       setDraftMeta(null);
       setSendError(null);
+
+      appendOptimisticOutboundMessage(queryClient, selectedId, optimisticMessage);
+      patchConversationListsAfterOutbound(
+        queryClient,
+        selectedId,
+        content,
+        optimisticMessage.createdAt,
+      );
+
+      return { previousThread, previousLists, savedDraft, savedDraftMeta, optimisticId };
+    },
+    onSuccess: (serverMessage, _vars, context) => {
+      if (!selectedId) return;
+
+      if (context?.optimisticId) {
+        replaceOptimisticOutboundMessage(
+          queryClient,
+          selectedId,
+          context.optimisticId,
+          serverMessage,
+        );
+        patchConversationListsAfterOutbound(
+          queryClient,
+          selectedId,
+          serverMessage.content ?? "",
+          serverMessage.createdAt,
+        );
+      }
+
+      setDraft("");
+      setDraftMeta(null);
+      setSendError(null);
+    },
+    onError: (e, _vars, context) => {
+      if (selectedId && context?.previousThread) {
+        queryClient.setQueryData(["conversation", selectedId], context.previousThread);
+      }
+      context?.previousLists?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+      if (context) {
+        setDraft(context.savedDraft);
+        setDraftMeta(context.savedDraftMeta);
+      }
+      setSendError(toUserMessage(e, "Message could not be sent."));
+    },
+    onSettled: () => {
+      if (!selectedId) return;
       void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
-    },
-    onError: (e) => {
-      setSendError(toUserMessage(e, "Message could not be sent."));
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationStats() });
     },
   });
 
@@ -522,13 +693,19 @@ export default function InboxPage() {
     setSelectedId(id);
     setSendError(null);
     setShowComposer(true);
+    patchConversationAsRead(queryClient, id);
     const params = new URLSearchParams(window.location.search);
     params.set("c", id);
     window.history.replaceState(null, "", `/dashboard/inbox?${params.toString()}`);
     void apiFetch(`/conversations/${id}/read`, {
       method: "POST",
       token: token ?? undefined,
-    }).catch(() => {});
+    }).catch(() => {
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: ["conversation", id] });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationStats() });
+    });
   }
 
   function replaceInboxUrl(params: URLSearchParams) {
@@ -569,7 +746,11 @@ export default function InboxPage() {
     e.preventDefault();
     const text = draft.trim();
     if (!text || !selectedId || sendMutation.isPending) return;
-    sendMutation.mutate(text);
+    sendMutation.mutate({
+      content: text,
+      draftText: draftMeta?.aiRunId ? text : undefined,
+      aiRunId: draftMeta?.aiRunId,
+    });
   }
 
   const withinMessagingWindow = (() => {
@@ -580,6 +761,25 @@ export default function InboxPage() {
   })();
 
   const windowClosed = !!thread && !withinMessagingWindow;
+  const hasOlderMessages = hasOlderOverride ?? thread?.hasOlderMessages ?? false;
+
+  async function loadOlderMessages() {
+    if (!selectedId || !thread?.messages[0] || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const oldest = thread.messages[0].createdAt;
+      const res = await apiFetch<{ messages: Message[]; hasMore: boolean }>(
+        `/conversations/${selectedId}/messages?before=${encodeURIComponent(oldest)}`,
+        { token: token ?? undefined },
+      );
+      prependOlderMessages(queryClient, selectedId, res.messages, res.hasMore);
+      setHasOlderOverride(res.hasMore);
+    } catch (e) {
+      showMutationError(e, "Could not load older messages.");
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
 
   return (
     <>
@@ -691,13 +891,13 @@ export default function InboxPage() {
                   </p>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span className="truncate">{thread.contactPhone}</span>
-                    {intelligence?.workingMemory &&
-                    (intelligence.workingMemory.relationshipPhase === "post_sale" ||
-                      intelligence.workingMemory.relationshipPhase === "win_back") ? (
+                    {inboxContext?.workingMemory &&
+                    (inboxContext.workingMemory.relationshipPhase === "post_sale" ||
+                      inboxContext.workingMemory.relationshipPhase === "win_back") ? (
                       <>
                         <span aria-hidden className="text-border">·</span>
                         <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground">
-                          {formatRelationshipPhase(intelligence.workingMemory.relationshipPhase)}
+                          {formatRelationshipPhase(inboxContext.workingMemory.relationshipPhase)}
                         </span>
                       </>
                     ) : null}
@@ -873,8 +1073,8 @@ export default function InboxPage() {
                   takeoverMutation.mutate(t);
                 }}
                 onResolveHandoff={() => resolveHandoffMutation.mutate()}
-                knowledgeGaps={intelligence?.knowledgeGaps ?? []}
-                kbHealth={intelligence?.kbHealth ?? null}
+                knowledgeGaps={knowledgeGapsData?.knowledgeGaps ?? []}
+                kbHealth={inboxContext?.kbHealth ?? null}
               />
               <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/60 px-4 py-1.5 lg:px-5">
                 <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1 md:flex">
@@ -953,6 +1153,20 @@ export default function InboxPage() {
 
             <div className="conversation-thread-bg flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 custom-scrollbar lg:px-6">
               <div className="mx-auto mt-auto flex w-full max-w-3xl flex-col gap-2.5">
+                {hasOlderMessages && (
+                  <div className="flex justify-center pb-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs text-muted-foreground"
+                      disabled={loadingOlder}
+                      onClick={() => void loadOlderMessages()}
+                    >
+                      {loadingOlder ? "Loading…" : "Load older messages"}
+                    </Button>
+                  </div>
+                )}
                 {thread.messages.map((m) => (
                   <div
                     key={m.id}
@@ -1107,7 +1321,7 @@ export default function InboxPage() {
                 events={timeline?.events ?? []}
                 aiConfidence={timeline?.lead.aiConfidence}
                 hasClassification={!!thread.aiContext}
-                workingMemory={intelligence?.workingMemory}
+                workingMemory={inboxContext?.workingMemory}
                 open={showTimeline}
                 onToggle={() => setShowTimeline((v) => !v)}
               />

@@ -19,6 +19,7 @@ export const QUERY_KEYS = {
   funnel: (period: string) => ["funnel-metrics", period] as const,
   conversationStats: (period?: string) =>
     period ? (["conversation-stats", period] as const) : (["conversation-stats"] as const),
+  conversationQueueStats: ["conversation-queue-stats"] as const,
   revenue: (period: string) => ["revenue-metrics", period] as const,
   sla: (period: string) => ["sla-metrics", period] as const,
   insights: (period: string) => ["insights", period] as const,
@@ -27,4 +28,10 @@ export const QUERY_KEYS = {
   teamWorkload: ["team-workload"] as const,
   whatsappAccounts: ["whatsapp-accounts"] as const,
   billing: ["billing-status"] as const,
+  authMe: ["auth-me"] as const,
+  onboardingProgress: ["onboarding-progress"] as const,
+  onboardingCoaching: ["onboarding-coaching"] as const,
+  whatsappConnectionHealth: ["whatsapp-connection-health"] as const,
+  paymentIntegration: ["payment-integration"] as const,
+  conversationCapabilities: ["conversation-capabilities"] as const,
 } as const;

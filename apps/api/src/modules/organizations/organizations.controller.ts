@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import {
   ArrayMaxSize,
   IsArray,
@@ -392,7 +392,10 @@ export class OrganizationsController {
 
   @Get("onboarding-progress")
   @SkipSubscriptionCheck()
-  onboardingProgress(@CurrentUser() user: JwtPayload) {
+  onboardingProgress(@CurrentUser() user: JwtPayload, @Query("scope") scope?: string) {
+    if (scope === "coaching") {
+      return this.organizations.getOnboardingCoaching(user.organizationId);
+    }
     return this.organizations.getOnboardingProgress(user.organizationId);
   }
 

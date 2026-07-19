@@ -38,15 +38,21 @@ export class KnowledgeRetrievalService {
   }
 
   async hasIndexedChunks(organizationId: string): Promise<boolean> {
+    const count = await this.getCachedChunkCount(organizationId);
+    return count > 0;
+  }
+
+  /** Cached org chunk count — used by inbox context without full KB health scans. */
+  async getCachedChunkCount(organizationId: string): Promise<number> {
     const cached = this.chunkCountCache.get(organizationId);
     if (cached && Date.now() - cached.at < CHUNK_CACHE_TTL_MS) {
-      return cached.count > 0;
+      return cached.count;
     }
     const count = await this.prisma.knowledgeChunk.count({
       where: { document: { organizationId } },
     });
     this.chunkCountCache.set(organizationId, { count, at: Date.now() });
-    return count > 0;
+    return count;
   }
 
   async retrieveDetailed(input: RetrieveKnowledgeInput): Promise<RetrievalResult> {

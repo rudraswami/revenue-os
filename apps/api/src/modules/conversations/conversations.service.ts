@@ -76,7 +76,10 @@ export class ConversationsService {
     }
   }
 
-  async getStats(user: JwtPayload, period?: MetricsPeriod) {
+  async getStats(user: JwtPayload, period?: MetricsPeriod, scope?: string) {
+    if (scope === "queue") {
+      return this.getQueueStats(user);
+    }
     const orgId = user.organizationId;
     const parsedPeriod = parseMetricsPeriod(period);
     const range = createdAtFilter(parsedPeriod);
@@ -189,6 +192,98 @@ export class ConversationsService {
     };
   }
 
+  /** Lightweight counters for sidebar badge + inbox queue tabs (no period aggregates). */
+  async getQueueStats(user: JwtPayload) {
+    const orgId = user.organizationId;
+    const closedStages: LeadStage[] = [LeadStage.WON, LeadStage.LOST];
+    const activeQueueWhere: Prisma.ConversationWhereInput = {
+      organizationId: orgId,
+      OR: [
+        { leadId: null },
+        { lead: { is: { stage: { notIn: closedStages } } } },
+      ],
+    };
+
+    const [unreadAgg, handoffConversations, mineOpen, unassignedOpen, postCloseUnread] =
+      await Promise.all([
+        this.prisma.conversation.aggregate({
+          where: { organizationId: orgId },
+          _sum: { unreadCount: true },
+        }),
+        this.prisma.conversation.count({
+          where: {
+            ...activeQueueWhere,
+            metadata: { path: ["requiresHuman"], equals: true },
+          },
+        }),
+        this.prisma.conversation.count({
+          where: {
+            ...activeQueueWhere,
+            assignedToId: user.sub,
+          },
+        }),
+        this.prisma.conversation.count({
+          where: {
+            ...activeQueueWhere,
+            assignedToId: null,
+          },
+        }),
+        this.prisma.conversation.count({
+          where: {
+            organizationId: orgId,
+            unreadCount: { gt: 0 },
+            lead: { is: { stage: { in: closedStages } } },
+          },
+        }),
+      ]);
+
+    return {
+      unreadMessages: unreadAgg._sum.unreadCount ?? 0,
+      humanHandoffRecommended: handoffConversations,
+      queue: {
+        yourTurn: handoffConversations,
+        mine: mineOpen,
+        unassigned: unassignedOpen,
+        postCloseUnread,
+      },
+    };
+  }
+
+  async listMessages(
+    user: JwtPayload,
+    conversationId: string,
+    before?: string,
+    limit = 50,
+  ) {
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId: user.organizationId },
+      select: { id: true, assignedToId: true },
+    });
+    if (!conversation) throw new NotFoundException("Conversation not found");
+    this.assertInboxThreadAccess(user, conversation);
+
+    const take = Math.min(Math.max(limit, 1), 100);
+    const beforeDate = before ? new Date(before) : undefined;
+    if (before && Number.isNaN(beforeDate!.getTime())) {
+      throw new BadRequestException("Invalid before cursor");
+    }
+
+    const rows = await this.prisma.message.findMany({
+      where: {
+        conversationId,
+        ...(beforeDate ? { createdAt: { lt: beforeDate } } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: take + 1,
+    });
+
+    const hasMore = rows.length > take;
+    return {
+      messages: rows.slice(0, take).reverse(),
+      hasMore,
+    };
+  }
+
   async list(user: JwtPayload, page = 1, pageSize = 20, q?: string, filter?: string, scope?: string) {
     const skip = (page - 1) * pageSize;
     const query = q?.trim();
@@ -292,7 +387,6 @@ export class ConversationsService {
       where: { id, organizationId: user.organizationId },
       include: {
         lead: true,
-        messages: { orderBy: { createdAt: "asc" }, take: 200 },
         assignedTo: { select: { id: true, name: true, email: true } },
         whatsappAccount: {
           select: { displayPhoneNumber: true, isActive: true },
@@ -303,10 +397,16 @@ export class ConversationsService {
 
     this.assertInboxThreadAccess(user, conversation);
 
+    const recentMessages = await this.prisma.message.findMany({
+      where: { conversationId: id },
+      orderBy: { createdAt: "desc" },
+      take: 51,
+    });
+    const hasOlderMessages = recentMessages.length > 50;
+    const messages = recentMessages.slice(0, 50).reverse();
+
     const meta = (conversation.metadata ?? {}) as Record<string, unknown>;
     const profile = (conversation.lead?.profile ?? {}) as Record<string, unknown>;
-
-    this.maybeRefreshAiPipeline(user.organizationId, conversation, meta);
 
     const lastAiRun = await this.prisma.aiRun.findFirst({
       where: {
@@ -356,6 +456,8 @@ export class ConversationsService {
 
     return {
       ...conversation,
+      messages,
+      hasOlderMessages,
       replyMode: conversation.aiEnabled ? ("workspace_default" as const) : ("human_handling" as const),
       requiresHuman: meta.requiresHuman === true,
       handoffReason: typeof meta.handoffReason === "string" ? meta.handoffReason : null,
@@ -376,78 +478,6 @@ export class ConversationsService {
       assignment: await this.resolveAssignmentExplain(meta, user.organizationId),
       aiContext,
     };
-  }
-
-  private maybeRefreshAiPipeline(
-    organizationId: string,
-    conversation: {
-      id: string;
-      aiEnabled: boolean;
-      leadId: string | null;
-      messages: Array<{ id: string; direction: string; createdAt: Date }>;
-      lead: { lastClassifiedAt: Date | null } | null;
-    },
-    meta: Record<string, unknown>,
-  ) {
-    if (!conversation.aiEnabled || !conversation.leadId) return;
-
-    const lastMsg = conversation.messages[conversation.messages.length - 1];
-    if (!lastMsg || lastMsg.direction !== "INBOUND") return;
-
-    const inboundMs = new Date(lastMsg.createdAt).getTime();
-    if (Date.now() - inboundMs > 48 * 60 * 60 * 1000) return;
-
-    const classifiedMs = conversation.lead?.lastClassifiedAt?.getTime() ?? 0;
-    const replyDecision = meta.replyDecision as import("@growvisi/shared").ReplyDecision | undefined;
-    const decisionMs = replyDecision?.evaluatedAt
-      ? new Date(replyDecision.evaluatedAt).getTime()
-      : 0;
-
-    const pendingDraft = meta.pendingDraft;
-    const hasDraft =
-      pendingDraft &&
-      typeof pendingDraft === "object" &&
-      typeof (pendingDraft as { suggestion?: string }).suggestion === "string" &&
-      (pendingDraft as { suggestion: string }).suggestion.trim().length > 0;
-
-    const needsClassify = classifiedMs < inboundMs - 2_000 || decisionMs < inboundMs - 2_000;
-    const needsDraft =
-      replyDecision?.mode === "draft" && !hasDraft && decisionMs >= inboundMs - 5_000;
-
-    if (!needsClassify && !needsDraft) return;
-
-    void this.enqueueClassifyIfNeeded(
-      organizationId,
-      conversation.id,
-      lastMsg.id,
-      conversation.leadId,
-    );
-  }
-
-  private async enqueueClassifyIfNeeded(
-    organizationId: string,
-    conversationId: string,
-    messageId: string,
-    leadId: string,
-  ) {
-    const existing = await this.prisma.aiRun.findFirst({
-      where: {
-        organizationId,
-        conversationId,
-        type: { in: ["classify", "classify_refresh"] },
-        status: "COMPLETED",
-        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
-      },
-      orderBy: { createdAt: "desc" },
-      select: { input: true },
-    });
-    const existingMessageId = (existing?.input as Record<string, unknown> | null)?.messageId;
-    if (existingMessageId === messageId) return;
-
-    void this.aiClassify.enqueue(
-      { organizationId, conversationId, messageId, leadId },
-      { background: true },
-    );
   }
 
   private async resolveAssignmentExplain(
@@ -735,6 +765,14 @@ export class ConversationsService {
 
   async getIntelligence(user: JwtPayload, conversationId: string) {
     return this.intelligenceQuery.getConversationIntelligence(user, conversationId);
+  }
+
+  async getInboxContext(user: JwtPayload, conversationId: string) {
+    return this.intelligenceQuery.getConversationInboxContext(user, conversationId);
+  }
+
+  async getKnowledgeGaps(user: JwtPayload, conversationId: string) {
+    return this.intelligenceQuery.getConversationKnowledgeGaps(user, conversationId);
   }
 
   async getReplyDecision(user: JwtPayload, conversationId: string) {
@@ -1061,14 +1099,27 @@ export class ConversationsService {
       breached: boolean;
     }> = [];
 
+    const conversationIds = responded.map((c) => c.id);
+    const firstInbounds =
+      conversationIds.length > 0
+        ? await this.prisma.message.findMany({
+            where: {
+              conversationId: { in: conversationIds },
+              direction: "INBOUND",
+            },
+            orderBy: { createdAt: "asc" },
+            distinct: ["conversationId"],
+            select: { conversationId: true, createdAt: true },
+          })
+        : [];
+    const firstInboundByConversation = new Map(
+      firstInbounds.map((m) => [m.conversationId, m.createdAt]),
+    );
+
     for (const conv of responded) {
-      const firstInbound = await this.prisma.message.findFirst({
-        where: { conversationId: conv.id, direction: "INBOUND" },
-        orderBy: { createdAt: "asc" },
-        select: { createdAt: true },
-      });
-      if (!firstInbound || !conv.firstResponseAt) continue;
-      const ms = conv.firstResponseAt.getTime() - firstInbound.createdAt.getTime();
+      const firstInboundAt = firstInboundByConversation.get(conv.id);
+      if (!firstInboundAt || !conv.firstResponseAt) continue;
+      const ms = conv.firstResponseAt.getTime() - firstInboundAt.getTime();
       responseTimesMs.push(ms);
       slowest.push({
         id: conv.id,
