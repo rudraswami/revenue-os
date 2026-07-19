@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { withAuthQuery } from "@/lib/auth-links";
 import { applySession, postAuthRedirect } from "@/lib/auth-session";
+import { loginReasonMessage } from "@/lib/auth-login-reason";
 import { CTA } from "@/lib/brand-copy";
 import type { AuthSession, LoginResult, OrganizationOption } from "@/lib/auth-types";
 import { isAuthSession } from "@/lib/auth-types";
@@ -21,6 +22,8 @@ function LoginForm() {
   const { t } = useAuthI18n();
   const resetDone = searchParams.get("reset") === "1";
   const deletedDone = searchParams.get("deleted") === "1";
+  const sessionReason = searchParams.get("reason");
+  const sessionMessage = loginReasonMessage(sessionReason);
   const inviteToken = searchParams.get("invite") ?? "";
   const inviteEmail = searchParams.get("email") ?? "";
 
@@ -83,6 +86,11 @@ function LoginForm() {
       )}
       {deletedDone && (
         <p className="auth-banner-success mb-5">{t("auth.accountDeleted")}</p>
+      )}
+      {sessionMessage && (
+        <p className="auth-banner-error mb-5" role="status">
+          {sessionMessage}
+        </p>
       )}
 
       {!organizations ? (

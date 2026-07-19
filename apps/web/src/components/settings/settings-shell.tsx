@@ -32,6 +32,9 @@ import { SettingsTabTransition } from "@/components/settings/settings-tab-transi
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SettingsAccessPanel } from "@/components/settings/settings-plan-gate";
 import { SettingsTabSkeleton } from "@/components/settings/settings-tab-skeletons";
+import { ShellBootstrapErrorBanner } from "@/components/dashboard/shell-bootstrap-error-banner";
+import { QueryErrorState } from "@/components/ui/query-state";
+import { toUserMessage } from "@/lib/api-client";
 import { WorkspaceHome } from "@/components/settings/workspace-home";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
 import { AuditActivityCard } from "@/components/settings/audit-activity-card";
@@ -295,7 +298,10 @@ export function SettingsShell() {
   const isAdmin = canManageTeam(role);
   const roleReady = !!role;
 
-  const { data: bootstrap, isLoading: bootstrapLoading, isFetching } = useSettingsBootstrap();
+  const { data: bootstrap, isLoading: bootstrapLoading, isFetching, isError, error, refetch } =
+    useSettingsBootstrap();
+
+  const bootstrapFailed = isError && !bootstrap && !bootstrapLoading;
 
   const accessCtx = useMemo<SettingsAccessContext>(
     () => ({
@@ -303,9 +309,9 @@ export function SettingsShell() {
       planId:
         (bootstrap?.billing as { planId?: string } | undefined)?.planId ??
         bootstrap?.billing?.entitlements?.planId ??
-        "trial",
+        (bootstrapFailed ? "trial" : "trial"),
     }),
-    [role, bootstrap],
+    [role, bootstrap, bootstrapFailed],
   );
 
   const visibleTabIds = useMemo(() => getVisibleSettingsTabs(accessCtx), [accessCtx]);
@@ -485,7 +491,20 @@ export function SettingsShell() {
           </div>
 
           <SettingsTabTransition tabKey={activeTab} isPending={isTabPending} className="min-h-[640px] w-full">
-            {showTabSkeleton ? (
+            {isError && bootstrap ? (
+              <ShellBootstrapErrorBanner
+                error={error}
+                isRetrying={isFetching}
+                onRetry={() => void refetch()}
+              />
+            ) : null}
+            {bootstrapFailed ? (
+              <QueryErrorState
+                title="Couldn't load settings"
+                message={toUserMessage(error, "Check your connection and try again.")}
+                onRetry={() => void refetch()}
+              />
+            ) : showTabSkeleton ? (
               <SettingsTabSkeleton tab={activeTab} />
             ) : showAccessPanel ? (
               <SettingsAccessPanel

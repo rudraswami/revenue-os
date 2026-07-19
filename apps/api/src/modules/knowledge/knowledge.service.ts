@@ -85,7 +85,7 @@ export class KnowledgeService {
       },
     });
 
-    const chunkCount = await this.scheduleEmbed(doc.id, user.organizationId);
+    const embedResult = await this.scheduleEmbed(doc.id, user.organizationId);
     void this.events.emit({
       organizationId: user.organizationId,
       type: DOMAIN_EVENTS.KNOWLEDGE_DOCUMENT_UPDATED,
@@ -93,7 +93,15 @@ export class KnowledgeService {
       entityId: doc.id,
       payload: { action: "created" },
     });
-    return { ...doc, chunkCount, status: chunkCount > 0 ? "indexed" : "pending" };
+    return {
+      ...doc,
+      chunkCount: embedResult.chunks,
+      status: embedResult.failed
+        ? "failed"
+        : embedResult.chunks > 0
+          ? "indexed"
+          : "pending",
+    };
   }
 
   async update(
@@ -128,7 +136,7 @@ export class KnowledgeService {
       },
     });
 
-    const chunkCount = await this.scheduleEmbed(id, user.organizationId);
+    const embedResult = await this.scheduleEmbed(id, user.organizationId);
     void this.events.emit({
       organizationId: user.organizationId,
       type: DOMAIN_EVENTS.KNOWLEDGE_DOCUMENT_UPDATED,
@@ -136,7 +144,15 @@ export class KnowledgeService {
       entityId: id,
       payload: { action: "updated" },
     });
-    return { ...doc, chunkCount, status: chunkCount > 0 ? "indexed" : "pending" };
+    return {
+      ...doc,
+      chunkCount: embedResult.chunks,
+      status: embedResult.failed
+        ? "failed"
+        : embedResult.chunks > 0
+          ? "indexed"
+          : "pending",
+    };
   }
 
   async reindex(user: JwtPayload, id: string) {
@@ -146,8 +162,8 @@ export class KnowledgeService {
     });
     if (!existing) throw new NotFoundException("Document not found");
 
-    const chunkCount = await this.scheduleEmbed(id, user.organizationId, true);
-    return { ok: true, chunkCount };
+    const embedResult = await this.scheduleEmbed(id, user.organizationId, true);
+    return { ok: true, chunkCount: embedResult.chunks, failed: embedResult.failed ?? false };
   }
 
   async remove(user: JwtPayload, id: string) {
@@ -186,7 +202,7 @@ export class KnowledgeService {
     documentId: string,
     organizationId: string,
     forceInline = false,
-  ): Promise<number> {
+  ): Promise<{ chunks: number; failed?: boolean }> {
     if (useBackgroundWorkers() && !forceInline) {
       try {
         await withTimeout(
@@ -198,19 +214,22 @@ export class KnowledgeService {
           5_000,
           "Embed queue unavailable",
         );
-        return 0;
+        return { chunks: 0 };
       } catch {
         // fall through to inline
       }
     }
 
-    const { chunks } = await this.embed.embedDocument(documentId, organizationId);
+    const result = await this.embed.embedDocument(documentId, organizationId);
     this.retrieval.invalidateChunkCountCache(organizationId);
-    return chunks;
+    return { chunks: result.chunks, failed: result.failed };
   }
 
   /** Queue or inline-embed a document (handbook seed, uploads, re-index). */
-  async scheduleDocumentEmbed(documentId: string, organizationId: string): Promise<number> {
+  async scheduleDocumentEmbed(
+    documentId: string,
+    organizationId: string,
+  ): Promise<{ chunks: number; failed?: boolean }> {
     return this.scheduleEmbed(documentId, organizationId);
   }
 }

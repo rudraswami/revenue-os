@@ -24,7 +24,13 @@ export class AiEmbedProcessor extends WorkerHost {
   async process(job: Job<EmbedJobData>) {
     const { documentId, organizationId } = job.data;
     this.logger.debug(`Embedding document ${documentId}`);
-    await this.embed.embedDocument(documentId, organizationId);
-    this.retrieval.invalidateChunkCountCache(organizationId);
+    try {
+      await this.embed.embedDocument(documentId, organizationId);
+      this.retrieval.invalidateChunkCountCache(organizationId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Embed job failed for ${documentId}: ${message}`);
+      throw err;
+    }
   }
 }

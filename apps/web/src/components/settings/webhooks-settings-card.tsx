@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/components/ui/toast";
 import { useMutationPendingId } from "@/hooks/use-mutation-pending-id";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { canManageTeam } from "@/lib/permissions";
@@ -45,6 +46,7 @@ export function WebhooksSettingsCard() {
   const role = useAuthStore((s) => s.role);
   const isAdmin = canManageTeam(role);
   const qc = useQueryClient();
+  const { success, error: toastError } = useToast();
 
   const [name, setName] = useState("CRM sync");
   const [url, setUrl] = useState("");
@@ -83,18 +85,27 @@ export function WebhooksSettingsCard() {
         body: JSON.stringify({ enabled }),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["webhooks"] }),
+    onError: (e) => toastError(toUserMessage(e, "Could not update webhook.")),
   });
 
   const testMut = useMutation({
     mutationFn: (id: string) =>
       apiFetch(`/webhooks/${id}/test`, { method: "POST", token: token ?? undefined }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["webhooks"] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["webhooks"] });
+      success("Test delivery sent");
+    },
+    onError: (e) => toastError(toUserMessage(e, "Webhook test failed.")),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) =>
       apiFetch(`/webhooks/${id}`, { method: "DELETE", token: token ?? undefined }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["webhooks"] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["webhooks"] });
+      success("Webhook deleted");
+    },
+    onError: (e) => toastError(toUserMessage(e, "Could not delete webhook.")),
   });
 
   const pendingTestId = useMutationPendingId(testMut);

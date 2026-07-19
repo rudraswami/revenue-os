@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { apiFetch } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { LEAD_STAGES, STAGE_LABELS } from "@/lib/crm";
 import { canManageTeam } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
@@ -45,6 +46,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
   const role = useAuthStore((s) => s.role);
   const isAdmin = canManageTeam(role);
   const qc = useQueryClient();
+  const { success, error: toastError } = useToast();
   const [draftRules, setDraftRules] = useState<AssignmentRule[] | null>(null);
 
   const { data: config, isLoading } = useQuery({
@@ -74,7 +76,9 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
     onSuccess: () => {
       setDraftRules(null);
       void qc.invalidateQueries({ queryKey: ["assignment-rules"] });
+      success("Assignment rules updated");
     },
+    onError: (e) => toastError(toUserMessage(e, "Could not save assignment rules.")),
   });
 
   const rules = draftRules ?? config?.rules ?? [];

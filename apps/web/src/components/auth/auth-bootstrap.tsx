@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { GrowvisiLogoLoader } from "@/components/ui/loading";
+import { useCrossTabLogoutSync } from "@/hooks/use-cross-tab-logout-sync";
 import { hasSessionHint } from "@/lib/auth-cookie";
 import { shouldRunBootstrapOnHydrate } from "@/lib/auth-bootstrap-policy";
 import { startBootstrapAuth } from "@/lib/auth-session";
@@ -13,6 +14,7 @@ import { useAuthStore } from "@/stores/auth-store";
  */
 export function AuthBootstrap({ children }: { children: React.ReactNode }) {
   const hydrated = useAuthStore((s) => s.hydrated);
+  useCrossTabLogoutSync();
 
   useEffect(() => {
     if (!hydrated) return;

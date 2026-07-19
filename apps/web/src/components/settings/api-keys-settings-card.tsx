@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { useMutationPendingId } from "@/hooks/use-mutation-pending-id";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { formatRelative } from "@/lib/crm";
@@ -23,6 +24,7 @@ interface ApiKeyRow {
 export function ApiKeysSettingsCard() {
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
+  const { success, error: toastError } = useToast();
   const [name, setName] = useState("Production");
   const [newSecret, setNewSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +56,11 @@ export function ApiKeysSettingsCard() {
   const revokeMutation = useMutation({
     mutationFn: (id: string) =>
       apiFetch(`/api-keys/${id}`, { method: "DELETE", token: token ?? undefined }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["api-keys"] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      success("API key revoked");
+    },
+    onError: (e) => toastError(toUserMessage(e, "Could not revoke API key.")),
   });
 
   const pendingRevokeId = useMutationPendingId(revokeMutation);

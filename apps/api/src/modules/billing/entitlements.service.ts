@@ -208,6 +208,70 @@ export class EntitlementsService {
     return used < access.limits.monthlyLeads;
   }
 
+  /** Increment when webhook ingest stores a message but skips new lead creation. */
+  async recordLeadIngestionSkipped(organizationId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true },
+    });
+    if (!org) return;
+
+    const settings =
+      org.settings && typeof org.settings === "object"
+        ? (org.settings as Record<string, unknown>)
+        : {};
+    const prev =
+      settings.leadCap && typeof settings.leadCap === "object"
+        ? (settings.leadCap as Record<string, unknown>)
+        : {};
+    const monthKey = this.currentUtcMonthKey();
+    const skippedThisMonth =
+      prev.monthKey === monthKey && typeof prev.skippedThisMonth === "number"
+        ? prev.skippedThisMonth + 1
+        : 1;
+
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        settings: {
+          ...settings,
+          leadCap: {
+            monthKey,
+            skippedThisMonth,
+            lastSkippedAt: new Date().toISOString(),
+          },
+        },
+      },
+    });
+  }
+
+  async leadCapIngestionSignal(organizationId: string): Promise<{ skippedThisMonth: number }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true },
+    });
+    const settings =
+      org?.settings && typeof org.settings === "object"
+        ? (org.settings as Record<string, unknown>)
+        : {};
+    const cap =
+      settings.leadCap && typeof settings.leadCap === "object"
+        ? (settings.leadCap as Record<string, unknown>)
+        : {};
+    const monthKey = this.currentUtcMonthKey();
+    return {
+      skippedThisMonth:
+        cap.monthKey === monthKey && typeof cap.skippedThisMonth === "number"
+          ? cap.skippedThisMonth
+          : 0,
+    };
+  }
+
+  private currentUtcMonthKey(): string {
+    const now = new Date();
+    return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+
   /** Throwing check for dashboard actions (add contact / outbound). */
   async assertCanCreateLead(organizationId: string): Promise<void> {
     const access = await this.assertHasAccess(organizationId);

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { loginRedirectPath } from "@/lib/auth-login-reason";
 import { hasSessionHint } from "@/lib/auth-cookie";
 import { canRenderDashboardWhileRestoringSession } from "@/lib/auth-bootstrap-policy";
 import { refreshSession } from "@/lib/auth-refresh";
@@ -16,6 +17,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const transient = useAuthStore((s) => s.lastTransientFailure);
+  const lastLogoutReason = useAuthStore((s) => s.lastLogoutReason);
   const sessionHint = hasSessionHint();
   const restoringSession = !accessToken && (!!sessionHint || !!transient);
 
@@ -23,8 +25,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!hydrated) return;
     if (accessToken) return;
     if (sessionHint || transient) return;
-    router.replace("/login");
-  }, [hydrated, accessToken, sessionHint, transient, router]);
+    router.replace(loginRedirectPath(lastLogoutReason));
+  }, [hydrated, accessToken, sessionHint, transient, lastLogoutReason, router]);
 
   useEffect(() => {
     if (!hydrated || accessToken) return;

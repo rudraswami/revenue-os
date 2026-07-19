@@ -7,6 +7,7 @@ import { Logo } from "@/components/marketing/logo";
 import { WhatsappTokenExpiryBanner } from "@/components/dashboard/whatsapp-token-expiry-banner";
 import { EmailVerificationBanner } from "@/components/auth/email-verification-banner";
 import { PermissionsChangedBanner } from "@/components/auth/permissions-changed-banner";
+import { ShellBootstrapErrorBanner } from "@/components/dashboard/shell-bootstrap-error-banner";
 import { useDashboardShellBootstrap } from "@/hooks/use-dashboard-shell-bootstrap";
 import { DashboardAssistLayer } from "@/components/dashboard/dashboard-assist-layer";
 import {
@@ -14,6 +15,7 @@ import {
   LegacyViewerBanner,
   TrialExpiredBanner,
 } from "@/components/dashboard/status-banners";
+import { LeadCapIngestionBanner } from "@/components/dashboard/lead-cap-ingestion-banner";
 import { Sidebar } from "./sidebar";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +23,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const isInbox = pathname === "/dashboard/inbox" || pathname.startsWith("/dashboard/inbox/");
-  useDashboardShellBootstrap();
+  const { isError, error, refetch, isFetching } = useDashboardShellBootstrap();
 
   return (
     <div className="flex app-shell">
@@ -74,10 +76,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <WhatsappTokenExpiryBanner />
+          {isError ? (
+            <ShellBootstrapErrorBanner
+              error={error}
+              isRetrying={isFetching}
+              onRetry={() => void refetch()}
+            />
+          ) : null}
           <EmailVerificationBanner />
           <PermissionsChangedBanner />
           <LegacyViewerBanner />
           <TrialExpiredBanner />
+          <LeadCapIngestionBanner />
           <div className="px-4 lg:px-8">
             <OnboardingBanner />
           </div>

@@ -428,6 +428,9 @@ export class WhatsappService {
       // Monthly lead cap reached for this plan: still ingest the message and
       // conversation, but do not create a new lead until they upgrade.
       this.logger.warn(`Monthly lead cap reached for org=${organizationId} — message stored without new lead`);
+      void this.entitlements
+        .recordLeadIngestionSkipped(organizationId)
+        .catch(() => undefined);
     }
 
     if (lead && conversation.leadId !== lead.id) {

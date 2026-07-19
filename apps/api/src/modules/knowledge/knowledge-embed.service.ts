@@ -42,65 +42,90 @@ export class KnowledgeEmbedService {
     return chunks;
   }
 
-  async embedDocument(documentId: string, organizationId: string) {
-    const doc = await this.prisma.knowledgeDocument.findFirst({
-      where: { id: documentId, organizationId },
-      select: { id: true, rawContent: true, title: true, category: true },
-    });
-    if (!doc?.rawContent?.trim()) {
-      await this.prisma.knowledgeChunk.deleteMany({ where: { documentId } });
-      await this.prisma.knowledgeDocument.update({
-        where: { id: documentId },
-        data: { status: "active" },
-      });
-      return { chunks: 0 };
+  async markEmbedFailed(documentId: string, reason?: string) {
+    if (reason) {
+      this.logger.warn(`Knowledge embed failed for ${documentId}: ${reason}`);
     }
-
-    const apiKey = this.config.get<string>("OPENAI_API_KEY");
-    if (!apiKey) {
-      this.logger.debug("OPENAI_API_KEY not set — skipping knowledge embedding");
-      await this.prisma.knowledgeDocument.update({
-        where: { id: documentId },
-        data: { status: "active" },
-      });
-      return { chunks: 0, skipped: true };
-    }
-
-    const pieces = this.splitIntoChunks(doc.rawContent);
-    await this.prisma.knowledgeChunk.deleteMany({ where: { documentId } });
-
-    const model = this.config.get<string>("AI_EMBEDDING_MODEL") ?? "text-embedding-3-small";
-    let indexed = 0;
-
-    for (const content of pieces) {
-      const vector = await this.createEmbedding(apiKey, model, content);
-      if (!vector) continue;
-
-      const id = `kc_${randomBytes(8).toString("hex")}`;
-      const vectorLiteral = `[${vector.join(",")}]`;
-      const metadata = JSON.stringify({
-        category: doc.category ?? "general",
-        documentTitle: doc.title,
-      });
-
-      await this.prisma.$executeRawUnsafe(
-        `INSERT INTO knowledge_chunks (id, "documentId", content, metadata, embedding)
-         VALUES ($1, $2, $3, $4::jsonb, $5::extensions.vector)`,
-        id,
-        documentId,
-        content,
-        metadata,
-        vectorLiteral,
-      );
-      indexed += 1;
-    }
-
     await this.prisma.knowledgeDocument.update({
       where: { id: documentId },
-      data: { status: indexed > 0 ? "indexed" : "active" },
+      data: { status: "failed" },
     });
+  }
 
-    return { chunks: indexed };
+  async embedDocument(documentId: string, organizationId: string) {
+    try {
+      const doc = await this.prisma.knowledgeDocument.findFirst({
+        where: { id: documentId, organizationId },
+        select: { id: true, rawContent: true, title: true, category: true },
+      });
+      if (!doc) {
+        return { chunks: 0, failed: true };
+      }
+
+      if (!doc.rawContent?.trim()) {
+        await this.prisma.knowledgeChunk.deleteMany({ where: { documentId } });
+        await this.prisma.knowledgeDocument.update({
+          where: { id: documentId },
+          data: { status: "active" },
+        });
+        return { chunks: 0 };
+      }
+
+      const apiKey = this.config.get<string>("OPENAI_API_KEY");
+      if (!apiKey) {
+        this.logger.debug("OPENAI_API_KEY not set — skipping knowledge embedding");
+        await this.prisma.knowledgeDocument.update({
+          where: { id: documentId },
+          data: { status: "active" },
+        });
+        return { chunks: 0, skipped: true };
+      }
+
+      const pieces = this.splitIntoChunks(doc.rawContent);
+      await this.prisma.knowledgeChunk.deleteMany({ where: { documentId } });
+
+      const model = this.config.get<string>("AI_EMBEDDING_MODEL") ?? "text-embedding-3-small";
+      let indexed = 0;
+
+      for (const content of pieces) {
+        const vector = await this.createEmbedding(apiKey, model, content);
+        if (!vector) continue;
+
+        const id = `kc_${randomBytes(8).toString("hex")}`;
+        const vectorLiteral = `[${vector.join(",")}]`;
+        const metadata = JSON.stringify({
+          category: doc.category ?? "general",
+          documentTitle: doc.title,
+        });
+
+        await this.prisma.$executeRawUnsafe(
+          `INSERT INTO knowledge_chunks (id, "documentId", content, metadata, embedding)
+           VALUES ($1, $2, $3, $4::jsonb, $5::extensions.vector)`,
+          id,
+          documentId,
+          content,
+          metadata,
+          vectorLiteral,
+        );
+        indexed += 1;
+      }
+
+      if (pieces.length > 0 && indexed === 0) {
+        await this.markEmbedFailed(documentId, "All embedding requests failed");
+        return { chunks: 0, failed: true };
+      }
+
+      await this.prisma.knowledgeDocument.update({
+        where: { id: documentId },
+        data: { status: indexed > 0 ? "indexed" : "active" },
+      });
+
+      return { chunks: indexed };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await this.markEmbedFailed(documentId, message);
+      throw err;
+    }
   }
 
   async search(organizationId: string, query: string, limit = 5) {

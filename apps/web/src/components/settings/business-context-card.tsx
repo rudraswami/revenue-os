@@ -389,10 +389,16 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                       "hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold sm:inline",
                       doc.status === "indexed"
                         ? "bg-bento-mint text-accent"
-                        : "bg-muted text-muted-foreground",
+                        : doc.status === "failed"
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-muted text-muted-foreground",
                     )}
                   >
-                    {doc.status === "indexed" ? `${doc.chunkCount ?? 0} chunks` : doc.status}
+                    {doc.status === "indexed"
+                      ? `${doc.chunkCount ?? 0} chunks`
+                      : doc.status === "failed"
+                        ? "Indexing failed"
+                        : doc.status}
                   </span>
                   {canManage && (
                     <div className="flex shrink-0 gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">

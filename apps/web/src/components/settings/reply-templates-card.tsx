@@ -4,8 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, MessageSquarePlus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
-import { apiFetch } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { canManageTeam } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -20,6 +22,7 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
   const role = useAuthStore((s) => s.role);
   const canEdit = canManageTeam(role);
   const queryClient = useQueryClient();
+  const { success, error: toastError } = useToast();
   const [editing, setEditing] = useState<ReplyTemplate[] | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -43,7 +46,9 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
     onSuccess: (res) => {
       queryClient.setQueryData(["reply-templates"], res);
       setEditing(null);
+      success("Quick replies saved");
     },
+    onError: (e) => toastError(toUserMessage(e, "Could not save quick replies.")),
   });
 
   function updateTemplate(id: string, patch: Partial<ReplyTemplate>) {

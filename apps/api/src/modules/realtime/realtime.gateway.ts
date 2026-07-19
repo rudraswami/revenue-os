@@ -9,6 +9,7 @@ import {
 import type { JwtPayload } from "@growvisi/shared";
 import { Server, Socket } from "socket.io";
 import { PrismaService } from "../prisma/prisma.service";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { JWT_ISSUER, JWT_AUDIENCE } from "../auth/jwt.constants";
 import { isAllowedCorsOrigin } from "../../config/cors-origins";
 import { RealtimeBroadcastService } from "./realtime-broadcast.service";
@@ -35,6 +36,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   constructor(
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
+    private readonly entitlements: EntitlementsService,
     private readonly broadcast: RealtimeBroadcastService,
   ) {}
 
@@ -55,6 +57,15 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
         include: { user: { select: { status: true } } },
       });
       if (!member || member.user.status !== "ACTIVE") {
+        client.disconnect();
+        return;
+      }
+
+      const access = await this.entitlements.getAccess(payload.organizationId);
+      if (!access.hasAccess) {
+        this.logger.debug(
+          `Client ${client.id} denied — subscription inactive for org:${payload.organizationId}`,
+        );
         client.disconnect();
         return;
       }

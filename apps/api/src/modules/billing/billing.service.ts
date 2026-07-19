@@ -39,6 +39,13 @@ export class BillingService {
       usage: snapshot.usage,
       limits: snapshot.limits,
       friction: snapshot.friction,
+      signals: {
+        leadsIngestionCapped:
+          snapshot.friction.leadsAtLimit && snapshot.access.hasAccess,
+        leadsSkippedThisMonth: (
+          await this.entitlements.leadCapIngestionSignal(user.organizationId)
+        ).skippedThisMonth,
+      },
     };
   }
 
@@ -59,6 +66,14 @@ export class BillingService {
     const existing = await this.prisma.subscription.findUnique({
       where: { organizationId: user.organizationId },
     });
+
+    if (existing?.status === "ACTIVE") {
+      throw new BadRequestException({
+        message:
+          "You already have an active subscription. Manage your plan in Settings → Billing.",
+        code: "SUBSCRIPTION_ALREADY_ACTIVE",
+      });
+    }
 
     const checkout = await this.razorpay.createSubscription({
       planId: planId as GrowvisiPlanId,

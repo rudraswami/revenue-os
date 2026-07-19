@@ -35,7 +35,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { apiFetch } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { QUERY_KEYS } from "@/lib/query-config";
 import { applySession, logout } from "@/lib/auth-session";
 import type { AuthSession, MeResponse } from "@/lib/auth-types";
@@ -339,6 +340,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { connected: live } = useRealtime();
   const statsPollInterval = useVisibleRefetchInterval(live ? false : 30_000);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const { error: toastError } = useToast();
 
   const { data: me } = useAuthMe({ cacheOnly: true });
 
@@ -398,6 +400,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       applySession(session);
       onNavigate?.();
       window.location.href = "/dashboard";
+    } catch (e) {
+      toastError(toUserMessage(e, "Could not switch workspace."));
     } finally {
       setSwitchingId(null);
     }

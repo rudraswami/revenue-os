@@ -30,6 +30,10 @@ export interface ShellBootstrapResponse {
       primaryReason: string | null;
       suggestedPlan: string | null;
     };
+    signals?: {
+      leadsIngestionCapped: boolean;
+      leadsSkippedThisMonth: number;
+    };
   };
   agency: {
     isAgency: boolean;

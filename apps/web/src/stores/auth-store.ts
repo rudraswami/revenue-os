@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { syncAuthCookie } from "@/lib/auth-cookie";
+import { broadcastSessionEnded } from "@/lib/auth-session-broadcast";
 import { clearRefreshCoordination } from "@/lib/auth-refresh-lock";
 import { logLogout } from "@/lib/auth-observability";
 import {
@@ -33,6 +34,8 @@ interface AuthState {
     RefreshResultKind,
     "NETWORK_FAILURE" | "SERVER_FAILURE"
   > | null;
+  /** Set when clear() runs — used for login redirect messaging (not persisted). */
+  lastLogoutReason: LogoutReason | null;
   setHydrated: (value: boolean) => void;
   setSession: (session: AuthSession) => void;
   /** Update profile/org from /auth/me without touching tokens. */
@@ -46,7 +49,7 @@ interface AuthState {
   setRoleChangeNotice: (previousRole: MembershipRole, newRole: MembershipRole) => void;
   clearRoleChangeNotice: () => void;
   dismissOnboarding: () => void;
-  clear: (reason: LogoutReason) => void;
+  clear: (reason: LogoutReason, opts?: { skipBroadcast?: boolean }) => void;
   isAuthenticated: () => boolean;
 }
 
@@ -63,6 +66,7 @@ export const useAuthStore = create<AuthState>()(
       onboardingDismissed: false,
       hydrated: false,
       lastTransientFailure: null,
+      lastLogoutReason: null,
       setHydrated: (hydrated) => set({ hydrated }),
       setSession: (session) => {
         syncAuthCookie(true);
@@ -107,11 +111,12 @@ export const useAuthStore = create<AuthState>()(
         set({ roleChangeNotice: { previousRole, newRole } }),
       clearRoleChangeNotice: () => set({ roleChangeNotice: null }),
       dismissOnboarding: () => set({ onboardingDismissed: true }),
-      clear: (reason) => {
+      clear: (reason, opts) => {
         logLogout(reason);
         syncAuthCookie(false);
         clearPersistedRefreshToken();
         clearRefreshCoordination();
+        if (!opts?.skipBroadcast) broadcastSessionEnded(reason);
         set({
           accessToken: null,
           refreshToken: null,
@@ -122,6 +127,7 @@ export const useAuthStore = create<AuthState>()(
           roleChangeNotice: null,
           onboardingDismissed: false,
           lastTransientFailure: null,
+          lastLogoutReason: reason,
         });
       },
       isAuthenticated: () => !!get().accessToken,

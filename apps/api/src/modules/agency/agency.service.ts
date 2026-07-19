@@ -9,7 +9,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
 import type { JwtPayload } from "@growvisi/shared";
-import { DEFAULT_PIPELINE_STAGES, GROWVISI_WEB_URL, TRIAL_DAYS } from "@growvisi/shared";
+import { DEFAULT_PIPELINE_STAGES, GROWVISI_WEB_URL, PLAN_LIMITS, TRIAL_DAYS } from "@growvisi/shared";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -381,6 +381,22 @@ export class AgencyService {
       },
       select: { userId: true, role: true },
     });
+
+    const trialSeatLimit = PLAN_LIMITS.trial.teamMembers;
+    if (agencyStaff.length > trialSeatLimit) {
+      throw new HttpException(
+        {
+          message: `New client workspaces start on trial with ${trialSeatLimit} team seats. Your agency has ${agencyStaff.length} admins — reduce agency admins or contact sales.`,
+          code: "TEAM_SEAT_LIMIT",
+          reason: "seats",
+          limit: trialSeatLimit,
+          used: agencyStaff.length,
+          planId: "trial",
+          suggestedPlan: "growth",
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
 
     const link = await this.prisma.$transaction(async (tx) => {
       const clientOrg = await tx.organization.create({
