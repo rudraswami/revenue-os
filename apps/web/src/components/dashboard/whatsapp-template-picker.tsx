@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Loader2, RefreshCw, Search } from "lucide-react";
+import { CheckCircle2, RefreshCw, Search } from "lucide-react";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api-client";
@@ -108,7 +109,7 @@ export function WhatsappTemplatePicker({
   if (isLoading) {
     return (
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-background px-4 py-4 text-sm text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin text-accent" />
+        <GrowvisiSpinner size="sm" />
         <div>
           <p className="font-medium text-foreground">Syncing templates from Meta…</p>
           <p className="text-xs">Only approved templates are shown.</p>
@@ -147,9 +148,9 @@ export function WhatsappTemplatePicker({
             WhatsApp connection
           </a>
         </div>
-        <details className="rounded-xl border border-border/80 bg-card/80 px-3 py-2">
-          <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">
-            Advanced: enter template name manually
+        <details className="rounded-xl border border-border/80 bg-card/80 px-3 py-2" open>
+          <summary className="cursor-pointer text-xs font-semibold text-foreground">
+            Enter template name manually (required until Meta sync works)
           </summary>
           <div className="mt-2 space-y-2">
             <Input

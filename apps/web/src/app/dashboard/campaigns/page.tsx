@@ -7,8 +7,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
   Download,
-  FileUp,
-  Megaphone,
   MessageCircleReply,
   Send,
   Trash2,
@@ -16,11 +14,18 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { CampaignCard } from "@/components/dashboard/campaign-card";
+import { CampaignSubmitChecklist } from "@/components/dashboard/campaign-submit-checklist";
+import type { CampaignSubmitChecklistItem } from "@/components/dashboard/campaign-submit-checklist";
+import {
+  CampaignModeToggle,
+  CampaignWizardSection,
+  CampaignWizardSteps,
+  type CampaignWizardStep,
+} from "@/components/dashboard/campaign-wizard-shell";
 import { CampaignsHubStats } from "@/components/dashboard/campaigns-hub-stats";
+import { CampaignsListSection } from "@/components/dashboard/campaigns-list-section";
 import { CampaignsPlanGate } from "@/components/dashboard/campaigns-plan-gate";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import {
   CampaignDeliveryFunnel,
   buildCampaignDeliveryStats,
@@ -34,8 +39,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { EmptyState } from "@/components/ui/empty-state";
-import { QueryErrorState } from "@/components/ui/query-state";
 import { apiFetch, ApiError, apiDownload, toUserMessage } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
@@ -130,13 +133,6 @@ interface CampaignDetail extends CampaignRow {
 type CreateMode = "audience" | "import";
 type ListFilter = "all" | "draft" | "scheduled" | "sent";
 type RecipientFilter = "all" | "pending" | "sent" | "delivered" | "read" | "failed" | "replied" | "skipped";
-
-const LIST_FILTERS: { id: ListFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "draft", label: "Drafts" },
-  { id: "scheduled", label: "Scheduled" },
-  { id: "sent", label: "Sent" },
-];
 
 const CAMPAIGN_WA_ACCOUNT_KEY = "growvisi:campaign-whatsapp-account-id";
 
@@ -505,14 +501,113 @@ export default function CampaignsPage() {
     reader.readAsText(file);
   }
 
-  const canSubmitAudience =
+  async function handleSaveAudience() {
+    setError(null);
+    if (!name.trim()) {
+      setError("Add a campaign name.");
+      return;
+    }
+    if (!templateName.trim()) {
+      setError("Choose an approved template (or enter the name manually).");
+      return;
+    }
+    if (saveMode === "schedule" && !scheduledLocal) {
+      setError("Pick a schedule time.");
+      return;
+    }
+
+    let previewData = preview;
+    if (!previewData) {
+      try {
+        previewData = await previewMut.mutateAsync();
+        setPreview(previewData);
+      } catch {
+        return;
+      }
+    }
+
+    const sendable = previewData.sendableCount ?? previewData.count;
+    if (sendable <= 0) {
+      setError("No contacts match this audience. Adjust filters or add contacts first.");
+      return;
+    }
+
+    createMut.mutate();
+  }
+
+  function handleSaveImport() {
+    setError(null);
+    if (!name.trim()) {
+      setError("Add a campaign name.");
+      return;
+    }
+    if (!templateName.trim()) {
+      setError("Choose an approved template (or enter the name manually).");
+      return;
+    }
+    if (importRecipients.length === 0) {
+      setError("Upload a CSV with at least one valid phone number.");
+      return;
+    }
+    if (saveMode === "schedule" && !scheduledLocal) {
+      setError("Pick a schedule time.");
+      return;
+    }
+    importMut.mutate();
+  }
+
+  const wizardStep: CampaignWizardStep = (() => {
+    const audienceReady =
+      mode === "audience"
+        ? (preview?.sendableCount ?? preview?.count ?? 0) > 0
+        : importRecipients.length > 0;
+    if (!name.trim() || !audienceReady) return "audience";
+    if (!templateName.trim()) return "template";
+    return "send";
+  })();
+
+  const submitChecklist: CampaignSubmitChecklistItem[] = [
+    {
+      id: "name",
+      label: "Campaign name",
+      done: !!name.trim(),
+      hint: "Give this broadcast a clear internal name",
+    },
+    mode === "audience"
+      ? {
+          id: "audience",
+          label: "Audience matched",
+          done: (preview?.sendableCount ?? preview?.count ?? 0) > 0,
+          hint: "Set filters, then Preview — or Save will count matches automatically",
+        }
+      : {
+          id: "import",
+          label: "CSV imported",
+          done: importRecipients.length > 0,
+          hint: "Upload phone numbers (phone, name columns)",
+        },
+    {
+      id: "template",
+      label: "Approved WhatsApp template",
+      done: !!templateName.trim(),
+      hint: "Enter exact name from Meta or pick from synced list",
+    },
+    {
+      id: "when",
+      label: saveMode === "schedule" ? "Scheduled time (IST)" : "Save as draft",
+      done: saveMode === "draft" || !!scheduledLocal,
+      hint: saveMode === "schedule" ? "Pick when to send" : undefined,
+    },
+  ];
+
+  const canAttemptSaveAudience =
     canManage &&
     name.trim() &&
     templateName.trim() &&
-    (preview?.count ?? 0) > 0 &&
     (saveMode === "draft" || !!scheduledLocal) &&
-    !createMut.isPending;
-  const canSubmitImport =
+    !createMut.isPending &&
+    !previewMut.isPending;
+  const canAttemptSaveImport =
     canManage &&
     name.trim() &&
     templateName.trim() &&
@@ -520,12 +615,7 @@ export default function CampaignsPage() {
     (saveMode === "draft" || !!scheduledLocal) &&
     !importMut.isPending;
 
-  const filteredCampaigns = (campaigns ?? []).filter((c) => {
-    if (listFilter === "all") return true;
-    if (listFilter === "draft") return c.status === "DRAFT" || c.status === "FAILED";
-    if (listFilter === "scheduled") return c.status === "SCHEDULED";
-    return c.status === "COMPLETED" || c.status === "RUNNING";
-  });
+  const savePending = createMut.isPending || importMut.isPending || previewMut.isPending;
 
   const scheduledCount = (campaigns ?? []).filter((c) => c.status === "SCHEDULED").length;
 
@@ -565,176 +655,144 @@ export default function CampaignsPage() {
       )}
 
       {canManage && campaignsPlanOk && (
-        <DashboardPanel
-          className="mb-6 overflow-hidden border-accent/20"
-          title="New campaign"
-          description="Step 1 — Pick audience or import CSV · Step 2 — Template · Step 3 — Draft or schedule (IST)"
-        >
-          <div className="mb-4 flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant={mode === "audience" ? "default" : "outline"}
-              onClick={() => {
-                setMode("audience");
-                setError(null);
-              }}
-            >
-              <Users className="h-4 w-4" /> From audience
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={mode === "import" ? "default" : "outline"}
-              onClick={() => {
-                setMode("import");
-                setError(null);
-              }}
-            >
-              <FileUp className="h-4 w-4" /> Import CSV
-            </Button>
+        <div className="mb-6 overflow-hidden rounded-3xl border border-accent/20 bg-card elev-1">
+          <div className="border-b border-border/70 bg-gradient-to-r from-bento-mint/50 via-card to-violet-50/40 px-5 py-6 md:px-8">
+            <h3 className="font-sans text-xl font-bold tracking-tight text-foreground">
+              New campaign
+            </h3>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Broadcast an approved WhatsApp template to a CRM segment or imported list. Human replies
+              stay in Inbox — Growvisi never auto-replies.
+            </p>
+            <CampaignWizardSteps current={wizardStep} className="mt-6" />
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <div className="space-y-4">
-              <Field label="Campaign name">
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Diwali offer — qualified leads"
-                  className="h-10 text-sm"
-                />
-              </Field>
-              {activeAccounts.length > 0 && (
-                <Field label="Send from">
-                  <select
-                    value={whatsappAccountId}
-                    onChange={(e) => setWhatsappAccountId(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm"
-                    disabled={!canManage}
-                  >
-                    <option value="">
-                      {activeAccounts.length === 1
-                        ? activeAccounts[0].displayPhoneNumber
-                        : "Default number (oldest active)"}
-                    </option>
-                    {activeAccounts.length > 1 &&
-                      activeAccounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.displayPhoneNumber}
-                        </option>
-                      ))}
-                  </select>
-                </Field>
-              )}
-              <Field label="Approved template">
-                <WhatsappTemplatePicker
-                  templateName={templateName}
-                  languageCode={languageCode}
-                  templateParam={templateParam}
-                  onTemplateNameChange={setTemplateName}
-                  onLanguageCodeChange={setLanguageCode}
-                  onVariableCountChange={setTemplateVarCount}
-                  disabled={!canManage}
-                />
-              </Field>
-              {(templateVarCount > 0 || templateParam) && (
-                <Field label="Template variable {{1}}">
-                  <Input
-                    value={templateParam}
-                    onChange={(e) => setTemplateParam(e.target.value)}
-                    placeholder="Customer name or offer"
-                    className="h-10 text-sm"
-                  />
-                </Field>
-              )}
-              <Field label="Fallback message body (optional)">
-                <textarea
-                  value={messageBody}
-                  onChange={(e) => setMessageBody(e.target.value)}
-                  placeholder="Used as template body param when no explicit variables are set."
-                  className="min-h-[72px] w-full rounded-xl border border-border px-3 py-2 text-sm"
-                />
-              </Field>
+          <div className="space-y-6 p-5 md:p-8">
+            <CampaignModeToggle
+              mode={mode}
+              onModeChange={(next) => {
+                setMode(next);
+                setError(null);
+              }}
+            />
 
-              <CampaignSchedulePicker
-                mode={saveMode}
-                onModeChange={setSaveMode}
-                scheduledLocal={scheduledLocal}
-                onScheduledLocalChange={setScheduledLocal}
-                disabled={!canManage}
+            <Field label="Campaign name">
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Diwali offer — qualified leads"
+                className="h-11 rounded-xl text-sm"
               />
-            </div>
+            </Field>
 
-            {mode === "audience" ? (
-              <div className="space-y-4">
-                <Field label="Stages">
-                  <div className="flex flex-wrap gap-1.5">
-                    {LEAD_STAGES.map((s) => (
-                      <FilterChip
-                        key={s}
-                        active={stages.includes(s)}
-                        onClick={() => toggleStage(s)}
+            <div className="grid gap-6 lg:grid-cols-2">
+              {mode === "audience" ? (
+                <CampaignWizardSection
+                  title="Audience filters"
+                  description="Narrow pipeline contacts by stage, tags, or lead score. Opt-outs are skipped automatically."
+                >
+                  <div className="space-y-4">
+                    <Field label="Stages">
+                      <div className="flex flex-wrap gap-1.5">
+                        {LEAD_STAGES.map((s) => (
+                          <FilterChip
+                            key={s}
+                            active={stages.includes(s)}
+                            onClick={() => toggleStage(s)}
+                          >
+                            {STAGE_LABELS[s]}
+                          </FilterChip>
+                        ))}
+                      </div>
+                    </Field>
+                    {(tags ?? []).length > 0 && (
+                      <Field label="Tags">
+                        <div className="flex flex-wrap gap-1.5">
+                          {(tags ?? []).map((t) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => toggleTag(t.id)}
+                              className={cn(
+                                "rounded-full px-2.5 py-1 text-xs font-semibold transition",
+                                tagIds.includes(t.id) ? "ring-2 ring-foreground" : "opacity-80",
+                              )}
+                              style={{ backgroundColor: t.color, color: readableOn(t.color) }}
+                            >
+                              {t.name}
+                            </button>
+                          ))}
+                        </div>
+                      </Field>
+                    )}
+                    <Field label="Minimum lead score">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={minScore}
+                        onChange={(e) => {
+                          setMinScore(e.target.value);
+                          setPreview(null);
+                        }}
+                        placeholder="Any"
+                        className="h-11 w-36 rounded-xl text-sm"
+                      />
+                    </Field>
+
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => previewMut.mutate()}
+                        disabled={previewMut.isPending}
+                        className="h-10 rounded-xl"
                       >
-                        {STAGE_LABELS[s]}
-                      </FilterChip>
-                    ))}
-                  </div>
-                </Field>
-                {(tags ?? []).length > 0 && (
-                  <Field label="Tags">
-                    <div className="flex flex-wrap gap-1.5">
-                      {(tags ?? []).map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => toggleTag(t.id)}
-                          className={cn(
-                            "rounded-full px-2.5 py-1 text-xs font-semibold transition",
-                            tagIds.includes(t.id) ? "ring-2 ring-foreground" : "opacity-80",
+                        {previewMut.isPending ? (
+                          <GrowvisiSpinner size="sm" />
+                        ) : (
+                          <Users className="h-4 w-4" />
+                        )}
+                        Preview audience
+                      </Button>
+                      {preview && (
+                        <p className="text-sm font-semibold text-foreground">
+                          {preview.sendableCount ?? preview.count} will receive
+                          {(preview.optOutCount ?? 0) > 0 && (
+                            <span className="font-medium text-amber-800">
+                              {" "}
+                              · {preview.optOutCount} opted out
+                            </span>
                           )}
-                          style={{ backgroundColor: t.color, color: readableOn(t.color) }}
-                        >
-                          {t.name}
-                        </button>
-                      ))}
+                        </p>
+                      )}
                     </div>
-                  </Field>
-                )}
-                <Field label="Minimum lead score">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={minScore}
-                    onChange={(e) => {
-                      setMinScore(e.target.value);
-                      setPreview(null);
-                    }}
-                    placeholder="Any"
-                    className="h-10 w-32 text-sm"
-                  />
-                </Field>
 
-                {preview && preview.sample.length > 0 && (
-                  <div className="rounded-xl border border-border/80 bg-background p-3">
-                    <p className="text-xs font-semibold text-foreground">
-                      Sample contacts ({preview.count} total)
-                    </p>
-                    <ul className="mt-2 space-y-1">
-                      {preview.sample.map((s) => (
-                        <li key={s.id} className="flex justify-between text-xs text-muted-foreground">
-                          <span>{s.displayName || s.phone}</span>
-                          <span>{STAGE_LABELS[s.stage as LeadStage] ?? s.stage}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    {preview && preview.sample.length > 0 && (
+                      <div className="rounded-xl border border-border/80 bg-background/80 p-3">
+                        <p className="text-xs font-semibold text-foreground">
+                          Sample contacts ({preview.count} total)
+                        </p>
+                        <ul className="mt-2 space-y-1">
+                          {preview.sample.map((s) => (
+                            <li
+                              key={s.id}
+                              className="flex justify-between text-xs text-muted-foreground"
+                            >
+                              <span>{s.displayName || s.phone}</span>
+                              <span>{STAGE_LABELS[s.stage as LeadStage] ?? s.stage}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <Field label="CSV file (phone, name)">
+                </CampaignWizardSection>
+              ) : (
+                <CampaignWizardSection
+                  title="Import contacts"
+                  description="Upload a CSV with phone numbers. Header row supported (phone, name)."
+                >
                   <input
                     ref={fileRef}
                     type="file"
@@ -746,128 +804,160 @@ export default function CampaignsPage() {
                     }}
                   />
                   <div
-                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/80 bg-background px-4 py-8 text-center transition hover:border-accent/50"
+                    className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-accent/25 bg-gradient-to-b from-bento-mint/20 to-background px-4 py-10 text-center transition hover:border-accent/50"
                     onClick={() => fileRef.current?.click()}
                     onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
                     role="button"
                     tabIndex={0}
                   >
-                    <Upload className="mb-2 h-8 w-8 text-accent" />
-                    <p className="text-sm font-semibold">Drop or click to upload CSV</p>
+                    <Upload className="mb-3 h-9 w-9 text-accent" />
+                    <p className="text-sm font-semibold text-foreground">
+                      Drop or click to upload CSV
+                    </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Columns: phone, name (optional). Header row supported.
+                      Columns: phone, name (optional)
                     </p>
                     {importFileName && (
-                      <p className="mt-2 text-xs font-medium text-accent">{importFileName}</p>
+                      <p className="mt-3 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+                        {importFileName}
+                      </p>
                     )}
                   </div>
-                </Field>
-                {importRecipients.length > 0 && (
-                  <div className="rounded-xl border border-border/80 bg-card p-3">
-                    <p className="text-xs font-semibold">First 5 rows</p>
-                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                      {importRecipients.slice(0, 5).map((r, i) => (
-                        <li key={i}>
-                          {r.phone}
-                          {r.name ? ` · ${r.name}` : ""}
-                        </li>
-                      ))}
-                    </ul>
+                  {importRecipients.length > 0 && (
+                    <div className="mt-4 rounded-xl border border-border/80 bg-background/80 p-3">
+                      <p className="text-xs font-semibold">First 5 rows</p>
+                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {importRecipients.slice(0, 5).map((r, i) => (
+                          <li key={i}>
+                            {r.phone}
+                            {r.name ? ` · ${r.name}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </CampaignWizardSection>
+              )}
+
+              <div className="space-y-6">
+                <CampaignWizardSection
+                  title="Template & message"
+                  description="Meta requires an approved template for business-initiated WhatsApp messages."
+                >
+                  <div className="space-y-4">
+                    {activeAccounts.length > 0 && (
+                      <Field label="Send from">
+                        <select
+                          value={whatsappAccountId}
+                          onChange={(e) => setWhatsappAccountId(e.target.value)}
+                          className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                          disabled={!canManage}
+                        >
+                          <option value="">
+                            {activeAccounts.length === 1
+                              ? activeAccounts[0].displayPhoneNumber
+                              : "Default number (oldest active)"}
+                          </option>
+                          {activeAccounts.length > 1 &&
+                            activeAccounts.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.displayPhoneNumber}
+                              </option>
+                            ))}
+                        </select>
+                      </Field>
+                    )}
+                    <WhatsappTemplatePicker
+                      templateName={templateName}
+                      languageCode={languageCode}
+                      templateParam={templateParam}
+                      onTemplateNameChange={setTemplateName}
+                      onLanguageCodeChange={setLanguageCode}
+                      onVariableCountChange={setTemplateVarCount}
+                      disabled={!canManage}
+                    />
+                    {(templateVarCount > 0 || templateParam) && (
+                      <Field label="Template variable {{1}}">
+                        <Input
+                          value={templateParam}
+                          onChange={(e) => setTemplateParam(e.target.value)}
+                          placeholder="Customer name or offer"
+                          className="h-11 rounded-xl text-sm"
+                        />
+                      </Field>
+                    )}
+                    <Field label="Fallback message body (optional)">
+                      <textarea
+                        value={messageBody}
+                        onChange={(e) => setMessageBody(e.target.value)}
+                        placeholder="Used as template body param when no explicit variables are set."
+                        className="min-h-[80px] w-full rounded-xl border border-border px-3 py-2.5 text-sm"
+                      />
+                    </Field>
                   </div>
+                </CampaignWizardSection>
+
+                <CampaignWizardSection
+                  title="When to send"
+                  description="Save as draft to review later, or schedule for a specific IST time."
+                >
+                  <CampaignSchedulePicker
+                    mode={saveMode}
+                    onModeChange={setSaveMode}
+                    scheduledLocal={scheduledLocal}
+                    onScheduledLocalChange={setScheduledLocal}
+                    disabled={!canManage}
+                  />
+                </CampaignWizardSection>
+              </div>
+            </div>
+
+            {error && (
+              <p className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {error}
+              </p>
+            )}
+
+            <div className="grid gap-5 border-t border-border/70 pt-6 lg:grid-cols-[1fr_auto] lg:items-end">
+              <CampaignSubmitChecklist items={submitChecklist} />
+              <div className="flex flex-col gap-2 sm:flex-row lg:min-w-[220px] lg:flex-col">
+                {mode === "audience" ? (
+                  <Button
+                    size="lg"
+                    className="h-12 w-full rounded-xl text-base font-semibold"
+                    onClick={() => void handleSaveAudience()}
+                    disabled={!canAttemptSaveAudience}
+                  >
+                    {savePending ? <GrowvisiSpinner size="sm" /> : null}
+                    {saveMode === "schedule" ? "Schedule campaign" : "Save campaign"}
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    className="h-12 w-full rounded-xl text-base font-semibold"
+                    onClick={handleSaveImport}
+                    disabled={!canAttemptSaveImport}
+                  >
+                    {savePending ? <GrowvisiSpinner size="sm" /> : null}
+                    {saveMode === "schedule" ? "Schedule import" : "Import & save"}
+                  </Button>
                 )}
               </div>
-            )}
+            </div>
           </div>
-
-          {error && (
-            <p className="mt-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </p>
-          )}
-
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border/70 pt-4">
-            {mode === "audience" && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => previewMut.mutate()}
-                  disabled={previewMut.isPending}
-                >
-                  {previewMut.isPending ? (
-                    <GrowvisiSpinner size="sm" />
-                  ) : (
-                    <Users className="h-4 w-4" />
-                  )}
-                  Preview audience
-                </Button>
-                {preview && (
-                  <span className="text-sm font-semibold text-foreground">
-                    {preview.sendableCount ?? preview.count} will receive
-                    {(preview.optOutCount ?? 0) > 0 && (
-                      <span className="font-medium text-amber-800">
-                        {" "}
-                        · {preview.optOutCount} opted out
-                      </span>
-                    )}
-                  </span>
-                )}
-              </>
-            )}
-            <div className="flex-1" />
-            {mode === "audience" ? (
-              <Button size="sm" onClick={() => createMut.mutate()} disabled={!canSubmitAudience}>
-                {createMut.isPending ? <GrowvisiSpinner size="sm" /> : null}
-                {saveMode === "schedule" ? "Schedule campaign" : "Save campaign"}
-              </Button>
-            ) : (
-              <Button size="sm" onClick={() => importMut.mutate()} disabled={!canSubmitImport}>
-                {importMut.isPending ? <GrowvisiSpinner size="sm" /> : null}
-                {saveMode === "schedule" ? "Schedule import" : "Import & save"}
-              </Button>
-            )}
-          </div>
-        </DashboardPanel>
+        </div>
       )}
 
-      <DashboardPanel noPadding title="Your campaigns" description="Tap a card for delivery funnel, recipients, and actions.">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-5 py-3">
-          {LIST_FILTERS.map((f) => (
-            <FilterChip
-              key={f.id}
-              active={listFilter === f.id}
-              count={f.id === "scheduled" && scheduledCount > 0 ? scheduledCount : undefined}
-              onClick={() => setListFilter(f.id)}
-            >
-              {f.label}
-            </FilterChip>
-          ))}
-        </div>
-        {isLoading ? (
-          <div className="space-y-2 p-5">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
-        ) : isError ? (
-          <div className="p-5">
-            <QueryErrorState title="Couldn't load campaigns" onRetry={() => void refetch()} />
-          </div>
-        ) : filteredCampaigns.length === 0 ? (
-          <EmptyState
-            compact
-            icon={<Megaphone className="h-6 w-6" />}
-            title={listFilter === "all" ? "No campaigns yet" : `No ${listFilter} campaigns`}
-            description="Create your first broadcast above to re-engage a segment of contacts."
-          />
-        ) : (
-          <div className="grid gap-4 p-5 md:grid-cols-2">
-            {filteredCampaigns.map((c) => (
-              <CampaignCard key={c.id} campaign={c} onClick={() => setDetailId(c.id)} />
-            ))}
-          </div>
-        )}
-      </DashboardPanel>
+      <CampaignsListSection
+        campaigns={campaigns ?? []}
+        listFilter={listFilter}
+        onListFilterChange={setListFilter}
+        scheduledCount={scheduledCount}
+        isLoading={isLoading}
+        isError={isError}
+        onRetry={() => void refetch()}
+        onSelectCampaign={setDetailId}
+      />
 
       <Dialog open={!!detailId} onOpenChange={(next) => !next && setDetailId(null)}>
         <DialogContent side="right" showClose={false} className="max-w-lg gap-0 p-0 sm:max-w-[560px]">
