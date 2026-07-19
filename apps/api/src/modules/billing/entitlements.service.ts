@@ -115,14 +115,20 @@ export class EntitlementsService {
   async assertHasAccess(organizationId: string): Promise<SubscriptionAccess> {
     const access = await this.getAccess(organizationId);
     if (!access.hasAccess) {
+      const pastDue = access.status === "PAST_DUE";
       throw new HttpException(
         {
-          message:
-            access.trialExpired
+          message: pastDue
+            ? "Your last payment failed. Update billing in Settings to restore access."
+            : access.trialExpired
               ? "Your 14-day trial has ended. Upgrade to keep using Growvisi."
               : "Subscription inactive. Upgrade or update billing to continue.",
-          code: access.trialExpired ? "TRIAL_EXPIRED" : "SUBSCRIPTION_INACTIVE",
-          reason: "trial",
+          code: pastDue
+            ? "PAST_DUE"
+            : access.trialExpired
+              ? "TRIAL_EXPIRED"
+              : "SUBSCRIPTION_INACTIVE",
+          reason: pastDue ? "billing" : "trial",
           planId: access.planId,
           suggestedPlan: this.suggestUpgrade(access.planId, "leads"),
         },

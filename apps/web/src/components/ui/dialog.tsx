@@ -47,7 +47,7 @@ const DialogContent = React.forwardRef<
         side === "center" && size === "lg" && "max-w-xl",
         side === "center" && size === "xl" && "max-w-2xl",
         side === "right" &&
-          "fixed inset-y-0 right-0 h-full w-full max-w-lg rounded-none rounded-l-2xl border-r-0 gv-animate-sheet sm:max-w-[460px]",
+          "fixed inset-y-0 right-0 h-full w-full max-w-lg rounded-none rounded-l-2xl border-r-0 gv-animate-sheet sm:max-w-[min(560px,100vw)]",
         className,
       )}
       {...props}

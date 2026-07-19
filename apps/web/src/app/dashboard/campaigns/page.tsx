@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
-  ChevronRight,
   Download,
   FileUp,
   Megaphone,
@@ -17,6 +16,9 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { CampaignCard } from "@/components/dashboard/campaign-card";
+import { CampaignsHubStats } from "@/components/dashboard/campaigns-hub-stats";
+import { CampaignsPlanGate } from "@/components/dashboard/campaigns-plan-gate";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import {
@@ -138,35 +140,14 @@ const LIST_FILTERS: { id: ListFilter; label: string }[] = [
 
 const CAMPAIGN_WA_ACCOUNT_KEY = "growvisi:campaign-whatsapp-account-id";
 
-function CampaignListMetrics({
-  deliveryPct,
-  replyRatePct,
-  sent,
-}: {
-  deliveryPct: number;
-  replyRatePct: number;
-  sent: boolean;
+function parseCampaignsPlanOk(billing?: {
+  planId: string;
+  entitlements?: { hasAccess: boolean };
 }) {
-  if (!sent) return null;
   return (
-    <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
-      <div className="flex items-center gap-2">
-        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-whatsapp transition-all"
-            style={{ width: `${Math.min(100, deliveryPct)}%` }}
-          />
-        </div>
-        <span className="w-8 text-right text-xs font-bold tabular-nums text-foreground">
-          {deliveryPct}%
-        </span>
-      </div>
-      {replyRatePct > 0 && (
-        <span className="text-[11px] font-medium text-violet-700">
-          {replyRatePct}% replied
-        </span>
-      )}
-    </div>
+    billing?.entitlements?.hasAccess &&
+    billing.planId !== "trial" &&
+    billing.planId !== "starter"
   );
 }
 
@@ -204,10 +185,7 @@ export default function CampaignsPage() {
     enabled: !!token,
   });
 
-  const campaignsPlanOk =
-    billing?.entitlements?.hasAccess &&
-    billing.planId !== "trial" &&
-    billing.planId !== "starter";
+  const campaignsPlanOk = parseCampaignsPlanOk(billing);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<CreateMode>("audience");
@@ -273,6 +251,17 @@ export default function CampaignsPage() {
       localStorage.setItem(CAMPAIGN_WA_ACCOUNT_KEY, whatsappAccountId);
     }
   }, [whatsappAccountId]);
+
+  const { data: replyMetrics } = useQuery({
+    queryKey: ["campaign-reply-metrics"],
+    queryFn: () =>
+      apiFetch<{ totalReplies: number; replyRatePct: number }>(
+        "/campaigns/metrics/replies",
+        { token: token ?? undefined },
+      ),
+    enabled: !!token && campaignsPlanOk,
+    staleTime: 60_000,
+  });
 
   const { data: campaigns, isLoading, isError, refetch } = useQuery({
     queryKey: ["campaigns"],
@@ -542,22 +531,25 @@ export default function CampaignsPage() {
 
   return (
     <div className="dashboard-page">
-      <PageHeader
-        title="Campaigns"
-        description="Reach segments of your WhatsApp contacts with approved message templates."
-      />
+      <div className="dashboard-hero campaigns-page-hero mb-6 rounded-3xl border border-accent/15 bg-gradient-to-br from-bento-mint/80 via-card to-violet-50/60 p-6 md:p-8 elev-1">
+        <PageHeader
+          className="mb-0"
+          title="Campaigns"
+          description="Broadcast approved WhatsApp templates, track delivery and replies, and close the loop from Inbox."
+        />
+      </div>
 
-      {!campaignsPlanOk && (
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-          WhatsApp campaigns are available on <strong>Growth</strong> and <strong>Pro</strong> plans.{" "}
-          <Link href="/dashboard/pricing" className="font-semibold text-accent underline">
-            Upgrade to unlock outbound campaigns
-          </Link>
-          .
-        </div>
+      {!campaignsPlanOk && <CampaignsPlanGate className="mb-6" />}
+
+      {campaignsPlanOk && (
+        <CampaignsHubStats
+          campaigns={campaigns}
+          replyMetrics={replyMetrics}
+          isLoading={isLoading}
+        />
       )}
 
-      {!canManage && (
+      {canManage && !campaignsPlanOk && (
         <div className="mb-6 rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
           You have view-only access. Ask an admin or manager to create and send campaigns.
         </div>
@@ -573,7 +565,11 @@ export default function CampaignsPage() {
       )}
 
       {canManage && campaignsPlanOk && (
-        <DashboardPanel className="mb-6" title="New campaign" description="Build from your CRM audience or import a CSV list.">
+        <DashboardPanel
+          className="mb-6 overflow-hidden border-accent/20"
+          title="New campaign"
+          description="Step 1 — Pick audience or import CSV · Step 2 — Template · Step 3 — Draft or schedule (IST)"
+        >
           <div className="mb-4 flex gap-2">
             <Button
               type="button"
@@ -834,7 +830,7 @@ export default function CampaignsPage() {
         </DashboardPanel>
       )}
 
-      <DashboardPanel noPadding title="Your campaigns">
+      <DashboardPanel noPadding title="Your campaigns" description="Tap a card for delivery funnel, recipients, and actions.">
         <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-5 py-3">
           {LIST_FILTERS.map((f) => (
             <FilterChip
@@ -865,85 +861,40 @@ export default function CampaignsPage() {
             description="Create your first broadcast above to re-engage a segment of contacts."
           />
         ) : (
-          <ul className="divide-y divide-border/60">
+          <div className="grid gap-4 p-5 md:grid-cols-2">
             {filteredCampaigns.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  className="group flex w-full flex-wrap items-center gap-3 px-5 py-4 text-left transition hover:bg-muted/30"
-                  onClick={() => setDetailId(c.id)}
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent/15 to-violet-100 text-accent transition group-hover:from-accent/25">
-                    <Megaphone className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-semibold text-foreground">{c.name}</p>
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-xs font-semibold",
-                          CAMPAIGN_STATUS_BADGE[c.status],
-                        )}
-                      >
-                        {CAMPAIGN_STATUS_LABELS[c.status]}
-                      </span>
-                      {c.status === "SCHEDULED" && c.scheduledAt && (
-                        <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                          <CalendarClock className="h-3 w-3" />
-                          {formatDateTimeIst(c.scheduledAt)}
-                        </span>
-                      )}
-                      {(c.replyCount ?? 0) > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
-                          <MessageCircleReply className="h-3 w-3" />
-                          {c.replyCount} {c.replyCount === 1 ? "reply" : "replies"}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {c.totalRecipients} recipients
-                      {c.status === "RUNNING" && (
-                        <span className="font-medium text-amber-700"> · Sending…</span>
-                      )}
-                      {c.sentCount > 0 && ` · ${c.sentCount} sent`}
-                      {c.deliveredCount > 0 && ` · ${c.deliveredCount} delivered`}
-                      {c.failedCount > 0 && ` · ${c.failedCount} failed`}
-                      {c.templateName ? ` · ${c.templateName}` : " · no template"}
-                      {` · ${formatDate(c.createdAt)}`}
-                    </p>
-                  </div>
-                  <CampaignListMetrics
-                    deliveryPct={c.deliveryPct ?? 0}
-                    replyRatePct={c.replyRatePct ?? 0}
-                    sent={c.sentCount > 0}
-                  />
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5" />
-                </button>
-              </li>
+              <CampaignCard key={c.id} campaign={c} onClick={() => setDetailId(c.id)} />
             ))}
-          </ul>
+          </div>
         )}
       </DashboardPanel>
 
       <Dialog open={!!detailId} onOpenChange={(next) => !next && setDetailId(null)}>
-        <DialogContent side="right" showClose={false} className="max-w-lg gap-0 p-0 sm:max-w-lg">
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <div>
-              <p className="text-xs font-medium text-accent">
-                Campaign detail
-              </p>
-              <DialogTitle className="text-lg font-bold">
-                {detail?.name ?? "Loading…"}
-              </DialogTitle>
+        <DialogContent side="right" showClose={false} className="max-w-lg gap-0 p-0 sm:max-w-[560px]">
+          <div className="relative overflow-hidden border-b border-border bg-gradient-to-br from-accent via-emerald-700 to-emerald-900 px-5 py-5 text-white">
+            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
+            <div className="absolute -bottom-6 right-12 h-20 w-20 rounded-full bg-white/5" />
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">
+                  Campaign detail
+                </p>
+                <DialogTitle className="mt-1 text-xl font-bold text-white">
+                  {detail?.name ?? "Loading…"}
+                </DialogTitle>
+                {detail?.templateName && (
+                  <p className="mt-1 truncate text-sm text-white/80">{detail.templateName}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailId(null)}
+                className="rounded-lg bg-white/15 p-2 text-white hover:bg-white/25"
+                aria-label="Close campaign detail"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setDetailId(null)}
-              className="rounded-lg p-2 hover:bg-muted"
-              aria-label="Close campaign detail"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </div>
 
             <div className="flex-1 overflow-y-auto p-5">

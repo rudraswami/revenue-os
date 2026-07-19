@@ -8,12 +8,14 @@ import { shouldShowWhatsappConnectBanner } from "@/lib/whatsapp-connection-state
 import { useAuthStore } from "@/stores/auth-store";
 
 interface BillingEntitlements {
+  status?: string;
   entitlements?: {
     trialExpired: boolean;
     trialEndsAt: string | null;
     hasAccess: boolean;
     requiresUpgrade: boolean;
     planId: string;
+    status?: string;
   };
 }
 
@@ -28,6 +30,32 @@ export function TrialExpiredBanner() {
   });
 
   const access = data?.entitlements;
+  const subscriptionStatus = data?.status ?? access?.status;
+  const pastDue = subscriptionStatus === "PAST_DUE";
+
+  if (pastDue) {
+    return (
+      <div className="mx-4 mb-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-destructive lg:mx-8 lg:mt-6">
+        <div className="flex items-start gap-3">
+          <CreditCard className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">Payment failed — access paused</p>
+            <p className="mt-0.5 text-xs opacity-90">
+              Update your Razorpay payment method in Settings to restore Inbox, Pipeline, and
+              campaigns.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/dashboard/settings?tab=billing"
+          className="inline-flex shrink-0 items-center rounded-xl bg-destructive px-4 py-2 text-xs font-semibold text-white hover:bg-destructive/90"
+        >
+          Fix billing
+        </Link>
+      </div>
+    );
+  }
+
   if (!access || access.hasAccess) return null;
 
   const trialEnded = access.trialExpired;
