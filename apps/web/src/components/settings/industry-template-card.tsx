@@ -26,6 +26,7 @@ export function IndustryTemplateCard() {
       canManage={canManage}
       currentIndustryId={data?.industryId}
       token={token}
+      showHeading={false}
     />
   );
 }

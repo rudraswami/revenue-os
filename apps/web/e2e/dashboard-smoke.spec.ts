@@ -85,9 +85,9 @@ test.describe("Growvisi dashboard E2E", () => {
     });
 
     await visitDashboardPath(page, "/dashboard/settings?tab=intelligence");
-    await expect(page.getByRole("heading", { name: /how it works/i })).toBeVisible({
+    await expect(page.getByText(/Add docs/i)).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByRole("link", { name: /change reply policy in automations/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /business knowledge/i })).toBeVisible();
   });
 });

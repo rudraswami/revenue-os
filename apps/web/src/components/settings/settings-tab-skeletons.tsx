@@ -99,15 +99,10 @@ export function IntelligenceTabSkeleton() {
   return (
     <SettingsTabContentFrame>
       <div className="space-y-5" aria-busy="true" aria-label="Loading intelligence settings">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Skeleton className="h-28 rounded-xl" />
-          <Skeleton className="h-28 rounded-xl" />
-          <Skeleton className="h-28 rounded-xl" />
-        </div>
-        <SectionBlockSkeleton titleWidth="w-36" rows={3} />
-        <SectionBlockSkeleton titleWidth="w-44" rows={5} />
-        <SectionBlockSkeleton titleWidth="w-48" rows={3} />
-        <SectionBlockSkeleton titleWidth="w-36" rows={4} />
+        <Skeleton className="h-[7.5rem] w-full rounded-2xl" />
+        <SectionBlockSkeleton titleWidth="w-40" rows={5} />
+        <SectionBlockSkeleton titleWidth="w-32" rows={3} />
+        <Skeleton className="h-12 w-full rounded-2xl" />
       </div>
     </SettingsTabContentFrame>
   );

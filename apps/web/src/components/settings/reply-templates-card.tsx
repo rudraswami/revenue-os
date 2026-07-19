@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, MessageSquarePlus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +63,10 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
     setEditing(templates.filter((t) => t.id !== id));
   }
 
+  if (isLoading) {
+    return <div className="h-20 animate-pulse rounded-xl bg-muted" />;
+  }
+
   return (
     <div className="space-y-3">
       {!embedded && (
@@ -74,18 +78,36 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
         </div>
       )}
 
-      {isLoading ? (
-        <div className="h-24 animate-pulse rounded-xl bg-muted" />
+      {templates.length === 0 ? (
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border/70 px-4 py-8 text-center">
+          <MessageSquarePlus className="mb-2 h-8 w-8 text-muted-foreground/60" aria-hidden />
+          <p className="text-sm font-medium text-foreground">No templates yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Save greetings, pricing lines, and follow-ups for one-tap use.
+          </p>
+          {canEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4 rounded-xl"
+              onClick={addTemplate}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add first template
+            </Button>
+          )}
+        </div>
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
           {templates.map((t) => (
-            <div key={t.id} className="rounded-xl border border-border/80 bg-background/40 p-3 space-y-2">
+            <div key={t.id} className="space-y-2 p-4">
               <div className="flex gap-2">
                 <Input
                   value={t.title}
                   onChange={(e) => updateTemplate(t.id, { title: e.target.value })}
-                  placeholder="Template name"
-                  className="h-8 text-sm"
+                  placeholder="Name — e.g. Share pricing"
+                  className="h-9 rounded-xl border-0 bg-muted/40 text-sm shadow-none focus-visible:ring-1"
                   readOnly={!canEdit}
                   disabled={!canEdit}
                 />
@@ -105,18 +127,18 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
               <textarea
                 value={t.body}
                 onChange={(e) => updateTemplate(t.id, { body: e.target.value })}
-                placeholder="Message text…"
+                placeholder="WhatsApp message text…"
                 rows={2}
                 readOnly={!canEdit}
                 disabled={!canEdit}
-                className="w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm disabled:opacity-80"
+                className="w-full resize-none rounded-xl border-0 bg-muted/30 px-3 py-2 text-sm disabled:opacity-80"
               />
             </div>
           ))}
         </div>
       )}
 
-      {canEdit ? (
+      {canEdit && templates.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addTemplate}>
             <Plus className="h-3.5 w-3.5" />
@@ -130,15 +152,13 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
               disabled={saveMutation.isPending}
               onClick={() => saveMutation.mutate(templates)}
             >
-              {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save templates"}
+              {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
             </Button>
           )}
         </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Only workspace admins can edit quick reply templates.
-        </p>
-      )}
+      ) : !canEdit ? (
+        <p className="text-xs text-muted-foreground">Only admins can edit templates.</p>
+      ) : null}
     </div>
   );
 }

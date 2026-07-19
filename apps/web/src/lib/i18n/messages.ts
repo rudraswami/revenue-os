@@ -469,7 +469,7 @@ export const messages = {
         },
         intelligence: {
           label: "AI & replies",
-          description: "Business knowledge, quick reply templates, and how Growvisi uses them.",
+          description: "Business knowledge and quick replies for your team.",
         },
         growth: {
           label: "Growth & attribution",
@@ -1338,7 +1338,7 @@ export const messages = {
         },
         intelligence: {
           label: "AI और रिप्लाई",
-          description: "बिज़नेस नॉलेज, क्विक रिप्लाई टेम्पलेट, और Growvisi उन्हें कैसे उपयोग करता है।",
+          description: "बिज़नेस नॉलेज और टीम के लिए क्विक रिप्लाई।",
         },
         growth: {
           label: "ग्रोथ और एट्रिब्यूशन",

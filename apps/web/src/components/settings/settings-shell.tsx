@@ -26,8 +26,8 @@ import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
 import { IndustryTemplateCard } from "@/components/settings/industry-template-card";
-import { IntelligenceKnowledgeExplainer } from "@/components/settings/intelligence-knowledge-explainer";
-import { IntelligenceStatusOverview } from "@/components/settings/intelligence-status-overview";
+import { IntelligenceTabHeader } from "@/components/settings/intelligence-tab-header";
+import { SettingsCollapsibleSection } from "@/components/settings/settings-collapsible-section";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SettingsAccessPanel } from "@/components/settings/settings-plan-gate";
 import { SettingsTabSkeleton } from "@/components/settings/settings-tab-skeletons";
@@ -169,36 +169,28 @@ function SettingsTabContent({
     case "intelligence":
       return (
         <div className="space-y-5">
-          <SettingsSection
-            title="How it works"
-            description="Business knowledge powers classification and reply drafts. Your team sends customer messages — Growvisi never auto-replies without your Automations policy."
-          >
-            <IntelligenceKnowledgeExplainer />
-          </SettingsSection>
-          <SettingsSection
-            title="Current setup"
-            description="Read-only snapshot. Change reply mode and auto-send presets in Automations."
-          >
-            <IntelligenceStatusOverview />
-          </SettingsSection>
+          <IntelligenceTabHeader />
+
           <SettingsSection
             title="Business knowledge"
-            description="Pricing, policies, and FAQs — indexed so Growvisi can draft grounded replies and support guarded auto-send."
+            description="What Growvisi quotes from — rate cards, policies, FAQs."
           >
             <BusinessContextCard embedded />
           </SettingsSection>
-          <SettingsSection
-            title="Industry starter (optional)"
-            description="Seed sample voice, escalation, and starter docs for your business type."
-          >
-            <IndustryTemplateCard />
-          </SettingsSection>
+
           <SettingsSection
             title="Quick replies"
-            description="Saved templates your team picks in Conversations — separate from WhatsApp auto-send."
+            description="Shortcuts your team picks in Conversations."
           >
             <ReplyTemplatesCard embedded />
           </SettingsSection>
+
+          <SettingsCollapsibleSection
+            title="Industry starter"
+            description="Optional — seed sample docs for your sector."
+          >
+            <IndustryTemplateCard />
+          </SettingsCollapsibleSection>
         </div>
       );
     case "growth":

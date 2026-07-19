@@ -64,11 +64,11 @@ export function IndustryHandbookPicker({
           </span>
         </p>
       ) : (
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Applies starter voice, escalation, and sample knowledge for your business type.
+        <p className="text-xs text-muted-foreground">
+          Tap a sector to seed starter docs and voice settings.
         </p>
       )}
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {handbooks.map((hb) => (
           <button
             key={hb.id}
@@ -78,13 +78,18 @@ export function IndustryHandbookPicker({
             className={cn(
               "rounded-xl border px-3 py-2.5 text-left transition",
               currentIndustryId === hb.id
-                ? "border-accent/35 bg-bento-mint/40"
-                : "border-border/50 bg-card hover:border-accent/20",
+                ? "border-accent/40 bg-bento-mint/50 ring-1 ring-accent/20"
+                : "border-border/50 bg-card hover:border-accent/25 hover:bg-bento-mint/15",
               !canManage && "cursor-not-allowed opacity-70",
             )}
           >
             <p className="text-xs font-semibold text-foreground">{hb.label}</p>
-            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hb.description}</p>
+            {!showHeading && (
+              <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{hb.description}</p>
+            )}
+            {showHeading && (
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hb.description}</p>
+            )}
           </button>
         ))}
       </div>
