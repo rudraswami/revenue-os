@@ -55,10 +55,32 @@ export function InboxReplyDecision({
 
   if (decision.mode !== "draft" && !hasDraft) return null;
 
-  // Draft is already in the composer — no duplicate banner in the thread.
-  if (decision.mode === "draft" && hasDraft) return null;
-
   const draftMissingAfterPlan = decision.mode === "draft" && !hasDraft;
+
+  // Draft is in the composer — still surface why auto-send was held back.
+  if (decision.mode === "draft" && hasDraft) {
+    const holdReasons =
+      decision.reasons.length > 0
+        ? decision.reasons
+        : decision.blockers?.length
+          ? [copy.replyDraftBlockedFallback]
+          : [copy.aiDraftNote];
+    return (
+      <div
+        className={cn(
+          "rounded-xl border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-xs text-amber-950",
+          className,
+        )}
+      >
+        <p className="font-semibold">{copy.replyDraftHeldTitle}</p>
+        <ul className="mt-1 space-y-0.5 leading-relaxed opacity-90">
+          {holdReasons.slice(0, 4).map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   const riskTone =
     decision.risk === "high"

@@ -27,6 +27,8 @@
     "db:merge-supabase-env": "node scripts/merge-supabase-env.js",
     "vercel:env:supabase": "node scripts/set-vercel-supabase-env.js",
     "db:razorpay-migrate": "dotenv -e .env -- node scripts/migrate-razorpay-invites.js",
+    "db:intelligence-migrate": "node scripts/migrate-intelligence-backfill.js",
+    "db:intelligence-migrate:embed": "node scripts/migrate-intelligence-backfill.js --embed",
     "db:verify": "dotenv -e .env -- node scripts/verify-db-migration.js",
     "db:deploy": "dotenv -e .env -- pnpm --filter @growvisi/database migrate:deploy",
     "db:seed": "dotenv -e .env -- pnpm --filter @growvisi/database seed",

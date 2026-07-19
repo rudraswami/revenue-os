@@ -58,6 +58,8 @@ export function useConversationsCopy() {
       replyDraftFailed: t("conversations.replyDraftFailed"),
       replySkippedTitle: t("conversations.replySkippedTitle"),
       replyDraftPlanned: t("conversations.replyDraftPlanned"),
+      replyDraftHeldTitle: t("conversations.replyDraftHeldTitle"),
+      replyDraftBlockedFallback: t("conversations.replyDraftBlockedFallback"),
       replyAutoSentTitle: t("conversations.replyAutoSentTitle"),
       sendAiDraft: t("conversations.sendAiDraft"),
       assignedTo: t("conversations.assignedTo"),
