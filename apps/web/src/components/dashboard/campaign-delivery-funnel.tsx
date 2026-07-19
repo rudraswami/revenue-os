@@ -10,6 +10,7 @@ export interface CampaignDeliveryStats {
   read: number;
   failed: number;
   replied?: number;
+  skipped?: number;
 }
 
 export function buildCampaignDeliveryStats(input: {
@@ -19,13 +20,15 @@ export function buildCampaignDeliveryStats(input: {
   failedCount: number;
   readCount?: number;
   replyCount?: number;
+  skippedCount?: number;
 }): CampaignDeliveryStats {
   const read = input.readCount ?? 0;
+  const skipped = input.skippedCount ?? 0;
   const sent = Math.max(0, input.sentCount - input.deliveredCount - read);
   const delivered = Math.max(0, input.deliveredCount - read);
   const pending = Math.max(
     0,
-    input.totalRecipients - input.sentCount - input.failedCount,
+    input.totalRecipients - input.sentCount - input.failedCount - skipped,
   );
   return {
     total: input.totalRecipients,
@@ -35,6 +38,7 @@ export function buildCampaignDeliveryStats(input: {
     read,
     failed: input.failedCount,
     replied: input.replyCount ?? 0,
+    skipped,
   };
 }
 
@@ -44,6 +48,7 @@ const SEGMENTS = [
   { key: "delivered", label: "Delivered", className: "bg-whatsapp" },
   { key: "sent", label: "Sent", className: "bg-accent/50" },
   { key: "failed", label: "Failed", className: "bg-destructive/80" },
+  { key: "skipped", label: "Skipped", className: "bg-slate-400" },
   { key: "pending", label: "Pending", className: "bg-muted-foreground/30" },
 ] as const;
 
@@ -66,8 +71,8 @@ export function CampaignDeliveryFunnel({
 
   const parts = SEGMENTS.map((seg) => ({
     ...seg,
-    count: seg.key === "replied" ? replied : stats[seg.key],
-    pct: ((seg.key === "replied" ? replied : stats[seg.key]) / stats.total) * 100,
+    count: seg.key === "replied" ? replied : (stats[seg.key] ?? 0),
+    pct: ((seg.key === "replied" ? replied : (stats[seg.key] ?? 0)) / stats.total) * 100,
   })).filter((p) => p.count > 0);
 
   return (

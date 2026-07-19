@@ -3,6 +3,11 @@ import type { JwtPayload, LeadStage } from "@growvisi/shared";
 import { HOT_LEAD_SCORE_THRESHOLD, activationNextMilestone } from "@growvisi/shared";
 import { requireLeadOwnership } from "../../common/auth/authorization";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  readCampaignOptOut,
+  readCampaignOptOutMeta,
+  withCampaignOptOutProfile,
+} from "../campaigns/campaign-opt-out";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { AuditService } from "../audit/audit.service";
@@ -1340,10 +1345,35 @@ export class LeadsService {
     });
     if (!lead) throw new NotFoundException();
 
+    const optMeta = readCampaignOptOutMeta(lead.profile);
     return {
       ...lead,
       tags: lead.tags.map((lt) => ({ id: lt.tag.id, name: lt.tag.name, color: lt.tag.color })),
+      campaignOptOut: optMeta.optedOut,
+      campaignOptOutAt: optMeta.at,
+      campaignOptOutSource: optMeta.source,
     };
+  }
+
+  async setCampaignOptOut(user: JwtPayload, id: string, optedOut: boolean) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    const lead = await this.prisma.lead.findFirst({
+      where: { id, organizationId: user.organizationId },
+    });
+    if (!lead) throw new NotFoundException();
+    requireLeadOwnership(user, lead.ownerId, "edit");
+
+    const profile = withCampaignOptOutProfile(lead.profile, optedOut, "manual");
+    return this.prisma.lead.update({
+      where: { id },
+      data: { profile: profile as object },
+      select: {
+        id: true,
+        phone: true,
+        displayName: true,
+        profile: true,
+      },
+    });
   }
 
   async updateContact(user: JwtPayload, id: string, input: UpdateContactInput) {

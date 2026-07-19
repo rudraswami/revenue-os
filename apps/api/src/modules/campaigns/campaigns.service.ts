@@ -14,6 +14,11 @@ import {
   recipientStatsToProgress,
 } from "./campaign-recipient-stats";
 import { buildCampaignRecipientsCsv } from "./campaign-csv.util";
+import { readCampaignOptOut } from "./campaign-opt-out";
+import {
+  loadOptedOutPhones,
+  recipientStatusForOptOut,
+} from "./campaign-recipient-opt-out";
 
 const SEND_BATCH_SIZE = 25;
 const SEND_MESSAGE_DELAY_MS = 100;
@@ -109,7 +114,7 @@ export class CampaignsService {
   async previewAudience(user: JwtPayload, audience: AudienceFilter) {
     await this.assertCampaignsPlan(user.organizationId);
     const where = this.buildLeadWhere(user.organizationId, audience);
-    const [count, sample] = await Promise.all([
+    const [count, sample, optOutCount] = await Promise.all([
       this.prisma.lead.count({ where }),
       this.prisma.lead.findMany({
         where,
@@ -117,8 +122,14 @@ export class CampaignsService {
         orderBy: { updatedAt: "desc" },
         select: { id: true, displayName: true, phone: true, stage: true, score: true },
       }),
+      this.prisma.lead.count({
+        where: {
+          ...where,
+          profile: { path: ["campaignOptOut"], equals: true },
+        },
+      }),
     ]);
-    return { count, sample };
+    return { count, sample, optOutCount, sendableCount: Math.max(0, count - optOutCount) };
   }
 
   private async assertCampaignsPlan(organizationId: string) {
@@ -342,7 +353,7 @@ export class CampaignsService {
     const maxPerSend = access.limits.maxCampaignRecipientsPerSend || 5000;
     const leads = await this.prisma.lead.findMany({
       where,
-      select: { id: true, displayName: true, phone: true },
+      select: { id: true, displayName: true, phone: true, profile: true },
       take: maxPerSend,
     });
     if (leads.length === 0) {
@@ -352,6 +363,12 @@ export class CampaignsService {
     await this.entitlements.assertCampaignPerSendLimit(
       user.organizationId,
       leads.length,
+    );
+
+    const optedOutPhones = await loadOptedOutPhones(
+      this.prisma,
+      user.organizationId,
+      leads.map((l) => l.phone),
     );
 
     return this.prisma.campaign.create({
@@ -371,12 +388,16 @@ export class CampaignsService {
         createdById: user.sub,
         scheduledAt,
         recipients: {
-          create: leads.map((l) => ({
-            leadId: l.id,
-            phone: l.phone,
-            name: l.displayName,
-            status: "PENDING" as const,
-          })),
+          create: leads.map((l) => {
+            const { status, error } = recipientStatusForOptOut(l.phone, optedOutPhones);
+            return {
+              leadId: l.id,
+              phone: l.phone,
+              name: l.displayName,
+              status,
+              error,
+            };
+          }),
         },
       },
       include: { recipients: { take: 50 } },
@@ -445,6 +466,12 @@ export class CampaignsService {
       recipientRows.length,
     );
 
+    const optedOutPhones = await loadOptedOutPhones(
+      this.prisma,
+      user.organizationId,
+      recipientRows.map((r) => r.phone),
+    );
+
     return this.prisma.campaign.create({
       data: {
         organizationId: user.organizationId,
@@ -462,12 +489,16 @@ export class CampaignsService {
         createdById: user.sub,
         scheduledAt,
         recipients: {
-          create: recipientRows.map((r) => ({
-            leadId: r.leadId,
-            phone: r.phone,
-            name: r.name,
-            status: "PENDING" as const,
-          })),
+          create: recipientRows.map((r) => {
+            const { status, error } = recipientStatusForOptOut(r.phone, optedOutPhones);
+            return {
+              leadId: r.leadId,
+              phone: r.phone,
+              name: r.name,
+              status,
+              error,
+            };
+          }),
         },
       },
       include: { recipients: { take: 50 } },
@@ -682,6 +713,12 @@ export class CampaignsService {
     });
     if (recipients.length === 0) return true;
 
+    const optedOutPhones = await loadOptedOutPhones(
+      this.prisma,
+      organizationId,
+      recipients.map((r) => r.phone),
+    );
+
     const filter = (campaign.audienceFilter ?? {}) as Record<string, unknown>;
     const languageCode = typeof filter.languageCode === "string" ? filter.languageCode : "en";
     const storedParams = Array.isArray(filter.templateParams)
@@ -696,8 +733,22 @@ export class CampaignsService {
 
     let sent = 0;
     let failed = 0;
+    let skipped = 0;
 
     for (const recipient of recipients) {
+      const { status: skipStatus, error: skipError } = recipientStatusForOptOut(
+        recipient.phone,
+        optedOutPhones,
+      );
+      if (skipStatus === "SKIPPED") {
+        await this.prisma.campaignRecipient.update({
+          where: { id: recipient.id },
+          data: { status: "SKIPPED", error: skipError },
+        });
+        skipped += 1;
+        continue;
+      }
+
       try {
         const waMessageId = await this.messaging.sendTemplate(
           account,

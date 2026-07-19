@@ -10,7 +10,7 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
 import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
@@ -110,6 +110,11 @@ class AddNoteDto {
 class DismissInsightDto {
   @IsString()
   insightId!: string;
+}
+
+class CampaignOptOutDto {
+  @IsBoolean()
+  optedOut!: boolean;
 }
 
 class CreateInsightTasksDto {
@@ -248,6 +253,16 @@ export class LeadsController {
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", 'attachment; filename="growvisi-contacts.csv"');
     res.send(csv);
+  }
+
+  @Patch(":id/campaign-opt-out")
+  @Roles(...WRITE_ROLES)
+  setCampaignOptOut(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: CampaignOptOutDto,
+  ) {
+    return this.leads.setCampaignOptOut(user, id, dto.optedOut);
   }
 
   @Get(":id/timeline")

@@ -104,6 +104,7 @@ interface CampaignDetail extends CampaignRow {
     read: number;
     failed: number;
     replied?: number;
+    skipped?: number;
   };
   audienceFilter?: {
     source?: string;
@@ -126,7 +127,7 @@ interface CampaignDetail extends CampaignRow {
 
 type CreateMode = "audience" | "import";
 type ListFilter = "all" | "draft" | "scheduled" | "sent";
-type RecipientFilter = "all" | "pending" | "sent" | "delivered" | "read" | "failed" | "replied";
+type RecipientFilter = "all" | "pending" | "sent" | "delivered" | "read" | "failed" | "replied" | "skipped";
 
 const LIST_FILTERS: { id: ListFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -219,7 +220,12 @@ export default function CampaignsPage() {
   const [stages, setStages] = useState<LeadStage[]>([]);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [minScore, setMinScore] = useState("");
-  const [preview, setPreview] = useState<{ count: number; sample: PreviewSample[] } | null>(null);
+  const [preview, setPreview] = useState<{
+    count: number;
+    sample: PreviewSample[];
+    optOutCount?: number;
+    sendableCount?: number;
+  } | null>(null);
   const [importRecipients, setImportRecipients] = useState<Array<{ phone: string; name?: string }>>(
     [],
   );
@@ -363,7 +369,12 @@ export default function CampaignsPage() {
 
   const previewMut = useMutation({
     mutationFn: () =>
-      apiFetch<{ count: number; sample: PreviewSample[] }>("/campaigns/preview", {
+      apiFetch<{
+        count: number;
+        sample: PreviewSample[];
+        optOutCount?: number;
+        sendableCount?: number;
+      }>("/campaigns/preview", {
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({ audience: audience() }),
@@ -555,8 +566,9 @@ export default function CampaignsPage() {
       {canManage && campaignsPlanOk && (
         <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
           <strong className="font-semibold">Meta policy:</strong> Business-initiated outbound
-          messages must use a <strong>pre-approved WhatsApp template</strong> from your WhatsApp
-          Manager. Growvisi sends only approved templates to contacts you choose.
+          messages must use a <strong>pre-approved WhatsApp template</strong> from WhatsApp
+          Manager. Contacts who reply <strong>STOP</strong> or opt out in Growvisi are automatically
+          skipped from future broadcasts.
         </div>
       )}
 
@@ -795,7 +807,13 @@ export default function CampaignsPage() {
                 </Button>
                 {preview && (
                   <span className="text-sm font-semibold text-foreground">
-                    {preview.count} contact{preview.count === 1 ? "" : "s"} match
+                    {preview.sendableCount ?? preview.count} will receive
+                    {(preview.optOutCount ?? 0) > 0 && (
+                      <span className="font-medium text-amber-800">
+                        {" "}
+                        · {preview.optOutCount} opted out
+                      </span>
+                    )}
                   </span>
                 )}
               </>
@@ -1000,6 +1018,7 @@ export default function CampaignsPage() {
                                 failedCount: detail.failedCount,
                                 readCount: detail.readCount,
                                 replyCount: detail.replyCount,
+                                skippedCount: 0,
                               })
                         }
                       />
@@ -1017,6 +1036,12 @@ export default function CampaignsPage() {
                     <Stat label="Sent" value={String(detail.sentCount)} />
                     <Stat label="Read" value={String(detail.readCount ?? detail.deliveryStats?.read ?? 0)} />
                     <Stat label="Failed" value={String(detail.failedCount)} />
+                    {(detail.deliveryStats?.skipped ?? 0) > 0 && (
+                      <Stat
+                        label="Skipped"
+                        value={String(detail.deliveryStats?.skipped ?? 0)}
+                      />
+                    )}
                   </div>
 
                   {(detail.whatsappAccountId || detail.createdAt) && (
@@ -1132,6 +1157,7 @@ export default function CampaignsPage() {
                           ["delivered", "Delivered"],
                           ["read", "Read"],
                           ["failed", "Failed"],
+                          ["skipped", "Skipped"],
                           ["pending", "Pending"],
                         ] as const
                       ).map(([id, label]) => (
@@ -1151,6 +1177,7 @@ export default function CampaignsPage() {
                       .filter((r) => {
                         if (recipientFilter === "all") return true;
                         if (recipientFilter === "replied") return !!r.repliedAt;
+                        if (recipientFilter === "skipped") return r.status === "SKIPPED";
                         return r.status === recipientFilter.toUpperCase();
                       })
                       .map((r) => (
@@ -1187,7 +1214,9 @@ export default function CampaignsPage() {
                                   ? "bg-bento-mint text-accent"
                                   : r.status === "FAILED"
                                     ? "bg-destructive/10 text-destructive"
-                                    : "bg-muted text-muted-foreground",
+                                    : r.status === "SKIPPED"
+                                      ? "bg-slate-100 text-slate-700"
+                                      : "bg-muted text-muted-foreground",
                               )}
                             >
                               {r.status}

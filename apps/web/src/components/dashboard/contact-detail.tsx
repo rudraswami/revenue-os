@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
+  Megaphone,
   MessageCircle,
   Plus,
   Tag as TagIcon,
@@ -75,6 +76,9 @@ interface ContactDetail {
   conversation?: { id: string; status: string; unreadCount: number; lastMessageAt?: string | null } | null;
   notes: ContactNote[];
   tasks: ContactTask[];
+  campaignOptOut?: boolean;
+  campaignOptOutAt?: string | null;
+  campaignOptOutSource?: "keyword" | "manual" | null;
 }
 
 export function ContactDetailDrawer({
@@ -152,6 +156,16 @@ export function ContactDetailDrawer({
         method: "PATCH",
         token: token ?? undefined,
         body: JSON.stringify({ stage, reason }),
+      }),
+    onSuccess: invalidate,
+  });
+
+  const campaignOptOutMut = useMutation({
+    mutationFn: (optedOut: boolean) =>
+      apiFetch(`/leads/${leadId}/campaign-opt-out`, {
+        method: "PATCH",
+        token: token ?? undefined,
+        body: JSON.stringify({ optedOut }),
       }),
     onSuccess: invalidate,
   });
@@ -340,6 +354,42 @@ export function ContactDetailDrawer({
                     />
                   </div>
                 </div>
+
+                <section className="mb-5 rounded-xl border border-border/80 bg-muted/20 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Megaphone className="h-3.5 w-3.5 text-muted-foreground" />
+                        WhatsApp broadcasts
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {contact.campaignOptOut
+                          ? "Skipped from template campaigns. They can still message you and appear in Inbox."
+                          : "Included in template campaigns. They can reply STOP anytime to opt out."}
+                      </p>
+                      {contact.campaignOptOut && contact.campaignOptOutAt && (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Opted out {formatRelative(contact.campaignOptOutAt)}
+                          {contact.campaignOptOutSource === "keyword" ? " via STOP reply" : ""}
+                        </p>
+                      )}
+                    </div>
+                    {editable && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={contact.campaignOptOut ? "default" : "outline"}
+                        className="shrink-0 text-xs"
+                        disabled={campaignOptOutMut.isPending}
+                        onClick={() =>
+                          campaignOptOutMut.mutate(!contact.campaignOptOut)
+                        }
+                      >
+                        {contact.campaignOptOut ? "Allow broadcasts" : "Opt out"}
+                      </Button>
+                    )}
+                  </div>
+                </section>
 
                 {/* Tags */}
                 <section>

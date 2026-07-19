@@ -54,6 +54,10 @@ import {
 } from "./campaign-delivery.util";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { attributeInboundCampaignReply } from "../campaigns/campaign-reply-attribution";
+import {
+  isCampaignOptOutMessage,
+  withCampaignOptOutProfile,
+} from "../campaigns/campaign-opt-out";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 
 @Injectable()
@@ -449,6 +453,16 @@ export class WhatsappService {
       void this.tracking
         .attributeLeadFromMessage(organizationId, lead.id, content, lead.profile)
         .catch(() => undefined);
+
+      if (isCampaignOptOutMessage(content)) {
+        const profile = withCampaignOptOutProfile(lead.profile, true, "keyword");
+        void this.prisma.lead
+          .update({
+            where: { id: lead.id },
+            data: { profile: profile as object },
+          })
+          .catch(() => undefined);
+      }
     }
 
     if (!isReaction) {
