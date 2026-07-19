@@ -7,6 +7,7 @@ import {
 import { hasSessionHint, syncAuthCookie } from "@/lib/auth-cookie";
 import type { AuthSession, AuthUser, MeResponse } from "@/lib/auth-types";
 import { isConclusiveAuthDeath } from "@/lib/auth-session-death";
+import { accessTokenIsExpired } from "@/lib/session-continuity";
 import { useAuthStore } from "@/stores/auth-store";
 
 export async function logout(): Promise<void> {
@@ -105,6 +106,20 @@ export async function bootstrapAuth(): Promise<void> {
   }
 
   let token = state.accessToken;
+
+  if (token && accessTokenIsExpired(token)) {
+    const refreshed = await refreshSession("bootstrap_expired_access");
+    if (refreshed.kind === "SUCCESS") {
+      token = refreshed.accessToken;
+    } else if (isConclusiveAuthDeath(refreshed.kind)) {
+      endSessionFromRefresh(refreshed);
+      return;
+    } else {
+      useAuthStore.getState().setTransientFailure(
+        refreshed.kind === "NETWORK_FAILURE" ? "NETWORK_FAILURE" : "SERVER_FAILURE",
+      );
+    }
+  }
 
   if (!token) {
     const refreshed = await refreshSession("bootstrap_no_access");

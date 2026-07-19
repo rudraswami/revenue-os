@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth-session-death";
 import { useAuthStore } from "@/stores/auth-store";
 import { ApiError, rawFetchForAuth } from "@/lib/api-client-core";
+import { hasSessionHint } from "@/lib/auth-cookie";
 
 export type { RefreshResult };
 
@@ -42,18 +43,15 @@ async function waitForOnline(timeoutMs = 30_000): Promise<boolean> {
   });
 }
 
-async function performRefreshRequest(
+async function postRefresh(
   retryCount: number,
-  opts?: { cookieOnly?: boolean },
+  body?: string,
 ): Promise<RefreshResult> {
   const started = Date.now();
-  const { refreshToken } = useAuthStore.getState();
-  const useBodyToken = !opts?.cookieOnly && !!refreshToken;
-
   try {
     const session = await rawFetchForAuth<AuthSession>("/auth/refresh", {
       method: "POST",
-      body: useBodyToken ? JSON.stringify({ refreshToken }) : undefined,
+      body,
     });
     useAuthStore.getState().setSession(session);
     shareAccessToken(session.accessToken);
@@ -65,22 +63,25 @@ async function performRefreshRequest(
     };
   } catch (err) {
     const latencyMs = Date.now() - started;
-    const classified =
-      err instanceof ApiError
-        ? classifyRefreshFailure(err.status, err.message, latencyMs, retryCount)
-        : classifyRefreshFailure(0, "Refresh failed", latencyMs, retryCount);
-
-    // Multi-tab race: another tab rotated the HttpOnly cookie while we still
-    // had a stale refreshToken in memory — retry once with cookie only.
-    if (
-      useBodyToken &&
-      !opts?.cookieOnly &&
-      isConclusiveAuthDeath(classified.kind)
-    ) {
-      return performRefreshRequest(retryCount + 1, { cookieOnly: true });
-    }
-    return classified;
+    return err instanceof ApiError
+      ? classifyRefreshFailure(err.status, err.message, latencyMs, retryCount)
+      : classifyRefreshFailure(0, "Refresh failed", latencyMs, retryCount);
   }
+}
+
+/**
+ * HttpOnly cookie is the source of truth (survives reload).
+ * In-memory refreshToken is fallback only (same tab, right after login).
+ */
+async function performRefreshRequest(retryCount: number): Promise<RefreshResult> {
+  const cookieFirst = await postRefresh(retryCount);
+  if (cookieFirst.kind === "SUCCESS") return cookieFirst;
+  if (!isConclusiveAuthDeath(cookieFirst.kind)) return cookieFirst;
+
+  const { refreshToken } = useAuthStore.getState();
+  if (!refreshToken) return cookieFirst;
+
+  return postRefresh(retryCount + 1, JSON.stringify({ refreshToken }));
 }
 
 /**
@@ -89,6 +90,16 @@ async function performRefreshRequest(
  */
 export async function refreshSession(reason = "api_401"): Promise<RefreshResult> {
   ensurePeerSubscription();
+
+  const { accessToken } = useAuthStore.getState();
+  if (!accessToken && !hasSessionHint()) {
+    return {
+      kind: "AUTH_INVALID",
+      message: "No session",
+      latencyMs: 0,
+      retryCount: 0,
+    };
+  }
 
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
@@ -124,7 +135,6 @@ export async function refreshSession(reason = "api_401"): Promise<RefreshResult>
           logRefreshAttempt({ reason: `${reason}_peer`, result });
           return result;
         }
-        // Peer did not share — try once ourselves
         retryCount += 1;
         const own = await performRefreshRequest(retryCount);
         applyRefreshSideEffects(own);
@@ -153,7 +163,6 @@ function applyRefreshSideEffects(result: RefreshResult) {
     useAuthStore.getState().setTransientFailure(result.kind);
     return;
   }
-  // Conclusive auth death — clear only here when caller asks via endSessionFromRefresh
 }
 
 /** Apply conclusive auth death. No-op for transient failures. */
@@ -172,6 +181,12 @@ export function endSessionFromRefresh(result: RefreshResult): boolean {
 export async function refreshAccessToken(reason = "api_401"): Promise<string | null> {
   const result = await refreshSession(reason);
   if (result.kind === "SUCCESS") return result.accessToken;
+  if (!isConclusiveAuthDeath(result.kind)) return null;
   endSessionFromRefresh(result);
   return null;
+}
+
+/** Proactive / wake / bootstrap — refresh if access JWT is near expiry or missing. */
+export async function ensureFreshAccessToken(reason: string): Promise<RefreshResult> {
+  return refreshSession(reason);
 }

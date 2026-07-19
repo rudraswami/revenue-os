@@ -27,7 +27,7 @@ export function cookieDomain(): string | undefined {
 }
 
 function refreshMaxAgeMs(): number {
-  const raw = process.env.JWT_REFRESH_EXPIRES_IN ?? "7d";
+  const raw = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
   const match = /^(\d+)([smhd])$/.exec(raw.trim());
   if (!match) return 7 * 24 * 60 * 60 * 1000;
   const multipliers: Record<string, number> = {
@@ -40,14 +40,13 @@ function refreshMaxAgeMs(): number {
 }
 
 function baseOptions(): CookieOptions {
-  // Web and API live on different subdomains (www.growvisi.in ↔ api.growvisi.in),
-  // so cross-site requests need SameSite=None; Secure. COOKIE_DOMAIN (e.g.
-  // ".growvisi.in") lets the cookie be shared across subdomains when set.
+  // www.growvisi.in and api.growvisi.in share registrable domain (growvisi.in) —
+  // same-site subrequests. Lax is more reliable than None across browsers.
   const prod = isProd();
   return {
     httpOnly: true,
     secure: prod,
-    sameSite: prod ? "none" : "lax",
+    sameSite: "lax",
     domain: cookieDomain(),
     path: COOKIE_PATH,
   };

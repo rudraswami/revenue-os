@@ -10,7 +10,7 @@ Do **not** change JWT lifetimes here. This documents required production configu
 | Refresh cookie name | `growvisi_rt` | `auth-cookie.util.ts` |
 | `HttpOnly` | `true` | code |
 | `Secure` | `true` in production | code (`NODE_ENV=production` or `VERCEL=1`) |
-| `SameSite` | `None` in production | code (cross-site www ↔ api) |
+| `SameSite` | `Lax` in production (same-site subdomains www ↔ api) | code |
 | Cookie `Path` | `/api/v1/auth` | code — must match refresh/logout routes |
 | `CORS` credentials | `true` | `main.ts` |
 | Allowed origins | `https://www.growvisi.in`, `https://growvisi.in` (+ patterns in `cors-origins.ts`) | `CORS_ORIGINS` / `NEXT_PUBLIC_APP_URL` |

@@ -649,7 +649,7 @@ export class AuthService {
   }
 
   private refreshExpiresMs(): number {
-    const raw = this.config.get<string>("JWT_REFRESH_EXPIRES_IN") ?? "7d";
+    const raw = this.config.get<string>("JWT_REFRESH_EXPIRES_IN") || "7d";
     const match = /^(\d+)([smhd])$/.exec(raw.trim());
     if (!match) {
       return 7 * 24 * 60 * 60 * 1000;

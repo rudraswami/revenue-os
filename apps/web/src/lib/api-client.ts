@@ -153,7 +153,11 @@ async function authedBlob(path: string, token?: string): Promise<Blob> {
   let res = await doFetch(authToken);
   if (res.status === 401 && authToken) {
     const newToken = await refreshAccessToken("api_blob_401");
-    if (newToken) res = await doFetch(newToken);
+    if (newToken) {
+      res = await doFetch(newToken);
+    } else if (useAuthStore.getState().lastTransientFailure) {
+      throw new ApiError(CUSTOMER_SERVICE_ERROR, 0);
+    }
   }
   if (!res.ok) {
     if (res.status >= 500) {
