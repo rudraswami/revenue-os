@@ -3,7 +3,7 @@ import { NestFactory } from "@nestjs/core";
 import { ExpressAdapter } from "@nestjs/platform-express";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import type { Express, Request, Response } from "express";
-import express from "express";
+import express = require("express");
 import cookieParser = require("cookie-parser");
 import helmet from "helmet";
 import { AppModule } from "./app.module";
