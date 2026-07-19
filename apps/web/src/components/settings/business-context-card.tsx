@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FileText,
   FileUp,
-  Loader2,
   Pencil,
   Plus,
   RefreshCw,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useToast } from "@/components/ui/toast";
@@ -234,7 +234,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                 onClick={() => fileInputRef.current?.click()}
               >
                 {uploadMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <GrowvisiSpinner size="xs" />
                 ) : (
                   "Browse files"
                 )}
@@ -279,7 +279,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                 onClick={() => createMutation.mutate()}
               >
                 {createMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <GrowvisiSpinner size="xs" />
                 ) : (
                   <>
                     <Plus className="h-3.5 w-3.5" />
@@ -348,7 +348,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                       }
                     >
                       {updateMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <GrowvisiSpinner size="xs" />
                       ) : (
                         "Save"
                       )}
@@ -414,7 +414,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                         onClick={() => reindexMutation.mutate(doc.id)}
                       >
                         {pendingReindexId === doc.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
+                          <GrowvisiSpinner size="xs" />
                         ) : (
                           <RefreshCw className="h-3.5 w-3.5" />
                         )}
@@ -429,7 +429,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                         aria-label="Delete"
                       >
                         {pendingDeleteId === doc.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <GrowvisiSpinner size="xs" />
                         ) : (
                           <Trash2 className="h-3.5 w-3.5" />
                         )}

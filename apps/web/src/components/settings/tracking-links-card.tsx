@@ -1,9 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Link2, MousePointerClick, Trash2, Loader2 } from "lucide-react";
+import { Copy, Link2, MousePointerClick, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { useMutationPendingId } from "@/hooks/use-mutation-pending-id";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
@@ -185,7 +186,7 @@ export function TrackingLinksCard() {
                     onClick={() => deleteMut.mutate(link.id)}
                   >
                     {pendingDeleteId === link.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <GrowvisiSpinner size="xs" />
                     ) : (
                       <Trash2 className="h-4 w-4" />
                     )}

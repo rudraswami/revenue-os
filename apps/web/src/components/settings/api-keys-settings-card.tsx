@@ -1,9 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Key, Trash2, Loader2 } from "lucide-react";
+import { Key, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { useMutationPendingId } from "@/hooks/use-mutation-pending-id";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
@@ -146,7 +147,7 @@ curl -H "Authorization: Bearer ${newSecret}" \\
                 onClick={() => revokeMutation.mutate(k.id)}
               >
                 {pendingRevokeId === k.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <GrowvisiSpinner size="xs" />
                 ) : (
                   <Trash2 className="h-4 w-4" />
                 )}

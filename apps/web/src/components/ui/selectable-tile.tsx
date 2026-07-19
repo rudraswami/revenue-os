@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 export function SelectableTile({
@@ -53,7 +54,7 @@ export function SelectableTile({
         </div>
         <span className="flex h-5 w-5 shrink-0 items-center justify-center">
           {pending ? (
-            <Loader2 className="h-4 w-4 animate-spin text-accent" aria-hidden />
+            <GrowvisiSpinner size="xs" />
           ) : selected ? (
             <Check className="h-4 w-4 text-accent" aria-hidden />
           ) : null}

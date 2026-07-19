@@ -1,14 +1,20 @@
 import { cn } from "@/lib/utils";
+import { BRAND_ASSETS } from "@/components/brand/brand-colors";
 
 const SIZES = {
   xs: 16,
   sm: 24,
   md: 40,
   lg: 56,
+  xl: 72,
 } as const;
 
 export type GrowvisiLogoLoaderSize = keyof typeof SIZES;
 
+/**
+ * Static brand mark — use in nav, favicon contexts. For loading states use
+ * {@link GrowvisiLogoLoader} instead.
+ */
 export function GrowvisiLogoMark({
   size = 28,
   className,
@@ -17,61 +23,94 @@ export function GrowvisiLogoMark({
   className?: string;
 }) {
   return (
-    <svg
+    <img
+      src={BRAND_ASSETS.mark}
+      alt=""
       width={size}
       height={size}
-      viewBox="0 0 28 28"
-      fill="none"
-      aria-hidden="true"
-      className={className}
-    >
-      <rect width="28" height="28" rx="8" className="fill-accent" />
-      <path
-        d="M8 14.5C8 11.46 10.46 9 13.5 9h1C17.54 9 20 11.46 20 14.5v3.5a1 1 0 01-1 1h-1.2a.8.8 0 01-.8-.8V16.2a2.2 2.2 0 00-2.2-2.2h-.6a2.2 2.2 0 00-2.2 2.2v2.2a.8.8 0 01-.8.8H9a1 1 0 01-1-1v-3.5z"
-        fill="white"
-      />
-    </svg>
+      aria-hidden
+      className={cn("shrink-0 select-none", className)}
+    />
   );
 }
 
+/**
+ * Razorpay-style animated brand loader — orbiting accent arc + breathing mark.
+ * Use for page loads, auth bootstrap, and inline busy states.
+ */
 export function GrowvisiLogoLoader({
   size = "md",
   message,
   className,
   fullscreen = false,
+  /** When false, skips the orbit ring (e.g. inside small buttons). */
+  showOrbit = true,
 }: {
   size?: GrowvisiLogoLoaderSize;
   message?: string;
   className?: string;
   /** Center in viewport with optional message — auth bootstrap, guards */
   fullscreen?: boolean;
+  showOrbit?: boolean;
 }) {
   const px = SIZES[size];
+  const orbitPad = showOrbit ? Math.max(6, Math.round(px * 0.22)) : 0;
+  const box = px + orbitPad * 2;
 
   const mark = (
     <div
-      className={cn("gv-logo-loader inline-flex shrink-0", className)}
+      className={cn("gv-logo-loader-root inline-flex shrink-0 items-center justify-center", className)}
+      style={{ width: box, height: box }}
       role="status"
       aria-live="polite"
       aria-label={message ?? "Loading"}
     >
-      <GrowvisiLogoMark size={px} />
+      {showOrbit ? (
+        <svg
+          className="gv-logo-loader-orbit pointer-events-none absolute"
+          width={box}
+          height={box}
+          viewBox={`0 0 ${box} ${box}`}
+          aria-hidden
+        >
+          <circle
+            cx={box / 2}
+            cy={box / 2}
+            r={px / 2 + orbitPad * 0.55}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={Math.max(1.5, px * 0.045)}
+            strokeLinecap="round"
+            className="text-accent/70"
+            pathLength={100}
+          />
+        </svg>
+      ) : null}
+      <div className={cn("relative z-[1]", showOrbit ? "gv-logo-loader" : "gv-logo-loader-compact")}>
+        <GrowvisiLogoMark size={px} />
+      </div>
     </div>
   );
 
   if (!fullscreen) return mark;
 
   return (
-    <div
-      className={cn(
-        "flex min-h-screen flex-col items-center justify-center gap-5",
-        fullscreen && "surface-lavender",
-      )}
-    >
+    <div className="flex min-h-screen flex-col items-center justify-center gap-5 surface-lavender">
       {mark}
       {message ? (
         <p className="text-sm font-medium text-muted-foreground">{message}</p>
       ) : null}
     </div>
   );
+}
+
+/** Tiny inline spinner — drop-in replacement for Loader2 in buttons and tiles. */
+export function GrowvisiSpinner({
+  size = "xs",
+  className,
+}: {
+  size?: GrowvisiLogoLoaderSize;
+  className?: string;
+}) {
+  return <GrowvisiLogoLoader size={size} showOrbit={false} className={className} />;
 }

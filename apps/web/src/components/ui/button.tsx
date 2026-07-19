@@ -1,7 +1,7 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Loader2 } from "lucide-react";
 import * as React from "react";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 /**
@@ -72,7 +72,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {loading ? (
           <>
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            <GrowvisiSpinner size="xs" className="shrink-0" />
             {children}
           </>
         ) : (

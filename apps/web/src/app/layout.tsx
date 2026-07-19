@@ -40,6 +40,10 @@ export const metadata: Metadata = {
     images: ["/opengraph-image"],
   },
   manifest: "/manifest.json",
+  icons: {
+    icon: [{ url: "/brand/growvisi-mark.png", type: "image/png" }],
+    apple: [{ url: "/brand/growvisi-mark.png", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -1,3 +1,4 @@
+import { GROWVISI_WEB_URL } from "@growvisi/shared";
 import { ImageResponse } from "next/og";
 
 export const alt = "Growvisi — AI Revenue Engine for WhatsApp Sales Teams";
@@ -5,6 +6,8 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default function OpenGraphImage() {
+  const markUrl = `${GROWVISI_WEB_URL}/brand/growvisi-mark.png`;
+
   return new ImageResponse(
     (
       <div
@@ -22,26 +25,12 @@ export default function OpenGraphImage() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 16,
+            gap: 20,
             marginBottom: 32,
           }}
         >
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              background: "#006c49",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontSize: 28,
-              fontWeight: 700,
-            }}
-          >
-            G
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={markUrl} width={64} height={64} alt="" />
           <span style={{ fontSize: 36, fontWeight: 700, color: "#0b1c30" }}>Growvisi</span>
         </div>
         <div style={{ fontSize: 48, fontWeight: 700, color: "#0b1c30", lineHeight: 1.15, maxWidth: 900 }}>

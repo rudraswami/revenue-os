@@ -1,9 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Webhook, Loader2 } from "lucide-react";
+import { Trash2, Webhook } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useMutationPendingId } from "@/hooks/use-mutation-pending-id";
@@ -219,7 +220,7 @@ export function WebhooksSettingsCard() {
                         onClick={() => deleteMut.mutate(ep.id)}
                       >
                         {pendingDeleteId === ep.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <GrowvisiSpinner size="xs" />
                         ) : (
                           <Trash2 className="h-4 w-4" />
                         )}

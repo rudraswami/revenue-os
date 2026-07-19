@@ -5,11 +5,11 @@
   "start_url": "/dashboard/inbox",
   "display": "standalone",
   "background_color": "#f8f9ff",
-  "theme_color": "#0b9e6d",
+  "theme_color": "#0B1C30",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/growvisi-app-icon-1024.png",
+      "src": "/brand/growvisi-mark.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"

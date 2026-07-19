@@ -23,7 +23,7 @@ export function AuthBrandPanel() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,rgb(0_108_73/0.35),transparent_55%)]" />
       <div className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-[#25D366]/10 blur-3xl" />
 
-      <Logo variant="light" className="relative z-10" />
+      <Logo variant="light" showTagline className="relative z-10" />
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center py-8">
         <div className="relative w-full max-w-[320px]">
