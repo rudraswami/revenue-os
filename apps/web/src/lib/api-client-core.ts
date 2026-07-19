@@ -68,20 +68,30 @@ async function parseError(res: Response): Promise<ApiError> {
   });
 }
 
+export type AuthFetchOptions = RequestInit & {
+  /**
+   * Default `include` — sends HttpOnly refresh cookie on cross-origin API calls.
+   * Use `omit` for body-token refresh fallback so a stale cookie cannot override
+   * a valid refreshToken in the JSON body.
+   */
+  credentials?: RequestCredentials;
+};
+
 /** Low-level fetch used by auth refresh and apiFetch. */
-export async function rawFetchForAuth<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  if (!headers.has("Content-Type") && options.body) {
+export async function rawFetchForAuth<T>(path: string, options: AuthFetchOptions = {}): Promise<T> {
+  const { credentials = "include", ...fetchOptions } = options;
+  const headers = new Headers(fetchOptions.headers);
+  if (!headers.has("Content-Type") && fetchOptions.body) {
     headers.set("Content-Type", "application/json");
   }
 
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
-      ...options,
+      ...fetchOptions,
       headers,
-      credentials: "include",
-      signal: options.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      credentials,
+      signal: fetchOptions.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (cause) {
     logNetworkFailure(path, cause);

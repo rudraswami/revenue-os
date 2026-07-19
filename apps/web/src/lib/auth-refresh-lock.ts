@@ -1,6 +1,6 @@
 /**
  * Cross-tab refresh coordination.
- * One tab refreshes; others wait and apply the shared access token.
+ * One tab refreshes; others wait and apply the shared session (access + refresh tokens).
  */
 
 const LOCK_KEY = "growvisi-refresh-lock";
@@ -9,7 +9,16 @@ const CHANNEL = "growvisi-auth";
 const LOCK_TTL_MS = 12_000;
 const WAIT_TIMEOUT_MS = 15_000;
 
-export type SharedAccessPayload = {
+/** Published when a tab completes refresh — includes refresh token for peer tabs. */
+export type SharedSessionPayload = {
+  type: "SESSION_REFRESHED";
+  accessToken: string;
+  refreshToken: string;
+  at: number;
+};
+
+/** @deprecated Legacy payload — still handled for in-flight tabs during deploy. */
+type LegacyAccessPayload = {
   type: "ACCESS_TOKEN";
   accessToken: string;
   at: number;
@@ -45,7 +54,6 @@ function tryAcquireLock(): boolean {
   }
   const payload: LockPayload = { owner: tabId(), until: now + LOCK_TTL_MS };
   localStorage.setItem(LOCK_KEY, JSON.stringify(payload));
-  // Confirm we won (naive CAS)
   const confirmed = readLock();
   return !!confirmed && confirmed.owner === tabId();
 }
@@ -58,7 +66,24 @@ function releaseLock(): void {
   }
 }
 
-function publishAccess(payload: SharedAccessPayload): void {
+function parseSharedPayload(data: unknown): SharedSessionPayload | null {
+  if (!data || typeof data !== "object") return null;
+  const payload = data as SharedSessionPayload | LegacyAccessPayload;
+  if (payload.type === "SESSION_REFRESHED" && payload.accessToken && payload.refreshToken) {
+    return payload;
+  }
+  if (payload.type === "ACCESS_TOKEN" && payload.accessToken) {
+    return {
+      type: "SESSION_REFRESHED",
+      accessToken: payload.accessToken,
+      refreshToken: "",
+      at: payload.at,
+    };
+  }
+  return null;
+}
+
+function publishSession(payload: SharedSessionPayload): void {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(RESULT_KEY, JSON.stringify(payload));
   try {
@@ -72,25 +97,22 @@ function publishAccess(payload: SharedAccessPayload): void {
 
 /**
  * Wait for another tab to finish refresh, or timeout.
- * Resolves with accessToken if shared, else null.
  */
-export function waitForPeerRefresh(): Promise<string | null> {
+export function waitForPeerRefresh(): Promise<SharedSessionPayload | null> {
   if (typeof window === "undefined") return Promise.resolve(null);
 
   return new Promise((resolve) => {
     let settled = false;
-    const finish = (token: string | null) => {
+    const finish = (session: SharedSessionPayload | null) => {
       if (settled) return;
       settled = true;
       cleanup();
-      resolve(token);
+      resolve(session);
     };
 
     const onMessage = (data: unknown) => {
-      const payload = data as SharedAccessPayload;
-      if (payload?.type === "ACCESS_TOKEN" && payload.accessToken) {
-        finish(payload.accessToken);
-      }
+      const session = parseSharedPayload(data);
+      if (session) finish(session);
     };
 
     let ch: BroadcastChannel | null = null;
@@ -112,13 +134,12 @@ export function waitForPeerRefresh(): Promise<string | null> {
     };
     window.addEventListener("storage", onStorage);
 
-    // Already published?
     try {
       const raw = localStorage.getItem(RESULT_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as SharedAccessPayload;
-        if (parsed?.type === "ACCESS_TOKEN" && Date.now() - parsed.at < LOCK_TTL_MS) {
-          finish(parsed.accessToken);
+        const session = parseSharedPayload(JSON.parse(raw));
+        if (session && Date.now() - session.at < LOCK_TTL_MS) {
+          finish(session);
           return;
         }
       }
@@ -139,10 +160,10 @@ export function waitForPeerRefresh(): Promise<string | null> {
 export async function withRefreshLock<T>(run: () => Promise<T>): Promise<{
   ran: boolean;
   value: T | null;
-  peerToken: string | null;
+  peerSession: SharedSessionPayload | null;
 }> {
   if (typeof window === "undefined") {
-    return { ran: true, value: await run(), peerToken: null };
+    return { ran: true, value: await run(), peerSession: null };
   }
 
   if (typeof navigator !== "undefined" && navigator.locks?.request) {
@@ -155,20 +176,20 @@ export async function withRefreshLock<T>(run: () => Promise<T>): Promise<{
           value = await run();
         },
       );
-      return { ran: true, value, peerToken: null };
+      return { ran: true, value, peerSession: null };
     } catch {
       // Fall through to storage-based lock
     }
   }
 
   if (!tryAcquireLock()) {
-    const peerToken = await waitForPeerRefresh();
-    return { ran: false, value: null, peerToken };
+    const peerSession = await waitForPeerRefresh();
+    return { ran: false, value: null, peerSession };
   }
 
   try {
     const value = await run();
-    return { ran: true, value, peerToken: null };
+    return { ran: true, value, peerSession: null };
   } finally {
     releaseLock();
   }
@@ -180,23 +201,34 @@ export function clearRefreshCoordination(): void {
   localStorage.removeItem(RESULT_KEY);
 }
 
-export function shareAccessToken(accessToken: string): void {
-  publishAccess({
-    type: "ACCESS_TOKEN",
+export function shareRefreshedSession(accessToken: string, refreshToken: string): void {
+  publishSession({
+    type: "SESSION_REFRESHED",
     accessToken,
+    refreshToken,
     at: Date.now(),
   });
 }
 
-/** Subscribe to peer access-token updates (other tabs). Returns unsubscribe. */
-export function subscribePeerAccessTokens(onToken: (accessToken: string) => void): () => void {
+/** @deprecated use shareRefreshedSession */
+export function shareAccessToken(accessToken: string): void {
+  publishSession({
+    type: "SESSION_REFRESHED",
+    accessToken,
+    refreshToken: "",
+    at: Date.now(),
+  });
+}
+
+/** Subscribe to peer session updates (other tabs). Returns unsubscribe. */
+export function subscribePeerSessions(
+  onSession: (session: SharedSessionPayload) => void,
+): () => void {
   if (typeof window === "undefined") return () => {};
 
   const handle = (data: unknown) => {
-    const payload = data as SharedAccessPayload;
-    if (payload?.type === "ACCESS_TOKEN" && payload.accessToken) {
-      onToken(payload.accessToken);
-    }
+    const session = parseSharedPayload(data);
+    if (session) onSession(session);
   };
 
   let ch: BroadcastChannel | null = null;
@@ -222,4 +254,9 @@ export function subscribePeerAccessTokens(onToken: (accessToken: string) => void
     window.removeEventListener("storage", onStorage);
     ch?.close();
   };
+}
+
+/** @deprecated use subscribePeerSessions */
+export function subscribePeerAccessTokens(onToken: (accessToken: string) => void): () => void {
+  return subscribePeerSessions((session) => onToken(session.accessToken));
 }

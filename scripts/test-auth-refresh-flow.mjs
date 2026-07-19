@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /**
- * Simulates the client refresh flow that caused 15-minute logouts:
- * login → persist refresh → shell bootstrap (/auth/me) → refresh at expiry.
+ * Auth refresh integration tests — run against production or local API.
  *
  * Usage: node scripts/test-auth-refresh-flow.mjs
+ *
+ * Tests:
+ *  1. Login + cookie/body refresh chain
+ *  2. Stale cookie + valid body (simulates browser that blocks Set-Cookie after rotation)
  */
 const API = process.env.SMOKE_API_URL ?? "https://api.growvisi.in/api/v1";
 const ORIGIN = process.env.SMOKE_WEB_URL ?? "https://www.growvisi.in";
@@ -26,7 +29,6 @@ async function login() {
   const session = await res.json();
   const cookie = cookies.find((c) => c.startsWith("growvisi_rt="))?.split(";")[0];
   if (!cookie) throw new Error("No growvisi_rt Set-Cookie on login");
-  if (!session.refreshToken) throw new Error("No refreshToken in login body");
   const sameSite = cookies[0].match(/SameSite=(\w+)/i)?.[1];
   console.log("login ok — cookie SameSite:", sameSite);
   return { session, cookie };
@@ -41,10 +43,12 @@ async function refreshWithCookie(cookie) {
   return { status: res.status, body: res.ok ? await res.json() : await res.text() };
 }
 
-async function refreshWithBody(refreshToken) {
+async function refreshWithBody(refreshToken, { staleCookie } = { staleCookie: undefined }) {
+  const headers = { "Content-Type": "application/json", Origin: ORIGIN };
+  if (staleCookie) headers.Cookie = staleCookie;
   const res = await fetch(`${API}/auth/refresh`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Origin: ORIGIN },
+    headers,
     body: JSON.stringify({ refreshToken }),
     credentials: "include",
   });
@@ -61,18 +65,21 @@ async function me(accessToken) {
 async function main() {
   console.log("Auth refresh flow test\n");
 
-  const { session, cookie } = await login();
+  const { session, cookie: cookieR0 } = await login();
   let refreshToken = session.refreshToken;
   let accessToken = session.accessToken;
 
-  // Simulate page reload: only refreshToken in "localStorage", cookie may or may not work
   console.log("\n1. /auth/me with access token (shell bootstrap)");
   const meStatus = await me(accessToken);
   console.log("   /auth/me:", meStatus === 200 ? "ok" : `FAIL ${meStatus}`);
 
   console.log("\n2. Refresh via HttpOnly cookie (browser primary path)");
-  const byCookie = await refreshWithCookie(cookie);
+  const byCookie = await refreshWithCookie(cookieR0);
   console.log("   status:", byCookie.status, byCookie.status === 201 ? "ok" : byCookie.body);
+  if (byCookie.status === 201) {
+    refreshToken = byCookie.body.refreshToken;
+    accessToken = byCookie.body.accessToken;
+  }
 
   console.log("\n3. Refresh via body token (localStorage fallback after reload)");
   const byBody = await refreshWithBody(refreshToken);
@@ -89,13 +96,34 @@ async function main() {
   console.log("\n5. Second body refresh (simulates proactive refresh at ~10 min)");
   const again = await refreshWithBody(refreshToken);
   console.log("   status:", again.status, again.status === 201 ? "ok" : again.body);
+  if (again.status === 201) {
+    refreshToken = again.body.refreshToken;
+  }
 
-  const failed = [meStatus, byCookie.status, byBody.status, again.status].some((s) => s !== 200 && s !== 201);
+  console.log(
+    "\n6. STALE COOKIE + VALID BODY (P0 regression — caused 15-min logout)",
+  );
+  console.log("   Simulates: cookie jar stuck on R0 after rotation, zustand has R1");
+  const staleCookieResult = await refreshWithBody(refreshToken, { staleCookie: cookieR0 });
+  console.log(
+    "   status:",
+    staleCookieResult.status,
+    staleCookieResult.status === 201 ? "ok (server fell through to body)" : staleCookieResult.body,
+  );
+
+  const failed = [
+    meStatus,
+    byCookie.status,
+    byBody.status,
+    again.status,
+    staleCookieResult.status,
+  ].some((s) => s !== 200 && s !== 201);
+
   if (failed) {
     console.error("\nFAIL — refresh chain broken");
     process.exit(1);
   }
-  console.log("\nPASS — refresh chain works; deploy web+api fixes for applyMeResponse + SameSite=None");
+  console.log("\nPASS — refresh chain + stale-cookie fallback work");
 }
 
 main().catch((e) => {

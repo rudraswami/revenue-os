@@ -31,7 +31,10 @@ If step 2 has no Cookie header, refresh cannot work and users will appear logged
 - Session cleared **only** on conclusive auth death: `AUTH_EXPIRED` | `AUTH_REVOKED` | `AUTH_INVALID`
 - Network / 5xx / offline / timeouts **never** call `clear()`
 - Multi-tab: `navigator.locks` when available, else storage lock + `BroadcastChannel`
-- Refresh token mirrored in `sessionStorage` when cookie is not sent (fallback only)
+- Refresh token mirrored in `sessionStorage` + Zustand when cookie is missing or stale
+- **Body fallback refresh uses `credentials: "omit"`** so a stale `growvisi_rt` cookie cannot override a valid `refreshToken` in the JSON body
+- **Server refresh** tries cookie first; on `401`, falls through to body token when it differs from the cookie
+- Multi-tab broadcast shares **access + refresh** tokens after each successful refresh
 - Every refresh and logout emits a structured `console.info` JSON line (`auth.refresh` / `auth.logout`)
 
 ## Logout reasons

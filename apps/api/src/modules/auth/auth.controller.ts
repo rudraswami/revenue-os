@@ -68,11 +68,28 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const cookieToken = readRefreshCookie(req);
-    const token = cookieToken ?? dto.refreshToken?.trim();
-    if (!token) {
+    const bodyToken = dto.refreshToken?.trim();
+
+    if (cookieToken) {
+      try {
+        const result = await this.auth.refresh(cookieToken);
+        setRefreshCookie(res, result.refreshToken);
+        return result;
+      } catch (err) {
+        // Stale cookie after rotation — fall through to body token when different.
+        const canFallback =
+          bodyToken &&
+          bodyToken !== cookieToken &&
+          err instanceof UnauthorizedException;
+        if (!canFallback) throw err;
+      }
+    }
+
+    if (!bodyToken) {
       throw new UnauthorizedException("Session expired. Please sign in again.");
     }
-    const result = await this.auth.refresh(token);
+
+    const result = await this.auth.refresh(bodyToken);
     setRefreshCookie(res, result.refreshToken);
     return result;
   }

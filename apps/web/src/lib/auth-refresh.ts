@@ -2,8 +2,8 @@ import type { AuthSession } from "@/lib/auth-types";
 import { logRefreshAttempt } from "@/lib/auth-observability";
 import {
   clearRefreshCoordination,
-  shareAccessToken,
-  subscribePeerAccessTokens,
+  shareRefreshedSession,
+  subscribePeerSessions,
   withRefreshLock,
 } from "@/lib/auth-refresh-lock";
 import {
@@ -26,11 +26,16 @@ export type { RefreshResult };
 let refreshInFlight: Promise<RefreshResult> | null = null;
 let peerSubAttached = false;
 
+function applyPeerSession(accessToken: string, refreshToken: string) {
+  useAuthStore.getState().patchAccessToken(accessToken, refreshToken || undefined);
+  if (refreshToken) persistRefreshToken(refreshToken);
+}
+
 function ensurePeerSubscription() {
   if (peerSubAttached || typeof window === "undefined") return;
   peerSubAttached = true;
-  subscribePeerAccessTokens((accessToken) => {
-    useAuthStore.getState().patchAccessToken(accessToken);
+  subscribePeerSessions((session) => {
+    applyPeerSession(session.accessToken, session.refreshToken);
   });
 }
 
@@ -48,8 +53,11 @@ async function waitForOnline(timeoutMs = 30_000): Promise<boolean> {
   });
 }
 
+type RefreshTransport = "cookie" | "body";
+
 async function postRefresh(
   retryCount: number,
+  transport: RefreshTransport,
   body?: string,
 ): Promise<RefreshResult> {
   const started = Date.now();
@@ -57,10 +65,13 @@ async function postRefresh(
     const session = await rawFetchForAuth<AuthSession>("/auth/refresh", {
       method: "POST",
       body,
+      // Body fallback must not send a stale HttpOnly cookie — server would prefer it
+      // over the valid refreshToken in JSON (cookie ?? body). See auth.controller.ts.
+      credentials: transport === "cookie" ? "include" : "omit",
     });
     useAuthStore.getState().setSession(session);
     persistRefreshToken(session.refreshToken);
-    shareAccessToken(session.accessToken);
+    shareRefreshedSession(session.accessToken, session.refreshToken);
     return {
       kind: "SUCCESS",
       accessToken: session.accessToken,
@@ -76,8 +87,8 @@ async function postRefresh(
 }
 
 /**
- * HttpOnly cookie is the source of truth (survives reload).
- * sessionStorage + in-memory store are fallbacks when the cookie is not sent.
+ * HttpOnly cookie is primary (survives reload).
+ * Zustand + sessionStorage are fallbacks when the cookie is missing or stale.
  */
 function refreshTokenFallback(): string | null {
   const { refreshToken } = useAuthStore.getState();
@@ -85,17 +96,20 @@ function refreshTokenFallback(): string | null {
 }
 
 async function performRefreshRequest(retryCount: number): Promise<RefreshResult> {
-  const cookieFirst = await postRefresh(retryCount);
+  const cookieFirst = await postRefresh(retryCount, "cookie");
   if (cookieFirst.kind === "SUCCESS") return cookieFirst;
   if (!isConclusiveAuthDeath(cookieFirst.kind)) return cookieFirst;
 
   const fallback = refreshTokenFallback();
   if (!fallback) return cookieFirst;
 
-  const bodyResult = await postRefresh(retryCount + 1, JSON.stringify({ refreshToken: fallback }));
+  const bodyResult = await postRefresh(
+    retryCount + 1,
+    "body",
+    JSON.stringify({ refreshToken: fallback }),
+  );
   if (bodyResult.kind === "SUCCESS") return bodyResult;
 
-  // Stale persisted token — drop it so we do not loop on dead credentials
   if (isConclusiveAuthDeath(bodyResult.kind)) {
     clearPersistedRefreshToken();
   }
@@ -142,11 +156,11 @@ export async function refreshSession(reason = "api_401"): Promise<RefreshResult>
       const locked = await withRefreshLock(async () => performRefreshRequest(retryCount));
 
       if (!locked.ran) {
-        if (locked.peerToken) {
-          useAuthStore.getState().patchAccessToken(locked.peerToken);
+        if (locked.peerSession) {
+          applyPeerSession(locked.peerSession.accessToken, locked.peerSession.refreshToken);
           const result: RefreshResult = {
             kind: "SUCCESS",
-            accessToken: locked.peerToken,
+            accessToken: locked.peerSession.accessToken,
             latencyMs: 0,
             retryCount,
           };
