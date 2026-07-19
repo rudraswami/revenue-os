@@ -3,14 +3,12 @@ import { hasCapability } from "@growvisi/shared";
 
 export type DashboardRoute =
   | "analytics"
-  | "ai"
   | "automations"
   | "campaigns"
   | "pricing";
 
 const ROUTE_CAPABILITIES: Record<DashboardRoute, import("@growvisi/shared").Capability | import("@growvisi/shared").Capability[]> = {
   analytics: "analytics.view.team",
-  ai: "knowledge.manage",
   automations: "automations.manage",
   campaigns: "campaigns.manage",
   pricing: "billing.view",

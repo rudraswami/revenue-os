@@ -59,12 +59,15 @@ type NavGroup = {
 function buildNavGroups(opts: {
   showAgency: boolean;
   showAutomate: boolean;
-  showIntelligence: boolean;
+  showAnalytics: boolean;
 }): NavGroup[] {
   const overviewItems = [
     { href: "/dashboard", labelKey: "nav.home", icon: LayoutDashboard, exact: true },
     ...(opts.showAgency
       ? [{ href: "/dashboard/agency", labelKey: "nav.agency", icon: Building2 }]
+      : []),
+    ...(opts.showAnalytics
+      ? [{ href: "/dashboard/analytics", labelKey: "nav.analytics", icon: BarChart3 }]
       : []),
   ];
 
@@ -80,13 +83,6 @@ function buildNavGroups(opts: {
       ],
     },
     {
-      labelKey: "groups.intelligence",
-      items: [
-        { href: "/dashboard/analytics", labelKey: "nav.analytics", icon: BarChart3 },
-        { href: "/dashboard/ai", labelKey: "nav.intelligence", icon: Bot },
-      ],
-    },
-    {
       labelKey: "groups.automate",
       items: [
         { href: "/dashboard/campaigns", labelKey: "nav.campaigns", icon: Megaphone },
@@ -98,8 +94,7 @@ function buildNavGroups(opts: {
   return [
     groups[0],
     groups[1],
-    ...(opts.showIntelligence ? [groups[2]] : []),
-    ...(opts.showAutomate ? [groups[3]] : []),
+    ...(opts.showAutomate ? [groups[2]] : []),
   ];
 }
 
@@ -376,7 +371,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const navGroups = buildNavGroups({
     showAgency: !!(agencyStatus?.isAgency || agencyStatus?.canEnableAgency),
     showAutomate: canManageCampaigns(role),
-    showIntelligence: canViewTeamAnalytics(role),
+    showAnalytics: canViewTeamAnalytics(role),
   });
 
   const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;
