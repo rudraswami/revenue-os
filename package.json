@@ -23,6 +23,7 @@
     "db:push": "dotenv -e .env -- pnpm --filter @growvisi/database push",
     "db:auth-migrate": "dotenv -e .env -- node scripts/migrate-auth-production.js",
     "db:email-verification-migrate": "dotenv -e .env -- node scripts/migrate-email-verification.js",
+    "db:performance-indexes-migrate": "dotenv -e .env -- node scripts/migrate-performance-indexes.js",
     "db:setup-fresh": "dotenv -e .env -- node scripts/setup-fresh-supabase.js",
     "db:merge-supabase-env": "node scripts/merge-supabase-env.js",
     "vercel:env:supabase": "node scripts/set-vercel-supabase-env.js",

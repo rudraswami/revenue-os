@@ -1,7 +1,7 @@
--- Speed up handoff queue counts and filters on conversation.metadata->requiresHuman
-CREATE INDEX IF NOT EXISTS "Conversation_metadata_requiresHuman_gin"
-ON "Conversation" USING gin (metadata jsonb_path_ops);
+-- Speed up handoff queue counts and filters on conversations.metadata->requiresHuman
+CREATE INDEX IF NOT EXISTS conversations_metadata_requires_human_gin
+ON conversations USING gin (metadata jsonb_path_ops);
 
--- Speed up inbox search on contact fields (if not already covered)
-CREATE INDEX IF NOT EXISTS "Conversation_org_contact_search_idx"
-ON "Conversation" ("organizationId", lower("contactName"), lower("contactPhone"));
+-- Speed up inbox search on contact fields
+CREATE INDEX IF NOT EXISTS conversations_org_contact_search_idx
+ON conversations ("organizationId", lower("contactName"), lower("contactPhone"));
