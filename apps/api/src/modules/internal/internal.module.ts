@@ -8,6 +8,7 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { WhatsappAccountsModule } from "../whatsapp-accounts/whatsapp-accounts.module";
 import { InternalCronController } from "./internal-cron.controller";
 import { InternalLatencyController } from "./internal-latency.controller";
+import { DataRetentionService } from "./data-retention.service";
 
 @Module({
   imports: [
@@ -19,6 +20,6 @@ import { InternalLatencyController } from "./internal-latency.controller";
     CampaignsModule,
   ],
   controllers: [InternalCronController, InternalLatencyController],
-  providers: [CronSecretGuard],
+  providers: [CronSecretGuard, DataRetentionService],
 })
 export class InternalModule {}

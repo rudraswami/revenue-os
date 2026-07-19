@@ -29,6 +29,8 @@ export interface ClassificationPlanInput {
   autoSendPlanOk: boolean;
   executionPath: ExecutionPath;
   safetyBlocked?: { code: string; reason: string };
+  hasIndexedChunks?: boolean;
+  groundingConfidence?: number;
   automationPrefs: {
     stage: boolean;
     notify: boolean;
@@ -92,6 +94,8 @@ export class ActionPlannerService {
       autoSendPlanOk: input.autoSendPlanOk,
       executionPath: input.executionPath,
       safetyBlocked: input.safetyBlocked,
+      hasIndexedChunks: input.hasIndexedChunks,
+      groundingConfidence: input.groundingConfidence,
     });
 
     if (result.requiresHuman && !input.lockHandoff) {

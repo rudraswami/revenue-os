@@ -23,6 +23,7 @@ export interface InboxConversationRow {
   unreadCount: number;
   lastMessageAt: string | null;
   requiresHuman?: boolean;
+  postCloseAttention?: boolean;
   lead: { id: string; stage: string } | null;
   messages: Array<{ content: string | null }>;
 }
@@ -83,7 +84,12 @@ export function InboxConversationList({
   onListFilterChange?: (f: InboxListFilter) => void;
   onListScopeChange?: (s: InboxListScope) => void;
   /** Counts for Your turn / Mine / Unassigned — shown on the single filter chip row only. */
-  queueCounts?: { yourTurn: number; mine: number; unassigned: number };
+  queueCounts?: {
+    yourTurn: number;
+    mine: number;
+    unassigned: number;
+    postCloseUnread?: number;
+  };
 }) {
   const { t } = useI18n();
   const copy = useConversationsCopy();
@@ -287,6 +293,11 @@ export function InboxConversationList({
                       {c.messages[0]?.content ?? "—"}
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {c.postCloseAttention && listScope === "active" && (
+                        <span className="rounded-md bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-900">
+                          Post-close
+                        </span>
+                      )}
                       {c.requiresHuman && listScope === "active" && (
                         <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900">
                           {copy.waitingOnYou}

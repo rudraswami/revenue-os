@@ -202,4 +202,9 @@ export class KnowledgeService {
     this.retrieval.invalidateChunkCountCache(organizationId);
     return chunks;
   }
+
+  /** Queue or inline-embed a document (handbook seed, uploads, re-index). */
+  async scheduleDocumentEmbed(documentId: string, organizationId: string): Promise<number> {
+    return this.scheduleEmbed(documentId, organizationId);
+  }
 }

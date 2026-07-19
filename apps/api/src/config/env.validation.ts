@@ -107,6 +107,20 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   COOKIE_DOMAIN?: string;
+
+  @IsString()
+  @IsOptional()
+  OPENAI_API_KEY?: string;
+}
+
+function isProductionEnv(config: Record<string, unknown>): boolean {
+  return config.VERCEL_ENV === "production" || config.NODE_ENV === "production";
+}
+
+function requireProdSecret(label: string, value: unknown, missing: string[]): void {
+  if (!value || (typeof value === "string" && !value.trim())) {
+    missing.push(label);
+  }
 }
 
 export function validateEnv(config: Record<string, unknown>) {
@@ -125,7 +139,7 @@ export function validateEnv(config: Record<string, unknown>) {
     );
   }
 
-  const isProd = config.NODE_ENV === "production" || config.VERCEL === "1";
+  const isProd = isProductionEnv(config);
   if (isProd) {
     const cookieDomain = String(config.COOKIE_DOMAIN ?? "")
       .replace(/\r/g, "")
@@ -143,19 +157,34 @@ export function validateEnv(config: Record<string, unknown>) {
       );
     }
 
+    const missingRequired: string[] = [];
+    requireProdSecret(
+      "WHATSAPP_APP_SECRET or META_APP_SECRET",
+      validated.WHATSAPP_APP_SECRET ?? validated.META_APP_SECRET,
+      missingRequired,
+    );
+    requireProdSecret("WHATSAPP_VERIFY_TOKEN", validated.WHATSAPP_VERIFY_TOKEN, missingRequired);
+    requireProdSecret("CRON_SECRET", validated.CRON_SECRET, missingRequired);
+    requireProdSecret("TOKEN_ENCRYPTION_KEY", validated.TOKEN_ENCRYPTION_KEY, missingRequired);
+    requireProdSecret("OPENAI_API_KEY", config.OPENAI_API_KEY, missingRequired);
+
+    if (missingRequired.length > 0) {
+      throw new Error(
+        `[env] Production deploy is missing required secrets: ${missingRequired.join(", ")}. ` +
+          "Set these in Vercel before promoting to production.",
+      );
+    }
+
     const recommended: Array<[string, unknown]> = [
-      ["WHATSAPP_APP_SECRET / META_APP_SECRET", validated.WHATSAPP_APP_SECRET ?? validated.META_APP_SECRET],
-      ["WHATSAPP_VERIFY_TOKEN", validated.WHATSAPP_VERIFY_TOKEN],
       ["RAZORPAY_WEBHOOK_SECRET", config.RAZORPAY_WEBHOOK_SECRET],
-      ["TOKEN_ENCRYPTION_KEY", validated.TOKEN_ENCRYPTION_KEY],
-      ["CRON_SECRET", validated.CRON_SECRET],
+      ["RAZORPAY_KEY_ID", config.RAZORPAY_KEY_ID],
     ];
-    const missing = recommended.filter(([, v]) => !v).map(([k]) => k);
-    if (missing.length > 0) {
+    const missingRecommended = recommended.filter(([, v]) => !v).map(([k]) => k);
+    if (missingRecommended.length > 0) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[env] Production deploy is missing recommended secrets: ${missing.join(", ")}. ` +
-          `Webhooks fail closed and tokens fall back to JWT_SECRET until these are set.`,
+        `[env] Production deploy is missing recommended billing secrets: ${missingRecommended.join(", ")}. ` +
+          "Paid upgrades will not work until Razorpay is configured.",
       );
     }
   }

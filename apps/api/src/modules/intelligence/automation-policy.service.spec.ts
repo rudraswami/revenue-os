@@ -120,6 +120,37 @@ describe("AutomationPolicyService", () => {
     expect(result.outcome).toBe("human");
   });
 
+  it("sends greetings in NEGOTIATION stage (courtesy bypasses deal stage)", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({
+        lead: {
+          id: "l1",
+          stage: "NEGOTIATION",
+          score: 80,
+          displayName: "Test",
+          phone: "91",
+          profile: {},
+          aiEnabled: true,
+        },
+      }),
+      classification: {
+        stage: "NEGOTIATION",
+        confidence: 0.9,
+        intent: "Greeting",
+        sentiment: "positive",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [],
+      knowledgeGap: false,
+      executionPath: "fast",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("send");
+    expect(result.blockers).not.toContain("deal_stage");
+  });
+
   it("drafts negotiation stage on balanced", () => {
     const result = service.evaluate({
       settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
@@ -271,5 +302,142 @@ describe("AutomationPolicyService", () => {
     });
     expect(result.outcome).toBe("draft");
     expect(result.blockers).toContain("apology_required");
+  });
+
+  it("sends greetings on WON stage (post-sale courtesy)", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({
+        lead: {
+          id: "l1",
+          stage: "WON",
+          score: 100,
+          displayName: "Test",
+          phone: "91",
+          profile: {},
+          aiEnabled: true,
+        },
+      }),
+      classification: {
+        stage: "WON",
+        confidence: 0.9,
+        intent: "Greeting",
+        sentiment: "positive",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [],
+      knowledgeGap: false,
+      executionPath: "fast",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("send");
+    expect(result.blockers).not.toContain("terminal_stage");
+  });
+
+  it("drafts commercial messages on WON stage", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({
+        lastInbound: "Any discount on renewal?",
+        lead: {
+          id: "l1",
+          stage: "WON",
+          score: 100,
+          displayName: "Test",
+          phone: "91",
+          profile: {},
+          aiEnabled: true,
+        },
+      }),
+      classification: {
+        stage: "WON",
+        confidence: 0.85,
+        intent: "Pricing",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "pricing",
+          title: "Pricing",
+          content: "Growth ₹2999",
+          similarity: 0.9,
+          citation: "Pricing",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("draft");
+    expect(result.blockers).toContain("post_sale_commercial");
+  });
+
+  it("sends grounded FAQ at PROPOSAL when not commercially sensitive", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({
+        lastInbound: "What are your office hours?",
+        lead: {
+          id: "l1",
+          stage: "PROPOSAL",
+          score: 70,
+          displayName: "Test",
+          phone: "91",
+          profile: {},
+          aiEnabled: true,
+        },
+      }),
+      classification: {
+        stage: "PROPOSAL",
+        confidence: 0.85,
+        intent: "General inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "faq",
+          title: "Hours",
+          content: "Mon-Sat 10am-7pm",
+          similarity: 0.88,
+          citation: "Hours",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("send");
+    expect(result.blockers).not.toContain("deal_stage");
+  });
+
+  it("drafts FAQ when Business Knowledge is not indexed", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "What are your office hours?" }),
+      classification: {
+        stage: "NEW",
+        confidence: 0.85,
+        intent: "General inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+      hasIndexedChunks: false,
+    });
+    expect(result.outcome).toBe("draft");
+    expect(result.blockers).toContain("kb_not_indexed");
   });
 });

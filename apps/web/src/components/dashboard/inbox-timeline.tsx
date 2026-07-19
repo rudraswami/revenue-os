@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
-import type { WorkingMemory } from "@growvisi/shared";
+import { formatRelationshipPhase, type WorkingMemory } from "@growvisi/shared";
 import { Button } from "@/components/ui/button";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { cn } from "@/lib/utils";
@@ -194,8 +194,14 @@ export function InboxTimeline({
           {workingMemory && (
             <div className="mb-3 space-y-2 border-b border-border/50 pb-3">
               <p className="text-xs font-semibold text-foreground">What Growvisi knows</p>
-              <p className="text-[11px] capitalize text-muted-foreground">
-                {workingMemory.engagementPhase.replace(/_/g, " ")}
+              <p className="text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {formatRelationshipPhase(workingMemory.relationshipPhase)}
+                </span>
+                <span className="capitalize">
+                  {" "}
+                  · {workingMemory.engagementPhase.replace(/_/g, " ")}
+                </span>
                 {workingMemory.customerCard.language
                   ? ` · ${workingMemory.customerCard.language}`
                   : ""}

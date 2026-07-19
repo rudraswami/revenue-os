@@ -8,7 +8,13 @@ import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
-import { canInviteRole } from "@growvisi/shared";
+import {
+  canInviteRole,
+  getIndustryHandbook,
+  isIndustryHandbookId,
+  listIndustryHandbooks,
+  mergeIndustryHandbookProfile,
+} from "@growvisi/shared";
 import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics, buildPostActivationCoaching } from "@growvisi/shared";
 import { AuthService } from "../auth/auth.service";
 import { EntitlementsService } from "../billing/entitlements.service";
@@ -16,6 +22,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
+import { KnowledgeService } from "../knowledge/knowledge.service";
 import { normalizePaymentIntegration } from "./payment-integration";
 import { mergeCoachingSettings, normalizeWorkspaceOpsSettings } from "./workspace-settings";
 import {
@@ -75,6 +82,7 @@ export class OrganizationsService {
     private readonly auth: AuthService,
     private readonly whatsappAccounts: WhatsappAccountsService,
     private readonly knowledgeRetrieval: KnowledgeRetrievalService,
+    private readonly knowledge: KnowledgeService,
   ) {}
 
   async getCurrent(user: JwtPayload) {
@@ -190,6 +198,95 @@ export class OrganizationsService {
       },
     });
     return next;
+  }
+
+  listIndustryHandbooks() {
+    return listIndustryHandbooks();
+  }
+
+  async applyIndustryHandbook(
+    user: JwtPayload,
+    industryId: string,
+    opts?: { seedKnowledge?: boolean },
+  ) {
+    this.assertAdmin(user);
+    if (!isIndustryHandbookId(industryId)) {
+      throw new BadRequestException("Unknown industry handbook.");
+    }
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { settings: true, name: true },
+    });
+    if (!org) throw new NotFoundException("Organization not found");
+
+    const settings = (org.settings ?? {}) as Record<string, unknown>;
+    const current = resolveIntelligenceSettings(settings, org.name);
+    const handbook = getIndustryHandbook(industryId);
+    const businessProfile = mergeIndustryHandbookProfile(
+      org.name,
+      industryId,
+      current.businessProfile,
+    );
+
+    const next = resolveIntelligenceSettings(
+      {
+        intelligence: {
+          ...current,
+          industryId,
+          businessProfile,
+        },
+      },
+      org.name,
+    );
+
+    await this.prisma.organization.update({
+      where: { id: user.organizationId },
+      data: {
+        settings: {
+          ...settings,
+          intelligence: next,
+        } as object,
+      },
+    });
+
+    let knowledgeDocsCreated = 0;
+    if (opts?.seedKnowledge !== false) {
+      for (const seed of handbook.knowledgeSeeds) {
+        const existing = await this.prisma.knowledgeDocument.findFirst({
+          where: {
+            organizationId: user.organizationId,
+            title: seed.title,
+          },
+        });
+        if (existing) continue;
+        const doc = await this.prisma.knowledgeDocument.create({
+          data: {
+            organizationId: user.organizationId,
+            title: seed.title,
+            category: seed.category,
+            sourceType: "industry_handbook",
+            rawContent: seed.content,
+            status: "pending",
+          },
+        });
+        await this.knowledge.scheduleDocumentEmbed(doc.id, user.organizationId);
+        knowledgeDocsCreated += 1;
+      }
+      if (knowledgeDocsCreated > 0) {
+        this.knowledgeRetrieval.invalidateChunkCountCache(user.organizationId);
+      }
+    }
+
+    return {
+      intelligence: next,
+      industryId,
+      knowledgeDocsCreated,
+      message:
+        knowledgeDocsCreated > 0
+          ? `Applied ${handbook.label} handbook. ${knowledgeDocsCreated} knowledge doc(s) queued for indexing.`
+          : `Applied ${handbook.label} employee handbook.`,
+    };
   }
 
   async updateReplyTemplates(
@@ -788,6 +885,9 @@ export class OrganizationsService {
       goLive,
       ops,
       coaching,
+      platformHealth: {
+        openAiConfigured: Boolean(this.config.get<string>("OPENAI_API_KEY")?.trim()),
+      },
     };
   }
 }

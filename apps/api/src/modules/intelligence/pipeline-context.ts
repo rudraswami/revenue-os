@@ -1,4 +1,9 @@
-import type { AiClassificationResult, BusinessEmployeeProfile, KnowledgeHit } from "@growvisi/shared";
+import type {
+  AiClassificationResult,
+  BusinessEmployeeProfile,
+  IntelligenceWorkspaceSettings,
+  KnowledgeHit,
+} from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
 import type { ExecutionRoute } from "./execution-router.service";
 import type { PipelineSpans } from "./pipeline-spans";
@@ -12,12 +17,15 @@ export interface PipelineContext {
   knowledgeGap: boolean;
   executionRoute?: ExecutionRoute;
   spans?: PipelineSpans;
+  intelligenceSettings?: IntelligenceWorkspaceSettings;
+  hasIndexedChunks?: boolean;
+  groundingConfidence?: number;
 }
 
 export interface DeferredCrmSync {
   organizationId: string;
   conversationId: string;
-  leadId: string;
+  leadId?: string;
   result: AiClassificationResult;
   ctx: ConversationContext;
   aiRunId: string;

@@ -15,7 +15,7 @@ const rows: {
   { feature: "YOUR TURN — who owns the reply", wa: false, broadcast: false, growvisi: true },
   { feature: "AI intent + lead score", wa: false, broadcast: false, growvisi: true },
   { feature: "Revenue analytics (INR)", wa: false, broadcast: false, growvisi: true },
-  { feature: "Growvisi auto-replies customers", wa: false, broadcast: "limited", growvisi: "Never" },
+  { feature: "Growvisi auto-replies customers", wa: false, broadcast: "limited", growvisi: "Optional — guarded only" },
   { feature: "Broadcast / campaigns", wa: "limited", broadcast: true, growvisi: true },
 ];
 

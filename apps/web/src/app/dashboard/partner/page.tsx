@@ -99,7 +99,7 @@ export default function PartnerPage() {
 We're setting up your WhatsApp revenue stack with Growvisi:
 
 1. Your team replies from Growvisi Conversations (human messages) — optional Meta Business Agent for FAQ
-2. Growvisi AI classifies leads, updates pipeline ₹, and alerts your team — never auto-replies customers
+2. Growvisi AI classifies leads, updates pipeline ₹, and alerts your team — your team sends by default; optional guarded auto-send on Growth
 3. Connect WhatsApp with Meta Embedded Signup (no API token paste)
 
 You'll get a Growvisi workspace invite. Connect your business number, send a test message from your phone, and we'll verify classification + pipeline in under 15 minutes.

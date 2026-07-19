@@ -88,6 +88,28 @@ export function resolveReplyIntentKind(
 }
 
 /** Intent-specific instructions for the reply composer (sales rep playbook). */
+export function playbookForRelationshipPhase(
+  phase: "pre_sale" | "active_deal" | "post_sale" | "win_back",
+): string {
+  switch (phase) {
+    case "post_sale":
+      return [
+        "Relationship: Post-sale customer.",
+        "Be supportive and helpful. Focus on delivery, scheduling, and service — do not pitch or upsell unless they ask.",
+      ].join(" ");
+    case "win_back":
+      return [
+        "Relationship: Win-back opportunity.",
+        "Be warm and professional. Acknowledge their return. Do not pressure — invite conversation.",
+      ].join(" ");
+    case "active_deal":
+      return "Relationship: Active deal — be clear, responsive, and move toward next step.";
+    default:
+      return "Relationship: Pre-sale — welcome, qualify needs, build trust.";
+  }
+}
+
+/** Intent-specific instructions for the reply composer (sales rep playbook). */
 export function playbookForIntent(kind: ReplyIntentKind): string {
   switch (kind) {
     case "greeting":

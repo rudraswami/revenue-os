@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/auth-session-death.test.ts"
+    "test": "tsx --test src/lib/auth-session-death.test.ts src/lib/jwt-expiry.test.ts"
   },
   "dependencies": {
     "@growvisi/shared": "workspace:*",
@@ -22,6 +22,7 @@
     "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.6",
+    "@sentry/browser": "^10.66.0",
     "@tanstack/react-query": "^5.62.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

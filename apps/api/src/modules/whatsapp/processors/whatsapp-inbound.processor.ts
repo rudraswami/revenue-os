@@ -58,15 +58,13 @@ export class WhatsappInboundProcessor extends WorkerHost {
           },
         });
 
-        if (event.leadId) {
-          await this.aiClassify.enqueue({
-            organizationId: event.organizationId,
-            conversationId: event.conversationId,
-            messageId: event.messageId,
-            leadId: event.leadId,
-            correlationId,
-          });
-        }
+        await this.aiClassify.enqueue({
+          organizationId: event.organizationId,
+          conversationId: event.conversationId,
+          messageId: event.messageId,
+          ...(event.leadId ? { leadId: event.leadId } : {}),
+          correlationId,
+        });
       }
       for (const orgId of orgIds) {
         this.realtime.emitInboxUpdated(orgId);

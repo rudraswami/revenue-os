@@ -102,6 +102,7 @@ export class ConversationsService {
       handoffConversations,
       mineOpen,
       unassignedOpen,
+      postCloseUnread,
     ] = await Promise.all([
       this.prisma.conversation.count({
         where: {
@@ -160,6 +161,13 @@ export class ConversationsService {
           assignedToId: null,
         },
       }),
+      this.prisma.conversation.count({
+        where: {
+          organizationId: orgId,
+          unreadCount: { gt: 0 },
+          lead: { is: { stage: { in: closedStages } } },
+        },
+      }),
     ]);
 
     return {
@@ -176,6 +184,7 @@ export class ConversationsService {
         yourTurn: handoffConversations,
         mine: mineOpen,
         unassigned: unassignedOpen,
+        postCloseUnread,
       },
     };
   }
@@ -213,6 +222,10 @@ export class ConversationsService {
         OR: [
           { leadId: null },
           { lead: { is: { stage: { notIn: closedStages } } } },
+          {
+            unreadCount: { gt: 0 },
+            lead: { is: { stage: { in: closedStages } } },
+          },
         ],
       });
     }
@@ -256,9 +269,15 @@ export class ConversationsService {
     return {
       data: data.map((row) => {
         const meta = (row.metadata ?? {}) as Record<string, unknown>;
+        const stage = row.lead?.stage;
+        const postCloseAttention =
+          !!stage &&
+          (stage === LeadStage.WON || stage === LeadStage.LOST) &&
+          row.unreadCount > 0;
         return {
           ...row,
           requiresHuman: meta.requiresHuman === true,
+          postCloseAttention,
         };
       }),
       total,

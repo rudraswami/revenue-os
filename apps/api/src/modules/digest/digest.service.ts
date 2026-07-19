@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
+import { LearningSignalService } from "../intelligence/learning-signal.service";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import {
   getIstNow,
@@ -23,6 +24,7 @@ export class DigestService {
     private readonly config: ConfigService,
     private readonly entitlements: EntitlementsService,
     private readonly knowledge: KnowledgeRetrievalService,
+    private readonly learning: LearningSignalService,
     private readonly whatsapp: WhatsappMessagingService,
   ) {}
 
@@ -193,6 +195,7 @@ export class DigestService {
       openTasksByMember,
       kbHealth,
       recentKnowledgeGaps,
+      autonomyMetrics,
     ] = await Promise.all([
       this.prisma.lead.aggregate({
         where: {
@@ -259,6 +262,7 @@ export class DigestService {
           output: { path: ["metrics", "knowledgeGap"], equals: true },
         },
       }),
+      this.learning.aggregateAutonomyMetrics(organizationId, 7),
     ]);
 
     const memberIds = openTasksByMember
@@ -305,7 +309,8 @@ export class DigestService {
       hotLeadRows.length > 0 ||
       overdueTasks > 0 ||
       kbHealth.gapRiskScore >= 50 ||
-      recentKnowledgeGaps > 0;
+      recentKnowledgeGaps > 0 ||
+      autonomyMetrics.autoSent > 0;
 
     return {
       hasActivity,
@@ -322,6 +327,7 @@ export class DigestService {
         readyForResponsivePreset: kbHealth.readyForResponsivePreset,
       },
       recentKnowledgeGaps,
+      autonomyMetrics,
     };
   }
 

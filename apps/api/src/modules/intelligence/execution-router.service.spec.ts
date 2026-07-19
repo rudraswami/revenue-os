@@ -43,6 +43,7 @@ function ctx(lastInbound: string, outbound = false): ConversationContext {
   return {
     organizationId: "org",
     conversationId: "conv",
+    hasLeadRecord: true,
     leadId: "lead",
     lead,
     conversation: {

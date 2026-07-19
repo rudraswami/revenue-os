@@ -5,6 +5,7 @@ import { ContextBuilderService } from "./context-builder.service";
 import { resolveReplyIntentKind } from "./reply-intent";
 import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
 import { ObservedMemoryService } from "./observed-memory.service";
+import { LearningSignalService } from "./learning-signal.service";
 
 @Injectable()
 export class IntelligenceQueryService {
@@ -13,20 +14,28 @@ export class IntelligenceQueryService {
     private readonly contextBuilder: ContextBuilderService,
     private readonly memory: ObservedMemoryService,
     private readonly knowledge: KnowledgeRetrievalService,
+    private readonly learning: LearningSignalService,
   ) {}
 
   async getConversationIntelligence(user: JwtPayload, conversationId: string) {
     const ctx = await this.contextBuilder.buildForConversation(
       user.organizationId,
       conversationId,
-      8,
     );
 
-    const plan = await this.prisma.actionPlan.findFirst({
-      where: { organizationId: user.organizationId, conversationId },
-      orderBy: { createdAt: "desc" },
-      include: { actions: { orderBy: { createdAt: "asc" } } },
-    });
+    const [plan, kbHealth, conv, autonomyMetrics] = await Promise.all([
+      this.prisma.actionPlan.findFirst({
+        where: { organizationId: user.organizationId, conversationId },
+        orderBy: { createdAt: "desc" },
+        include: { actions: { orderBy: { createdAt: "asc" } } },
+      }),
+      this.knowledge.getHealth(user.organizationId),
+      this.prisma.conversation.findFirst({
+        where: { id: conversationId, organizationId: user.organizationId },
+        select: { metadata: true },
+      }),
+      this.learning.aggregateAutonomyMetrics(user.organizationId, 7),
+    ]);
 
     const classification =
       plan?.classification && typeof plan.classification === "object"
@@ -44,10 +53,6 @@ export class IntelligenceQueryService {
 
     const observedMemory = await this.memory.listForConversation(conversationId);
 
-    const conv = await this.prisma.conversation.findFirst({
-      where: { id: conversationId, organizationId: user.organizationId },
-      select: { metadata: true },
-    });
     const meta =
       conv?.metadata && typeof conv.metadata === "object"
         ? (conv.metadata as Record<string, unknown>)
@@ -85,7 +90,13 @@ export class IntelligenceQueryService {
       replyDecision,
       customerNeeds: classification?.customerNeeds,
       workingMemory: ctx.workingMemory,
+      kbHealth,
+      autonomyMetrics,
     };
+  }
+
+  async getAutonomyMetrics(user: JwtPayload, periodDays = 7) {
+    return this.learning.aggregateAutonomyMetrics(user.organizationId, periodDays);
   }
 
   async getReplyDecision(user: JwtPayload, conversationId: string) {

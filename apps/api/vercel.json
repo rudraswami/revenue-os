@@ -23,6 +23,10 @@
     {
       "path": "/api/v1/internal/cron/scheduled-campaigns",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/v1/internal/cron/data-retention",
+      "schedule": "0 4 * * 0"
     }
   ]
 }

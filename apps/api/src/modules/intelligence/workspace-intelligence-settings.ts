@@ -35,7 +35,12 @@ export function normalizeIntelligenceSettings(raw: unknown): IntelligenceWorkspa
   const safety =
     input.safety && typeof input.safety === "object" ? input.safety : undefined;
 
-  return { replyAutonomy, automationPreset, automationRules, safety };
+  const industryId =
+    typeof input.industryId === "string" && input.industryId.trim()
+      ? input.industryId.trim()
+      : undefined;
+
+  return { replyAutonomy, automationPreset, automationRules, safety, industryId };
 }
 
 export function readIntelligenceSettingsFromOrg(

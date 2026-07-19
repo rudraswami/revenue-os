@@ -13,6 +13,7 @@ import {
 import {
   buildRagQuery,
   playbookForIntent,
+  playbookForRelationshipPhase,
   resolveReplyIntentKind,
 } from "./reply-intent";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
@@ -70,7 +71,6 @@ export class ReplyComposerService {
       (await this.contextBuilder.buildForConversation(
         input.organizationId,
         input.conversationId,
-        16,
       ));
     spans?.measure("compose_context_ms", "compose_start");
 
@@ -88,7 +88,10 @@ export class ReplyComposerService {
     }
 
     const intentKind = resolveReplyIntentKind(ctx.lastInbound, classification);
-    const playbook = playbookForIntent(intentKind);
+    const playbook = [
+      playbookForIntent(intentKind),
+      playbookForRelationshipPhase(ctx.workingMemory.relationshipPhase),
+    ].join(" ");
 
     let hits: KnowledgeHit[] = input.pipelineContext?.knowledgeHits ?? [];
     if (hits.length === 0 && !input.pipelineContext) {
@@ -203,6 +206,7 @@ export class ReplyComposerService {
                   autoSend: input.decision?.mode === "send",
                   playbook,
                   intentKind,
+                  relationshipPhase: ctx.workingMemory.relationshipPhase,
                   businessName,
                   contactName,
                   businessProfile,
@@ -357,6 +361,7 @@ export class ReplyComposerService {
     autoSend?: boolean;
     playbook: string;
     intentKind: string;
+    relationshipPhase?: string;
     businessName?: string | null;
     contactName?: string;
     businessProfile: BusinessEmployeeProfile;
@@ -386,6 +391,11 @@ export class ReplyComposerService {
         ? "Do not say 'Hello again' or 'nice to hear from you' if the thread already has messages."
         : "",
       opts.playbook,
+      opts.relationshipPhase === "post_sale"
+        ? "Customer already won — help with service and logistics, not sales pressure."
+        : opts.relationshipPhase === "win_back"
+          ? "Customer may be returning after a lost deal — be welcoming, not pushy."
+          : "",
       opts.classification?.replyBrief
         ? `Reply checklist: ${opts.classification.replyBrief}`
         : "",

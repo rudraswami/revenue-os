@@ -5,6 +5,7 @@ import { AutomationsService } from "../automations/automations.service";
 import { CampaignsService } from "../campaigns/campaigns.service";
 import { DigestService } from "../digest/digest.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
+import { DataRetentionService } from "./data-retention.service";
 
 @SkipThrottle()
 @Controller("internal/cron")
@@ -14,6 +15,7 @@ export class InternalCronController {
     private readonly automations: AutomationsService,
     private readonly digest: DigestService,
     private readonly campaigns: CampaignsService,
+    private readonly retention: DataRetentionService,
   ) {}
 
   /** Vercel Cron: remind workspace owners to refresh expiring Meta API tokens. */
@@ -49,5 +51,12 @@ export class InternalCronController {
   @UseGuards(CronSecretGuard)
   runScheduledCampaigns() {
     return this.campaigns.processDueScheduledCampaigns();
+  }
+
+  /** Weekly purge of processed webhook events and completed AI runs (90d TTL). */
+  @Get("data-retention")
+  @UseGuards(CronSecretGuard)
+  runDataRetention() {
+    return this.retention.purgeOldOperationalData();
   }
 }

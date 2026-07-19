@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { LeadStage } from "@growvisi/shared";
-import { buildWorkingMemory, type WorkingMemory } from "@growvisi/shared";
+import { buildWorkingMemory, resolveContextMessageLimit, type WorkingMemory } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface ConversationContextMessage {
@@ -14,6 +14,8 @@ export interface ConversationContextMessage {
 export interface ConversationContext {
   organizationId: string;
   conversationId: string;
+  /** False when monthly lead cap blocked CRM lead creation — classify still runs. */
+  hasLeadRecord: boolean;
   leadId: string;
   lead: {
     id: string;
@@ -52,30 +54,47 @@ export class ContextBuilderService {
   async buildForConversation(
     organizationId: string,
     conversationId: string,
-    messageLimit = 16,
+    messageLimit?: number,
   ): Promise<ConversationContext> {
     const conversation = await this.prisma.conversation.findFirst({
       where: { id: conversationId, organizationId },
-      include: {
-        lead: true,
-        messages: { orderBy: { createdAt: "desc" }, take: messageLimit },
-      },
+      include: { lead: true },
     });
 
-    if (!conversation?.lead) {
-      throw new NotFoundException("Conversation or lead not found");
+    if (!conversation) {
+      throw new NotFoundException("Conversation not found");
     }
 
-    const ordered = [...conversation.messages].reverse();
+    const hasLeadRecord = Boolean(conversation.lead);
+    const leadRow = conversation.lead ?? {
+      id: `pending:${conversationId}`,
+      stage: "NEW" as LeadStage,
+      score: 10,
+      displayName: conversation.contactName,
+      phone: conversation.contactPhone,
+      profile: {},
+      aiEnabled: conversation.aiEnabled,
+    };
+
+    const stage = leadRow.stage as LeadStage;
+    const effectiveLimit =
+      messageLimit ?? resolveContextMessageLimit(stage);
+
+    const messages = await this.prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: "desc" },
+      take: effectiveLimit,
+    });
+
+    const ordered = [...messages].reverse();
     const transcript = this.buildTranscript(ordered);
     const lastInbound = [...ordered]
       .reverse()
       .find((m) => m.direction === "INBOUND")?.content ?? null;
-    const ragQuery = (lastInbound ?? transcript).slice(0, 600);
 
     const profile =
-      conversation.lead.profile && typeof conversation.lead.profile === "object"
-        ? (conversation.lead.profile as Record<string, unknown>)
+      leadRow.profile && typeof leadRow.profile === "object"
+        ? (leadRow.profile as Record<string, unknown>)
         : {};
 
     const metadata =
@@ -103,6 +122,18 @@ export class ContextBuilderService {
         };
       });
 
+    const summaryFromMemory =
+      observedMemory.find((m) => m.type === "summary")?.content ?? null;
+    const intentFromMemory = observedMemory.find((m) =>
+      m.content.toLowerCase().startsWith("intent:"),
+    )?.content;
+    const ragQuery =
+      [lastInbound, summaryFromMemory, intentFromMemory]
+        .filter((p) => typeof p === "string" && p.trim().length > 0)
+        .map((p) => String(p).trim())
+        .join(" — ")
+        .slice(0, 600) || (lastInbound ?? transcript).slice(0, 600);
+
     const messageRows = ordered.map((m) => ({
       id: m.id,
       direction: m.direction,
@@ -113,10 +144,10 @@ export class ContextBuilderService {
 
     const workingMemory = buildWorkingMemory({
       lead: {
-        stage: conversation.lead.stage as LeadStage,
-        score: conversation.lead.score,
-        displayName: conversation.lead.displayName,
-        phone: conversation.lead.phone,
+        stage: leadRow.stage as LeadStage,
+        score: leadRow.score,
+        displayName: leadRow.displayName,
+        phone: leadRow.phone,
         profile,
       },
       conversation: { contactName: conversation.contactName },
@@ -127,13 +158,14 @@ export class ContextBuilderService {
     return {
       organizationId,
       conversationId,
-      leadId: conversation.lead.id,
+      hasLeadRecord,
+      leadId: leadRow.id,
       lead: {
-        id: conversation.lead.id,
-        stage: conversation.lead.stage as LeadStage,
-        score: conversation.lead.score,
-        displayName: conversation.lead.displayName,
-        phone: conversation.lead.phone,
+        id: leadRow.id,
+        stage: leadRow.stage as LeadStage,
+        score: leadRow.score,
+        displayName: leadRow.displayName,
+        phone: leadRow.phone,
         profile,
         aiEnabled: conversation.aiEnabled,
       },

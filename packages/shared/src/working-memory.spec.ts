@@ -3,6 +3,7 @@ import {
   detectContradictionFlags,
   extractLastQuotedAmount,
   resolveEngagementPhase,
+  resolveRelationshipPhase,
   type BuildWorkingMemoryInput,
 } from "./working-memory";
 
@@ -56,6 +57,30 @@ describe("working-memory", () => {
         messages: [{ direction: "OUTBOUND", content: "Quote sent" }],
       }),
     ).toBe("active_deal");
+  });
+
+  it("resolves relationship phase from CRM stage", () => {
+    expect(resolveRelationshipPhase({ ...baseInput, lead: { ...baseInput.lead, stage: "NEW" } })).toBe(
+      "pre_sale",
+    );
+    expect(
+      resolveRelationshipPhase({ ...baseInput, lead: { ...baseInput.lead, stage: "PROPOSAL" } }),
+    ).toBe("active_deal");
+    expect(resolveRelationshipPhase({ ...baseInput, lead: { ...baseInput.lead, stage: "WON" } })).toBe(
+      "post_sale",
+    );
+    expect(resolveRelationshipPhase({ ...baseInput, lead: { ...baseInput.lead, stage: "LOST" } })).toBe(
+      "win_back",
+    );
+  });
+
+  it("includes relationship phase in working memory", () => {
+    const wm = buildWorkingMemory({
+      ...baseInput,
+      lead: { ...baseInput.lead, stage: "WON" },
+      messages: [{ direction: "INBOUND", content: "Thanks" }],
+    });
+    expect(wm.relationshipPhase).toBe("post_sale");
   });
 
   it("extracts last quoted amount from outbound", () => {

@@ -57,6 +57,16 @@ jobs:
           JWT_SECRET: ci-test-secret-minimum-32-characters-long
           REDIS_URL: redis://localhost:6379
 
+      - name: Run tests
+        run: pnpm test
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          JWT_SECRET: ci-test-secret-minimum-32-characters-long
+          REDIS_URL: redis://localhost:6379
+
+      - name: Lint
+        run: pnpm --filter @growvisi/api lint && pnpm --filter @growvisi/web lint
+
       - run: pnpm build
         env:
           DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os

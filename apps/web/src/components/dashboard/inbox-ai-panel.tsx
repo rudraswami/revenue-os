@@ -37,6 +37,7 @@ export function InboxAiPanel({
   onTakeover,
   onResolveHandoff,
   knowledgeGaps = [],
+  kbHealth,
   coachTakeover,
   takeoverPending,
   resolvePending,
@@ -48,6 +49,7 @@ export function InboxAiPanel({
   onTakeover: (taskTitle?: string) => void;
   onResolveHandoff: () => void;
   knowledgeGaps?: string[];
+  kbHealth?: { chunkCount: number; readyForResponsivePreset: boolean } | null;
   coachTakeover?: boolean;
   takeoverPending?: boolean;
   resolvePending?: boolean;
@@ -60,7 +62,12 @@ export function InboxAiPanel({
     }
   }, [requiresHuman, coachTakeover, canEdit]);
 
-  if (!requiresHuman && knowledgeGaps.length === 0 && !(aiContext?.customerNeeds?.length ?? 0)) {
+  if (
+    !requiresHuman &&
+    knowledgeGaps.length === 0 &&
+    !(aiContext?.customerNeeds?.length ?? 0) &&
+    !(kbHealth && kbHealth.chunkCount === 0)
+  ) {
     return null;
   }
 
@@ -69,6 +76,14 @@ export function InboxAiPanel({
 
   return (
     <div className="border-t border-border/50 bg-background/80 px-4 py-2 lg:px-5">
+      {kbHealth && kbHealth.chunkCount === 0 && (
+        <div className="mb-2 rounded-lg border border-amber-200/70 bg-amber-50/70 px-3 py-2 text-xs text-amber-950">
+          <p className="leading-relaxed text-amber-900/90">
+            Business Knowledge is empty — Growvisi can greet customers but cannot auto-answer
+            questions yet. Add docs in Intelligence.
+          </p>
+        </div>
+      )}
       {knowledgeGaps.length > 0 && (
         <div className="mb-2 rounded-lg border border-amber-200/70 bg-amber-50/70 px-3 py-2 text-xs text-amber-950">
           <p className="leading-relaxed text-amber-900/90">

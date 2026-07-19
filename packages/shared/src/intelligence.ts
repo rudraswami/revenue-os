@@ -1,4 +1,6 @@
 import type { AiClassificationResult } from "./types";
+import type { KnowledgeHealthSummary } from "./knowledge-retrieval";
+import type { AutonomyMetricsSnapshot } from "./autonomy-metrics";
 import type { WorkingMemory } from "./working-memory";
 
 export const KNOWLEDGE_CATEGORIES = [
@@ -75,6 +77,8 @@ export interface ConversationIntelligenceView {
   customerNeeds?: string[];
   /** Phase 3 — engagement + customer card snapshot. */
   workingMemory?: WorkingMemory;
+  kbHealth?: KnowledgeHealthSummary;
+  autonomyMetrics?: AutonomyMetricsSnapshot;
 }
 
 /** Workspace default for how Growvisi handles customer replies. */
@@ -136,6 +140,8 @@ export interface IntelligenceWorkspaceSettings {
   replyAutonomy: ReplyAutonomyMode;
   /** Preset for auto_guarded — careful / balanced / responsive. */
   automationPreset: AutomationPolicyPreset;
+  /** Applied industry employee handbook (optional). */
+  industryId?: string;
   /** Optional overrides; merged on top of preset defaults server-side. */
   automationRules?: Partial<AutomationPolicyRules>;
   safety?: Partial<AutomationSafetySettings>;
@@ -172,7 +178,7 @@ export const AUTOMATION_PRESET_DEFAULTS: Record<
     autoSendPricingWhenGrounded: false,
     minClassifyConfidence: 0.6,
     minGroundingSimilarity: 0.75,
-    humanForStages: ["NEGOTIATION", "PROPOSAL", "WON", "LOST"],
+    humanForStages: ["NEGOTIATION", "PROPOSAL"],
   },
   balanced: {
     autoSendGreetings: true,

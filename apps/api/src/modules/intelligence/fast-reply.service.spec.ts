@@ -38,6 +38,7 @@ function ctx(
   return {
     organizationId: "org",
     conversationId: "conv",
+    hasLeadRecord: true,
     leadId: "lead",
     lead,
     conversation: {

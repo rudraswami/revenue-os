@@ -26,6 +26,7 @@ import { BusinessContextCard } from "@/components/settings/business-context-card
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
+import { IntelligenceReplySettingsCard } from "@/components/dashboard/intelligence-reply-settings-card";
 import { SettingsSection, SettingsTabLoader } from "@/components/settings/settings-section";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
 import { AuditActivityCard } from "@/components/settings/audit-activity-card";
@@ -242,6 +243,12 @@ function SettingsTabContent({
     case "intelligence":
       return (
         <div className="space-y-5">
+          <SettingsSection
+            title="Reply policy"
+            description="How Growvisi handles inbound messages — classify, suggest drafts, or guarded auto-send on Growth."
+          >
+            <IntelligenceReplySettingsCard />
+          </SettingsSection>
           <SettingsSection
             title="Business context"
             description="Pricing, policies, and FAQs — indexed for AI-assisted reply drafts in Conversations."

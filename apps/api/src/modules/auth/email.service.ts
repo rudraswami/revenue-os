@@ -108,6 +108,26 @@ export class EmailService {
     });
   }
 
+  async sendPostCloseAlert(opts: {
+    to: string[];
+    organizationName: string;
+    leadLabel: string;
+    stage: string;
+    inboxUrl: string;
+  }): Promise<void> {
+    await this.sendRaw({
+      to: opts.to,
+      subject: `Post-close message: ${opts.leadLabel} (${opts.stage})`,
+      html: `
+        <p>Hi,</p>
+        <p>A customer messaged again on a <strong>${opts.stage}</strong> thread in <strong>${opts.organizationName}</strong>.</p>
+        <p><strong>${opts.leadLabel}</strong> has an unread message — reply from Inbox when you can.</p>
+        <p><a href="${opts.inboxUrl}">Open conversation</a></p>
+      `,
+      replyTo: GROWVISI_EMAIL_SUPPORT,
+    });
+  }
+
   async sendHandoffAlert(opts: {
     to: string[];
     organizationName: string;
@@ -224,6 +244,14 @@ export class EmailService {
     };
     recentKnowledgeGaps?: number;
     knowledgeUrl?: string;
+    autonomyMetrics?: {
+      periodDays: number;
+      classifiedTurns: number;
+      autoSent: number;
+      autoSendRate: number;
+      draftAcceptanceRate: number;
+      topBlockers: Array<{ code: string; count: number }>;
+    };
   }): Promise<void> {
     const formatInr = (n: number) =>
       new Intl.NumberFormat("en-IN", {
@@ -270,6 +298,26 @@ export class EmailService {
         </div>`
       : "";
 
+    const am = opts.autonomyMetrics;
+    const autonomyBlock =
+      am && am.classifiedTurns > 0
+        ? `<div style="margin:20px 0;padding:14px 16px;background:#f0faf6;border-radius:10px;border:1px solid #b8e6d4">
+          <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#006c49">AI workforce (last ${am.periodDays} days)</p>
+          <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:#0b1c30">
+            <strong>${am.autoSent}</strong> messages auto-handled
+            (${Math.round(am.autoSendRate * 100)}% of ${am.classifiedTurns} classified turns).
+            Draft acceptance: ${Math.round(am.draftAcceptanceRate * 100)}%.
+          </p>
+          ${
+            am.topBlockers.length > 0
+              ? `<p style="margin:0;font-size:12px;color:#555">Top hold reasons: ${am.topBlockers
+                  .map((b) => `${b.code.replace(/_/g, " ")} (${b.count})`)
+                  .join(", ")}</p>`
+              : ""
+          }
+        </div>`
+        : "";
+
     await this.sendRaw({
       to: opts.to,
       subject: `Your Growvisi morning brief — ${opts.organizationName}`,
@@ -294,6 +342,8 @@ export class EmailService {
           </ul>
 
           ${kbBlock}
+
+          ${autonomyBlock}
 
           <p style="font-size:13px;font-weight:700;margin:20px 0 8px">Hot leads</p>
           <table style="width:100%;border-collapse:collapse;font-size:13px">${hotRows}</table>

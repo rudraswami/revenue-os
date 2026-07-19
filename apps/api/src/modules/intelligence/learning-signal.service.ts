@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { buildAutonomyMetricsSnapshot, type AutonomyMetricsSnapshot } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -61,6 +62,110 @@ export class LearningSignalService {
           intent: opts.intent ?? null,
         } as object,
       },
+    });
+  }
+
+  async recordTrustRailBlock(opts: {
+    organizationId: string;
+    conversationId: string;
+    aiRunId?: string;
+    blocker: string;
+    reason?: string;
+    intentKind?: string;
+  }) {
+    await this.prisma.learningSignal.create({
+      data: {
+        organizationId: opts.organizationId,
+        conversationId: opts.conversationId,
+        aiRunId: opts.aiRunId,
+        type: "trust_rail_block",
+        signal: opts.blocker,
+        metadata: {
+          reason: opts.reason ?? null,
+          intentKind: opts.intentKind ?? null,
+        } as object,
+      },
+    });
+  }
+
+  /** Rolling autonomy metrics for digest and Intelligence dashboard. */
+  async aggregateAutonomyMetrics(
+    organizationId: string,
+    periodDays = 7,
+  ): Promise<AutonomyMetricsSnapshot> {
+    const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+    const [classifyRuns, learningSignals] = await Promise.all([
+      this.prisma.aiRun.findMany({
+        where: {
+          organizationId,
+          type: "classify",
+          status: "COMPLETED",
+          createdAt: { gte: since },
+        },
+        select: { output: true },
+        take: 5000,
+      }),
+      this.prisma.learningSignal.findMany({
+        where: {
+          organizationId,
+          createdAt: { gte: since },
+          type: { in: ["draft_feedback", "auto_send", "trust_rail_block"] },
+        },
+        select: { type: true, signal: true },
+        take: 5000,
+      }),
+    ]);
+
+    let autoSent = 0;
+    let draftsPlanned = 0;
+    const blockerCounts: Record<string, number> = {};
+
+    for (const run of classifyRuns) {
+      const output =
+        run.output && typeof run.output === "object"
+          ? (run.output as Record<string, unknown>)
+          : {};
+      const metrics =
+        output.metrics && typeof output.metrics === "object"
+          ? (output.metrics as Record<string, unknown>)
+          : {};
+      const mode = metrics.replyMode;
+      if (mode === "send") autoSent += 1;
+      if (mode === "draft") draftsPlanned += 1;
+      const blockers = metrics.blockers;
+      if (Array.isArray(blockers)) {
+        for (const code of blockers) {
+          if (typeof code === "string" && code.trim()) {
+            blockerCounts[code] = (blockerCounts[code] ?? 0) + 1;
+          }
+        }
+      }
+    }
+
+    let draftUsedAsIs = 0;
+    let draftHeavilyEdited = 0;
+    let draftRejected = 0;
+    for (const row of learningSignals) {
+      if (row.type === "trust_rail_block" && row.signal?.trim()) {
+        blockerCounts[row.signal] = (blockerCounts[row.signal] ?? 0) + 1;
+        continue;
+      }
+      if (row.type === "auto_send") continue;
+      if (row.signal === "draft_used_as_is") draftUsedAsIs += 1;
+      else if (row.signal === "draft_heavily_edited") draftHeavilyEdited += 1;
+      else if (row.signal === "draft_rejected") draftRejected += 1;
+    }
+
+    return buildAutonomyMetricsSnapshot({
+      periodDays,
+      classifiedTurns: classifyRuns.length,
+      autoSent,
+      draftsPlanned,
+      draftUsedAsIs,
+      draftHeavilyEdited,
+      draftRejected,
+      blockerCounts,
     });
   }
 

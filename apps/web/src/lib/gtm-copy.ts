@@ -11,7 +11,7 @@ export const POSITIONING = {
   dashboardSubhead:
     "AI classifies inbound WhatsApp — you reply from Inbox when customers need a person. Pipeline and revenue ₹ stay visible here.",
   replyNote:
-    "Growvisi AI never auto-replies to customers. Your team sends human messages from Inbox (or WhatsApp directly). Optional Meta Business Agent can handle first-line FAQ in the WhatsApp app.",
+    "Your team sends from Inbox by default. On Growth, you can enable guarded auto-send for simple, low-risk replies — pricing and complex threads still need a human.",
   trialNote: "14-day trial · 500 leads · 1 WhatsApp number · No credit card",
 } as const;
 
@@ -22,7 +22,7 @@ export const HANDOFF_EXPLAINER = {
     "AI classifies the message and may mark the thread as waiting on you.",
     "Conversations shows a Your turn filter; Home and digest alert your team.",
     "I'll reply now assigns the deal to you, creates a task, and clears the alert.",
-    "You reply from Conversations or in WhatsApp — Growvisi never auto-messages customers.",
+    "You reply from Conversations or in WhatsApp. Optional guarded auto-send on Growth for simple replies only.",
   ],
 } as const;
 

@@ -3,6 +3,15 @@ import type { LeadStage } from "./types";
 export const ENGAGEMENT_PHASES = ["first_contact", "returning", "active_deal"] as const;
 export type EngagementPhase = (typeof ENGAGEMENT_PHASES)[number];
 
+/** Lifecycle phase for reply policy — separate from CRM stage. */
+export const RELATIONSHIP_PHASES = [
+  "pre_sale",
+  "active_deal",
+  "post_sale",
+  "win_back",
+] as const;
+export type RelationshipPhase = (typeof RELATIONSHIP_PHASES)[number];
+
 export interface CustomerCard {
   displayName: string | null;
   phone: string;
@@ -17,6 +26,8 @@ export interface CustomerCard {
 
 export interface WorkingMemory {
   engagementPhase: EngagementPhase;
+  /** Derived from CRM stage — drives autonomy, not intelligence. */
+  relationshipPhase: RelationshipPhase;
   customerCard: CustomerCard;
   /** True when the business or AI has sent at least one outbound text. */
   threadAlreadyEngaged: boolean;
@@ -78,6 +89,27 @@ function pickMemoryLine(
   if (human) return human.content;
   const ai = memory.find((m) => m.content.toLowerCase().startsWith(prefix.toLowerCase()));
   return ai?.content ?? null;
+}
+
+/** Human-readable relationship phase for Inbox / compose. */
+export function formatRelationshipPhase(phase: RelationshipPhase): string {
+  switch (phase) {
+    case "pre_sale":
+      return "Pre-sale";
+    case "active_deal":
+      return "Active deal";
+    case "post_sale":
+      return "Post-sale";
+    case "win_back":
+      return "Win-back";
+  }
+}
+
+export function resolveRelationshipPhase(input: BuildWorkingMemoryInput): RelationshipPhase {
+  if (input.lead.stage === "WON") return "post_sale";
+  if (input.lead.stage === "LOST") return "win_back";
+  if (ACTIVE_DEAL_STAGES.includes(input.lead.stage)) return "active_deal";
+  return "pre_sale";
 }
 
 export function resolveEngagementPhase(input: BuildWorkingMemoryInput): EngagementPhase {
@@ -206,6 +238,7 @@ export function buildWorkingMemory(input: BuildWorkingMemoryInput): WorkingMemor
 
   return {
     engagementPhase: resolveEngagementPhase(input),
+    relationshipPhase: resolveRelationshipPhase(input),
     customerCard: buildCustomerCard(input),
     threadAlreadyEngaged,
     outboundCount,
@@ -221,6 +254,7 @@ export function formatCustomerCardBlock(memory: WorkingMemory): string {
   const c = memory.customerCard;
   const lines = [
     `Engagement: ${memory.engagementPhase.replace(/_/g, " ")}`,
+    `Relationship: ${formatRelationshipPhase(memory.relationshipPhase)}`,
     c.displayName ? `Customer: ${c.displayName}` : null,
     `Stage: ${c.stage} · Score: ${c.score}`,
     c.language ? `Language: ${c.language}` : null,

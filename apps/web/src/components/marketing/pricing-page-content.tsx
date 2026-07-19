@@ -18,8 +18,8 @@ export function PricingPageContent() {
             Less than the cost of one lost WhatsApp lead
           </h1>
           <p className="mt-4 max-w-[640px] text-[17px] leading-relaxed text-muted-foreground">
-            Transparent INR plans for WhatsApp sellers. {POSITIONING.trialNote}. Humans reply from
-            Inbox — Growvisi never auto-messages customers.
+            Transparent INR plans for WhatsApp sellers. {POSITIONING.trialNote}. Your team replies from
+            Inbox by default — optional guarded auto-send for simple replies on Growth.
           </p>
         </div>
       </div>

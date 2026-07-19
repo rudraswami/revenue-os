@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { LEAD_STAGES, STAGE_BADGE, formatInr } from "@/lib/crm";
-import { HOT_LEAD_SCORE_THRESHOLD, type LeadStage, type ReplyDecision } from "@growvisi/shared";
+import { HOT_LEAD_SCORE_THRESHOLD, formatRelationshipPhase, type LeadStage, type ReplyDecision } from "@growvisi/shared";
 import {
   useConversationsCopy,
   type InboxListFilter,
@@ -231,6 +231,7 @@ export default function InboxPage() {
     yourTurn: convStats?.humanHandoffRecommended ?? 0,
     mine: 0,
     unassigned: 0,
+    postCloseUnread: 0,
   };
 
   const { data: whatsappAccounts } = useQuery({
@@ -337,6 +338,7 @@ export default function InboxPage() {
         replyDecision?: ReplyDecision | null;
         customerNeeds?: string[];
         workingMemory?: import("@growvisi/shared").WorkingMemory;
+        kbHealth?: import("@growvisi/shared").KnowledgeHealthSummary;
       }>(`/conversations/${selectedId}/intelligence`, { token: token ?? undefined }),
     enabled: !!token && !!selectedId,
   });
@@ -689,6 +691,16 @@ export default function InboxPage() {
                   </p>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span className="truncate">{thread.contactPhone}</span>
+                    {intelligence?.workingMemory &&
+                    (intelligence.workingMemory.relationshipPhase === "post_sale" ||
+                      intelligence.workingMemory.relationshipPhase === "win_back") ? (
+                      <>
+                        <span aria-hidden className="text-border">·</span>
+                        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                          {formatRelationshipPhase(intelligence.workingMemory.relationshipPhase)}
+                        </span>
+                      </>
+                    ) : null}
                     {thread.lead && (() => {
                       const lead = thread.lead;
                       const hasValue = lead.valueCents != null && lead.valueCents > 0;
@@ -862,6 +874,7 @@ export default function InboxPage() {
                 }}
                 onResolveHandoff={() => resolveHandoffMutation.mutate()}
                 knowledgeGaps={intelligence?.knowledgeGaps ?? []}
+                kbHealth={intelligence?.kbHealth ?? null}
               />
               <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/60 px-4 py-1.5 lg:px-5">
                 <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1 md:flex">

@@ -28,6 +28,7 @@ import {
 import { ReplyPolicyService } from "../intelligence/reply-policy.service";
 import { ReplySafetyRailsService } from "../intelligence/reply-safety-rails.service";
 import { ReplySendService } from "../intelligence/reply-send.service";
+import { PostCloseAlertService } from "../intelligence/post-close-alert.service";
 import { resolveReplyIntentKind } from "../intelligence/reply-intent";
 import { readIntelligenceSettingsFromOrg, resolveIntelligenceSettings } from "../intelligence/workspace-intelligence-settings";
 import type { IntelligenceWorkspaceSettings } from "@growvisi/shared";
@@ -39,7 +40,7 @@ export interface ClassifyJobData {
   organizationId: string;
   conversationId: string;
   messageId: string;
-  leadId: string;
+  leadId?: string;
   correlationId?: string;
   refreshAfterCorrection?: boolean;
   lockStage?: boolean;
@@ -51,6 +52,8 @@ export interface ClassifyJobData {
     intent?: string;
     note?: string;
   };
+  /** Skip outbound auto-send (latency probe, diagnostics). */
+  dryRun?: boolean;
 }
 
 export type HumanAiCorrectionInput = {
@@ -94,6 +97,7 @@ export class AiClassifyService {
     private readonly executionRouter: ExecutionRouterService,
     private readonly fastReply: FastReplyService,
     private readonly replySend: ReplySendService,
+    private readonly postCloseAlert: PostCloseAlertService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -381,14 +385,6 @@ export class AiClassifyService {
       );
       spans.measure("context_build_ms", "context_start");
 
-      if (
-        (ctx.lead.stage === "WON" || ctx.lead.stage === "LOST") &&
-        !data.refreshAfterCorrection
-      ) {
-        await this.finalizeAiRun(aiRunId, { skipped: true, reason: "terminal_stage" }, 0);
-        return;
-      }
-
       if (!ctx.transcript.trim()) {
         await this.finalizeAiRun(aiRunId, { skipped: true, reason: "empty_transcript" }, 0);
         return;
@@ -415,7 +411,8 @@ export class AiClassifyService {
       if (
         preRoute.path === "fast" &&
         intelligenceSettings.replyAutonomy === "auto_guarded" &&
-        !data.refreshAfterCorrection
+        !data.refreshAfterCorrection &&
+        !data.dryRun
       ) {
         const fastResult = await this.tryFastPathSend(data, ctx, {
           businessName,
@@ -453,6 +450,7 @@ export class AiClassifyService {
               preRoute,
             }),
           );
+          this.deferPostCloseAlert(data.organizationId, data.conversationId);
           return;
         }
       }
@@ -605,6 +603,9 @@ export class AiClassifyService {
       knowledgeGap,
       executionRoute,
       spans: opts.spans,
+      intelligenceSettings: opts.intelligenceSettings,
+      hasIndexedChunks: retrieval.hasIndexedChunks,
+      groundingConfidence: retrieval.groundingConfidence,
     };
 
     const { actions, replyDecision } = this.planner.buildFromClassification({
@@ -624,6 +625,8 @@ export class AiClassifyService {
       autoSendPlanOk,
       executionPath: executionRoute.path,
       safetyBlocked,
+      hasIndexedChunks: retrieval.hasIndexedChunks,
+      groundingConfidence: retrieval.groundingConfidence,
       automationPrefs: {
         stage: opts.prefs.stage,
         notify: opts.prefs.notify,
@@ -641,7 +644,7 @@ export class AiClassifyService {
       organizationId: data.organizationId,
       type: DOMAIN_EVENTS.LEAD_CLASSIFIED,
       entityType: "lead",
-      entityId: data.leadId,
+      entityId: data.leadId ?? ctx.leadId,
       correlationId: opts.correlationId,
       payload: {
         conversationId: data.conversationId,
@@ -651,15 +654,19 @@ export class AiClassifyService {
       },
     });
 
+    const planActions = data.dryRun
+      ? actions.filter((a) => a.type !== "reply.send")
+      : actions;
+
     opts.spans.mark("execute_plan_start");
     await this.executor.executePlan({
       organizationId: data.organizationId,
       conversationId: data.conversationId,
-      leadId: data.leadId,
+      leadId: data.leadId ?? (ctx.hasLeadRecord ? ctx.leadId : undefined),
       correlationId: opts.correlationId,
       triggerEventId: event.eventId,
       classification: result,
-      actions,
+      actions: planActions,
       ctx,
       stageChanged,
       pipelineContext,
@@ -687,7 +694,7 @@ export class AiClassifyService {
       this.runDeferredCrmSync({
         organizationId: data.organizationId,
         conversationId: data.conversationId,
-        leadId: data.leadId,
+        leadId: data.leadId ?? (ctx.hasLeadRecord ? ctx.leadId : undefined),
         result,
         ctx,
         aiRunId: opts.aiRunId,
@@ -704,6 +711,14 @@ export class AiClassifyService {
           handoff: opts.prefs.handoff,
         },
       }),
+    );
+
+    this.deferPostCloseAlert(data.organizationId, data.conversationId);
+  }
+
+  private deferPostCloseAlert(organizationId: string, conversationId: string) {
+    deferBackgroundTask(() =>
+      this.postCloseAlert.maybeNotify({ organizationId, conversationId }),
     );
   }
 
@@ -785,7 +800,7 @@ export class AiClassifyService {
     await this.runDeferredCrmSync({
       organizationId: data.organizationId,
       conversationId: data.conversationId,
-      leadId: data.leadId,
+      leadId: data.leadId ?? (ctx.hasLeadRecord ? ctx.leadId : undefined),
       result,
       ctx,
       aiRunId: bgRun.id,
@@ -841,7 +856,7 @@ export class AiClassifyService {
       await this.entitlements.assertPlanAtLeast(data.organizationId, "growth");
       autoSendPlanOk = true;
     } catch {
-      return { sent: false };
+      autoSendPlanOk = false;
     }
 
     const safetyCheck = await this.safetyRails.checkVelocity({
@@ -866,7 +881,14 @@ export class AiClassifyService {
       safetyBlocked,
     });
 
-    if (replyDecision.mode !== "send") return { sent: false };
+    if (replyDecision.mode !== "send") {
+      await this.replyPolicy.persistDecision(
+        data.organizationId,
+        data.conversationId,
+        replyDecision,
+      );
+      return { sent: false };
+    }
 
     const pipelineContext: PipelineContext = {
       ctx,
@@ -876,6 +898,7 @@ export class AiClassifyService {
       knowledgeGap: false,
       executionRoute: opts.preRoute,
       spans: opts.spans,
+      intelligenceSettings: opts.intelligenceSettings,
     };
 
     opts.spans.mark("fast_send_start");
@@ -898,6 +921,11 @@ export class AiClassifyService {
   }
 
   private async runDeferredCrmSync(sync: DeferredCrmSync) {
+    if (!sync.ctx.hasLeadRecord || !sync.leadId) {
+      await this.memory.syncFromClassification(sync.ctx, sync.result, sync.aiRunId);
+      return;
+    }
+
     try {
       const stageChanged = await this.executor.applyLeadProfileUpdate(
         sync.organizationId,
@@ -975,24 +1003,48 @@ export class AiClassifyService {
 
     this.inFlight.add(key);
     try {
-      const aiRun = await this.prisma.aiRun.create({
-        data: {
-          organizationId: data.organizationId,
-          conversationId: data.conversationId,
-          type: data.refreshAfterCorrection ? "classify_refresh" : "classify",
-          provider: "openai",
-          model: this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini",
-          status: "RUNNING",
-          input: {
-            messageId: data.messageId,
-            leadId: data.leadId,
-            humanFeedback: data.humanFeedback ?? null,
-            claimedAt: new Date().toISOString(),
-            spans: spans.toJSON(),
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+
+        if (!data.refreshAfterCorrection) {
+          const recent = await tx.aiRun.findMany({
+            where: {
+              organizationId: data.organizationId,
+              conversationId: data.conversationId,
+              type: { in: ["classify", "classify_refresh"] },
+              status: { in: ["RUNNING", "COMPLETED"] },
+              createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+            },
+            select: { id: true, input: true },
+            take: 20,
+            orderBy: { createdAt: "desc" },
+          });
+          const duplicate = recent.some((run) => {
+            const input = run.input as Record<string, unknown> | null;
+            return input?.messageId === data.messageId;
+          });
+          if (duplicate) return null;
+        }
+
+        const aiRun = await tx.aiRun.create({
+          data: {
+            organizationId: data.organizationId,
+            conversationId: data.conversationId,
+            type: data.refreshAfterCorrection ? "classify_refresh" : "classify",
+            provider: "openai",
+            model: this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini",
+            status: "RUNNING",
+            input: {
+              messageId: data.messageId,
+              leadId: data.leadId ?? null,
+              humanFeedback: data.humanFeedback ?? null,
+              claimedAt: new Date().toISOString(),
+              spans: spans.toJSON(),
+            },
           },
-        },
+        });
+        return { aiRunId: aiRun.id };
       });
-      return { aiRunId: aiRun.id };
     } finally {
       this.inFlight.delete(key);
     }

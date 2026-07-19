@@ -40,7 +40,7 @@ const DEFERRABLE_ACTIONS = new Set(["email.send", "webhook.emit"]);
 export interface ExecutePlanInput {
   organizationId: string;
   conversationId: string;
-  leadId: string;
+  leadId?: string;
   correlationId?: string;
   triggerEventId?: string;
   classification: AiClassificationResult;
@@ -205,7 +205,7 @@ export class ActionExecutorService {
       },
     });
 
-    if (input.stageChanged) {
+    if (input.stageChanged && input.ctx.hasLeadRecord && input.leadId) {
       this.realtime.emitLeadStageChanged(input.organizationId, {
         leadId: input.leadId,
         fromStage: input.ctx.lead.stage,
@@ -214,13 +214,15 @@ export class ActionExecutorService {
       });
     }
 
-    this.realtime.emitLeadClassified(input.organizationId, {
-      leadId: input.leadId,
-      conversationId: input.conversationId,
-      stage: input.classification.stage,
-      confidence: input.classification.confidence,
-      stageChanged: input.stageChanged,
-    });
+    if (input.ctx.hasLeadRecord && input.leadId) {
+      this.realtime.emitLeadClassified(input.organizationId, {
+        leadId: input.leadId,
+        conversationId: input.conversationId,
+        stage: input.classification.stage,
+        confidence: input.classification.confidence,
+        stageChanged: input.stageChanged,
+      });
+    }
 
     if (input.stageChanged) {
       this.realtime.emitInboxUpdated(input.organizationId, input.conversationId);
@@ -270,6 +272,13 @@ export class ActionExecutorService {
 
   private async executeOne(action: ProposedAction, input: ExecutePlanInput) {
     const payload = action.payload;
+    const leadScoped =
+      action.type.startsWith("lead.") ||
+      (action.type === "email.send" &&
+        (payload.kind === "handoff" || payload.kind === "hot_lead"));
+    if (!input.ctx.hasLeadRecord && leadScoped) {
+      return;
+    }
 
     switch (action.type) {
       case "lead.update_score":
@@ -391,7 +400,7 @@ export class ActionExecutorService {
 
       case "reply.send": {
         const replyDecision = payload.replyDecision as ReplyDecision;
-        const sent = await this.replySend.sendGuardedAutoReply(
+        const result = await this.replySend.sendGuardedAutoReply(
           input.organizationId,
           String(payload.conversationId),
           {
@@ -404,7 +413,10 @@ export class ActionExecutorService {
               typeof payload.fastReplyText === "string" ? payload.fastReplyText : undefined,
           },
         );
-        return { messageId: sent.messageId, content: sent.content };
+        if (!result.sent) {
+          return { drafted: true, blocker: result.blocker, reason: result.reason };
+        }
+        return { messageId: result.messageId, content: result.content };
       }
 
       default:

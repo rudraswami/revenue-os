@@ -51,7 +51,7 @@ export const PRODUCT_PAGES: Record<ProductPageSlug, ProductPageData> = {
     eyebrow: "Intelligence",
     headline: "Every WhatsApp message classified before your team opens it",
     subhead:
-      "Growvisi AI reads intent, urgency, and suggested pipeline stage on every inbound — and flags when a human should step in. Never auto-sends to customers.",
+      "Growvisi AI reads intent, urgency, and suggested pipeline stage on every inbound — and flags when a human should step in. Your team sends by default; optional guarded auto-send on Growth.",
     accent: "from-[#e5eeff] to-[#f8f9ff]",
     features: [
       { title: "Intent & score", body: "Hot leads surface first — reps focus on buyers ready to close." },

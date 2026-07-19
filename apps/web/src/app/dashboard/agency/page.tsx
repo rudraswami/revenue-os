@@ -34,6 +34,7 @@ import {
   type AgencyConnectionStatus,
 } from "@/components/dashboard/agency-connection-badge";
 import { AgencyClientConnectDialog } from "@/components/dashboard/agency-client-connect-dialog";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { cn } from "@/lib/utils";
 
 interface AgencyStatus {
@@ -105,13 +106,13 @@ export default function AgencyPage() {
   const [connectClient, setConnectClient] = useState<AgencyClientRow | null>(null);
   const qc = useQueryClient();
 
-  const { data: status, isLoading: statusLoading } = useQuery({
+  const { data: status, isLoading: statusLoading, isError: statusError, refetch: refetchStatus } = useQuery({
     queryKey: ["agency-status"],
     queryFn: () => apiFetch<AgencyStatus>("/agency/status", { token: token ?? undefined }),
     enabled: !!token,
   });
 
-  const { data: health, isLoading: healthLoading } = useQuery({
+  const { data: health, isLoading: healthLoading, isError: healthError, refetch: refetchHealth } = useQuery({
     queryKey: ["agency-clients-health"],
     queryFn: () =>
       apiFetch<AgencyHealthSummary>("/agency/clients/health-summary", {
@@ -450,6 +451,16 @@ export default function AgencyPage() {
         title={t("agency.title")}
         description={t("agency.description")}
       />
+
+      {statusError || healthError ? (
+        <QueryErrorState
+          title="Couldn't load agency hub"
+          onRetry={() => {
+            void refetchStatus();
+            void refetchHealth();
+          }}
+        />
+      ) : null}
 
       {loading ? (
         <div className="h-48 animate-pulse rounded-2xl bg-muted" />

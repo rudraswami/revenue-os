@@ -1,13 +1,27 @@
 import { ReplyPolicyService, type ReplyPolicyInput } from "./reply-policy.service";
 import { AutomationPolicyService } from "./automation-policy.service";
 import type { ConversationContext } from "./context-builder.service";
-import { DEFAULT_INTELLIGENCE_SETTINGS } from "@growvisi/shared";
+import { DEFAULT_INTELLIGENCE_SETTINGS, buildWorkingMemory } from "@growvisi/shared";
 
 function baseInput(overrides: Partial<ReplyPolicyInput> = {}): ReplyPolicyInput {
+  const lead = { stage: "NEW" as const, profile: {} };
+  const messages = [{ direction: "INBOUND", content: "Hi" }];
   const ctx = {
     conversation: { aiEnabled: true },
-    lead: { stage: "NEW" },
+    lead,
     lastInbound: "Hi",
+    workingMemory: buildWorkingMemory({
+      lead: {
+        stage: lead.stage,
+        score: 10,
+        displayName: null,
+        phone: "91",
+        profile: lead.profile,
+      },
+      conversation: { contactName: null },
+      messages,
+      observedMemory: [],
+    }),
   } as ConversationContext;
 
   return {
@@ -107,5 +121,33 @@ describe("ReplyPolicyService", () => {
     );
     expect(decision.mode).toBe("draft");
     expect(decision.blockers).toContain("safety_velocity");
+  });
+
+  it("does not skip WON stage — courtesy can auto-send", () => {
+    const lead = { stage: "WON" as const, profile: {} };
+    const messages = [{ direction: "INBOUND", content: "Hi" }];
+    const decision = service.evaluate(
+      baseInput({
+        ctx: {
+          conversation: { aiEnabled: true },
+          lead,
+          lastInbound: "Hi",
+          workingMemory: buildWorkingMemory({
+            lead: {
+              stage: "WON",
+              score: 100,
+              displayName: null,
+              phone: "91",
+              profile: {},
+            },
+            conversation: { contactName: null },
+            messages,
+            observedMemory: [],
+          }),
+        } as ConversationContext,
+      }),
+    );
+    expect(decision.mode).toBe("send");
+    expect(decision.blockers ?? []).not.toContain("terminal_stage");
   });
 });

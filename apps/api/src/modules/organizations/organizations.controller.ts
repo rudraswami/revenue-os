@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import {
   ArrayMaxSize,
   IsArray,
@@ -135,6 +135,16 @@ class UpdateIntelligenceSettingsDto {
   @ValidateNested()
   @Type(() => BusinessProfilePatchDto)
   businessProfile?: BusinessProfilePatchDto;
+}
+
+class ApplyIndustryHandbookDto {
+  @IsString()
+  @MaxLength(40)
+  industryId!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  seedKnowledge?: boolean;
 }
 
 class UpdateReplyTemplatesDto {
@@ -337,6 +347,19 @@ export class OrganizationsController {
     @Body() dto: UpdateIntelligenceSettingsDto,
   ) {
     return this.organizations.updateIntelligenceSettings(user, dto);
+  }
+
+  @Get("industry-handbooks")
+  listIndustryHandbooks() {
+    return this.organizations.listIndustryHandbooks();
+  }
+
+  @Post("apply-industry-handbook")
+  @Roles(...ADMIN_ROLES)
+  applyIndustryHandbook(@CurrentUser() user: JwtPayload, @Body() dto: ApplyIndustryHandbookDto) {
+    return this.organizations.applyIndustryHandbook(user, dto.industryId, {
+      seedKnowledge: dto.seedKnowledge,
+    });
   }
 
   @Get("ops-settings")

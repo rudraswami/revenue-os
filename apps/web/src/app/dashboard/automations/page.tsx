@@ -18,6 +18,7 @@ import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import type { GrowvisiPlanId } from "@growvisi/shared";
 import { Activity, Bell, Clock, MessageCircle, Sparkles, Timer, UserRound, Zap } from "lucide-react";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { CONVERSATIONS } from "@/lib/brand-copy";
@@ -105,7 +106,7 @@ export default function AutomationsPage() {
   const { success, error: toastError } = useToast();
   const { t } = useI18n();
 
-  const { data: toggles, isLoading } = useQuery({
+  const { data: toggles, isLoading, isError: prefsError, refetch: refetchPrefs } = useQuery({
     queryKey: ["automation-preferences"],
     queryFn: () => apiFetch<Record<AutomationId, boolean>>("/automations/preferences", {
       token: token ?? undefined,
@@ -197,12 +198,26 @@ export default function AutomationsPage() {
         }
       />
 
+      {prefsError ? (
+        <QueryErrorState
+          title="Couldn't load automation settings"
+          onRetry={() => void refetchPrefs()}
+        />
+      ) : null}
+
       <div className="mb-8 space-y-6">
         <BusinessEmployeeProfileCard />
         <div className="grid gap-6 lg:grid-cols-2">
           <DailyDigestCard />
           <IntelligenceReplySettingsCard />
         </div>
+        <p className="text-xs text-muted-foreground">
+          Reply policy is also in{" "}
+          <Link href="/dashboard/settings?tab=intelligence" className="font-semibold text-accent hover:underline">
+            Settings → Intelligence
+          </Link>
+          .
+        </p>
       </div>
 
       {/* Stats bar */}

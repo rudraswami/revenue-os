@@ -7,7 +7,14 @@ import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service
 import { LearningSignalService } from "./learning-signal.service";
 import type { PipelineContext } from "./pipeline-context";
 import { ReplyComposerService } from "./reply-composer.service";
+import { ReplyPolicyService } from "./reply-policy.service";
+import { ReplyTrustRailsService } from "./reply-trust-rails.service";
+import { resolveReplyIntentKind } from "./reply-intent";
 import { SuggestReplyService } from "./suggest-reply.service";
+
+export type GuardedAutoReplyResult =
+  | { sent: true; messageId: string; content: string; aiRunId?: string }
+  | { sent: false; drafted: true; reason: string; blocker: string };
 
 @Injectable()
 export class ReplySendService {
@@ -21,6 +28,8 @@ export class ReplySendService {
     private readonly events: BusinessEventService,
     private readonly learning: LearningSignalService,
     private readonly suggestReply: SuggestReplyService,
+    private readonly trustRails: ReplyTrustRailsService,
+    private readonly replyPolicy: ReplyPolicyService,
   ) {}
 
   async sendGuardedAutoReply(
@@ -34,7 +43,7 @@ export class ReplySendService {
       pipelineContext?: PipelineContext;
       fastReplyText?: string;
     },
-  ) {
+  ): Promise<GuardedAutoReplyResult> {
     const conversation = await this.prisma.conversation.findFirst({
       where: { id: conversationId, organizationId },
       include: { whatsappAccount: true },
@@ -56,6 +65,66 @@ export class ReplySendService {
     });
 
     opts.pipelineContext?.spans?.measure("compose_in_send_ms", "reply_send_start");
+
+    const intentKind = resolveReplyIntentKind(
+      opts.pipelineContext?.ctx.lastInbound ?? null,
+      opts.classification ?? null,
+    );
+
+    const trust = this.trustRails.validatePostCompose({
+      text: composed.suggestion,
+      sources: composed.sources,
+      isFastPath: Boolean(opts.fastReplyText?.trim()),
+      intentKind,
+      automationPreset: this.readAutomationPreset(opts.pipelineContext),
+    });
+
+    if (!trust.allowed) {
+      const downgraded: ReplyDecision = {
+        ...opts.replyDecision,
+        mode: "draft",
+        risk: "medium",
+        reasons: [
+          trust.reason ?? "Trust rail blocked auto-send.",
+          ...opts.replyDecision.reasons.filter((r) => r !== trust.reason),
+        ].slice(0, 5),
+        blockers: [
+          ...(opts.replyDecision.blockers ?? []),
+          trust.blocker ?? "compose_grounding",
+        ].filter((b, i, arr) => arr.indexOf(b) === i),
+        autoEligible: false,
+        evaluatedAt: new Date().toISOString(),
+      };
+
+      await this.replyPolicy.persistDecision(organizationId, conversationId, downgraded);
+      await this.suggestReply.generateAndStoreDraft(organizationId, conversationId, {
+        knowledgeGap: opts.knowledgeGap,
+        decision: downgraded,
+        classification: opts.classification,
+        pipelineContext: opts.pipelineContext,
+      });
+
+      this.realtime.emitInboxUpdated(organizationId, conversationId);
+      this.logger.warn(
+        `Trust rail blocked auto-send for ${conversationId}: ${trust.blocker}`,
+      );
+
+      void this.learning.recordTrustRailBlock({
+        organizationId,
+        conversationId,
+        aiRunId: opts.aiRunId,
+        blocker: trust.blocker ?? "compose_grounding",
+        reason: trust.reason,
+        intentKind,
+      });
+
+      return {
+        sent: false,
+        drafted: true,
+        reason: trust.reason ?? "Draft for review.",
+        blocker: trust.blocker ?? "compose_grounding",
+      };
+    }
 
     const waMessageId = await this.whatsapp.sendText(
       conversation.whatsappAccount,
@@ -128,9 +197,17 @@ export class ReplySendService {
     this.logger.log(`Guarded auto-reply sent for conversation ${conversationId}`);
 
     return {
+      sent: true,
       messageId: message.id,
       content: composed.suggestion,
       aiRunId: composed.aiRunId,
     };
+  }
+
+  private readAutomationPreset(
+    pipelineContext?: PipelineContext,
+  ): import("@growvisi/shared").AutomationPolicyPreset | undefined {
+    const settings = pipelineContext?.intelligenceSettings;
+    return settings?.automationPreset;
   }
 }

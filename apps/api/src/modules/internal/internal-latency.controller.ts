@@ -5,8 +5,6 @@ import { AiClassifyService } from "../ai/ai-classify.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { PipelineTurnMetrics } from "../intelligence/pipeline-spans";
 
-const DEFAULT_CONVERSATION_ID = "cmrq48t840002lb04e1yd6532";
-
 @SkipThrottle()
 @Controller("internal/cron")
 export class InternalLatencyController {
@@ -16,20 +14,28 @@ export class InternalLatencyController {
   ) {}
 
   /**
-   * Production latency probe — creates a test inbound and runs the full classify pipeline.
-   * Protected by CRON_SECRET. Does not simulate Meta webhooks.
+   * Production latency probe — creates a test inbound and runs classify (no auto-send).
+   * Requires CRON_SECRET + LATENCY_PROBE_ENABLED=true + explicit conversationId.
    */
   @Get("latency-probe")
   @UseGuards(CronSecretGuard)
   async latencyProbe(
-    @Query("conversationId") conversationId = DEFAULT_CONVERSATION_ID,
+    @Query("conversationId") conversationId?: string,
     @Query("message") message = "Hi",
   ) {
+    if (process.env.LATENCY_PROBE_ENABLED !== "true") {
+      return { ok: false, error: "probe_disabled" };
+    }
+
+    if (!conversationId?.trim()) {
+      return { ok: false, error: "conversation_id_required" };
+    }
+
     const conv = await this.prisma.conversation.findFirst({
-      where: { id: conversationId },
+      where: { id: conversationId.trim() },
       include: { lead: true },
     });
-    if (!conv?.lead) {
+    if (!conv) {
       return { ok: false, error: "conversation_not_found" };
     }
 
@@ -59,7 +65,8 @@ export class InternalLatencyController {
       organizationId: conv.organizationId,
       conversationId: conv.id,
       messageId: inbound.id,
-      leadId: conv.lead.id,
+      ...(conv.lead ? { leadId: conv.lead.id } : {}),
+      dryRun: true,
     });
     const processWallMs = Date.now() - processStart;
 
@@ -91,21 +98,18 @@ export class InternalLatencyController {
       orderBy: { createdAt: "desc" },
     });
 
-    const customerE2eMs = outbound
-      ? outbound.createdAt.getTime() - inbound.createdAt.getTime()
-      : null;
-
     const classifyOutput = classifyRun?.output as Record<string, unknown> | null;
     const metrics = (classifyOutput?.metrics as PipelineTurnMetrics | undefined) ?? null;
 
     return {
       ok: true,
+      dry_run: true,
       measured_at: new Date().toISOString(),
       test_message: message,
       conversation_id: conv.id,
       process_wall_ms: processWallMs,
-      customer_e2e_ms: customerE2eMs,
       outbound_preview: outbound?.content?.slice(0, 100) ?? null,
+      auto_send_blocked: !outbound,
       execution_path:
         classifyOutput?.executionPath ?? classifyOutput?.fastPath ?? metrics?.executionPath ?? null,
       spans: classifyOutput?.spans ?? (composeRun?.input as Record<string, unknown> | null)?.spans ?? null,

@@ -26,6 +26,8 @@ export interface ReplyPolicyInput {
   executionPath: ExecutionPath;
   /** Set when safety rails block auto-send (velocity / loop protection). */
   safetyBlocked?: { code: string; reason: string };
+  hasIndexedChunks?: boolean;
+  groundingConfidence?: number;
 }
 
 @Injectable()
@@ -57,11 +59,6 @@ export class ReplyPolicyService {
 
     if (input.workspaceAutonomy === "intel_only") {
       pushBlocker("workspace_intel_only", "Classify only — no replies composed.");
-      return this.decision("skip", 1, "low", reasons, blockers, evaluatedAt, false);
-    }
-
-    if (input.ctx.lead.stage === "WON" || input.ctx.lead.stage === "LOST") {
-      pushBlocker("terminal_stage", "Deal is closed — no automated reply.");
       return this.decision("skip", 1, "low", reasons, blockers, evaluatedAt, false);
     }
 
@@ -111,6 +108,8 @@ export class ReplyPolicyService {
       knowledgeGap: input.knowledgeGap,
       executionPath: input.executionPath,
       humanHandling,
+      hasIndexedChunks: input.hasIndexedChunks,
+      groundingConfidence: input.groundingConfidence,
     });
 
     reasons.push(...policy.reasons);

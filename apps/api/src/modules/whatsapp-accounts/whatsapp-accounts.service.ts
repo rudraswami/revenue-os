@@ -498,6 +498,13 @@ export class WhatsappAccountsService {
             : "No customer messages received yet",
       },
       {
+        id: "ai_intelligence",
+        ok: Boolean(this.config.get<string>("OPENAI_API_KEY")?.trim()),
+        detail: this.config.get<string>("OPENAI_API_KEY")?.trim()
+          ? "AI classification and reply drafts are enabled"
+          : "OPENAI_API_KEY missing — classification and drafts are disabled",
+      },
+      {
         id: "meta_webhooks",
         ok: webhooksForYou.some((w) => w.processed && w.inboundInPayload > 0),
         detail:
