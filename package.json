@@ -46,6 +46,7 @@
     "vercel:env:domain": "node scripts/set-vercel-growvisi-in-env.js",
     "vercel:env:production": "node scripts/set-vercel-production-env.js",
     "smoke:production": "node scripts/smoke-production.mjs",
+    "test:e2e": "pnpm --filter @growvisi/web test:e2e",
     "vercel:env:razorpay": "node scripts/set-vercel-razorpay-env.js",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.yml down",
