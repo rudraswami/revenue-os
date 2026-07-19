@@ -26,8 +26,8 @@ class EnvironmentVariables {
   CRON_SECRET?: string;
 
   @IsString()
-  @IsNotEmpty()
-  REDIS_URL!: string;
+  @IsOptional()
+  REDIS_URL?: string;
 
   @IsString()
   @IsOptional()
@@ -164,9 +164,6 @@ export function validateEnv(config: Record<string, unknown>) {
       missingRequired,
     );
     requireProdSecret("WHATSAPP_VERIFY_TOKEN", validated.WHATSAPP_VERIFY_TOKEN, missingRequired);
-    requireProdSecret("CRON_SECRET", validated.CRON_SECRET, missingRequired);
-    requireProdSecret("TOKEN_ENCRYPTION_KEY", validated.TOKEN_ENCRYPTION_KEY, missingRequired);
-    requireProdSecret("OPENAI_API_KEY", config.OPENAI_API_KEY, missingRequired);
 
     if (missingRequired.length > 0) {
       throw new Error(
@@ -175,16 +172,28 @@ export function validateEnv(config: Record<string, unknown>) {
       );
     }
 
-    const recommended: Array<[string, unknown]> = [
+    const missingRecommended: Array<[string, unknown]> = [
+      ["CRON_SECRET", config.CRON_SECRET],
+      ["TOKEN_ENCRYPTION_KEY", config.TOKEN_ENCRYPTION_KEY],
+      ["OPENAI_API_KEY", config.OPENAI_API_KEY],
+      ["REDIS_URL", config.REDIS_URL],
       ["RAZORPAY_WEBHOOK_SECRET", config.RAZORPAY_WEBHOOK_SECRET],
       ["RAZORPAY_KEY_ID", config.RAZORPAY_KEY_ID],
     ];
-    const missingRecommended = recommended.filter(([, v]) => !v).map(([k]) => k);
-    if (missingRecommended.length > 0) {
+    const missingRecommendedLabels = missingRecommended.filter(([, v]) => !v).map(([k]) => k);
+    if (missingRecommendedLabels.length > 0) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[env] Production deploy is missing recommended billing secrets: ${missingRecommended.join(", ")}. ` +
-          "Paid upgrades will not work until Razorpay is configured.",
+        `[env] Production is missing recommended secrets: ${missingRecommendedLabels.join(", ")}. ` +
+          "API will start in degraded mode (inline workers, no AI/cron until set).",
+      );
+    }
+
+    if (!config.TOKEN_ENCRYPTION_KEY && validated.JWT_SECRET) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[env] TOKEN_ENCRYPTION_KEY not set — using JWT_SECRET for WhatsApp token encryption. " +
+          "Set a dedicated TOKEN_ENCRYPTION_KEY so JWT rotation does not break stored tokens.",
       );
     }
   }

@@ -53,14 +53,19 @@ let vercelServerPromise: Promise<Express> | null = null;
 async function getVercelServer(): Promise<Express> {
   if (!vercelServerPromise) {
     vercelServerPromise = (async () => {
-      initSentry();
-      const expressApp = express();
-      const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), {
-        rawBody: true,
-      });
-      await configureApp(app);
-      await app.init();
-      return expressApp;
+      try {
+        initSentry();
+        const expressApp = express();
+        const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), {
+          rawBody: true,
+        });
+        await configureApp(app);
+        await app.init();
+        return expressApp;
+      } catch (err) {
+        console.error("[api] Failed to initialize NestJS on Vercel:", err);
+        throw err;
+      }
     })();
   }
   return vercelServerPromise;
