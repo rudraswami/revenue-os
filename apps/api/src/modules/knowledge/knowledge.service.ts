@@ -31,6 +31,7 @@ export class KnowledgeService {
         title: true,
         category: true,
         sourceType: true,
+        sourceUrl: true,
         status: true,
         createdAt: true,
         updatedAt: true,
@@ -44,6 +45,7 @@ export class KnowledgeService {
       title: d.title,
       category: d.category,
       sourceType: d.sourceType,
+      sourceUrl: d.sourceUrl,
       status: d.status,
       createdAt: d.createdAt,
       updatedAt: d.updatedAt,
@@ -57,6 +59,7 @@ export class KnowledgeService {
     title: string,
     content: string,
     category: KnowledgeCategory = "general",
+    options?: { sourceType?: string; sourceUrl?: string | null },
   ) {
     await this.entitlements.assertHasAccess(user.organizationId);
     const doc = await this.prisma.knowledgeDocument.create({
@@ -65,7 +68,8 @@ export class KnowledgeService {
         title: title.trim(),
         rawContent: content.trim(),
         category,
-        sourceType: "manual",
+        sourceType: options?.sourceType ?? "manual",
+        sourceUrl: options?.sourceUrl ?? null,
         status: "pending",
       },
       select: {
@@ -73,6 +77,7 @@ export class KnowledgeService {
         title: true,
         category: true,
         sourceType: true,
+        sourceUrl: true,
         status: true,
         createdAt: true,
         updatedAt: true,
@@ -115,6 +120,7 @@ export class KnowledgeService {
         title: true,
         category: true,
         sourceType: true,
+        sourceUrl: true,
         status: true,
         createdAt: true,
         updatedAt: true,

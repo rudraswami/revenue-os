@@ -81,7 +81,11 @@ export type AuthFetchOptions = RequestInit & {
 export async function rawFetchForAuth<T>(path: string, options: AuthFetchOptions = {}): Promise<T> {
   const { credentials = "include", ...fetchOptions } = options;
   const headers = new Headers(fetchOptions.headers);
-  if (!headers.has("Content-Type") && fetchOptions.body) {
+  if (
+    !headers.has("Content-Type") &&
+    fetchOptions.body &&
+    !(fetchOptions.body instanceof FormData)
+  ) {
     headers.set("Content-Type", "application/json");
   }
 

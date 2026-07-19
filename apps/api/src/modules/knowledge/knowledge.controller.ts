@@ -1,5 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
+import { KNOWLEDGE_MAX_CONTENT_CHARS, KNOWLEDGE_MAX_UPLOAD_BYTES } from "@growvisi/shared";
+import { KnowledgeParseService } from "./knowledge-parse.service";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { RequireCapability } from "../../common/decorators/require-capability.decorator";
@@ -21,7 +24,7 @@ class CreateDocumentDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(20000)
+  @MaxLength(KNOWLEDGE_MAX_CONTENT_CHARS)
   content!: string;
 
   @IsOptional()
@@ -38,7 +41,7 @@ class UpdateDocumentDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(20000)
+  @MaxLength(KNOWLEDGE_MAX_CONTENT_CHARS)
   content?: string;
 
   @IsOptional()
@@ -57,7 +60,10 @@ class RetrieveTestDto {
 @Controller("knowledge")
 @UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
 export class KnowledgeController {
-  constructor(private readonly knowledge: KnowledgeService) {}
+  constructor(
+    private readonly knowledge: KnowledgeService,
+    private readonly parse: KnowledgeParseService,
+  ) {}
 
   @Get("documents")
   @RequireCapability("knowledge.manage")
@@ -70,6 +76,35 @@ export class KnowledgeController {
   @Roles(...MANAGE_ROLES)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateDocumentDto) {
     return this.knowledge.create(user, dto.title, dto.content, dto.category ?? "general");
+  }
+
+  @Post("documents/upload")
+  @RequireEmailVerified()
+  @Roles(...MANAGE_ROLES)
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: { fileSize: KNOWLEDGE_MAX_UPLOAD_BYTES },
+    }),
+  )
+  async upload(
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile() file: Express.Multer.File,
+    @Body("title") title?: string,
+    @Body("category") category?: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file uploaded.");
+    }
+    const parsed = await this.parse.parseUpload(file);
+    const resolvedCategory = KNOWLEDGE_CATEGORIES.includes(category as KnowledgeCategory)
+      ? (category as KnowledgeCategory)
+      : "general";
+    const resolvedTitle = title?.trim() || this.parse.titleFromFilename(parsed.filename);
+    const doc = await this.knowledge.create(user, resolvedTitle, parsed.text, resolvedCategory, {
+      sourceType: "upload",
+      sourceUrl: parsed.filename,
+    });
+    return { ...doc, truncated: parsed.truncated };
   }
 
   @Patch("documents/:id")

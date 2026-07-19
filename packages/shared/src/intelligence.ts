@@ -13,6 +13,14 @@ export const KNOWLEDGE_CATEGORIES = [
 
 export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[number];
 
+/** Max characters stored per knowledge document (paste or extracted from upload). */
+export const KNOWLEDGE_MAX_CONTENT_CHARS = 20_000;
+
+/** Max upload size for PDF/DOCX/TXT business knowledge files. */
+export const KNOWLEDGE_MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+export const KNOWLEDGE_UPLOAD_EXTENSIONS = [".pdf", ".docx", ".txt"] as const;
+
 export const ACTION_TYPES = [
   "lead.update_score",
   "lead.update_stage",

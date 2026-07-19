@@ -1,16 +1,28 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import {
+  BookOpen,
+  FileUp,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
+import { apiFetch, apiUpload, toUserMessage } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
-import { KNOWLEDGE_CATEGORIES } from "@growvisi/shared";
+import { KNOWLEDGE_CATEGORIES, KNOWLEDGE_MAX_CONTENT_CHARS, KNOWLEDGE_UPLOAD_EXTENSIONS } from "@growvisi/shared";
 import { useAuthStore } from "@/stores/auth-store";
+import { cn } from "@/lib/utils";
 
-const MAX_CONTENT_CHARS = 20_000;
+const ACCEPT_UPLOAD = KNOWLEDGE_UPLOAD_EXTENSIONS.join(",");
 
 const EMPTY_STATE_SUGGESTIONS = [
   "Rate card or price list",
@@ -33,6 +45,7 @@ interface KnowledgeDoc {
   category?: string;
   rawContent: string | null;
   sourceType: string;
+  sourceUrl?: string | null;
   status: string;
   updatedAt: string;
   chunkCount?: number;
@@ -43,6 +56,9 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
   const role = useAuthStore((s) => s.role);
   const canManage = canManageCampaigns(role);
   const queryClient = useQueryClient();
+  const { success, error: toastError } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("general");
@@ -60,6 +76,28 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
     void queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] });
     void queryClient.invalidateQueries({ queryKey: ["knowledge-health"] });
   };
+
+  const uploadMutation = useMutation({
+    mutationFn: (uploadFile: File) => {
+      const form = new FormData();
+      form.append("file", uploadFile);
+      if (title.trim()) form.append("title", title.trim());
+      form.append("category", category);
+      return apiUpload<KnowledgeDoc & { truncated?: boolean }>("/knowledge/documents/upload", form, {
+        token: token ?? undefined,
+      });
+    },
+    onSuccess: (doc) => {
+      setTitle("");
+      invalidateKnowledge();
+      success(
+        doc.truncated
+          ? "File uploaded — text was trimmed to the 20,000 character limit before indexing."
+          : "File uploaded and queued for indexing.",
+      );
+    },
+    onError: (err) => toastError(toUserMessage(err, "Could not upload file.")),
+  });
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -108,6 +146,11 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
 
   const indexedTotal = (docs ?? []).reduce((n, d) => n + (d.chunkCount ?? 0), 0);
 
+  function handleUploadFile(file: File) {
+    if (!canManage || uploadMutation.isPending) return;
+    uploadMutation.mutate(file);
+  }
+
   function startEdit(doc: KnowledgeDoc) {
     setEditingId(doc.id);
     setEditTitle(doc.title);
@@ -146,7 +189,62 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
       )}
 
       {canManage && (
-        <div className="space-y-2 rounded-xl border border-border/80 bg-background/40 p-3">
+        <div className="space-y-3 rounded-xl border border-border/80 bg-background/40 p-3">
+          <div
+            className={cn(
+              "flex flex-col items-center justify-center rounded-xl border border-dashed px-4 py-6 text-center transition",
+              dragActive
+                ? "border-accent bg-bento-mint/30"
+                : "border-border/70 bg-card/50 hover:border-accent/30 hover:bg-bento-mint/10",
+            )}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragActive(true);
+            }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragActive(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleUploadFile(file);
+            }}
+          >
+            <FileUp className="mb-2 h-8 w-8 text-accent" aria-hidden />
+            <p className="text-sm font-medium text-foreground">Upload PDF, DOCX, or text file</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Up to 4 MB · extracted text is indexed for drafts and guarded auto-send
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3 rounded-xl"
+              disabled={uploadMutation.isPending}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Choose file"
+              )}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPT_UPLOAD}
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleUploadFile(file);
+                e.target.value = "";
+              }}
+            />
+          </div>
+
+          <p className="text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            or paste text
+          </p>
+
           <Input
             placeholder="Title — e.g. 2BHK interior pricing"
             value={title}
@@ -166,21 +264,24 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
           </select>
           <textarea
             value={content}
-            onChange={(e) => setContent(e.target.value.slice(0, MAX_CONTENT_CHARS))}
+            onChange={(e) => setContent(e.target.value.slice(0, KNOWLEDGE_MAX_CONTENT_CHARS))}
             placeholder="Paste product details, offers, or policies your sales team should know…"
             rows={embedded ? 5 : 3}
             className="w-full resize-y rounded-lg border border-input bg-card px-3 py-2 text-sm"
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] text-muted-foreground">
-              Paste text for now — up to {MAX_CONTENT_CHARS.toLocaleString("en-IN")} characters per doc.
+              Paste or upload — up to {KNOWLEDGE_MAX_CONTENT_CHARS.toLocaleString("en-IN")} characters per doc.
             </p>
             <p
               className={`text-[11px] tabular-nums ${
-                content.length > MAX_CONTENT_CHARS * 0.9 ? "text-amber-700" : "text-muted-foreground"
+                content.length > KNOWLEDGE_MAX_CONTENT_CHARS * 0.9
+                  ? "text-amber-700"
+                  : "text-muted-foreground"
               }`}
             >
-              {content.length.toLocaleString("en-IN")} / {MAX_CONTENT_CHARS.toLocaleString("en-IN")}
+              {content.length.toLocaleString("en-IN")} /{" "}
+              {KNOWLEDGE_MAX_CONTENT_CHARS.toLocaleString("en-IN")}
             </p>
           </div>
           <Button
@@ -190,7 +291,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
             disabled={
               !title.trim() ||
               !content.trim() ||
-              content.length > MAX_CONTENT_CHARS ||
+              content.length > KNOWLEDGE_MAX_CONTENT_CHARS ||
               createMutation.isPending
             }
             onClick={() => createMutation.mutate()}
@@ -290,6 +391,11 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                           {CATEGORY_LABELS[doc.category] ?? doc.category}
                         </span>
                       )}
+                      {doc.sourceType === "upload" && doc.sourceUrl ? (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                          {doc.sourceUrl}
+                        </span>
+                      ) : null}
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                           doc.status === "indexed"

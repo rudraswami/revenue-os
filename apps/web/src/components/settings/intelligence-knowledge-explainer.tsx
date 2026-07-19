@@ -6,7 +6,7 @@ const STEPS = [
   {
     icon: BookOpen,
     title: "Add your business knowledge",
-    body: "Paste pricing, policies, FAQs, and product details below. Growvisi indexes them for grounded answers.",
+    body: "Upload PDF, DOCX, or TXT — or paste pricing, policies, and FAQs. Growvisi indexes them for grounded answers.",
   },
   {
     icon: Brain,

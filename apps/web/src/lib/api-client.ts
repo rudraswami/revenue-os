@@ -187,3 +187,35 @@ export async function apiObjectUrl(path: string, token?: string): Promise<string
   const blob = await authedBlob(path, token);
   return URL.createObjectURL(blob);
 }
+
+/** Multipart upload (e.g. knowledge PDF/DOCX). Do not set Content-Type — browser sets boundary. */
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  options: { token?: string; method?: string } = {},
+): Promise<T> {
+  const { token: explicitToken, method = "POST" } = options;
+  const token = explicitToken ?? useAuthStore.getState().accessToken ?? undefined;
+
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  try {
+    return await rawFetchForAuth<T>(path, { method, body: formData, headers });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401 && token) {
+      const newToken = await refreshAccessToken("api_upload_401");
+      if (newToken) {
+        const retryHeaders = new Headers();
+        retryHeaders.set("Authorization", `Bearer ${newToken}`);
+        return rawFetchForAuth<T>(path, { method, body: formData, headers: retryHeaders });
+      }
+      if (useAuthStore.getState().lastTransientFailure) {
+        throw new ApiError(CUSTOMER_SERVICE_ERROR, 0);
+      }
+    }
+    throw err;
+  }
+}

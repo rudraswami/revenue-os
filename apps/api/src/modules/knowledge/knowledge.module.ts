@@ -7,6 +7,7 @@ import { EmailVerifiedGuard } from "../../common/guards/email-verified.guard";
 import { BillingModule } from "../billing/billing.module";
 import { EventsModule } from "../events/events.module";
 import { useBackgroundWorkers } from "../../config/workers";
+import { KnowledgeParseService } from "./knowledge-parse.service";
 import { KnowledgeController } from "./knowledge.controller";
 import { KnowledgeEmbedService } from "./knowledge-embed.service";
 import { KnowledgeRetrievalService } from "./knowledge-retrieval.service";
@@ -24,6 +25,7 @@ const registerProcessors = useBackgroundWorkers();
   controllers: [KnowledgeController],
   providers: [
     KnowledgeService,
+    KnowledgeParseService,
     KnowledgeEmbedService,
     KnowledgeRetrievalService,
     MembershipRoleGuard,
