@@ -137,14 +137,16 @@ export function resolvePreviewOutcome(
   switch (scenarioId) {
     case "thanks":
       return {
-        action: { label: "Sent on WhatsApp", variant: "success" },
+        action: { label: "Auto-replied on WhatsApp", variant: "success" },
         reply: { text: thanks, state: "sent" },
-        footnote: careful ? "Only greetings & short thanks auto-send." : "Matched courtesy replies send instantly.",
+        footnote: careful
+          ? "Only greetings & short thanks get an auto-reply."
+          : "Matched courtesy messages auto-reply instantly.",
       };
     case "new_lead":
       if (responsive) {
         return {
-          action: { label: "Sent · Grounded FAQ", variant: "success" },
+          action: { label: "Auto-replied · Grounded FAQ", variant: "success" },
           pipeline: "New lead · Interested",
           reply: {
             text: "Our 2BHK interior packages start from ₹4.5L. Happy to share a detailed quote!",
@@ -167,11 +169,11 @@ export function resolvePreviewOutcome(
         action: { label: "Handed to you · Urgent", variant: "warning" },
         pipeline: "Escalated",
         reply: { text: "", state: "none" },
-        footnote: "Complaints never auto-send. You take over with one tap.",
+        footnote: "Complaints never auto-reply. You take over with one tap.",
       };
     case "hot_lead":
       return {
-        action: { label: "Sent + hot lead alert", variant: "accent" },
+        action: { label: "Auto-replied + hot lead alert", variant: "accent" },
         pipeline: "Qualified · Site visit",
         reply: {
           text: "Saturday works! What time suits you — morning or afternoon?",
@@ -200,8 +202,9 @@ export const AUTONOMY_OPTIONS: Array<{
   },
   {
     mode: "auto_guarded",
-    title: "Send simple replies",
-    subtitle: "Instant hi, thanks & matched FAQs. You handle the rest.",
+    title: "WhatsApp auto-reply",
+    subtitle:
+      "Growvisi replies instantly to greetings, thanks & grounded FAQs. You own pricing, complaints & deals.",
   },
 ];
 
@@ -213,17 +216,17 @@ export const PRESET_OPTIONS: Array<{
   {
     preset: "careful",
     title: "Hello & thanks",
-    hint: "Only greetings and short acknowledgments auto-send.",
+    hint: "Auto-reply to greetings and short acknowledgments only.",
   },
   {
     preset: "balanced",
     title: "FAQs from your docs",
-    hint: "Matched Business Knowledge can auto-send. Pricing needs you.",
+    hint: "Matched Business Knowledge can auto-reply. Pricing needs you.",
   },
   {
     preset: "responsive",
-    title: "Broader answers",
-    hint: "More grounded replies auto-send. Negotiation stays with you.",
+    title: "Broader auto-replies",
+    hint: "More grounded auto-replies. Negotiation and deals stay with you.",
   },
 ];
 

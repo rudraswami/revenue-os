@@ -101,7 +101,7 @@ export function TeamAlertsZone() {
   const canManage = canManageCampaigns(role);
   const isAdmin = canManageTeam(role);
   const queryClient = useQueryClient();
-  const { success, error: toastError } = useToast();
+  const { error: toastError } = useToast();
   const [digestOpen, setDigestOpen] = useState(false);
 
   const { data: toggles, isLoading } = useQuery({
@@ -156,11 +156,23 @@ export function TeamAlertsZone() {
         token: token ?? undefined,
         body: JSON.stringify(patch),
       }),
+    onMutate: async (patch) => {
+      await queryClient.cancelQueries({ queryKey: ["automation-preferences"] });
+      const previous = queryClient.getQueryData<Record<AutomationId, boolean>>([
+        "automation-preferences",
+      ]);
+      if (previous) {
+        queryClient.setQueryData(["automation-preferences"], { ...previous, ...patch });
+      }
+      return { previous };
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(["automation-preferences"], data);
-      success("Team alert updated.");
     },
-    onError: (e) => {
+    onError: (e, _patch, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["automation-preferences"], context.previous);
+      }
       toastError(
         e instanceof Error && e.message.includes("Growth")
           ? "Stale deal reminder requires the Growth plan."

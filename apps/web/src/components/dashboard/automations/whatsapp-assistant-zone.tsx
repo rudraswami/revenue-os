@@ -3,14 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Brain,
-  Check,
-  ChevronDown,
-  FilePenLine,
-  Settings2,
-  Zap,
-} from "lucide-react";
+import { Check, ChevronDown, Loader2, Settings2 } from "lucide-react";
 import type {
   AutomationPolicyPreset,
   BusinessEmployeeProfile,
@@ -27,6 +20,7 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { AUTONOMY_OPTIONS, PRESET_OPTIONS } from "@/lib/automation-scenarios";
 import { AssistantTrustPanel } from "@/components/dashboard/automations/assistant-trust-panel";
+import { AutonomyModeIcon } from "@/components/dashboard/automations/autonomy-mode-icons";
 import { ConversationPreview } from "@/components/dashboard/automations/conversation-preview";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
@@ -39,12 +33,6 @@ const PLAN_RANK: Record<GrowvisiPlanId, number> = {
   growth: 2,
   pro: 3,
 };
-
-const MODE_ICONS = {
-  intel_only: Brain,
-  assist: FilePenLine,
-  auto_guarded: Zap,
-} as const;
 
 type ProfileDraft = {
   voice: NonNullable<BusinessEmployeeProfile["voice"]>;
@@ -120,6 +108,10 @@ export function WhatsAppAssistantZone() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [editingGreeting, setEditingGreeting] = useState<"first" | "returning" | null>(null);
+  const [optimisticMode, setOptimisticMode] = useState<ReplyAutonomyMode | null>(null);
+  const [optimisticPreset, setOptimisticPreset] = useState<AutomationPolicyPreset | null>(null);
+  const [savingMode, setSavingMode] = useState<ReplyAutonomyMode | null>(null);
+  const [savingPreset, setSavingPreset] = useState<AutomationPolicyPreset | null>(null);
 
   const businessName = organization?.name?.trim() || "your business";
 
@@ -165,13 +157,40 @@ export function WhatsAppAssistantZone() {
         token: token ?? undefined,
         body: JSON.stringify(patch),
       }),
+    onMutate: async (patch) => {
+      await queryClient.cancelQueries({ queryKey: ["intelligence-settings"] });
+      const previous = queryClient.getQueryData<IntelligenceWorkspaceSettings>([
+        "intelligence-settings",
+      ]);
+      if (previous) {
+        const { businessProfile: _bp, ...rest } = patch;
+        queryClient.setQueryData<IntelligenceWorkspaceSettings>(["intelligence-settings"], {
+          ...previous,
+          ...rest,
+        });
+      }
+      return { previous };
+    },
     onSuccess: (next) => {
       queryClient.setQueryData(["intelligence-settings"], next);
       if (next.businessProfile) {
         setDraft(profileToDraft(next.businessProfile));
       }
+      setOptimisticMode(null);
+      setOptimisticPreset(null);
+      setSavingMode(null);
+      setSavingPreset(null);
     },
-    onError: () => toastError("Could not save assistant settings."),
+    onError: (_err, _patch, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["intelligence-settings"], context.previous);
+      }
+      setOptimisticMode(null);
+      setOptimisticPreset(null);
+      setSavingMode(null);
+      setSavingPreset(null);
+      toastError("Could not save assistant settings.");
+    },
   });
 
   const profileMutation = useMutation({
@@ -195,16 +214,28 @@ export function WhatsAppAssistantZone() {
     if (canManage) profileMutation.mutate(patch);
   });
 
-  const currentMode = data?.replyAutonomy ?? "assist";
-  const currentPreset = data?.automationPreset ?? "balanced";
+  const currentMode = optimisticMode ?? data?.replyAutonomy ?? "assist";
+  const currentPreset = optimisticPreset ?? data?.automationPreset ?? "balanced";
+  const isSyncing = savingMode !== null || savingPreset !== null;
 
   function selectMode(mode: ReplyAutonomyMode) {
-    if (!canManage) return;
+    if (!canManage || mode === currentMode) return;
+    setOptimisticMode(mode);
+    setSavingMode(mode);
     const patch: IntelligenceWorkspaceSettingsPatch = { replyAutonomy: mode };
     if (mode === "auto_guarded" && !data?.automationPreset) {
       patch.automationPreset = "balanced";
+      setOptimisticPreset("balanced");
     }
     mutation.mutate(patch);
+  }
+
+  function selectPreset(preset: AutomationPolicyPreset) {
+    if (!canManage || mutation.isPending || preset === currentPreset) return;
+    if (preset === "responsive" && responsiveBlocked) return;
+    setOptimisticPreset(preset);
+    setSavingPreset(preset);
+    mutation.mutate({ automationPreset: preset });
   }
 
   function updateDraft<K extends keyof ProfileDraft>(key: K, value: ProfileDraft[K]) {
@@ -258,32 +289,26 @@ export function WhatsAppAssistantZone() {
             <div className="space-y-2">
               {AUTONOMY_OPTIONS.map((opt) => {
                 const active = currentMode === opt.mode;
-                const Icon = MODE_ICONS[opt.mode];
+                const isSaving = savingMode === opt.mode;
                 const needsGrowth = opt.mode === "auto_guarded" && !growthPlanOk;
                 return (
                   <button
                     key={opt.mode}
                     type="button"
-                    disabled={!canManage || mutation.isPending}
+                    disabled={!canManage}
                     onClick={() => selectMode(opt.mode)}
                     aria-pressed={active}
+                    aria-busy={isSaving}
                     className={cn(
-                      "group relative flex w-full items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition",
+                      "group relative flex w-full items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow] duration-150",
                       active
                         ? "border-accent/50 bg-bento-mint/40 shadow-sm ring-1 ring-accent/15"
                         : "border-border/70 bg-card hover:border-accent/25 hover:bg-bento-mint/15",
                       !canManage && "cursor-not-allowed opacity-70",
                     )}
                   >
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition",
-                        active ? "bg-accent text-white" : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      <Icon className="h-5 w-5" aria-hidden />
-                    </div>
-                    <div className="min-w-0 flex-1 pr-6">
+                    <AutonomyModeIcon mode={opt.mode} active={active} />
+                    <div className="min-w-0 flex-1 pr-8">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-semibold text-foreground">{opt.title}</p>
                         {opt.recommended && !active ? (
@@ -310,7 +335,12 @@ export function WhatsAppAssistantZone() {
                         </Link>
                       ) : null}
                     </div>
-                    {active ? (
+                    {isSaving ? (
+                      <Loader2
+                        className="absolute right-4 top-4 h-4 w-4 animate-spin text-accent"
+                        aria-hidden
+                      />
+                    ) : active ? (
                       <Check className="absolute right-4 top-4 h-4 w-4 text-accent" aria-hidden />
                     ) : null}
                   </button>
@@ -322,17 +352,13 @@ export function WhatsAppAssistantZone() {
           {currentMode === "auto_guarded" ? (
             <div>
               <p className="mb-2 text-sm font-semibold text-foreground">
-                What can Growvisi send automatically?
+                How far should auto-reply go?
               </p>
               <SegmentedControl
                 size="md"
-                aria-label="Auto-send preset"
+                aria-label="Auto-reply preset"
                 value={currentPreset}
-                onChange={(preset) => {
-                  if (!canManage || mutation.isPending) return;
-                  if (preset === "responsive" && responsiveBlocked) return;
-                  mutation.mutate({ automationPreset: preset as AutomationPolicyPreset });
-                }}
+                onChange={(preset) => selectPreset(preset as AutomationPolicyPreset)}
                 options={PRESET_OPTIONS.map((p) => ({
                   value: p.preset,
                   label: p.title,
@@ -374,6 +400,7 @@ export function WhatsAppAssistantZone() {
           businessName={businessName}
           greetingSample={greetingPreview}
           thanksSample={thanksPreview}
+          syncing={isSyncing}
         />
       </div>
 

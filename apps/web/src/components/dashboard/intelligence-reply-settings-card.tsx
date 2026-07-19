@@ -48,8 +48,8 @@ const MODE_META: Record<
     recommended: true,
   },
   auto_guarded: {
-    title: "Auto-send simple replies",
-    subtitle: "Hi, Thanks, and matched FAQs send on WhatsApp. You handle the rest.",
+    title: "WhatsApp auto-reply",
+    subtitle: "Instant replies to greetings, thanks & grounded FAQs. You own the rest.",
     icon: Zap,
   },
 };

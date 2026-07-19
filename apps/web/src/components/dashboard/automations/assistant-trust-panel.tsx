@@ -4,7 +4,7 @@ const WILL = [
   "Classify intent & update Pipeline",
   "Draft replies from your Business Knowledge",
   "Alert you when it's your turn",
-  "Send simple replies only if you enable it",
+  "Send auto-replies on WhatsApp only when you enable it",
 ];
 
 const WONT = [
