@@ -30,7 +30,8 @@ If step 2 has no Cookie header, refresh cannot work and users will appear logged
 
 - Session cleared **only** on conclusive auth death: `AUTH_EXPIRED` | `AUTH_REVOKED` | `AUTH_INVALID`
 - Network / 5xx / offline / timeouts **never** call `clear()`
-- Multi-tab: one refresh lock; access token shared via `BroadcastChannel` + `localStorage`
+- Multi-tab: `navigator.locks` when available, else storage lock + `BroadcastChannel`
+- Refresh token mirrored in `sessionStorage` when cookie is not sent (fallback only)
 - Every refresh and logout emits a structured `console.info` JSON line (`auth.refresh` / `auth.logout`)
 
 ## Logout reasons

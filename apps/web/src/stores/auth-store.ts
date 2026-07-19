@@ -3,6 +3,10 @@ import { persist } from "zustand/middleware";
 import { syncAuthCookie } from "@/lib/auth-cookie";
 import { clearRefreshCoordination } from "@/lib/auth-refresh-lock";
 import { logLogout } from "@/lib/auth-observability";
+import {
+  clearPersistedRefreshToken,
+  persistRefreshToken,
+} from "@/lib/refresh-token-persist";
 import type { LogoutReason, RefreshResultKind } from "@/lib/auth-session-death";
 import type { MembershipRole } from "@growvisi/shared";
 import type { AuthOrganization, AuthSession, AuthUser, OnboardingStatus } from "@/lib/auth-types";
@@ -60,6 +64,7 @@ export const useAuthStore = create<AuthState>()(
       setHydrated: (hydrated) => set({ hydrated }),
       setSession: (session) => {
         syncAuthCookie(true);
+        persistRefreshToken(session.refreshToken);
         set({
           accessToken: session.accessToken,
           refreshToken: session.refreshToken,
@@ -72,6 +77,7 @@ export const useAuthStore = create<AuthState>()(
       },
       patchAccessToken: (accessToken, refreshToken) => {
         syncAuthCookie(true);
+        if (refreshToken) persistRefreshToken(refreshToken);
         set((s) => ({
           accessToken,
           refreshToken: refreshToken ?? s.refreshToken,
@@ -87,6 +93,7 @@ export const useAuthStore = create<AuthState>()(
       clear: (reason) => {
         logLogout(reason);
         syncAuthCookie(false);
+        clearPersistedRefreshToken();
         clearRefreshCoordination();
         set({
           accessToken: null,
@@ -104,10 +111,8 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "growvisi-auth",
-      // NOTE: refreshToken is deliberately NOT persisted. It lives in an HttpOnly
-      // cookie set by the API, so it cannot be stolen via XSS from localStorage.
-      // The short-lived accessToken is persisted to avoid a refresh round-trip on
-      // every reload; it is rotated via the cookie when it expires.
+      // NOTE: refreshToken is deliberately NOT persisted to localStorage (XSS surface).
+      // It is mirrored in sessionStorage + HttpOnly cookie — see refresh-token-persist.ts.
       partialize: (state) => ({
         accessToken: state.accessToken,
         user: state.user,

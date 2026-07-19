@@ -7,7 +7,8 @@ import {
 import { hasSessionHint, syncAuthCookie } from "@/lib/auth-cookie";
 import type { AuthSession, AuthUser, MeResponse } from "@/lib/auth-types";
 import { isConclusiveAuthDeath } from "@/lib/auth-session-death";
-import { accessTokenIsExpired } from "@/lib/session-continuity";
+import { accessTokenIsExpired, accessTokenNeedsRefresh } from "@/lib/session-continuity";
+import { readPersistedRefreshToken } from "@/lib/refresh-token-persist";
 import { useAuthStore } from "@/stores/auth-store";
 
 export async function logout(): Promise<void> {
@@ -113,46 +114,41 @@ export function startBootstrapAuth(): Promise<void> {
 
 export async function bootstrapAuth(): Promise<void> {
   const state = useAuthStore.getState();
-  if (!state.refreshToken && !state.accessToken && !hasSessionHint()) {
+  const hasRefreshBackup = !!readPersistedRefreshToken();
+  if (!state.refreshToken && !state.accessToken && !hasSessionHint() && !hasRefreshBackup) {
     return;
   }
 
   let token = state.accessToken;
-
-  if (token && accessTokenIsExpired(token)) {
-    const refreshed = await refreshSession("bootstrap_expired_access");
-    if (refreshed.kind === "SUCCESS") {
-      token = refreshed.accessToken;
-    } else if (isConclusiveAuthDeath(refreshed.kind)) {
-      endSessionFromRefresh(refreshed);
-      return;
-    } else {
-      useAuthStore.getState().setTransientFailure(
-        refreshed.kind === "NETWORK_FAILURE" ? "NETWORK_FAILURE" : "SERVER_FAILURE",
-      );
-    }
-  }
-
-  if (!token) {
-    const refreshed = await refreshSession("bootstrap_no_access");
-    if (refreshed.kind === "SUCCESS") {
-      token = refreshed.accessToken;
-    } else if (isConclusiveAuthDeath(refreshed.kind)) {
-      endSessionFromRefresh(refreshed);
-      return;
-    } else {
-      // NETWORK/SERVER — keep hint; AuthGuard will show reconnecting if no token
-      useAuthStore.getState().setTransientFailure(
-        refreshed.kind === "NETWORK_FAILURE" ? "NETWORK_FAILURE" : "SERVER_FAILURE",
-      );
-      return;
-    }
-  }
-
   const onDashboard =
     typeof globalThis.window !== "undefined" &&
     globalThis.window.location.pathname.startsWith("/dashboard");
+
+  const tokenNeedsWork =
+    !token || accessTokenIsExpired(token) || accessTokenNeedsRefresh(token);
+
+  if (tokenNeedsWork) {
+    const refreshed = await refreshSession(
+      token ? "bootstrap_expired_access" : "bootstrap_no_access",
+    );
+    if (refreshed.kind === "SUCCESS") {
+      token = refreshed.accessToken;
+    } else if (isConclusiveAuthDeath(refreshed.kind)) {
+      endSessionFromRefresh(refreshed);
+      return;
+    } else {
+      useAuthStore.getState().setTransientFailure(
+        refreshed.kind === "NETWORK_FAILURE" ? "NETWORK_FAILURE" : "SERVER_FAILURE",
+      );
+      if (!token) return;
+    }
+  }
+
   if (onDashboard) {
+    return;
+  }
+
+  if (!token) {
     return;
   }
 

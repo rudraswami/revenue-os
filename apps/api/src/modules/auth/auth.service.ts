@@ -320,7 +320,7 @@ export class AuthService {
       include: { user: true },
     });
 
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+    if (!stored || stored.expiresAt < new Date()) {
       throw new UnauthorizedException("Session expired. Please sign in again.");
     }
 
@@ -333,6 +333,26 @@ export class AuthService {
     });
     if (!member) {
       throw new UnauthorizedException();
+    }
+
+    // Concurrent refresh (multi-tab): a recently-rotated token may arrive late.
+    // Re-issue a session instead of forcing logout — real theft replays after grace.
+    const ROTATION_GRACE_MS = 120_000;
+    if (stored.revokedAt) {
+      const revokedAgo = Date.now() - stored.revokedAt.getTime();
+      if (revokedAgo > ROTATION_GRACE_MS) {
+        throw new UnauthorizedException("Session expired. Please sign in again.");
+      }
+      return this.buildSessionResponse(
+        {
+          sub: stored.user.id,
+          email: stored.user.email,
+          organizationId: member.organizationId,
+          role: member.role as JwtPayload["role"],
+        },
+        stored.user,
+        member.organization,
+      );
     }
 
     await this.prisma.refreshToken.update({

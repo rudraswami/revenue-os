@@ -145,6 +145,22 @@ export async function withRefreshLock<T>(run: () => Promise<T>): Promise<{
     return { ran: true, value: await run(), peerToken: null };
   }
 
+  if (typeof navigator !== "undefined" && navigator.locks?.request) {
+    try {
+      let value: T | null = null;
+      await navigator.locks.request(
+        "growvisi-auth-refresh",
+        { ifAvailable: false },
+        async () => {
+          value = await run();
+        },
+      );
+      return { ran: true, value, peerToken: null };
+    } catch {
+      // Fall through to storage-based lock
+    }
+  }
+
   if (!tryAcquireLock()) {
     const peerToken = await waitForPeerRefresh();
     return { ran: false, value: null, peerToken };

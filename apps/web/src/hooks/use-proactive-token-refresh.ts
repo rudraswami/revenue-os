@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { refreshSession } from "@/lib/auth-refresh";
+import { refreshSession, endSessionFromRefresh } from "@/lib/auth-refresh";
 import { isConclusiveAuthDeath } from "@/lib/auth-session-death";
 import { jwtExpiresInSec } from "@/lib/jwt-expiry";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/lib/session-continuity";
 import { useAuthStore } from "@/stores/auth-store";
 import { hasSessionHint } from "@/lib/auth-cookie";
+import { readPersistedRefreshToken } from "@/lib/refresh-token-persist";
 
 const MIN_POLL_MS = 30_000;
 /** Visible-tab safety net when setTimeout is throttled in background. */
@@ -22,7 +23,7 @@ export function useProactiveTokenRefresh() {
 
   useEffect(() => {
     if (!hydrated) return;
-    if (!accessToken && !hasSessionHint()) return;
+    if (!accessToken && !hasSessionHint() && !readPersistedRefreshToken()) return;
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -33,14 +34,16 @@ export function useProactiveTokenRefresh() {
       const token = useAuthStore.getState().accessToken;
       const shouldRefresh =
         !token || accessTokenIsExpired(token) || accessTokenNeedsRefresh(token);
-      if (!shouldRefresh && !hasSessionHint()) return;
+      if (!shouldRefresh && !hasSessionHint() && !readPersistedRefreshToken()) return;
       if (!shouldRefresh) return;
 
       const result = await refreshSession(reason);
       if (cancelled) return;
-      if (!isConclusiveAuthDeath(result.kind)) {
-        schedule();
+      if (isConclusiveAuthDeath(result.kind)) {
+        endSessionFromRefresh(result);
+        return;
       }
+      schedule();
     };
 
     const schedule = () => {
@@ -48,7 +51,7 @@ export function useProactiveTokenRefresh() {
       if (timer) clearTimeout(timer);
 
       const token = useAuthStore.getState().accessToken;
-      if (!token && !hasSessionHint()) return;
+      if (!token && !hasSessionHint() && !readPersistedRefreshToken()) return;
 
       if (!token || accessTokenIsExpired(token) || accessTokenNeedsRefresh(token)) {
         void maybeRefresh("proactive_expiry");

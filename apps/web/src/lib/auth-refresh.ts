@@ -15,6 +15,11 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 import { ApiError, rawFetchForAuth } from "@/lib/api-client-core";
 import { hasSessionHint } from "@/lib/auth-cookie";
+import {
+  clearPersistedRefreshToken,
+  persistRefreshToken,
+  readPersistedRefreshToken,
+} from "@/lib/refresh-token-persist";
 
 export type { RefreshResult };
 
@@ -54,6 +59,7 @@ async function postRefresh(
       body,
     });
     useAuthStore.getState().setSession(session);
+    persistRefreshToken(session.refreshToken);
     shareAccessToken(session.accessToken);
     return {
       kind: "SUCCESS",
@@ -71,17 +77,29 @@ async function postRefresh(
 
 /**
  * HttpOnly cookie is the source of truth (survives reload).
- * In-memory refreshToken is fallback only (same tab, right after login).
+ * sessionStorage + in-memory store are fallbacks when the cookie is not sent.
  */
+function refreshTokenFallback(): string | null {
+  const { refreshToken } = useAuthStore.getState();
+  return refreshToken?.trim() || readPersistedRefreshToken();
+}
+
 async function performRefreshRequest(retryCount: number): Promise<RefreshResult> {
   const cookieFirst = await postRefresh(retryCount);
   if (cookieFirst.kind === "SUCCESS") return cookieFirst;
   if (!isConclusiveAuthDeath(cookieFirst.kind)) return cookieFirst;
 
-  const { refreshToken } = useAuthStore.getState();
-  if (!refreshToken) return cookieFirst;
+  const fallback = refreshTokenFallback();
+  if (!fallback) return cookieFirst;
 
-  return postRefresh(retryCount + 1, JSON.stringify({ refreshToken }));
+  const bodyResult = await postRefresh(retryCount + 1, JSON.stringify({ refreshToken: fallback }));
+  if (bodyResult.kind === "SUCCESS") return bodyResult;
+
+  // Stale persisted token — drop it so we do not loop on dead credentials
+  if (isConclusiveAuthDeath(bodyResult.kind)) {
+    clearPersistedRefreshToken();
+  }
+  return bodyResult;
 }
 
 /**
@@ -92,7 +110,7 @@ export async function refreshSession(reason = "api_401"): Promise<RefreshResult>
   ensurePeerSubscription();
 
   const { accessToken } = useAuthStore.getState();
-  if (!accessToken && !hasSessionHint()) {
+  if (!accessToken && !hasSessionHint() && !readPersistedRefreshToken()) {
     return {
       kind: "AUTH_INVALID",
       message: "No session",
