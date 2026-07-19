@@ -34,7 +34,10 @@ interface PipelineBoardProps {
   stageLabels: Record<LeadStage, string>;
   stageColors: Record<LeadStage, string>;
   data: Record<string, PipelineLead[]> | undefined;
+  hasMoreByStage?: Record<string, boolean>;
   isPending: boolean;
+  loadingMoreStage?: LeadStage | null;
+  onLoadMoreStage?: (stage: LeadStage) => void;
   onMoveLead: (leadId: string, stage: LeadStage) => void;
   onEditValue?: (lead: PipelineLead) => void;
   canMoveLead?: (lead: PipelineLead) => boolean;
@@ -234,7 +237,10 @@ export function PipelineBoard({
   stageLabels,
   stageColors,
   data,
+  hasMoreByStage,
   isPending,
+  loadingMoreStage,
+  onLoadMoreStage,
   onMoveLead,
   onEditValue,
   canMoveLead,
@@ -330,6 +336,16 @@ export function PipelineBoard({
                     onEditValue={onEditValue}
                   />
                 ))}
+                {hasMoreByStage?.[stage] && onLoadMoreStage && (
+                  <button
+                    type="button"
+                    className="w-full rounded-xl border border-border/80 bg-card py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+                    disabled={loadingMoreStage === stage}
+                    onClick={() => onLoadMoreStage(stage)}
+                  >
+                    {loadingMoreStage === stage ? "Loading…" : "Show more"}
+                  </button>
+                )}
                 {count === 0 && (
                   <p className="hidden px-2 py-10 text-center text-xs text-muted-foreground md:block">
                     Drop leads here

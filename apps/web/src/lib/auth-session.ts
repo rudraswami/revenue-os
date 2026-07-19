@@ -149,6 +149,13 @@ export async function bootstrapAuth(): Promise<void> {
     }
   }
 
+  const onDashboard =
+    typeof globalThis.window !== "undefined" &&
+    globalThis.window.location.pathname.startsWith("/dashboard");
+  if (onDashboard) {
+    return;
+  }
+
   let meResult = await fetchMe(token);
   if (meResult === "ok") return;
 

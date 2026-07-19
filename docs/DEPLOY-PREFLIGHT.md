@@ -85,6 +85,21 @@ All required vars are set ✓:
 - `NEXT_PUBLIC_META_APP_ID`
 - `NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID`
 
+### Production realtime (Supabase Broadcast)
+
+Socket.IO is disabled on Vercel serverless. For live inbox updates without polling:
+
+| Variable | Project | Value |
+|----------|---------|-------|
+| `SUPABASE_URL` | API | Same as database project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | API | Service role key (server only) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Web | Same Supabase URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Web | Anon key (public) |
+
+Optional: set `NEXT_PUBLIC_REALTIME_ENABLED=true` to force realtime on; `false` to disable.
+
+For native WebSocket (local dev or dedicated API host), point `NEXT_PUBLIC_WS_URL` at a non-Vercel API and omit Supabase vars.
+
 ---
 
 ## 3. vercel.json (API)

@@ -3,7 +3,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState } from "react";
 import { io, type Socket } from "socket.io-client";
+import { handleRealtimeEvent } from "@/lib/realtime-event-handler";
 import { organizationIdFromStore, useAuthStore } from "@/stores/auth-store";
+import { subscribeSupabaseOrgChannel, supabaseRealtimeEnabled } from "@/lib/supabase-realtime";
 
 interface RealtimeContextValue {
   connected: boolean;
@@ -23,11 +25,10 @@ function wsBaseUrl(): string {
   return raw.replace(/\/$/, "");
 }
 
-/** Socket.IO is disabled on Vercel serverless API — see apps/api/src/main.ts */
-function realtimeEnabled(): boolean {
+/** Socket.IO when API runs with native WebSocket (local / dedicated host). */
+function socketRealtimeEnabled(): boolean {
   if (process.env.NEXT_PUBLIC_REALTIME_ENABLED === "false") return false;
   if (process.env.NEXT_PUBLIC_REALTIME_ENABLED === "true") return true;
-  // Default off for production API host (no WebSocket adapter on Vercel)
   const base = wsBaseUrl();
   return !base.includes("growvisi.in") && !base.includes("vercel.app");
 }
@@ -40,7 +41,16 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const orgId = organizationId ?? organizationIdFromStore();
-    if (!accessToken || !orgId || !realtimeEnabled()) {
+    if (!accessToken || !orgId) {
+      setConnected(false);
+      return;
+    }
+
+    if (supabaseRealtimeEnabled()) {
+      return subscribeSupabaseOrgChannel(orgId, queryClient, setConnected);
+    }
+
+    if (!socketRealtimeEnabled()) {
       setConnected(false);
       return;
     }
@@ -55,45 +65,28 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     socket.on("disconnect", () => setConnected(false));
     socket.on("connect_error", () => setConnected(false));
 
-    const refresh = (conversationId?: string) => {
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversation-stats"] });
-      void queryClient.invalidateQueries({ queryKey: ["funnel-metrics"] });
-      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
-      if (conversationId) {
-        void queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] });
-      }
-    };
-
     socket.on("message.new", (payload: { conversationId?: string }) => {
-      refresh(payload?.conversationId);
-    });
-
-    socket.on("lead.classified", (payload: { conversationId?: string }) => {
-      refresh(payload?.conversationId);
-    });
-
-    socket.on("inbox.updated", (payload: { conversationId?: string }) => {
-      refresh(payload?.conversationId);
-      void queryClient.invalidateQueries({ queryKey: ["conversation"] });
-    });
-
-    socket.on("lead.stage.changed", (payload: { leadId?: string }) => {
-      refresh();
-      if (payload?.leadId) {
-        void queryClient.invalidateQueries({ queryKey: ["lead-timeline", payload.leadId] });
-      }
+      handleRealtimeEvent(queryClient, "message.new", payload);
     });
 
     socket.on("lead.classified", (payload: { conversationId?: string; leadId?: string }) => {
-      refresh(payload?.conversationId);
-      if (payload?.leadId) {
-        void queryClient.invalidateQueries({ queryKey: ["lead-timeline", payload.leadId] });
-      }
+      handleRealtimeEvent(queryClient, "lead.classified", payload);
     });
 
-    socket.on("lead.handoff", (payload: { conversationId?: string }) => {
-      refresh(payload?.conversationId);
+    socket.on("inbox.updated", (payload: { conversationId?: string }) => {
+      handleRealtimeEvent(queryClient, "inbox.updated", payload);
+    });
+
+    socket.on("lead.stage.changed", (payload: { leadId?: string }) => {
+      handleRealtimeEvent(queryClient, "lead.stage.changed", payload);
+    });
+
+    socket.on("lead.handoff", (payload: { conversationId?: string; leadId?: string }) => {
+      handleRealtimeEvent(queryClient, "lead.handoff", payload);
+    });
+
+    socket.on("whatsapp.setup.updated", () => {
+      handleRealtimeEvent(queryClient, "whatsapp.setup.updated");
     });
 
     return () => {

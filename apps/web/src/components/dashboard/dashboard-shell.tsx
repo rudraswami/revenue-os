@@ -7,7 +7,7 @@ import { Logo } from "@/components/marketing/logo";
 import { WhatsappTokenExpiryBanner } from "@/components/dashboard/whatsapp-token-expiry-banner";
 import { EmailVerificationBanner } from "@/components/auth/email-verification-banner";
 import { PermissionsChangedBanner } from "@/components/auth/permissions-changed-banner";
-import { useAuthMe } from "@/hooks/use-auth-me";
+import { useDashboardShellBootstrap } from "@/hooks/use-dashboard-shell-bootstrap";
 import { DashboardAssistLayer } from "@/components/dashboard/dashboard-assist-layer";
 import {
   OnboardingBanner,
@@ -21,7 +21,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const isInbox = pathname === "/dashboard/inbox" || pathname.startsWith("/dashboard/inbox/");
-  useAuthMe();
+  useDashboardShellBootstrap();
 
   return (
     <div className="flex app-shell">

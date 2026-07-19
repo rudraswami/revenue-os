@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import { EmailVerifiedGuard } from "../../common/guards/email-verified.guard";
+import { AgencyModule } from "../agency/agency.module";
 import { AssignmentModule } from "../assignments/assignment.module";
 import { AuthModule } from "../auth/auth.module";
 import { BillingModule } from "../billing/billing.module";
@@ -13,7 +14,15 @@ import { OrganizationsController } from "./organizations.controller";
 import { OrganizationsService } from "./organizations.service";
 
 @Module({
-  imports: [AuthModule, BillingModule, DigestModule, AssignmentModule, KnowledgeModule, WhatsappAccountsModule],
+  imports: [
+    AuthModule,
+    BillingModule,
+    AgencyModule,
+    DigestModule,
+    AssignmentModule,
+    KnowledgeModule,
+    WhatsappAccountsModule,
+  ],
   controllers: [OrganizationsController, OrganizationInvitesController],
   providers: [OrganizationsService, MembershipRoleGuard, SubscriptionGuard, EmailVerifiedGuard],
   exports: [OrganizationsService],

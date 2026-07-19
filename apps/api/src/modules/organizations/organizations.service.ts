@@ -17,6 +17,8 @@ import {
 } from "@growvisi/shared";
 import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics, buildPostActivationCoaching } from "@growvisi/shared";
 import { AuthService } from "../auth/auth.service";
+import { AgencyService } from "../agency/agency.service";
+import { BillingService } from "../billing/billing.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
@@ -80,6 +82,8 @@ export class OrganizationsService {
     private readonly config: ConfigService,
     private readonly entitlements: EntitlementsService,
     private readonly auth: AuthService,
+    private readonly billing: BillingService,
+    private readonly agency: AgencyService,
     private readonly whatsappAccounts: WhatsappAccountsService,
     private readonly knowledgeRetrieval: KnowledgeRetrievalService,
     private readonly knowledge: KnowledgeService,
@@ -649,6 +653,51 @@ export class OrganizationsService {
       },
     });
     return this.getPaymentIntegration(user);
+  }
+
+  /** Single round-trip for dashboard shell: identity, billing, WhatsApp, setup FAB inputs. */
+  async getShellBootstrap(user: JwtPayload) {
+    const [me, billing, agency, accounts, onboardingProgress] = await Promise.all([
+      this.auth.getMe(user),
+      this.billing.getStatus(user),
+      this.agency.getStatus(user),
+      this.whatsappAccounts.list(user),
+      this.getOnboardingProgress(user.organizationId),
+    ]);
+
+    const connected = accounts.some((a) => a.isActive);
+    const connectionHealth = connected
+      ? await this.whatsappAccounts.getConnectionHealthForOrganization(user.organizationId)
+      : undefined;
+
+    const capabilities = this.getConversationCapabilities();
+
+    let paymentIntegration: Awaited<ReturnType<OrganizationsService["getPaymentIntegration"]>> | undefined;
+    if (user.role === "OWNER" || user.role === "ADMIN") {
+      paymentIntegration = await this.getPaymentIntegration(user);
+    }
+
+    return {
+      me,
+      billing,
+      agency,
+      whatsapp: {
+        accounts,
+        connectionHealth,
+      },
+      onboardingProgress,
+      capabilities,
+      paymentIntegration,
+    };
+  }
+
+  private getConversationCapabilities() {
+    const aiOn = !!this.config.get<string>("OPENAI_API_KEY");
+    return {
+      aiClassification: aiOn,
+      aiSuggestReply: aiOn,
+      primaryUseCase: "conversation_intelligence" as const,
+    };
   }
 
   /** Coaching slice only — for inbox takeover nudge without full activation scan. */

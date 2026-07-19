@@ -132,8 +132,10 @@ export class LeadsController {
   pipeline(
     @CurrentUser() user: JwtPayload,
     @Query("filter") filter?: PipelineFilter,
+    @Query("perStageLimit") perStageLimit?: string,
   ) {
-    return this.leads.listByStage(user, filter);
+    const limit = perStageLimit ? Number.parseInt(perStageLimit, 10) : 40;
+    return this.leads.listByStage(user, filter, Number.isFinite(limit) ? limit : 40);
   }
 
   @Get("pipeline/summary")

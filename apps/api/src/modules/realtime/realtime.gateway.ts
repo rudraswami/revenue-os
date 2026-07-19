@@ -11,6 +11,7 @@ import { Server, Socket } from "socket.io";
 import { PrismaService } from "../prisma/prisma.service";
 import { JWT_ISSUER, JWT_AUDIENCE } from "../auth/jwt.constants";
 import { isAllowedCorsOrigin } from "../../config/cors-origins";
+import { RealtimeBroadcastService } from "./realtime-broadcast.service";
 
 export interface MessageNewEvent {
   conversationId: string;
@@ -34,6 +35,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   constructor(
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
+    private readonly broadcast: RealtimeBroadcastService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -71,12 +73,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   emitMessageNew(organizationId: string, data: MessageNewEvent) {
     this.server?.to(`org:${organizationId}`).emit("message.new", data);
+    void this.broadcast.publish(organizationId, "message.new", data);
   }
 
   emitInboxUpdated(organizationId: string, conversationId?: string) {
-    this.server?.to(`org:${organizationId}`).emit("inbox.updated", {
-      conversationId: conversationId ?? undefined,
-    });
+    const payload = { conversationId: conversationId ?? undefined };
+    this.server?.to(`org:${organizationId}`).emit("inbox.updated", payload);
+    void this.broadcast.publish(organizationId, "inbox.updated", payload);
   }
 
   emitWhatsappSetupUpdated(
@@ -84,6 +87,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     data: { event: string; wabaId: string; phoneNumberId?: string },
   ) {
     this.server?.to(`org:${organizationId}`).emit("whatsapp.setup.updated", data);
+    void this.broadcast.publish(organizationId, "whatsapp.setup.updated", data);
   }
 
   emitLeadStageChanged(
@@ -96,6 +100,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     },
   ) {
     this.server?.to(`org:${organizationId}`).emit("lead.stage.changed", data);
+    void this.broadcast.publish(organizationId, "lead.stage.changed", data);
   }
 
   emitLeadClassified(
@@ -109,6 +114,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     },
   ) {
     this.server?.to(`org:${organizationId}`).emit("lead.classified", data);
+    void this.broadcast.publish(organizationId, "lead.classified", data);
   }
 
   emitLeadHandoff(
@@ -116,5 +122,6 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     data: { conversationId: string; leadId: string; reason: string },
   ) {
     this.server?.to(`org:${organizationId}`).emit("lead.handoff", data);
+    void this.broadcast.publish(organizationId, "lead.handoff", data);
   }
 }

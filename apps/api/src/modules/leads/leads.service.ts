@@ -53,7 +53,7 @@ export class LeadsService {
     private readonly automations: AutomationsService,
   ) {}
 
-  async listByStage(user: JwtPayload, filter?: PipelineFilter) {
+  async listByStage(user: JwtPayload, filter?: PipelineFilter, perStageLimit = 40) {
     const validFilters: PipelineFilter[] = ["hot", "stale", "mine", "unassigned"];
     const activeFilter =
       filter && validFilters.includes(filter) ? filter : undefined;
@@ -158,7 +158,16 @@ export class LeadsService {
       {} as Record<string, typeof filtered>,
     );
 
-    return { grouped, automationRunsToday: runsToday };
+    const hasMoreByStage: Record<string, boolean> = {};
+    const limit = Math.min(Math.max(perStageLimit, 10), 200);
+    for (const stage of Object.keys(grouped)) {
+      if (grouped[stage].length > limit) {
+        hasMoreByStage[stage] = true;
+        grouped[stage] = grouped[stage].slice(0, limit);
+      }
+    }
+
+    return { grouped, automationRunsToday: runsToday, hasMoreByStage, perStageLimit: limit };
   }
 
   async getPipelineSummary(user: JwtPayload) {

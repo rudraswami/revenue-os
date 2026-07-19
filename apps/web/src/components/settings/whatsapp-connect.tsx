@@ -163,6 +163,7 @@ export default function WhatsappConnect({
       void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
       void queryClient.invalidateQueries({ queryKey: ["onboarding-progress"] });
       void queryClient.invalidateQueries({ queryKey: ["billing-status"] });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.shellBootstrap });
     },
     onError: (e) => {
       setPhase("error");

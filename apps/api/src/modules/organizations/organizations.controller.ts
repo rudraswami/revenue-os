@@ -390,6 +390,12 @@ export class OrganizationsController {
     return this.assignments.getTeamWorkload(user.organizationId);
   }
 
+  @Get("shell-bootstrap")
+  @SkipSubscriptionCheck()
+  shellBootstrap(@CurrentUser() user: JwtPayload) {
+    return this.organizations.getShellBootstrap(user);
+  }
+
   @Get("onboarding-progress")
   @SkipSubscriptionCheck()
   onboardingProgress(@CurrentUser() user: JwtPayload, @Query("scope") scope?: string) {

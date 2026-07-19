@@ -67,6 +67,8 @@ const FILTER_OPTIONS: Array<{ value: PipelineFilter; label: string }> = [
 interface PipelineResponse {
   grouped: Record<string, PipelineLead[]>;
   automationRunsToday: number;
+  hasMoreByStage?: Record<string, boolean>;
+  perStageLimit?: number;
 }
 
 interface PipelineSummary {
@@ -101,6 +103,8 @@ export default function PipelinePage() {
     null,
   );
   const [valuePrompt, setValuePrompt] = useState<PipelineLead | null>(null);
+  const [perStageLimit, setPerStageLimit] = useState(40);
+  const [loadingMoreStage, setLoadingMoreStage] = useState<LeadStage | null>(null);
 
   useEffect(() => {
     const f = searchParams.get("filter");
@@ -111,13 +115,16 @@ export default function PipelinePage() {
     }
   }, [searchParams]);
 
-  const pipelineQueryKey = ["pipeline", filter] as const;
+  const pipelineQueryKey = ["pipeline", filter, perStageLimit] as const;
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: pipelineQueryKey,
     queryFn: () => {
-      const qs = filter !== "all" ? `?filter=${filter}` : "";
-      return apiFetch<PipelineResponse>(`/leads/pipeline${qs}`, {
+      const params = new URLSearchParams();
+      if (filter !== "all") params.set("filter", filter);
+      params.set("perStageLimit", String(perStageLimit));
+      const qs = params.toString();
+      return apiFetch<PipelineResponse>(`/leads/pipeline?${qs}`, {
         token: token ?? undefined,
       });
     },
@@ -142,7 +149,18 @@ export default function PipelinePage() {
   });
 
   const grouped = data?.grouped;
+  const hasMoreByStage = data?.hasMoreByStage;
   const automationRunsToday = data?.automationRunsToday ?? summary?.automationRunsToday ?? 0;
+
+  function handleLoadMoreStage(stage: LeadStage) {
+    if (loadingMoreStage) return;
+    setLoadingMoreStage(stage);
+    setPerStageLimit((n) => n + 40);
+  }
+
+  useEffect(() => {
+    if (data) setLoadingMoreStage(null);
+  }, [data]);
 
   const stageMutation = useMutation({
     mutationFn: ({
@@ -373,6 +391,9 @@ export default function PipelinePage() {
             stageLabels={STAGE_LABELS}
             stageColors={STAGE_COLORS}
             data={grouped}
+            hasMoreByStage={hasMoreByStage}
+            loadingMoreStage={loadingMoreStage}
+            onLoadMoreStage={handleLoadMoreStage}
             isPending={stageMutation.isPending || valueMutation.isPending}
             onMoveLead={handleMoveLead}
             onEditValue={setValuePrompt}

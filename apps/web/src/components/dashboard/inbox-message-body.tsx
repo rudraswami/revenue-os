@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, ImageIcon, Loader2, Mic, Video } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiObjectUrl } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,29 @@ function mediaIcon(type: string) {
     default:
       return FileText;
   }
+}
+
+function useInView(rootMargin = "120px") {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || inView) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [inView, rootMargin]);
+
+  return { ref, inView };
 }
 
 function useAuthenticatedMediaUrl(
@@ -82,11 +105,21 @@ export function InboxMessageBody({
   const isVideo = type === "VIDEO";
   const isAudio = type === "AUDIO";
   const needsMedia = isImage || isVideo || isAudio;
+  const { ref, inView } = useInView();
   const mediaUrl = useAuthenticatedMediaUrl(
     conversationId,
     messageId,
-    needsMedia,
+    needsMedia && inView,
   );
+
+  if (needsMedia && !inView) {
+    return (
+      <div ref={ref} className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
+        <Icon className="h-3.5 w-3.5" />
+        <span>{content ?? "Attachment"}</span>
+      </div>
+    );
+  }
 
   if (needsMedia && !mediaUrl) {
     return (

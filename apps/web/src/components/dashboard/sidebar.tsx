@@ -340,7 +340,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const statsPollInterval = useVisibleRefetchInterval(live ? false : 30_000);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
 
-  const { data: me } = useAuthMe();
+  const { data: me } = useAuthMe({ cacheOnly: true });
 
   const { data: accounts } = useQuery({
     queryKey: ["whatsapp-accounts"],
@@ -362,7 +362,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   });
 
   const { data: agencyStatus } = useQuery({
-    queryKey: ["agency-status"],
+    queryKey: QUERY_KEYS.agencyStatus,
     queryFn: () =>
       apiFetch<{ isAgency: boolean; canEnableAgency: boolean }>("/agency/status", {
         token: token ?? undefined,

@@ -12,17 +12,18 @@ import { useAuthStore } from "@/stores/auth-store";
  * Single React Query source for GET /auth/me.
  * Syncs profile/role/onboarding into Zustand; refetches on focus/reconnect only.
  */
-export function useAuthMe() {
+export function useAuthMe(options?: { cacheOnly?: boolean }) {
   const hydrated = useAuthStore((s) => s.hydrated);
   const token = useAuthStore((s) => s.accessToken);
+  const cacheOnly = options?.cacheOnly ?? false;
 
   const query = useQuery({
     queryKey: QUERY_KEYS.authMe,
     queryFn: () => apiFetch<MeResponse>("/auth/me", { token: token ?? undefined }),
-    enabled: hydrated && !!token,
+    enabled: !cacheOnly && hydrated && !!token,
     staleTime: STALE.dashboard,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
+    refetchOnWindowFocus: !cacheOnly,
+    refetchOnReconnect: !cacheOnly,
   });
 
   useEffect(() => {

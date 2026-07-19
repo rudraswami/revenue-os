@@ -31,6 +31,8 @@ export const QUERY_KEYS = {
   authMe: ["auth-me"] as const,
   onboardingProgress: ["onboarding-progress"] as const,
   onboardingCoaching: ["onboarding-coaching"] as const,
+  shellBootstrap: ["shell-bootstrap"] as const,
+  agencyStatus: ["agency-status"] as const,
   whatsappConnectionHealth: ["whatsapp-connection-health"] as const,
   paymentIntegration: ["payment-integration"] as const,
   conversationCapabilities: ["conversation-capabilities"] as const,
