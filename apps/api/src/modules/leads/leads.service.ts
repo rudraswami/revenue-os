@@ -939,11 +939,11 @@ export class LeadsService {
         type: "Tip",
         title: "Invite a teammate for handoffs",
         body: "AI flagged chats that need a human. Share the queue so nothing sits on one phone.",
-        href: "/dashboard/settings?tab=team",
+        href: "/dashboard/settings?tab=people",
         actionLabel: "Invite teammate",
         priority: 3,
         actions: [
-          { type: "link", label: "Invite teammate", href: "/dashboard/settings?tab=team" },
+          { type: "link", label: "Invite teammate", href: "/dashboard/settings?tab=people" },
         ],
       });
     }

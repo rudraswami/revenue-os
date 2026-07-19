@@ -287,7 +287,7 @@ function UserAccountMenu({
         align="start"
         className="w-[var(--radix-dropdown-menu-trigger-width)]"
       >
-        <DropdownMenuItem onSelect={() => go("/dashboard/settings?tab=account")}>
+        <DropdownMenuItem onSelect={() => go("/dashboard/settings")}>
           <Settings className="h-4 w-4 text-muted-foreground" />
           {t("userMenu.settings")}
         </DropdownMenuItem>

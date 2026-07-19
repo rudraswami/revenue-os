@@ -398,9 +398,22 @@ export const messages = {
     settings: {
       title: "Settings",
       description: "Manage your workspace, channels, billing, and integrations.",
-      essentials: "Essentials",
-      advanced: "Advanced & admin",
+      groups: {
+        workspace: "Workspace",
+        organization: "Organization",
+        channels: "Channels",
+        platform: "Platform",
+        personal: "Personal",
+      },
       tabs: {
+        workspace: {
+          label: "Overview",
+          description: "Workspace health — plan, WhatsApp, team, and setup status.",
+        },
+        people: {
+          label: "People",
+          description: "Members, invites, assignment rules, and activity.",
+        },
         whatsapp: {
           label: "WhatsApp",
           description: "Business line and Meta connection.",
@@ -414,7 +427,7 @@ export const messages = {
           description: "Your profile, session, and data controls.",
         },
         team: {
-          label: "Team & workspace",
+          label: "People",
           description: "Members, invites, and assignment rules.",
         },
         teamInvite: {
@@ -459,11 +472,11 @@ export const messages = {
           description: "Business context for Intelligence and inbox quick replies.",
         },
         growth: {
-          label: "Attribution",
-          description: "Tracked click-to-chat links for ads and campaigns.",
+          label: "Growth & attribution",
+          description: "Attribution links, payment → Won, and partner install kit.",
         },
         developers: {
-          label: "Developer",
+          label: "Developers",
           description: "API keys and outbound webhooks (Pro).",
         },
       },
@@ -1254,9 +1267,22 @@ export const messages = {
     settings: {
       title: "सेटिंग्स",
       description: "वर्कस्पेस, चैनल, बिलिंग और इंटीग्रेशन प्रबंधित करें।",
-      essentials: "ज़रूरी",
-      advanced: "एडवांस्ड और एडमिन",
+      groups: {
+        workspace: "वर्कस्पेस",
+        organization: "संगठन",
+        channels: "चैनल",
+        platform: "प्लेटफ़ॉर्म",
+        personal: "व्यक्तिगत",
+      },
       tabs: {
+        workspace: {
+          label: "ओवरव्यू",
+          description: "वर्कस्पेस स्वास्थ्य — प्लान, WhatsApp, टीम और सेटअप स्थिति।",
+        },
+        people: {
+          label: "लोग",
+          description: "सदस्य, इनवाइट, असाइनमेंट नियम और गतिविधि।",
+        },
         whatsapp: {
           label: "WhatsApp",
           description: "बिज़नेस लाइन और Meta कनेक्शन।",
@@ -1270,7 +1296,7 @@ export const messages = {
           description: "आपकी प्रोफ़ाइल, सेशन और डेटा नियंत्रण।",
         },
         team: {
-          label: "टीम और वर्कस्पेस",
+          label: "लोग",
           description: "सदस्य, इनवाइट और असाइनमेंट नियम।",
         },
         teamInvite: {
@@ -1315,11 +1341,11 @@ export const messages = {
           description: "Intelligence और इनबॉक्स क्विक रिप्लाई के लिए बिज़नेस संदर्भ।",
         },
         growth: {
-          label: "एट्रिब्यूशन",
-          description: "ऐड्स और अभियानों के लिए ट्रैक किए गए click-to-chat लिंक।",
+          label: "ग्रोथ और एट्रिब्यूशन",
+          description: "एट्रिब्यूशन लिंक, भुगतान → Won, और पार्टनर इंस्टॉल किट।",
         },
         developers: {
-          label: "डेवलपर",
+          label: "डेवलपर्स",
           description: "API keys और आउटबाउंड webhooks (Pro)।",
         },
       },

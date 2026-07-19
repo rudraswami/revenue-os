@@ -11,6 +11,7 @@ export function SettingsSection({
   className,
   contentClassName,
   noPadding,
+  id,
 }: {
   title?: string;
   description?: string;
@@ -19,9 +20,11 @@ export function SettingsSection({
   className?: string;
   contentClassName?: string;
   noPadding?: boolean;
+  id?: string;
 }) {
   return (
     <section
+      id={id}
       className={cn(
         "overflow-hidden rounded-2xl border border-border/80 bg-card elev-1",
         className,

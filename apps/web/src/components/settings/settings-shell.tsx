@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen,
   CreditCard,
   Key,
+  LayoutDashboard,
   Link2,
   Lock,
   LogOut,
@@ -27,7 +27,9 @@ import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
 import { IntelligenceReplySettingsCard } from "@/components/dashboard/intelligence-reply-settings-card";
-import { SettingsSection, SettingsTabLoader } from "@/components/settings/settings-section";
+import { SettingsSection } from "@/components/settings/settings-section";
+import { SettingsTabSkeleton } from "@/components/settings/settings-tab-skeletons";
+import { WorkspaceHome } from "@/components/settings/workspace-home";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
 import { AuditActivityCard } from "@/components/settings/audit-activity-card";
 import { TrackingLinksCard } from "@/components/settings/tracking-links-card";
@@ -35,9 +37,8 @@ import { PaymentIntegrationCard } from "@/components/settings/payment-integratio
 import { PartnerInstallKitSettingsCard } from "@/components/settings/partner-install-kit-card";
 import { WebhooksSettingsCard } from "@/components/settings/webhooks-settings-card";
 import WhatsappConnect from "@/components/settings/whatsapp-connect";
-import { WorkspaceOverview, WorkspaceOverviewLinks } from "@/components/settings/workspace-overview";
-import { QUERY_KEYS, STALE } from "@/lib/query-config";
-import { apiFetch } from "@/lib/api-client";
+import { useSettingsBootstrap } from "@/hooks/use-settings-bootstrap";
+import type { ShellBootstrapResponse } from "@/lib/shell-bootstrap";
 import { logout } from "@/lib/auth-session";
 import { canManageTeam } from "@/lib/permissions";
 import {
@@ -47,9 +48,8 @@ import {
   getVisibleSettingsTabs,
   normalizeSettingsTab,
   settingsTabPlanRequirement,
-  SETTINGS_ADVANCED_TABS,
-  SETTINGS_ESSENTIAL_TABS,
   SETTINGS_HASH_TO_TAB,
+  SETTINGS_NAV_GROUPS,
   type SettingsAccessContext,
   type SettingsTabId,
 } from "@/lib/settings-access";
@@ -66,7 +66,8 @@ interface SettingsTab {
 }
 
 const TAB_ICONS: Record<SettingsTabId, LucideIcon> = {
-  team: Users,
+  workspace: LayoutDashboard,
+  people: Users,
   whatsapp: MessageCircle,
   billing: CreditCard,
   intelligence: BookOpen,
@@ -176,26 +177,25 @@ function SettingsTabContent({
   tab,
   isAdmin,
   onLogout,
+  bootstrap,
+  bootstrapLoading,
 }: {
   tab: SettingsTabId;
   isAdmin: boolean;
   onLogout: () => void;
+  bootstrap?: ShellBootstrapResponse;
+  bootstrapLoading: boolean;
 }) {
   const { t } = useI18n();
 
   switch (tab) {
-    case "team":
+    case "workspace":
+      return (
+        <WorkspaceHome bootstrap={bootstrap} bootstrapLoading={bootstrapLoading} />
+      );
+    case "people":
       return (
         <div className="space-y-5">
-          <SettingsSection
-            title="Workspace"
-            description="Organization on Growvisi — plan, seats, and your role."
-          >
-            <WorkspaceOverview />
-            <div className="mt-4">
-              <WorkspaceOverviewLinks />
-            </div>
-          </SettingsSection>
           <SettingsSection
             title="Team members"
             description="People with access to this workspace and their roles."
@@ -204,6 +204,7 @@ function SettingsTabContent({
           </SettingsSection>
           {isAdmin ? (
             <SettingsSection
+              id="assignment-rules"
               title="Assignment rules"
               description="Auto-route new conversations and handoffs to the right teammate."
             >
@@ -350,7 +351,7 @@ function SettingsTabContent({
         </div>
       );
     default:
-      return <SettingsTabLoader />;
+      return <SettingsTabSkeleton tab="workspace" />;
   }
 }
 
@@ -358,29 +359,21 @@ export function SettingsShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
-  const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const isAdmin = canManageTeam(role);
   const roleReady = !!role;
 
-  const { data: billing, isLoading: billingLoading } = useQuery({
-    queryKey: QUERY_KEYS.billing,
-    queryFn: () => apiFetch<{ planId: string }>("/billing", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: STALE.config,
-    placeholderData: (prev) => prev,
-  });
-
-  // Only block the shell on the first billing fetch — not on background refetches.
-  const billingReady = !billingLoading || !!billing;
-  const shellReady = roleReady && billingReady;
+  const { data: bootstrap, isLoading: bootstrapLoading, isFetching } = useSettingsBootstrap();
 
   const accessCtx = useMemo<SettingsAccessContext>(
     () => ({
       role,
-      planId: billing?.planId ?? "trial",
+      planId:
+        (bootstrap?.billing as { planId?: string } | undefined)?.planId ??
+        bootstrap?.billing?.entitlements?.planId ??
+        "trial",
     }),
-    [role, billing?.planId],
+    [role, bootstrap],
   );
 
   const visibleTabIds = useMemo(() => getVisibleSettingsTabs(accessCtx), [accessCtx]);
@@ -418,15 +411,23 @@ export function SettingsShell() {
   const current = tabById[activeTab] ?? buildTabMeta(activeTab, t);
   const tabAllowed = canAccessSettingsTab(activeTab, accessCtx);
   const showAccessPanel = !tabAllowed && roleReady;
+  const contentLoading = bootstrapLoading && !bootstrap;
+  const showTabSkeleton = !roleReady || (contentLoading && activeTab === "workspace");
 
   function selectTab(id: SettingsTabId) {
-    if (!canAccessSettingsTab(id, accessCtx) || id === activeTab) return;
+    if (!canAccessSettingsTabRole(id, role) || id === activeTab) return;
     setActiveTab(id);
     const params = new URLSearchParams(window.location.search);
-    if (id === "team") params.delete("tab");
+    if (id === "workspace") params.delete("tab");
     else params.set("tab", id);
     const qs = params.toString();
     router.replace(qs ? `/dashboard/settings?${qs}` : "/dashboard/settings", { scroll: false });
+  }
+
+  function navTabLocked(id: SettingsTabId): boolean {
+    const planReq = settingsTabPlanRequirement(id);
+    if (!planReq) return false;
+    return !canAccessSettingsTab(id, accessCtx);
   }
 
   async function handleLogout() {
@@ -447,39 +448,38 @@ export function SettingsShell() {
           aria-label="Settings sections"
         >
           <div className="sticky top-6 space-y-3 rounded-2xl border border-border/80 bg-card p-2 shadow-[0_4px_20px_rgb(11_28_48/0.04)]">
-            {[
-              { label: t("settings.essentials"), ids: SETTINGS_ESSENTIAL_TABS },
-              { label: t("settings.advanced"), ids: SETTINGS_ADVANCED_TABS },
-            ].map((group) => {
-              const tabs = group.ids
+            {SETTINGS_NAV_GROUPS.map((group) => {
+              const tabs = group.tabIds
                 .filter((id) => visibleTabIds.includes(id))
                 .map((id) => tabById[id])
                 .filter(Boolean);
               if (tabs.length === 0) return null;
               return (
-                <div key={group.label}>
+                <div key={group.id}>
                   <p className="px-3 pb-1 pt-2 text-xs font-medium text-muted-foreground">
-                    {group.label}
+                    {t(`settings.groups.${group.id}`)}
                   </p>
                   <ul className="space-y-0.5">
                     {tabs.map((tab) => {
                       const active = activeTab === tab.id;
+                      const locked = navTabLocked(tab.id);
                       return (
                         <li key={tab.id}>
                           <button
                             type="button"
                             onClick={() => selectTab(tab.id)}
-                            disabled={!shellReady}
                             className={cn(
                               "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition",
                               active
                                 ? "bg-accent/10 text-accent shadow-sm"
                                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                              !shellReady && "pointer-events-none opacity-60",
                             )}
                           >
                             <tab.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.25 : 2} />
-                            {tab.label}
+                            <span className="flex-1 truncate">{tab.label}</span>
+                            {locked && (
+                              <Lock className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden />
+                            )}
                           </button>
                         </li>
                       );
@@ -495,6 +495,7 @@ export function SettingsShell() {
           <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
             {visibleTabs.map((tab) => {
               const active = activeTab === tab.id;
+              const locked = navTabLocked(tab.id);
               return (
                 <button
                   key={tab.id}
@@ -509,6 +510,7 @@ export function SettingsShell() {
                 >
                   <tab.icon className="h-3.5 w-3.5" />
                   {tab.label}
+                  {locked && <Lock className="h-3 w-3 opacity-50" aria-hidden />}
                 </button>
               );
             })}
@@ -531,9 +533,9 @@ export function SettingsShell() {
             </div>
           </div>
 
-          <div className="min-h-[480px]">
-            {!shellReady ? (
-              <SettingsTabLoader rows={5} />
+          <div className="min-h-[640px]">
+            {showTabSkeleton ? (
+              <SettingsTabSkeleton tab={activeTab} />
             ) : showAccessPanel ? (
               <SettingsAccessPanel tab={activeTab} ctx={accessCtx} />
             ) : (
@@ -541,6 +543,8 @@ export function SettingsShell() {
                 tab={activeTab}
                 isAdmin={isAdmin}
                 onLogout={() => void handleLogout()}
+                bootstrap={bootstrap}
+                bootstrapLoading={bootstrapLoading || isFetching}
               />
             )}
           </div>

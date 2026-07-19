@@ -85,7 +85,7 @@ export default function PartnerPage() {
         body: t("partner.step6Body"),
         links: [
           { label: t("partner.ctaAgency"), href: "/dashboard/agency", external: false },
-          { label: t("partner.ctaTeam"), href: "/dashboard/settings?tab=team", external: false },
+          { label: t("partner.ctaTeam"), href: "/dashboard/settings?tab=people", external: false },
           { label: t("partner.ctaAutomations"), href: "/dashboard/automations", external: false },
         ],
       },

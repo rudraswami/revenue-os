@@ -62,7 +62,7 @@ export function buildPostActivationCoaching(input: {
       id: "invite",
       title: "Invite a teammate",
       description: "Share Your turn so hot leads aren’t stuck on one phone.",
-      href: "/dashboard/settings?tab=team",
+      href: "/dashboard/settings?tab=people",
     };
   } else if (!hasTakeover) {
     const waiting = (input.handoffsWaiting ?? 0) > 0;

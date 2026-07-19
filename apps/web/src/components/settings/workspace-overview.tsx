@@ -2,45 +2,41 @@
 
 import Link from "next/link";
 import { Building2, Users } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-client";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ROLE_LABELS } from "@/lib/permissions";
-import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { useAuthStore } from "@/stores/auth-store";
+import type { ShellBootstrapResponse } from "@/lib/shell-bootstrap";
 import type { MembershipRole } from "@growvisi/shared";
 import { cn } from "@/lib/utils";
 
-export function WorkspaceOverview() {
-  const token = useAuthStore((s) => s.accessToken);
+type BillingBootstrap = ShellBootstrapResponse["billing"] & { planId?: string };
+
+interface WorkspaceOverviewProps {
+  bootstrap?: ShellBootstrapResponse;
+  bootstrapLoading?: boolean;
+}
+
+export function WorkspaceOverview({ bootstrap, bootstrapLoading }: WorkspaceOverviewProps) {
   const organization = useAuthStore((s) => s.organization);
   const role = useAuthStore((s) => s.role);
 
-  const { data: limits } = useQuery({
-    queryKey: ["team-limits"],
-    queryFn: () =>
-      apiFetch<{ memberCount: number; pendingInvites: number; limit: number }>(
-        "/organizations/team-limits",
-        { token: token ?? undefined },
-      ),
-    enabled: !!token,
-  });
+  const billing = bootstrap?.billing as BillingBootstrap | undefined;
+  const limits = bootstrap?.billing?.limits;
+  const usage = bootstrap?.billing?.usage;
 
-  const { data: billing } = useQuery({
-    queryKey: QUERY_KEYS.billing,
-    queryFn: () =>
-      apiFetch<{ planId: string; entitlements?: { hasAccess: boolean } }>("/billing", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: STALE.config,
-    placeholderData: (prev) => prev,
-  });
-
-  const planLabel =
-    billing?.planId === "trial"
+  const planLabel = bootstrapLoading
+    ? null
+    : billing?.planId === "trial"
       ? "Trial"
       : billing?.planId
         ? billing.planId.charAt(0).toUpperCase() + billing.planId.slice(1)
+        : "—";
+
+  const seatsLabel =
+    usage && limits
+      ? `${usage.teamMembers}/${limits.teamMembers}`
+      : bootstrapLoading
+        ? null
         : "—";
 
   return (
@@ -61,15 +57,12 @@ export function WorkspaceOverview() {
       </div>
 
       <div className="flex flex-wrap gap-2 sm:justify-end">
-        <StatPill label="Plan" value={planLabel} />
+        <StatPill label="Plan" value={planLabel} loading={bootstrapLoading} />
         <StatPill
           label="Seats"
-          value={
-            limits
-              ? `${limits.memberCount + limits.pendingInvites}/${limits.limit}`
-              : "—"
-          }
+          value={seatsLabel}
           icon={Users}
+          loading={bootstrapLoading}
         />
         {role && (
           <StatPill label="Your role" value={ROLE_LABELS[role as MembershipRole]} highlight />
@@ -84,11 +77,13 @@ function StatPill({
   value,
   icon: Icon,
   highlight,
+  loading,
 }: {
   label: string;
-  value: string;
+  value: string | null;
   icon?: typeof Users;
   highlight?: boolean;
+  loading?: boolean;
 }) {
   return (
     <div
@@ -103,7 +98,11 @@ function StatPill({
         {Icon && <Icon className="h-3 w-3" />}
         {label}
       </span>
-      <span className="mt-0.5 text-sm font-semibold text-foreground">{value}</span>
+      {loading || value === null ? (
+        <Skeleton className="mt-1.5 h-4 w-14" />
+      ) : (
+        <span className="mt-0.5 text-sm font-semibold text-foreground">{value}</span>
+      )}
     </div>
   );
 }

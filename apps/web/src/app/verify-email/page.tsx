@@ -77,7 +77,7 @@ function VerifyEmailForm() {
     return () => {
       cancelled = true;
     };
-  }, [token, setSession]);
+  }, [token]);
 
   const titles: Record<VerifyState, string> = {
     loading: t("auth.verify.verifying"),

@@ -35,7 +35,7 @@ export function AssignmentExplainLine({
         <p>{text}</p>
         {showRulesLink && isAuto && (
           <Link
-            href="/dashboard/settings?tab=team#assignment-rules"
+            href="/dashboard/settings?tab=people#assignment-rules"
             className="mt-1 inline-flex font-semibold text-accent hover:underline"
           >
             {t("conversations.assignmentRulesLink")}

@@ -2,7 +2,8 @@ import type { GrowvisiPlanId, MembershipRole } from "@growvisi/shared";
 import { hasCapability } from "@growvisi/shared";
 
 export type SettingsTabId =
-  | "team"
+  | "workspace"
+  | "people"
   | "whatsapp"
   | "billing"
   | "intelligence"
@@ -10,30 +11,32 @@ export type SettingsTabId =
   | "developers"
   | "account";
 
-/** @deprecated Workspace tab merged into Team — kept for URL redirects */
-export type LegacySettingsTabId = SettingsTabId | "workspace";
+/** @deprecated Aliases kept for URL redirects */
+export type LegacySettingsTabId = SettingsTabId | "team" | "workspace-legacy";
 
+/** Canonical nav order — workspace is the default landing. */
 export const SETTINGS_TAB_ORDER: SettingsTabId[] = [
+  "workspace",
+  "people",
   "whatsapp",
   "billing",
-  "account",
-  "team",
   "intelligence",
   "growth",
   "developers",
-];
-
-export const SETTINGS_ESSENTIAL_TABS: SettingsTabId[] = [
-  "whatsapp",
-  "billing",
   "account",
-  "team",
 ];
 
-export const SETTINGS_ADVANCED_TABS: SettingsTabId[] = [
-  "intelligence",
-  "growth",
-  "developers",
+export type SettingsNavGroupId = "workspace" | "organization" | "channels" | "platform" | "personal";
+
+export const SETTINGS_NAV_GROUPS: Array<{
+  id: SettingsNavGroupId;
+  tabIds: SettingsTabId[];
+}> = [
+  { id: "workspace", tabIds: ["workspace"] },
+  { id: "organization", tabIds: ["people", "billing"] },
+  { id: "channels", tabIds: ["whatsapp"] },
+  { id: "platform", tabIds: ["intelligence", "growth", "developers"] },
+  { id: "personal", tabIds: ["account"] },
 ];
 
 const PLAN_RANK: Record<GrowvisiPlanId, number> = {
@@ -53,14 +56,15 @@ export function planAtLeast(planId: string, minimum: "growth" | "pro"): boolean 
   return rank >= (minimum === "growth" ? 2 : 3);
 }
 
-/** Role gate only — tab may still require a higher plan. */
+/** Role gate — controls nav visibility (stable; does not depend on billing). */
 export function canAccessSettingsTabRole(
   tab: SettingsTabId,
   role: MembershipRole | null | undefined,
 ): boolean {
   if (!role) return false;
   switch (tab) {
-    case "team":
+    case "workspace":
+    case "people":
     case "account":
       return hasCapability(role, "team.view");
     case "whatsapp":
@@ -97,17 +101,25 @@ export function canAccessSettingsTab(
   return true;
 }
 
+/** Nav items — role only so billing load does not shift the sidebar. */
 export function getVisibleSettingsTabs(ctx: SettingsAccessContext): SettingsTabId[] {
-  return SETTINGS_TAB_ORDER.filter((tab) => canAccessSettingsTab(tab, ctx));
+  return SETTINGS_TAB_ORDER.filter((tab) => canAccessSettingsTabRole(tab, ctx.role));
 }
 
 export function getDefaultSettingsTab(ctx: SettingsAccessContext): SettingsTabId {
   const visible = getVisibleSettingsTabs(ctx);
-  return visible[0] ?? "account";
+  return visible.includes("workspace") ? "workspace" : (visible[0] ?? "account");
+}
+
+function legacyTabToId(raw: string): SettingsTabId | null {
+  if (raw === "team") return "people";
+  return null;
 }
 
 export function normalizeSettingsTab(raw: string | null): SettingsTabId | null {
-  if (!raw || raw === "workspace") return raw === "workspace" ? "team" : null;
+  if (!raw) return null;
+  const legacy = legacyTabToId(raw);
+  if (legacy) return legacy;
   return SETTINGS_TAB_ORDER.includes(raw as SettingsTabId) ? (raw as SettingsTabId) : null;
 }
 
@@ -116,8 +128,9 @@ export function parseSettingsTab(raw: string | null): SettingsTabId | null {
 }
 
 export const SETTINGS_HASH_TO_TAB: Record<string, SettingsTabId> = {
-  workspace: "team",
-  team: "team",
+  workspace: "workspace",
+  people: "people",
+  team: "people",
   whatsapp: "whatsapp",
   billing: "billing",
   developers: "developers",
@@ -125,4 +138,5 @@ export const SETTINGS_HASH_TO_TAB: Record<string, SettingsTabId> = {
   growth: "growth",
   intelligence: "intelligence",
   account: "account",
+  "assignment-rules": "people",
 };
