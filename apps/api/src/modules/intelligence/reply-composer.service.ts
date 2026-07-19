@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { ReplyDecision, ReplyRiskLevel, AiClassificationResult } from "@growvisi/shared";
+import type { ReplyDecision, ReplyRiskLevel, AiClassificationResult, KnowledgeHit } from "@growvisi/shared";
 import { isSimpleGreeting } from "@growvisi/shared";
 import {
   buildRagQuery,
@@ -11,7 +11,9 @@ import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { ContextBuilderService } from "./context-builder.service";
+import { ContextBuilderService, type ConversationContext } from "./context-builder.service";
+import type { PipelineContext } from "./pipeline-context";
+import type { PipelineSpans } from "./pipeline-spans";
 
 export interface ComposedReply {
   suggestion: string;
@@ -23,6 +25,7 @@ export interface ComposedReply {
   }>;
   usedRag: boolean;
   aiRunId: string;
+  fastPath?: boolean;
 }
 
 export interface ComposeReplyInput {
@@ -31,8 +34,11 @@ export interface ComposeReplyInput {
   decision?: ReplyDecision;
   knowledgeGap?: boolean;
   manual?: boolean;
-  /** Fresh classification from the same inbound turn — prefer over stale lead profile */
   classification?: AiClassificationResult | null;
+  /** Reuse classify-turn context — skips duplicate DB + RAG */
+  pipelineContext?: PipelineContext;
+  /** Template text from fast path — skips LLM */
+  fastReplyText?: string;
 }
 
 @Injectable()
@@ -48,48 +54,68 @@ export class ReplyComposerService {
   async compose(input: ComposeReplyInput): Promise<ComposedReply> {
     await this.entitlements.assertHasAccess(input.organizationId);
 
-    const apiKey = this.config.get<string>("OPENAI_API_KEY");
-    if (!apiKey) {
-      throw new BadRequestException("Smart replies are not available on this workspace.");
-    }
+    const spans = input.pipelineContext?.spans;
+    spans?.mark("compose_start");
 
-    const ctx = await this.contextBuilder.buildForConversation(
-      input.organizationId,
-      input.conversationId,
-      16,
-    );
+    const ctx =
+      input.pipelineContext?.ctx ??
+      (await this.contextBuilder.buildForConversation(
+        input.organizationId,
+        input.conversationId,
+        16,
+      ));
+    spans?.measure("compose_context_ms", "compose_start");
 
     const classification =
       input.classification ??
       this.classificationFromProfile(ctx.lead.profile, ctx.lead.stage);
 
+    if (input.fastReplyText?.trim()) {
+      return this.recordFastReply(input, ctx, input.fastReplyText.trim(), classification);
+    }
+
+    const apiKey = this.config.get<string>("OPENAI_API_KEY");
+    if (!apiKey) {
+      throw new BadRequestException("Smart replies are not available on this workspace.");
+    }
+
     const intentKind = resolveReplyIntentKind(ctx.lastInbound, classification);
     const playbook = playbookForIntent(intentKind);
 
-    const ragQuery = buildRagQuery(ctx.lastInbound, classification);
-
-    const hits = await this.knowledge.retrieve({
-      organizationId: input.organizationId,
-      query: ragQuery,
-      limit: 5,
-    });
+    let hits: KnowledgeHit[] = input.pipelineContext?.knowledgeHits ?? [];
+    if (hits.length === 0 && !input.pipelineContext) {
+      const ragQuery = buildRagQuery(ctx.lastInbound, classification);
+      hits = await this.knowledge.retrieve({
+        organizationId: input.organizationId,
+        query: ragQuery,
+        limit: 5,
+      });
+    }
+    spans?.measure("compose_rag_ms", "compose_start");
 
     let knowledgeBlock = hits.length
       ? hits.map((h) => `### ${h.title}\n${h.content}`).join("\n\n")
       : "";
 
-    if (!knowledgeBlock) {
+    if (!knowledgeBlock && !input.pipelineContext) {
       const fallback = await this.knowledge.fallbackDocuments(input.organizationId, 3);
-      knowledgeBlock = fallback
-        .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 800)}`)
-        .join("\n\n");
+      if (fallback.length > 0) {
+        knowledgeBlock = fallback
+          .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 800)}`)
+          .join("\n\n");
+      }
     }
 
     const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
-    const org = await this.prisma.organization.findUnique({
-      where: { id: input.organizationId },
-      select: { name: true },
-    });
+    const businessName =
+      input.pipelineContext?.businessName ??
+      (
+        await this.prisma.organization.findUnique({
+          where: { id: input.organizationId },
+          select: { name: true },
+        })
+      )?.name;
+
     const contactName = ctx.conversation.contactName ?? ctx.lead.displayName ?? "there";
     const intent = classification?.intent;
     const summary = classification?.summary;
@@ -100,6 +126,7 @@ export class ReplyComposerService {
     const model = this.config.get<string>("AI_CHAT_MODEL") ?? "gpt-4o-mini";
     const started = Date.now();
     const risk = input.decision?.risk ?? (input.knowledgeGap ? "high" : "medium");
+    const maxTokens = intentKind === "greeting" || intentKind === "thanks" ? 80 : 150;
 
     const aiRun = await this.prisma.aiRun.create({
       data: {
@@ -110,15 +137,19 @@ export class ReplyComposerService {
         model,
         status: "RUNNING",
         input: {
-          ragQuery,
+          ragQuery: buildRagQuery(ctx.lastInbound, classification),
           hitCount: hits.length,
           auto: !input.manual,
           risk,
           intentKind,
           intent: classification?.intent,
+          reusedContext: Boolean(input.pipelineContext),
+          executionPath: input.pipelineContext?.executionRoute?.path,
         },
       },
     });
+
+    spans?.mark("compose_llm_start");
 
     try {
       const res = await fetchWithTimeout(
@@ -132,7 +163,7 @@ export class ReplyComposerService {
           body: JSON.stringify({
             model,
             temperature: risk === "low" ? 0.35 : 0.4,
-            max_tokens: 200,
+            max_tokens: maxTokens,
             messages: [
               {
                 role: "system",
@@ -151,13 +182,13 @@ export class ReplyComposerService {
                   autoSend: input.decision?.mode === "send",
                   playbook,
                   intentKind,
-                  businessName: org?.name,
+                  businessName,
                   contactName,
                 }),
               },
               {
                 role: "user",
-                content: `Draft the next WhatsApp reply. Respond directly to the customer's latest message.\n\nLatest message: "${ctx.lastInbound ?? "(none)"}"\n\nFull thread:\n${ctx.transcript}`,
+                content: `Draft the next WhatsApp reply. Respond directly to the customer's latest message.\n\nLatest message: "${ctx.lastInbound ?? "(none)"}"\n\nRecent thread:\n${this.recentTranscript(ctx)}`,
               },
             ],
           }),
@@ -180,6 +211,7 @@ export class ReplyComposerService {
         throw new BadRequestException("No suggestion returned.");
       }
 
+      spans?.measure("compose_llm_ms", "compose_llm_start");
       const latencyMs = Date.now() - started;
       const sources = hits.map((h) => ({
         chunkId: h.chunkId,
@@ -203,8 +235,21 @@ export class ReplyComposerService {
           outputTokens: body.usage?.completion_tokens,
           latencyMs,
           completedAt: new Date(),
+          input: {
+            ragQuery: buildRagQuery(ctx.lastInbound, classification),
+            hitCount: hits.length,
+            auto: !input.manual,
+            risk,
+            intentKind,
+            intent: classification?.intent,
+            reusedContext: Boolean(input.pipelineContext),
+            executionPath: input.pipelineContext?.executionRoute?.path,
+            spans: spans?.toJSON(),
+          } as object,
         },
       });
+
+      spans?.measure("compose_total_ms", "compose_start");
 
       return {
         suggestion,
@@ -220,6 +265,57 @@ export class ReplyComposerService {
       });
       throw error;
     }
+  }
+
+  private async recordFastReply(
+    input: ComposeReplyInput,
+    ctx: ConversationContext,
+    suggestion: string,
+    classification: AiClassificationResult | null,
+  ): Promise<ComposedReply> {
+    const intentKind = resolveReplyIntentKind(ctx.lastInbound, classification);
+    const aiRun = await this.prisma.aiRun.create({
+      data: {
+        organizationId: input.organizationId,
+        conversationId: input.conversationId,
+        type: "suggest_reply",
+        provider: "template",
+        model: "fast_path",
+        status: "COMPLETED",
+        input: {
+          fastPath: true,
+          intentKind,
+          executionPath: "fast",
+          auto: !input.manual,
+        },
+        output: { suggestion, fastPath: true, intentKind } as object,
+        latencyMs: 0,
+        completedAt: new Date(),
+      },
+    });
+
+    return {
+      suggestion,
+      sources: [],
+      usedRag: false,
+      aiRunId: aiRun.id,
+      fastPath: true,
+    };
+  }
+
+  private recentTranscript(ctx: ConversationContext): string {
+    return ctx.messages
+      .slice(-6)
+      .map((m) => {
+        const who =
+          m.direction === "INBOUND"
+            ? "Customer"
+            : m.sentByAi
+              ? "AI"
+              : "Business";
+        return `${who}: ${m.content ?? "(media)"}`;
+      })
+      .join("\n");
   }
 
   private systemPrompt(opts: {
@@ -243,13 +339,15 @@ export class ReplyComposerService {
     return [
       `You are the WhatsApp sales assistant for ${opts.businessName ?? "this business"}. Indian SMB tone: warm, clear, professional.`,
       opts.autoSend
-        ? "This goes out automatically on WhatsApp — sound like a strong rep, not a bot. 2–4 sentences max."
+        ? "This goes out automatically on WhatsApp — sound like a strong rep, not a bot. 1–3 sentences max."
         : "A teammate will review before sending.",
+      opts.greeting
+        ? "Do not say 'Hello again' or 'nice to hear from you' if the thread already has messages."
+        : "",
       opts.playbook,
       opts.intent ? `Thread intent: ${opts.intent}` : "",
       opts.sentiment ? `Sentiment: ${opts.sentiment}` : "",
       opts.summary ? `Context: ${opts.summary}` : "",
-      opts.nextAction ? `Suggested team action: ${opts.nextAction}` : "",
       opts.stage ? `Deal stage: ${opts.stage}` : "",
       opts.lastInbound
         ? `Reply to this exact message from ${opts.contactName ?? "the customer"}: "${opts.lastInbound}"`

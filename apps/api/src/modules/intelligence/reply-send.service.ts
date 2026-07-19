@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import { LearningSignalService } from "./learning-signal.service";
+import type { PipelineContext } from "./pipeline-context";
 import { ReplyComposerService } from "./reply-composer.service";
 import { SuggestReplyService } from "./suggest-reply.service";
 
@@ -30,6 +31,8 @@ export class ReplySendService {
       knowledgeGap?: boolean;
       aiRunId?: string;
       classification?: import("@growvisi/shared").AiClassificationResult | null;
+      pipelineContext?: PipelineContext;
+      fastReplyText?: string;
     },
   ) {
     const conversation = await this.prisma.conversation.findFirst({
@@ -40,19 +43,27 @@ export class ReplySendService {
       throw new Error("WhatsApp account not active");
     }
 
+    opts.pipelineContext?.spans?.mark("reply_send_start");
+
     const composed = await this.composer.compose({
       organizationId,
       conversationId,
       decision: opts.replyDecision,
       knowledgeGap: opts.knowledgeGap,
       classification: opts.classification,
+      pipelineContext: opts.pipelineContext,
+      fastReplyText: opts.fastReplyText,
     });
+
+    opts.pipelineContext?.spans?.measure("compose_in_send_ms", "reply_send_start");
 
     const waMessageId = await this.whatsapp.sendText(
       conversation.whatsappAccount,
       conversation.contactPhone,
       composed.suggestion,
     );
+
+    opts.pipelineContext?.spans?.measure("whatsapp_send_ms", "reply_send_start");
 
     const message = await this.prisma.message.create({
       data: {

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import type { JwtPayload, ReplyDecision } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
+import type { PipelineContext } from "./pipeline-context";
 import { ReplyComposerService } from "./reply-composer.service";
 
 export interface DraftReplyResult {
@@ -39,6 +40,8 @@ export class SuggestReplyService {
       decision?: ReplyDecision;
       manual?: boolean;
       classification?: import("@growvisi/shared").AiClassificationResult | null;
+      pipelineContext?: PipelineContext;
+      fastReplyText?: string;
     },
   ): Promise<DraftReplyResult | null> {
     try {
@@ -49,6 +52,8 @@ export class SuggestReplyService {
         decision: opts?.decision,
         manual: opts?.manual,
         classification: opts?.classification,
+        pipelineContext: opts?.pipelineContext,
+        fastReplyText: opts?.fastReplyText,
       });
 
       const conversation = await this.prisma.conversation.findFirst({

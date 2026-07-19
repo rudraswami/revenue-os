@@ -37,3 +37,4 @@ apps/**/.env.*.check
 apps/**/.env.*.audit
 apps/**/login.json
 login*.json
+.env*

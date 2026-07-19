@@ -81,6 +81,9 @@ export type ReplyExecutionMode = (typeof REPLY_EXECUTION_MODES)[number];
 
 export type ReplyRiskLevel = "low" | "medium" | "high";
 
+/** AI reply pipeline routing — fast template, standard LLM, complex draft, human handoff. */
+export type ExecutionPath = "fast" | "standard" | "complex" | "human";
+
 export interface ReplyDecision {
   mode: ReplyExecutionMode;
   /** 0–1 composite confidence for this decision */

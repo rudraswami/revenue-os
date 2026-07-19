@@ -1,12 +1,14 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type { AiClassificationResult, LeadStage, ProposedAction, ReplyDecision } from "@growvisi/shared";
 import { LEAD_STAGE_ORDER } from "@growvisi/shared";
+import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { AutomationsService } from "../automations/automations.service";
 import { AssignmentService } from "../assignments/assignment.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { PrismaService } from "../prisma/prisma.service";
 import type { ConversationContext } from "./context-builder.service";
+import type { PipelineContext } from "./pipeline-context";
 import { SuggestReplyService } from "./suggest-reply.service";
 import { ReplySendService } from "./reply-send.service";
 
@@ -20,6 +22,21 @@ const STAGE_SCORE: Record<LeadStage, number> = {
   LOST: 0,
 };
 
+/** Lower runs first. Customer-facing reply actions always lead. */
+const ACTION_PRIORITY: Record<string, number> = {
+  "reply.send": 0,
+  "reply.draft": 1,
+  "conversation.set_handoff": 2,
+  "conversation.assign": 3,
+  "lead.update_score": 10,
+  "lead.update_stage": 10,
+  "task.create": 20,
+  "webhook.emit": 80,
+  "email.send": 90,
+};
+
+const DEFERRABLE_ACTIONS = new Set(["email.send", "webhook.emit"]);
+
 export interface ExecutePlanInput {
   organizationId: string;
   conversationId: string;
@@ -30,6 +47,7 @@ export interface ExecutePlanInput {
   actions: ProposedAction[];
   ctx: ConversationContext;
   stageChanged: boolean;
+  pipelineContext?: PipelineContext;
 }
 
 @Injectable()
@@ -151,36 +169,26 @@ export class ActionExecutorService {
       },
     });
 
+    const sorted = [...input.actions].sort(
+      (a, b) => (ACTION_PRIORITY[a.type] ?? 50) - (ACTION_PRIORITY[b.type] ?? 50),
+    );
+    const immediate = sorted.filter((a) => !DEFERRABLE_ACTIONS.has(a.type));
+    const deferred = sorted.filter((a) => DEFERRABLE_ACTIONS.has(a.type));
+
     const results: Array<{ type: string; status: string }> = [];
 
-    for (const action of input.actions) {
-      const row = await this.prisma.action.create({
-        data: {
-          planId: plan.id,
-          organizationId: input.organizationId,
-          type: action.type,
-          executor: action.executor,
-          payload: action.payload as object,
-          aiRunId: action.aiRunId,
-          status: "pending",
-        },
-      });
+    for (const action of immediate) {
+      results.push(await this.runAction(action, input, plan.id));
+    }
 
-      try {
-        await this.executeOne(action, input);
-        await this.prisma.action.update({
-          where: { id: row.id },
-          data: { status: "done", executedAt: new Date() },
-        });
-        results.push({ type: action.type, status: "done" });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`Action ${action.type} failed: ${message}`);
-        await this.prisma.action.update({
-          where: { id: row.id },
-          data: { status: "failed", result: { error: message } as object, executedAt: new Date() },
-        });
-        results.push({ type: action.type, status: "failed" });
+    if (deferred.length > 0) {
+      deferBackgroundTask(async () => {
+        for (const action of deferred) {
+          await this.runAction(action, input, plan.id);
+        }
+      });
+      for (const action of deferred) {
+        results.push({ type: action.type, status: "deferred" });
       }
     }
 
@@ -218,6 +226,41 @@ export class ActionExecutorService {
     }
 
     return { planId: plan.id, results };
+  }
+
+  private async runAction(
+    action: ProposedAction,
+    input: ExecutePlanInput,
+    planId: string,
+  ): Promise<{ type: string; status: string }> {
+    const row = await this.prisma.action.create({
+      data: {
+        planId,
+        organizationId: input.organizationId,
+        type: action.type,
+        executor: action.executor,
+        payload: action.payload as object,
+        aiRunId: action.aiRunId,
+        status: "pending",
+      },
+    });
+
+    try {
+      await this.executeOne(action, input);
+      await this.prisma.action.update({
+        where: { id: row.id },
+        data: { status: "done", executedAt: new Date() },
+      });
+      return { type: action.type, status: "done" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Action ${action.type} failed: ${message}`);
+      await this.prisma.action.update({
+        where: { id: row.id },
+        data: { status: "failed", result: { error: message } as object, executedAt: new Date() },
+      });
+      return { type: action.type, status: "failed" };
+    }
   }
 
   private async executeOne(action: ProposedAction, input: ExecutePlanInput) {
@@ -333,6 +376,9 @@ export class ActionExecutorService {
             knowledgeGap: payload.knowledgeGap === true,
             decision: replyDecision,
             classification: input.classification,
+            pipelineContext: input.pipelineContext,
+            fastReplyText:
+              typeof payload.fastReplyText === "string" ? payload.fastReplyText : undefined,
           },
         );
         return { draft: draft?.suggestion ?? null };
@@ -348,6 +394,9 @@ export class ActionExecutorService {
             knowledgeGap: payload.knowledgeGap === true,
             aiRunId: action.aiRunId,
             classification: input.classification,
+            pipelineContext: input.pipelineContext,
+            fastReplyText:
+              typeof payload.fastReplyText === "string" ? payload.fastReplyText : undefined,
           },
         );
         return { messageId: sent.messageId, content: sent.content };

@@ -16,8 +16,13 @@ import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.serv
 import { ActionExecutorService } from "../intelligence/action-executor.service";
 import { ActionPlannerService } from "../intelligence/action-planner.service";
 import { ContextBuilderService } from "../intelligence/context-builder.service";
+import { ExecutionRouterService, type ExecutionRoute } from "../intelligence/execution-router.service";
+import { FastReplyService } from "../intelligence/fast-reply.service";
 import { ObservedMemoryService } from "../intelligence/observed-memory.service";
+import type { DeferredCrmSync, PipelineContext } from "../intelligence/pipeline-context";
+import { PipelineSpans } from "../intelligence/pipeline-spans";
 import { ReplyPolicyService } from "../intelligence/reply-policy.service";
+import { ReplySendService } from "../intelligence/reply-send.service";
 import { readIntelligenceSettingsFromOrg } from "../intelligence/workspace-intelligence-settings";
 import { useBackgroundWorkers } from "../../config/workers";
 import { deferBackgroundTask } from "../../common/utils/defer-background";
@@ -62,6 +67,7 @@ const STAGE_SCORE: Record<LeadStage, number> = {
 @Injectable()
 export class AiClassifyService {
   private readonly logger = new Logger(AiClassifyService.name);
+  private readonly inFlight = new Set<string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -77,6 +83,9 @@ export class AiClassifyService {
     private readonly planner: ActionPlannerService,
     private readonly replyPolicy: ReplyPolicyService,
     private readonly executor: ActionExecutorService,
+    private readonly executionRouter: ExecutionRouterService,
+    private readonly fastReply: FastReplyService,
+    private readonly replySend: ReplySendService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -340,53 +349,322 @@ export class AiClassifyService {
   }
 
   async process(data: ClassifyJobData) {
-    await this.entitlements.assertHasAccess(data.organizationId);
+    const spans = new PipelineSpans();
+    const correlationId = data.correlationId ?? this.events.createCorrelationId();
 
-    const apiKey = this.config.get<string>("OPENAI_API_KEY");
-    if (!apiKey) {
-      this.logger.warn("OPENAI_API_KEY not set — skipping classification");
-      return;
-    }
+    const claim = await this.claimTurn(data, spans);
+    if (!claim) return;
 
-    if (!data.refreshAfterCorrection) {
-      const alreadyDone = await this.hasCompletedClassifyForMessage(
+    const { aiRunId } = claim;
+
+    try {
+      await this.entitlements.assertHasAccess(data.organizationId);
+
+      const apiKey = this.config.get<string>("OPENAI_API_KEY");
+      if (!apiKey) {
+        this.logger.warn("OPENAI_API_KEY not set — skipping classification");
+        return;
+      }
+
+      spans.mark("context_start");
+      const ctx = await this.contextBuilder.buildForConversation(
         data.organizationId,
         data.conversationId,
-        data.messageId,
       );
-      if (alreadyDone) {
-        this.logger.debug(
-          `Skipping duplicate classify for message ${data.messageId} on ${data.conversationId}`,
-        );
+      spans.measure("context_build_ms", "context_start");
+
+      if (!ctx.conversation.aiEnabled && !data.refreshAfterCorrection) {
+        this.logger.debug(`AI disabled for conversation ${data.conversationId} — skipping`);
+        await this.finalizeAiRun(aiRunId, { skipped: true, reason: "ai_disabled" }, 0);
         return;
+      }
+
+      if (
+        (ctx.lead.stage === "WON" || ctx.lead.stage === "LOST") &&
+        !data.refreshAfterCorrection
+      ) {
+        await this.finalizeAiRun(aiRunId, { skipped: true, reason: "terminal_stage" }, 0);
+        return;
+      }
+
+      if (!ctx.transcript.trim()) {
+        await this.finalizeAiRun(aiRunId, { skipped: true, reason: "empty_transcript" }, 0);
+        return;
+      }
+
+      const [prefs, org] = await Promise.all([
+        this.automations.getPreferencesForOrg(data.organizationId),
+        this.prisma.organization.findUnique({
+          where: { id: data.organizationId },
+          select: { name: true, settings: true },
+        }),
+      ]);
+
+      const orgSettings =
+        org?.settings && typeof org.settings === "object"
+          ? (org.settings as Record<string, unknown>)
+          : {};
+      const intelligenceSettings = readIntelligenceSettingsFromOrg(orgSettings);
+      const businessName = org?.name ?? "our team";
+
+      const preRoute = this.executionRouter.routePreClassify(ctx);
+
+      if (
+        preRoute.path === "fast" &&
+        intelligenceSettings.replyAutonomy === "auto_guarded" &&
+        !data.refreshAfterCorrection
+      ) {
+        const sent = await this.tryFastPathSend(data, ctx, {
+          businessName,
+          preRoute,
+          spans,
+          aiRunId,
+        });
+        if (sent) {
+          await this.finalizeAiRun(aiRunId, {
+            fastPath: true,
+            executionPath: "fast",
+            spans: spans.toJSON(),
+          });
+          deferBackgroundTask(() =>
+            this.runBackgroundClassifyOnly(data, ctx, {
+              apiKey,
+              prefs,
+              businessName,
+              preRoute,
+            }),
+          );
+          return;
+        }
+      }
+
+      await this.runFullClassifyPipeline(data, ctx, {
+        apiKey,
+        prefs,
+        businessName,
+        intelligenceSettings,
+        preRoute,
+        spans,
+        aiRunId,
+        correlationId,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      await this.prisma.aiRun.update({
+        where: { id: aiRunId },
+        data: { status: "FAILED", error: message, completedAt: new Date() },
+      });
+      throw error;
+    }
+  }
+
+  private async runFullClassifyPipeline(
+    data: ClassifyJobData,
+    ctx: Awaited<ReturnType<ContextBuilderService["buildForConversation"]>>,
+    opts: {
+      apiKey: string;
+      prefs: Awaited<ReturnType<AutomationsService["getPreferencesForOrg"]>>;
+      businessName: string;
+      intelligenceSettings: ReturnType<typeof readIntelligenceSettingsFromOrg>;
+      preRoute: ExecutionRoute;
+      spans: PipelineSpans;
+      aiRunId: string;
+      correlationId: string;
+    },
+  ) {
+    const model = this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini";
+    const classifyStarted = Date.now();
+
+    opts.spans.mark("rag_start");
+    const knowledgeHits = await this.knowledge.retrieve({
+      organizationId: data.organizationId,
+      query: ctx.ragQuery,
+      limit: 4,
+    });
+    opts.spans.measure("rag_ms", "rag_start");
+
+    const businessContext = this.knowledge.formatForPrompt(knowledgeHits);
+    const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
+    const combinedContext = [businessContext, memoryBlock ? `Observed facts:\n${memoryBlock}` : ""]
+      .filter(Boolean)
+      .join("\n\n");
+
+    opts.spans.mark("classify_llm_start");
+    let result = await this.callOpenAi(
+      opts.apiKey,
+      model,
+      ctx.lead.stage,
+      ctx.transcript,
+      ctx.lastInbound,
+      combinedContext,
+      data.humanFeedback,
+    );
+    opts.spans.measure("classify_llm_ms", "classify_llm_start");
+
+    const knowledgeGap = this.planner.detectKnowledgeGap(ctx, knowledgeHits);
+    if (knowledgeGap) {
+      result = this.planner.applyKnowledgeGapGuard(result, true);
+    }
+
+    const executionRoute = this.executionRouter.refineAfterClassify(
+      opts.preRoute,
+      result,
+      ctx,
+    );
+
+    const classifyLatencyMs = Date.now() - classifyStarted;
+    await this.finalizeAiRun(opts.aiRunId, {
+      ...result,
+      executionPath: executionRoute.path,
+      spans: { ...opts.spans.toJSON(), classify_llm_ms: classifyLatencyMs },
+    }, classifyLatencyMs);
+
+    const withinReplyWindow =
+      !!ctx.conversation.lastInboundAt &&
+      Date.now() - ctx.conversation.lastInboundAt.getTime() < 24 * 60 * 60 * 1000;
+
+    let autoSendPlanOk = false;
+    if (opts.intelligenceSettings.replyAutonomy === "auto_guarded") {
+      try {
+        await this.entitlements.assertPlanAtLeast(data.organizationId, "growth");
+        autoSendPlanOk = true;
+      } catch {
+        autoSendPlanOk = false;
       }
     }
 
-    const ctx = await this.contextBuilder.buildForConversation(
-      data.organizationId,
-      data.conversationId,
+    const recentAutoSendCount = await this.prisma.message.count({
+      where: {
+        conversationId: data.conversationId,
+        organizationId: data.organizationId,
+        sentByAi: true,
+        direction: "OUTBOUND",
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    });
+
+    const updateStage =
+      opts.prefs.stage &&
+      !data.lockStage &&
+      this.executor.shouldUpdateStage(ctx.lead.stage, result.stage, result.confidence);
+
+    const score = this.executor.computeScore(
+      result,
+      Boolean(data.lockStage),
+      ctx.lead.score,
     );
 
-    if (!ctx.conversation.aiEnabled && !data.refreshAfterCorrection) {
-      this.logger.debug(`AI disabled for conversation ${data.conversationId} — skipping`);
-      return;
+    const pipelineContext: PipelineContext = {
+      ctx,
+      knowledgeHits,
+      businessName: opts.businessName,
+      knowledgeGap,
+      executionRoute,
+      spans: opts.spans,
+    };
+
+    const { actions, replyDecision } = this.planner.buildFromClassification({
+      ctx,
+      result,
+      knowledgeHits,
+      aiRunId: opts.aiRunId,
+      autoStageEnabled: opts.prefs.stage,
+      lockStage: Boolean(data.lockStage),
+      lockHandoff: Boolean(data.lockHandoff),
+      stageChanged: false,
+      score,
+      handoffType: knowledgeGap ? "knowledge_gap" : "complex",
+      workspaceAutonomy: opts.intelligenceSettings.replyAutonomy,
+      withinReplyWindow,
+      autoSendPlanOk,
+      recentAutoSendCount,
+      automationPrefs: {
+        stage: opts.prefs.stage,
+        notify: opts.prefs.notify,
+        handoff: opts.prefs.handoff,
+      },
+    });
+
+    if (executionRoute.path === "human") {
+      if (replyDecision.mode === "send") {
+        Object.assign(replyDecision, { mode: "draft" as const });
+      }
     }
 
-    if (
-      (ctx.lead.stage === "WON" || ctx.lead.stage === "LOST") &&
-      !data.refreshAfterCorrection
-    ) {
-      return;
+    if (executionRoute.path === "complex" && replyDecision.mode === "send") {
+      Object.assign(replyDecision, { mode: "draft" as const });
     }
 
-    if (!ctx.transcript.trim()) {
-      return;
-    }
+    await this.replyPolicy.persistDecision(
+      data.organizationId,
+      data.conversationId,
+      replyDecision,
+    );
 
-    const correlationId = data.correlationId ?? this.events.createCorrelationId();
+    const event = await this.events.emit({
+      organizationId: data.organizationId,
+      type: DOMAIN_EVENTS.LEAD_CLASSIFIED,
+      entityType: "lead",
+      entityId: data.leadId,
+      correlationId: opts.correlationId,
+      payload: {
+        conversationId: data.conversationId,
+        messageId: data.messageId,
+        aiRunId: opts.aiRunId,
+        executionPath: executionRoute.path,
+      },
+    });
+
+    opts.spans.mark("execute_plan_start");
+    await this.executor.executePlan({
+      organizationId: data.organizationId,
+      conversationId: data.conversationId,
+      leadId: data.leadId,
+      correlationId: opts.correlationId,
+      triggerEventId: event.eventId,
+      classification: result,
+      actions,
+      ctx,
+      stageChanged: false,
+      pipelineContext,
+    });
+    opts.spans.measure("execute_plan_ms", "execute_plan_start");
+
+    deferBackgroundTask(() =>
+      this.runDeferredCrmSync({
+        organizationId: data.organizationId,
+        conversationId: data.conversationId,
+        leadId: data.leadId,
+        result,
+        ctx,
+        aiRunId: opts.aiRunId,
+        updateStage,
+        lockStage: Boolean(data.lockStage),
+        lockHandoff: Boolean(data.lockHandoff),
+        stageChanged: false,
+        score,
+        knowledgeGap,
+        correlationId: opts.correlationId,
+        automationPrefs: {
+          stage: opts.prefs.stage,
+          notify: opts.prefs.notify,
+          handoff: opts.prefs.handoff,
+        },
+      }),
+    );
+  }
+
+  private async runBackgroundClassifyOnly(
+    data: ClassifyJobData,
+    ctx: Awaited<ReturnType<ContextBuilderService["buildForConversation"]>>,
+    opts: {
+      apiKey: string;
+      prefs: Awaited<ReturnType<AutomationsService["getPreferencesForOrg"]>>;
+      businessName: string;
+      preRoute: ExecutionRoute;
+    },
+  ) {
     const model = this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini";
-    const started = Date.now();
-
     const knowledgeHits = await this.knowledge.retrieve({
       organizationId: data.organizationId,
       query: ctx.ragQuery,
@@ -398,185 +676,260 @@ export class AiClassifyService {
       .filter(Boolean)
       .join("\n\n");
 
-    const aiRun = await this.prisma.aiRun.create({
+    let result = await this.callOpenAi(
+      opts.apiKey,
+      model,
+      ctx.lead.stage,
+      ctx.transcript,
+      ctx.lastInbound,
+      combinedContext,
+      data.humanFeedback,
+    );
+
+    const knowledgeGap = this.planner.detectKnowledgeGap(ctx, knowledgeHits);
+    if (knowledgeGap) {
+      result = this.planner.applyKnowledgeGapGuard(result, true);
+    }
+
+    const bgRun = await this.prisma.aiRun.create({
       data: {
         organizationId: data.organizationId,
         conversationId: data.conversationId,
-        type: data.refreshAfterCorrection ? "classify_refresh" : "classify",
+        type: "classify",
         provider: "openai",
         model,
-        status: "RUNNING",
-        input: {
-          messageId: data.messageId,
-          leadId: data.leadId,
-          humanFeedback: data.humanFeedback ?? null,
-          knowledgeSources: knowledgeHits.map((h) => ({
-            chunkId: h.chunkId,
-            title: h.title,
-            similarity: h.similarity,
-          })),
-        },
+        status: "COMPLETED",
+        input: { messageId: data.messageId, backgroundAfterFastPath: true },
+        output: result as object,
+        completedAt: new Date(),
       },
     });
 
+    const updateStage =
+      opts.prefs.stage &&
+      !data.lockStage &&
+      this.executor.shouldUpdateStage(ctx.lead.stage, result.stage, result.confidence);
+
+    const score = this.executor.computeScore(
+      result,
+      Boolean(data.lockStage),
+      ctx.lead.score,
+    );
+
+    await this.runDeferredCrmSync({
+      organizationId: data.organizationId,
+      conversationId: data.conversationId,
+      leadId: data.leadId,
+      result,
+      ctx,
+      aiRunId: bgRun.id,
+      updateStage,
+      lockStage: Boolean(data.lockStage),
+      lockHandoff: Boolean(data.lockHandoff),
+      stageChanged: false,
+      score,
+      knowledgeGap,
+      correlationId: data.correlationId ?? "",
+      automationPrefs: {
+        stage: opts.prefs.stage,
+        notify: opts.prefs.notify,
+        handoff: opts.prefs.handoff,
+      },
+    });
+  }
+
+  private async tryFastPathSend(
+    data: ClassifyJobData,
+    ctx: Awaited<ReturnType<ContextBuilderService["buildForConversation"]>>,
+    opts: {
+      businessName: string;
+      preRoute: ExecutionRoute;
+      spans: PipelineSpans;
+      aiRunId: string;
+    },
+  ): Promise<boolean> {
+    const fastText = this.fastReply.compose(ctx.lastInbound, opts.businessName, ctx);
+    if (!fastText) return false;
+
+    const stub = this.stubClassification(ctx, opts.preRoute);
+    const withinReplyWindow =
+      !!ctx.conversation.lastInboundAt &&
+      Date.now() - ctx.conversation.lastInboundAt.getTime() < 24 * 60 * 60 * 1000;
+
+    let autoSendPlanOk = false;
     try {
-      let result = await this.callOpenAi(
-        apiKey,
-        model,
-        ctx.lead.stage,
-        ctx.transcript,
-        ctx.lastInbound,
-        combinedContext,
-        data.humanFeedback,
-      );
+      await this.entitlements.assertPlanAtLeast(data.organizationId, "growth");
+      autoSendPlanOk = true;
+    } catch {
+      return false;
+    }
 
-      const knowledgeGap = this.planner.detectKnowledgeGap(ctx, knowledgeHits);
-      if (knowledgeGap) {
-        result = this.planner.applyKnowledgeGapGuard(result, true);
-      }
-
-      const latencyMs = Date.now() - started;
-      await this.prisma.aiRun.update({
-        where: { id: aiRun.id },
-        data: {
-          status: "COMPLETED",
-          output: result as object,
-          latencyMs,
-          completedAt: new Date(),
-        },
-      });
-
-      const prefs = await this.automations.getPreferencesForOrg(data.organizationId);
-      const org = await this.prisma.organization.findUnique({
-        where: { id: data.organizationId },
-        select: { settings: true },
-      });
-      const orgSettings =
-        org?.settings && typeof org.settings === "object"
-          ? (org.settings as Record<string, unknown>)
-          : {};
-      const intelligenceSettings = readIntelligenceSettingsFromOrg(orgSettings);
-      const withinReplyWindow =
-        !!ctx.conversation.lastInboundAt &&
-        Date.now() - ctx.conversation.lastInboundAt.getTime() < 24 * 60 * 60 * 1000;
-
-      let autoSendPlanOk = false;
-      if (intelligenceSettings.replyAutonomy === "auto_guarded") {
-        try {
-          await this.entitlements.assertPlanAtLeast(data.organizationId, "growth");
-          autoSendPlanOk = true;
-        } catch {
-          autoSendPlanOk = false;
-        }
-      }
-
-      const recentAutoSendCount = await this.prisma.message.count({
-        where: {
-          conversationId: data.conversationId,
-          organizationId: data.organizationId,
-          sentByAi: true,
-          direction: "OUTBOUND",
-          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        },
-      });
-
-      const updateStage =
-        prefs.stage &&
-        !data.lockStage &&
-        this.executor.shouldUpdateStage(ctx.lead.stage, result.stage, result.confidence);
-
-      const stageChanged = await this.executor.applyLeadProfileUpdate(
-        data.organizationId,
-        data.leadId,
-        result,
-        {
-          updateStage,
-          preserveScore: Boolean(data.lockStage),
-          currentStage: ctx.lead.stage,
-          currentScore: ctx.lead.score,
-          aiRunId: aiRun.id,
-        },
-      );
-
-      await this.memory.syncFromClassification(ctx, result, aiRun.id);
-
-      const score = this.executor.computeScore(
-        result,
-        Boolean(data.lockStage),
-        ctx.lead.score,
-      );
-
-      const { actions, replyDecision } = this.planner.buildFromClassification({
-        ctx,
-        result,
-        knowledgeHits,
-        aiRunId: aiRun.id,
-        autoStageEnabled: prefs.stage,
-        lockStage: Boolean(data.lockStage),
-        lockHandoff: Boolean(data.lockHandoff),
-        stageChanged,
-        score,
-        handoffType: knowledgeGap ? "knowledge_gap" : "complex",
-        workspaceAutonomy: intelligenceSettings.replyAutonomy,
-        withinReplyWindow,
-        autoSendPlanOk,
-        recentAutoSendCount,
-        automationPrefs: {
-          stage: prefs.stage,
-          notify: prefs.notify,
-          handoff: prefs.handoff,
-        },
-      });
-
-      await this.replyPolicy.persistDecision(
-        data.organizationId,
-        data.conversationId,
-        replyDecision,
-      );
-
-      const event = await this.events.emit({
-        organizationId: data.organizationId,
-        type: DOMAIN_EVENTS.LEAD_CLASSIFIED,
-        entityType: "lead",
-        entityId: data.leadId,
-        correlationId,
-        payload: {
-          conversationId: data.conversationId,
-          messageId: data.messageId,
-          aiRunId: aiRun.id,
-        },
-      });
-
-      await this.executor.executePlan({
-        organizationId: data.organizationId,
+    const recentAutoSendCount = await this.prisma.message.count({
+      where: {
         conversationId: data.conversationId,
-        leadId: data.leadId,
-        correlationId,
-        triggerEventId: event.eventId,
-        classification: result,
-        actions,
-        ctx,
-        stageChanged,
-      });
+        organizationId: data.organizationId,
+        sentByAi: true,
+        direction: "OUTBOUND",
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    });
+
+    const replyDecision = this.replyPolicy.evaluate({
+      ctx,
+      classification: stub,
+      knowledgeHits: [],
+      knowledgeGap: false,
+      workspaceAutonomy: "auto_guarded",
+      withinReplyWindow,
+      autoSendPlanOk,
+      recentAutoSendCount,
+    });
+
+    if (replyDecision.mode !== "send") return false;
+
+    const pipelineContext: PipelineContext = {
+      ctx,
+      knowledgeHits: [],
+      businessName: opts.businessName,
+      knowledgeGap: false,
+      executionRoute: opts.preRoute,
+      spans: opts.spans,
+    };
+
+    opts.spans.mark("fast_send_start");
+    await this.replySend.sendGuardedAutoReply(data.organizationId, data.conversationId, {
+      replyDecision,
+      classification: stub,
+      aiRunId: opts.aiRunId,
+      pipelineContext,
+      fastReplyText: fastText,
+    });
+    opts.spans.measure("fast_send_ms", "fast_send_start");
+
+    await this.replyPolicy.persistDecision(
+      data.organizationId,
+      data.conversationId,
+      replyDecision,
+    );
+
+    return true;
+  }
+
+  private async runDeferredCrmSync(sync: DeferredCrmSync) {
+    try {
+      const stageChanged = await this.executor.applyLeadProfileUpdate(
+        sync.organizationId,
+        sync.leadId,
+        sync.result,
+        {
+          updateStage: sync.updateStage,
+          preserveScore: sync.lockStage,
+          currentStage: sync.ctx.lead.stage,
+          currentScore: sync.ctx.lead.score,
+          aiRunId: sync.aiRunId,
+        },
+      );
+
+      await this.memory.syncFromClassification(sync.ctx, sync.result, sync.aiRunId);
 
       void this.automations.handlePostClassification({
-        organizationId: data.organizationId,
-        conversationId: data.conversationId,
-        leadId: data.leadId,
-        leadName: ctx.lead.displayName,
-        leadPhone: ctx.lead.phone,
-        score,
+        organizationId: sync.organizationId,
+        conversationId: sync.conversationId,
+        leadId: sync.leadId,
+        leadName: sync.ctx.lead.displayName,
+        leadPhone: sync.ctx.lead.phone,
+        score: sync.score,
         stageChanged,
-        newStage: result.stage,
+        newStage: sync.result.stage,
       });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      await this.prisma.aiRun.update({
-        where: { id: aiRun.id },
-        data: { status: "FAILED", error: message, completedAt: new Date() },
-      });
-      throw error;
+    } catch (err) {
+      this.logger.warn(
+        `Deferred CRM sync failed: ${err instanceof Error ? err.message : err}`,
+      );
     }
+  }
+
+  private stubClassification(
+    ctx: Awaited<ReturnType<ContextBuilderService["buildForConversation"]>>,
+    route: ExecutionRoute,
+  ): AiClassificationResult {
+    return {
+      stage: ctx.lead.stage,
+      confidence: route.confidence,
+      intent: route.intentKind === "thanks" ? "Thanks" : "Greeting",
+      sentiment: "positive",
+      suggestedActions: [],
+      requiresHuman: false,
+      tags: [],
+    };
+  }
+
+  private async claimTurn(
+    data: ClassifyJobData,
+    spans: PipelineSpans,
+  ): Promise<{ aiRunId: string } | null> {
+    const key = `${data.organizationId}:${data.messageId}`;
+    if (this.inFlight.has(key)) {
+      this.logger.debug(`In-flight classify skipped for ${key}`);
+      return null;
+    }
+
+    if (!data.refreshAfterCorrection) {
+      if (await this.hasCompletedClassifyForMessage(
+        data.organizationId,
+        data.conversationId,
+        data.messageId,
+      )) {
+        return null;
+      }
+      if (await this.hasRunningClassifyForMessage(
+        data.organizationId,
+        data.conversationId,
+        data.messageId,
+      )) {
+        return null;
+      }
+    }
+
+    this.inFlight.add(key);
+    try {
+      const aiRun = await this.prisma.aiRun.create({
+        data: {
+          organizationId: data.organizationId,
+          conversationId: data.conversationId,
+          type: data.refreshAfterCorrection ? "classify_refresh" : "classify",
+          provider: "openai",
+          model: this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini",
+          status: "RUNNING",
+          input: {
+            messageId: data.messageId,
+            leadId: data.leadId,
+            humanFeedback: data.humanFeedback ?? null,
+            claimedAt: new Date().toISOString(),
+            spans: spans.toJSON(),
+          },
+        },
+      });
+      return { aiRunId: aiRun.id };
+    } finally {
+      this.inFlight.delete(key);
+    }
+  }
+
+  private async finalizeAiRun(
+    aiRunId: string,
+    output: Record<string, unknown>,
+    latencyMs?: number,
+  ) {
+    await this.prisma.aiRun.update({
+      where: { id: aiRunId },
+      data: {
+        status: "COMPLETED",
+        output: output as object,
+        latencyMs,
+        completedAt: new Date(),
+      },
+    });
   }
 
   private async callOpenAi(
@@ -687,6 +1040,28 @@ Current pipeline stage: ${currentStage}.${contextBlock}${feedbackBlock}`,
       orderBy: { createdAt: "desc" },
     });
     return recent.some((run) => {
+      const input = run.input as Record<string, unknown> | null;
+      return input?.messageId === messageId;
+    });
+  }
+
+  private async hasRunningClassifyForMessage(
+    organizationId: string,
+    conversationId: string,
+    messageId: string,
+  ): Promise<boolean> {
+    const running = await this.prisma.aiRun.findMany({
+      where: {
+        organizationId,
+        conversationId,
+        type: { in: ["classify", "classify_refresh"] },
+        status: "RUNNING",
+        createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+      },
+      select: { input: true },
+      take: 5,
+    });
+    return running.some((run) => {
       const input = run.input as Record<string, unknown> | null;
       return input?.messageId === messageId;
     });

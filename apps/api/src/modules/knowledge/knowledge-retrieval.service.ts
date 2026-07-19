@@ -11,14 +11,34 @@ export interface RetrieveKnowledgeInput {
   minSimilarity?: number;
 }
 
+const CHUNK_CACHE_TTL_MS = 60_000;
+
 @Injectable()
 export class KnowledgeRetrievalService {
+  private readonly chunkCountCache = new Map<string, { count: number; at: number }>();
+
   constructor(
     private readonly embed: KnowledgeEmbedService,
     private readonly prisma: PrismaService,
   ) {}
 
+  async hasIndexedChunks(organizationId: string): Promise<boolean> {
+    const cached = this.chunkCountCache.get(organizationId);
+    if (cached && Date.now() - cached.at < CHUNK_CACHE_TTL_MS) {
+      return cached.count > 0;
+    }
+    const count = await this.prisma.knowledgeChunk.count({
+      where: { document: { organizationId } },
+    });
+    this.chunkCountCache.set(organizationId, { count, at: Date.now() });
+    return count > 0;
+  }
+
   async retrieve(input: RetrieveKnowledgeInput): Promise<KnowledgeHit[]> {
+    if (!(await this.hasIndexedChunks(input.organizationId))) {
+      return [];
+    }
+
     const limit = input.limit ?? 5;
     const minSimilarity = input.minSimilarity ?? 0.2;
     const rows = await this.embed.searchDetailed(

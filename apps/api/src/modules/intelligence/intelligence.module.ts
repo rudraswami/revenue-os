@@ -10,6 +10,8 @@ import { WhatsappMessagingModule } from "../whatsapp/whatsapp-messaging.module";
 import { ActionExecutorService } from "./action-executor.service";
 import { ActionPlannerService } from "./action-planner.service";
 import { ContextBuilderService } from "./context-builder.service";
+import { ExecutionRouterService } from "./execution-router.service";
+import { FastReplyService } from "./fast-reply.service";
 import { IntelligenceQueryService } from "./intelligence-query.service";
 import { LearningSignalService } from "./learning-signal.service";
 import { ObservedMemoryService } from "./observed-memory.service";
@@ -35,6 +37,8 @@ import { SuggestReplyService } from "./suggest-reply.service";
     ReplyPolicyService,
     ReplyComposerService,
     ReplySendService,
+    FastReplyService,
+    ExecutionRouterService,
     ActionPlannerService,
     ActionExecutorService,
     SuggestReplyService,
@@ -47,6 +51,8 @@ import { SuggestReplyService } from "./suggest-reply.service";
     ReplyPolicyService,
     ReplyComposerService,
     ReplySendService,
+    FastReplyService,
+    ExecutionRouterService,
     ActionPlannerService,
     ActionExecutorService,
     SuggestReplyService,
