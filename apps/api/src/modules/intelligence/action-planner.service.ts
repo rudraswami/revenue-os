@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import type {
   AiClassificationResult,
+  ExecutionPath,
+  IntelligenceWorkspaceSettings,
   KnowledgeHit,
   ProposedAction,
   ReplyDecision,
@@ -25,9 +27,11 @@ export interface ClassificationPlanInput {
   score: number;
   handoffType?: "complex" | "knowledge_gap" | "human_request";
   workspaceAutonomy: ReplyAutonomyMode;
+  intelligenceSettings: IntelligenceWorkspaceSettings;
   withinReplyWindow: boolean;
   autoSendPlanOk: boolean;
-  recentAutoSendCount: number;
+  executionPath: ExecutionPath;
+  safetyBlocked?: { code: string; reason: string };
   automationPrefs: {
     stage: boolean;
     notify: boolean;
@@ -72,9 +76,11 @@ export class ActionPlannerService {
       knowledgeHits: input.knowledgeHits,
       knowledgeGap: input.handoffType === "knowledge_gap",
       workspaceAutonomy: input.workspaceAutonomy,
+      intelligenceSettings: input.intelligenceSettings,
       withinReplyWindow: input.withinReplyWindow,
       autoSendPlanOk: input.autoSendPlanOk,
-      recentAutoSendCount: input.recentAutoSendCount,
+      executionPath: input.executionPath,
+      safetyBlocked: input.safetyBlocked,
     });
 
     if (result.requiresHuman && !input.lockHandoff) {

@@ -361,6 +361,7 @@ export class WhatsappService {
         waConversationKey,
         contactPhone: from,
         contactName,
+        aiEnabled: true,
         lastMessageAt: new Date(),
         lastInboundAt: new Date(),
         unreadCount: isReaction ? 0 : 1,

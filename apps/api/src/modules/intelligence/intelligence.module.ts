@@ -16,7 +16,9 @@ import { IntelligenceQueryService } from "./intelligence-query.service";
 import { LearningSignalService } from "./learning-signal.service";
 import { ObservedMemoryService } from "./observed-memory.service";
 import { ReplyComposerService } from "./reply-composer.service";
+import { AutomationPolicyService } from "./automation-policy.service";
 import { ReplyPolicyService } from "./reply-policy.service";
+import { ReplySafetyRailsService } from "./reply-safety-rails.service";
 import { ReplySendService } from "./reply-send.service";
 import { SuggestReplyService } from "./suggest-reply.service";
 
@@ -34,6 +36,8 @@ import { SuggestReplyService } from "./suggest-reply.service";
   providers: [
     ContextBuilderService,
     ObservedMemoryService,
+    AutomationPolicyService,
+    ReplySafetyRailsService,
     ReplyPolicyService,
     ReplyComposerService,
     ReplySendService,
@@ -48,6 +52,8 @@ import { SuggestReplyService } from "./suggest-reply.service";
   exports: [
     ContextBuilderService,
     ObservedMemoryService,
+    AutomationPolicyService,
+    ReplySafetyRailsService,
     ReplyPolicyService,
     ReplyComposerService,
     ReplySendService,

@@ -332,7 +332,7 @@ export class ConversationsService {
 
     return {
       ...conversation,
-      replyMode: conversation.aiEnabled ? ("ai_assist" as const) : ("human" as const),
+      replyMode: conversation.aiEnabled ? ("workspace_default" as const) : ("human_handling" as const),
       requiresHuman: meta.requiresHuman === true,
       handoffReason: typeof meta.handoffReason === "string" ? meta.handoffReason : null,
       handoffAt: typeof meta.handoffAt === "string" ? meta.handoffAt : null,
@@ -522,6 +522,7 @@ export class ConversationsService {
         where: { id },
         data: {
           assignedToId: user.sub,
+          aiEnabled: false,
           metadata: {
             ...assignmentMeta,
             requiresHuman: false,

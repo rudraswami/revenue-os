@@ -65,7 +65,7 @@ interface ConversationDetail {
   unreadCount: number;
   lastInboundAt?: string | null;
   aiEnabled: boolean;
-  replyMode?: "human" | "ai_assist";
+  replyMode?: "human_handling" | "workspace_default";
   replyDecision?: ReplyDecision | null;
   pendingDraft?: {
     suggestion: string;
@@ -748,39 +748,35 @@ export default function InboxPage() {
                   </div>
                 </div>
                 <div className="hidden shrink-0 flex-wrap items-center justify-end gap-1.5 md:flex">
-                  {canToggleAi && (
-                    <div
-                      className="flex items-center rounded-full bg-muted/60 p-0.5"
-                      title={copy.replyModeHint}
-                    >
-                      <button
+                  {canToggleAi &&
+                    (!thread.aiEnabled ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                          {copy.handlingThisThread}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 rounded-full px-2.5 text-[11px]"
+                          disabled={aiToggleMutation.isPending}
+                          onClick={() => aiToggleMutation.mutate(true)}
+                        >
+                          {copy.letGrowvisiHelp}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 rounded-full px-2.5 text-[11px]"
                         disabled={aiToggleMutation.isPending}
-                        onClick={() => thread.aiEnabled && aiToggleMutation.mutate(false)}
-                        className={cn(
-                          "rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition",
-                          !thread.aiEnabled
-                            ? "bg-card text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
+                        onClick={() => aiToggleMutation.mutate(false)}
                       >
-                        {copy.replyModeHuman}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={aiToggleMutation.isPending}
-                        onClick={() => !thread.aiEnabled && aiToggleMutation.mutate(true)}
-                        className={cn(
-                          "rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition",
-                          thread.aiEnabled
-                            ? "bg-card text-accent shadow-sm"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {copy.replyModeAiAssist}
-                      </button>
-                    </div>
-                  )}
+                        {copy.illHandleThis}
+                      </Button>
+                    ))}
                   {thread.lead?.score != null && thread.lead.score > 0 && (
                     <span
                       className={cn(
@@ -905,36 +901,35 @@ export default function InboxPage() {
                     </span>
                   )}
                 </div>
-                {canToggleAi && (
-                  <div className="flex w-full items-center gap-1 rounded-lg bg-muted/60 p-0.5 md:hidden">
-                    <button
+                {canToggleAi &&
+                  (!thread.aiEnabled ? (
+                    <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:items-center">
+                      <span className="rounded-md bg-amber-100 px-2 py-1 text-center text-xs font-semibold text-amber-900">
+                        {copy.handlingThisThread}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 flex-1 text-xs"
+                        disabled={aiToggleMutation.isPending}
+                        onClick={() => aiToggleMutation.mutate(true)}
+                      >
+                        {copy.letGrowvisiHelp}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-full text-xs md:hidden"
                       disabled={aiToggleMutation.isPending}
-                      onClick={() => thread.aiEnabled && aiToggleMutation.mutate(false)}
-                      className={cn(
-                        "flex-1 rounded-md px-2 py-1 text-xs font-semibold transition",
-                        !thread.aiEnabled
-                          ? "bg-card text-foreground shadow-sm"
-                          : "text-muted-foreground",
-                      )}
+                      onClick={() => aiToggleMutation.mutate(false)}
                     >
-                      {copy.replyModeHuman}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={aiToggleMutation.isPending}
-                      onClick={() => !thread.aiEnabled && aiToggleMutation.mutate(true)}
-                      className={cn(
-                        "flex-1 rounded-md px-2 py-1 text-xs font-semibold transition",
-                        thread.aiEnabled
-                          ? "bg-card text-accent shadow-sm"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {copy.replyModeAiAssist}
-                    </button>
-                  </div>
-                )}
+                      {copy.illHandleThis}
+                    </Button>
+                  ))}
                 <span className="ml-auto text-xs text-muted-foreground">
                   {live ? copy.live : "Syncing"}
                 </span>

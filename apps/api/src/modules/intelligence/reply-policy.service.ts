@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type {
   AiClassificationResult,
+  ExecutionPath,
+  IntelligenceWorkspaceSettings,
   KnowledgeHit,
   ReplyDecision,
   ReplyAutonomyMode,
@@ -9,10 +11,7 @@ import type {
 } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import type { ConversationContext } from "./context-builder.service";
-
-/** Hard block — only scan the customer's latest message, not pipeline stage or thread history. */
-const HARD_BLOCK_INBOUND =
-  /refund|complaint|angry|furious|legal|lawyer|cancel\s+order|fraud|chargeback|sue|police|speak\s+to\s+(a\s+)?(human|person|manager|agent)/i;
+import { AutomationPolicyService } from "./automation-policy.service";
 
 export interface ReplyPolicyInput {
   ctx: ConversationContext;
@@ -20,16 +19,22 @@ export interface ReplyPolicyInput {
   knowledgeHits: KnowledgeHit[];
   knowledgeGap: boolean;
   workspaceAutonomy: ReplyAutonomyMode;
+  intelligenceSettings: IntelligenceWorkspaceSettings;
   withinReplyWindow: boolean;
   autoSendPlanOk: boolean;
-  recentAutoSendCount: number;
+  executionPath: ExecutionPath;
+  /** Set when safety rails block auto-send (velocity / loop protection). */
+  safetyBlocked?: { code: string; reason: string };
 }
 
 @Injectable()
 export class ReplyPolicyService {
   private readonly logger = new Logger(ReplyPolicyService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly automationPolicy: AutomationPolicyService,
+  ) {}
 
   evaluate(input: ReplyPolicyInput): ReplyDecision {
     const reasons: string[] = [];
@@ -42,8 +47,10 @@ export class ReplyPolicyService {
       reasons.push(reason);
     };
 
-    if (!input.ctx.conversation.aiEnabled) {
-      pushBlocker("human_mode", "Human reply mode — AI will not compose a reply.");
+    const humanHandling = !input.ctx.conversation.aiEnabled;
+
+    if (humanHandling) {
+      pushBlocker("human_handling", "You're handling this thread.");
       return this.decision("skip", 1, "low", reasons, blockers, evaluatedAt, false);
     }
 
@@ -80,57 +87,47 @@ export class ReplyPolicyService {
     }
 
     if (input.workspaceAutonomy === "assist") {
-      reasons.push("AI assist — review the draft and tap Send.");
+      reasons.push("Suggest only — your team sends from Conversations.");
       return this.decision("draft", confidence, risk, reasons, blockers, evaluatedAt, false);
     }
 
-    // auto_guarded: send on WhatsApp by default. Quality is enforced in the composer prompt.
-    const hardBlock = this.autoSendHardBlock(input, lastInbound);
-    if (hardBlock) {
-      pushBlocker(hardBlock.code, hardBlock.reason);
-      return this.decision("draft", confidence, risk, reasons, blockers, evaluatedAt, false);
-    }
-
-    reasons.push(
-      "Guarded auto-reply — AI will send this on WhatsApp from your business number.",
-    );
-    if (input.knowledgeHits.length > 0) {
-      reasons.push(`Source: “${input.knowledgeHits[0].title}”.`);
-    }
-    reasons.push("Your team can take over anytime in Conversations.");
-
-    return this.decision("send", confidence, risk, reasons, blockers, evaluatedAt, true);
-  }
-
-  private autoSendHardBlock(
-    input: ReplyPolicyInput,
-    lastInbound: string,
-  ): { code: string; reason: string } | null {
+    // auto_guarded
     if (!input.autoSendPlanOk) {
-      return {
-        code: "auto_send_plan",
-        reason: "Auto-reply on WhatsApp needs Growth plan or higher.",
-      };
+      pushBlocker("auto_send_plan", "Auto-reply on WhatsApp needs Growth plan or higher.");
+      return this.decision("draft", confidence, risk, reasons, blockers, evaluatedAt, false);
     }
-    if (input.recentAutoSendCount >= 5) {
-      return {
-        code: "auto_send_rate_limit",
-        reason: "Auto-reply limit for this thread (5 per 24h) — draft only.",
-      };
+
+    if (input.safetyBlocked) {
+      pushBlocker(input.safetyBlocked.code, input.safetyBlocked.reason);
+      return this.decision("draft", confidence, risk, reasons, blockers, evaluatedAt, false);
     }
-    if (input.classification.requiresHuman) {
-      return {
-        code: "auto_send_handoff",
-        reason: "Customer needs a human — AI drafted a starting point for you.",
-      };
+
+    const policy = this.automationPolicy.evaluate({
+      settings: input.intelligenceSettings,
+      ctx: input.ctx,
+      classification: input.classification,
+      knowledgeHits: input.knowledgeHits,
+      knowledgeGap: input.knowledgeGap,
+      executionPath: input.executionPath,
+      humanHandling,
+    });
+
+    reasons.push(...policy.reasons);
+    for (const code of policy.blockers) {
+      if (!blockers.includes(code)) blockers.push(code);
     }
-    if (HARD_BLOCK_INBOUND.test(lastInbound)) {
-      return {
-        code: "auto_send_sensitive",
-        reason: "Sensitive message (complaint/refund/legal) — human should reply.",
-      };
+
+    if (policy.outcome === "send") {
+      reasons.push("Growvisi will send this on WhatsApp from your business number.");
+      reasons.push("Your team can take over anytime in Conversations.");
+      return this.decision("send", confidence, policy.risk, reasons, blockers, evaluatedAt, true);
     }
-    return null;
+
+    if (policy.outcome === "human") {
+      return this.decision("draft", confidence, policy.risk, reasons, blockers, evaluatedAt, false);
+    }
+
+    return this.decision("draft", confidence, policy.risk, reasons, blockers, evaluatedAt, false);
   }
 
   async persistDecision(
@@ -163,7 +160,9 @@ export class ReplyPolicyService {
 
   private assessRisk(input: ReplyPolicyInput): ReplyRiskLevel {
     const lastInbound = input.ctx.lastInbound ?? "";
-    if (HARD_BLOCK_INBOUND.test(lastInbound)) return "high";
+    const SENSITIVE =
+      /refund|complaint|angry|furious|legal|lawyer|cancel\s+order|fraud|chargeback|sue|police|speak\s+to\s+(a\s+)?(human|person|manager|agent)/i;
+    if (SENSITIVE.test(lastInbound)) return "high";
     if (input.classification.requiresHuman) return "high";
     if (input.knowledgeGap) return "medium";
     if (input.knowledgeHits.length === 0) return "medium";

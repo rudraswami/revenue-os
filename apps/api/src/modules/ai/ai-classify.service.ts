@@ -22,8 +22,10 @@ import { ObservedMemoryService } from "../intelligence/observed-memory.service";
 import type { DeferredCrmSync, PipelineContext } from "../intelligence/pipeline-context";
 import { PipelineSpans } from "../intelligence/pipeline-spans";
 import { ReplyPolicyService } from "../intelligence/reply-policy.service";
+import { ReplySafetyRailsService } from "../intelligence/reply-safety-rails.service";
 import { ReplySendService } from "../intelligence/reply-send.service";
 import { readIntelligenceSettingsFromOrg } from "../intelligence/workspace-intelligence-settings";
+import type { IntelligenceWorkspaceSettings } from "@growvisi/shared";
 import { useBackgroundWorkers } from "../../config/workers";
 import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { withTimeout } from "../../common/utils/with-timeout";
@@ -82,6 +84,7 @@ export class AiClassifyService {
     private readonly memory: ObservedMemoryService,
     private readonly planner: ActionPlannerService,
     private readonly replyPolicy: ReplyPolicyService,
+    private readonly safetyRails: ReplySafetyRailsService,
     private readonly executor: ActionExecutorService,
     private readonly executionRouter: ExecutionRouterService,
     private readonly fastReply: FastReplyService,
@@ -373,12 +376,6 @@ export class AiClassifyService {
       );
       spans.measure("context_build_ms", "context_start");
 
-      if (!ctx.conversation.aiEnabled && !data.refreshAfterCorrection) {
-        this.logger.debug(`AI disabled for conversation ${data.conversationId} — skipping`);
-        await this.finalizeAiRun(aiRunId, { skipped: true, reason: "ai_disabled" }, 0);
-        return;
-      }
-
       if (
         (ctx.lead.stage === "WON" || ctx.lead.stage === "LOST") &&
         !data.refreshAfterCorrection
@@ -419,6 +416,7 @@ export class AiClassifyService {
           preRoute,
           spans,
           aiRunId,
+          intelligenceSettings,
         });
         if (sent) {
           await this.finalizeAiRun(aiRunId, {
@@ -533,15 +531,14 @@ export class AiClassifyService {
       }
     }
 
-    const recentAutoSendCount = await this.prisma.message.count({
-      where: {
-        conversationId: data.conversationId,
-        organizationId: data.organizationId,
-        sentByAi: true,
-        direction: "OUTBOUND",
-        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-      },
+    const safetyCheck = await this.safetyRails.checkVelocity({
+      organizationId: data.organizationId,
+      conversationId: data.conversationId,
+      safety: opts.intelligenceSettings.safety,
     });
+    const safetyBlocked = safetyCheck.blocked
+      ? { code: safetyCheck.code!, reason: safetyCheck.reason! }
+      : undefined;
 
     const updateStage =
       opts.prefs.stage &&
@@ -575,25 +572,17 @@ export class AiClassifyService {
       score,
       handoffType: knowledgeGap ? "knowledge_gap" : "complex",
       workspaceAutonomy: opts.intelligenceSettings.replyAutonomy,
+      intelligenceSettings: opts.intelligenceSettings,
       withinReplyWindow,
       autoSendPlanOk,
-      recentAutoSendCount,
+      executionPath: executionRoute.path,
+      safetyBlocked,
       automationPrefs: {
         stage: opts.prefs.stage,
         notify: opts.prefs.notify,
         handoff: opts.prefs.handoff,
       },
     });
-
-    if (executionRoute.path === "human") {
-      if (replyDecision.mode === "send") {
-        Object.assign(replyDecision, { mode: "draft" as const });
-      }
-    }
-
-    if (executionRoute.path === "complex" && replyDecision.mode === "send") {
-      Object.assign(replyDecision, { mode: "draft" as const });
-    }
 
     await this.replyPolicy.persistDecision(
       data.organizationId,
@@ -746,6 +735,7 @@ export class AiClassifyService {
       preRoute: ExecutionRoute;
       spans: PipelineSpans;
       aiRunId: string;
+      intelligenceSettings: IntelligenceWorkspaceSettings;
     },
   ): Promise<boolean> {
     const fastText = this.fastReply.compose(ctx.lastInbound, opts.businessName, ctx);
@@ -764,25 +754,26 @@ export class AiClassifyService {
       return false;
     }
 
-    const recentAutoSendCount = await this.prisma.message.count({
-      where: {
-        conversationId: data.conversationId,
-        organizationId: data.organizationId,
-        sentByAi: true,
-        direction: "OUTBOUND",
-        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-      },
+    const safetyCheck = await this.safetyRails.checkVelocity({
+      organizationId: data.organizationId,
+      conversationId: data.conversationId,
+      safety: opts.intelligenceSettings.safety,
     });
+    const safetyBlocked = safetyCheck.blocked
+      ? { code: safetyCheck.code!, reason: safetyCheck.reason! }
+      : undefined;
 
     const replyDecision = this.replyPolicy.evaluate({
       ctx,
       classification: stub,
       knowledgeHits: [],
       knowledgeGap: false,
-      workspaceAutonomy: "auto_guarded",
+      workspaceAutonomy: opts.intelligenceSettings.replyAutonomy,
+      intelligenceSettings: opts.intelligenceSettings,
       withinReplyWindow,
       autoSendPlanOk,
-      recentAutoSendCount,
+      executionPath: opts.preRoute.path,
+      safetyBlocked,
     });
 
     if (replyDecision.mode !== "send") return false;

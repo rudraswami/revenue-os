@@ -18,6 +18,10 @@ class UpdateIntelligenceSettingsDto {
   @IsOptional()
   @IsEnum(["intel_only", "assist", "auto_guarded"])
   replyAutonomy?: "intel_only" | "assist" | "auto_guarded";
+
+  @IsOptional()
+  @IsEnum(["careful", "balanced", "responsive"])
+  automationPreset?: "careful" | "balanced" | "responsive";
 }
 
 class UpdateReplyTemplatesDto {

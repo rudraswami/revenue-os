@@ -98,11 +98,78 @@ export interface ReplyDecision {
   autoEligible?: boolean;
 }
 
-export interface IntelligenceWorkspaceSettings {
-  /** Default for new threads — per-thread aiEnabled still overrides assist vs human */
-  replyAutonomy: ReplyAutonomyMode;
+/** How aggressively Growvisi may auto-send on WhatsApp (auto_guarded only). */
+export const AUTOMATION_POLICY_PRESETS = ["careful", "balanced", "responsive"] as const;
+export type AutomationPolicyPreset = (typeof AUTOMATION_POLICY_PRESETS)[number];
+
+export interface AutomationPolicyRules {
+  /** Auto-send greetings, thanks, and acks (fast path). */
+  autoSendGreetings: boolean;
+  /** Auto-send when Business Knowledge match is strong enough. */
+  autoSendFaqWhenGrounded: boolean;
+  /** Auto-send pricing answers when grounded (false = draft for review). */
+  autoSendPricingWhenGrounded: boolean;
+  /** Minimum classify confidence to allow auto-send. */
+  minClassifyConfidence: number;
+  /** Minimum RAG similarity (0–1) to treat as grounded. */
+  minGroundingSimilarity: number;
+  /** Pipeline stages that always draft instead of auto-send. */
+  humanForStages: string[];
 }
+
+export interface AutomationSafetySettings {
+  /** Max AI sends per thread within the velocity window (loop protection). */
+  maxSendsPerVelocityWindow: number;
+  /** Velocity window length in minutes. */
+  velocityWindowMinutes: number;
+}
+
+export interface IntelligenceWorkspaceSettings {
+  /** Workspace default for reply behavior. */
+  replyAutonomy: ReplyAutonomyMode;
+  /** Preset for auto_guarded — careful / balanced / responsive. */
+  automationPreset: AutomationPolicyPreset;
+  /** Optional overrides; merged on top of preset defaults server-side. */
+  automationRules?: Partial<AutomationPolicyRules>;
+  safety?: Partial<AutomationSafetySettings>;
+}
+
+export const AUTOMATION_PRESET_DEFAULTS: Record<
+  AutomationPolicyPreset,
+  AutomationPolicyRules
+> = {
+  careful: {
+    autoSendGreetings: true,
+    autoSendFaqWhenGrounded: false,
+    autoSendPricingWhenGrounded: false,
+    minClassifyConfidence: 0.6,
+    minGroundingSimilarity: 0.75,
+    humanForStages: ["NEGOTIATION", "PROPOSAL", "WON", "LOST"],
+  },
+  balanced: {
+    autoSendGreetings: true,
+    autoSendFaqWhenGrounded: true,
+    autoSendPricingWhenGrounded: false,
+    minClassifyConfidence: 0.55,
+    minGroundingSimilarity: 0.7,
+    humanForStages: ["NEGOTIATION", "PROPOSAL"],
+  },
+  responsive: {
+    autoSendGreetings: true,
+    autoSendFaqWhenGrounded: true,
+    autoSendPricingWhenGrounded: true,
+    minClassifyConfidence: 0.5,
+    minGroundingSimilarity: 0.65,
+    humanForStages: ["PROPOSAL"],
+  },
+};
+
+export const DEFAULT_AUTOMATION_SAFETY: AutomationSafetySettings = {
+  maxSendsPerVelocityWindow: 3,
+  velocityWindowMinutes: 2,
+};
 
 export const DEFAULT_INTELLIGENCE_SETTINGS: IntelligenceWorkspaceSettings = {
   replyAutonomy: "assist",
+  automationPreset: "balanced",
 };
