@@ -5,15 +5,15 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "prisma generate --schema=./prisma/schema.prisma && tsc",
-    "dev": "tsc --watch",
+    "build": "pnpm exec prisma generate --schema=./prisma/schema.prisma && pnpm exec tsc",
+    "dev": "pnpm exec tsc --watch",
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "push": "prisma db push",
     "seed": "tsx prisma/seed.ts",
     "studio": "prisma studio",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "pnpm exec tsc --noEmit"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
