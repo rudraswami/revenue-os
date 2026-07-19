@@ -25,6 +25,7 @@ import { BusinessContextCard } from "@/components/settings/business-context-card
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
+import { IndustryTemplateCard } from "@/components/settings/industry-template-card";
 import { IntelligenceKnowledgeExplainer } from "@/components/settings/intelligence-knowledge-explainer";
 import { IntelligenceStatusOverview } from "@/components/settings/intelligence-status-overview";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -185,6 +186,12 @@ function SettingsTabContent({
             description="Pricing, policies, and FAQs — indexed so Growvisi can draft grounded replies and support guarded auto-send."
           >
             <BusinessContextCard embedded />
+          </SettingsSection>
+          <SettingsSection
+            title="Industry starter (optional)"
+            description="Seed sample voice, escalation, and starter docs for your business type."
+          >
+            <IndustryTemplateCard />
           </SettingsSection>
           <SettingsSection
             title="Quick replies"

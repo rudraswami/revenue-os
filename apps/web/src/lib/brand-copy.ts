@@ -189,7 +189,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Does AI reply to customers automatically?",
-    a: "By default your team sends every reply from Conversations or WhatsApp. You can enable Send simple replies in Intelligence so Growvisi auto-sends low-risk, grounded messages — greetings, thanks, and FAQs from your Business Knowledge. Complaints, ungrounded pricing, and deal terms always stay with your team. Optional Meta Business Agent can handle first-line FAQ in the WhatsApp app.",
+    a: "By default your team sends every reply from Conversations or WhatsApp. You can enable guarded auto-send in Automations so Growvisi sends low-risk, grounded messages — greetings, thanks, and FAQs from your Business Knowledge. Complaints, ungrounded pricing, and deal terms always stay with your team. Optional Meta Business Agent can handle first-line FAQ in the WhatsApp app.",
   },
   {
     q: "What is YOUR TURN?",
@@ -351,7 +351,7 @@ export const AUTH = {
   trialBadge: "14-day free trial",
   trialBullets: "500 leads · 1 WhatsApp number · No credit card",
   humanReplyNote:
-    "Your team replies on WhatsApp. Enable Send simple replies in Intelligence for guarded auto-send on low-risk messages.",
+    "Your team replies on WhatsApp. Enable guarded auto-send in Automations for low-risk messages grounded in your docs.",
   stepLabel: "Step 1 of 2 · Create workspace",
   whatsNextTitle: "What happens next",
   whatsNextSteps: [
@@ -421,7 +421,7 @@ export const CONVERSATIONS = {
   /** Composer */
   composePlaceholder: "Write your WhatsApp reply…",
   composeFooter:
-    "You send this message from your business number. Growvisi only auto-sends when Send simple replies is on in Intelligence.",
+    "You send this message from your business number. Growvisi only auto-sends when guarded auto-reply is on in Automations.",
   composeCollapsed: "Reply from Growvisi",
   /** Empty right pane */
   selectTitle: "Choose a conversation",

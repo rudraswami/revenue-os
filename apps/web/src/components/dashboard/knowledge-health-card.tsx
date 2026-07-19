@@ -7,6 +7,7 @@ import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+import { KNOWLEDGE_SETTINGS_PATH } from "@growvisi/shared";
 import { cn } from "@/lib/utils";
 
 export interface KnowledgeHealthResponse {
@@ -96,7 +97,7 @@ export function KnowledgeHealthCard({ className }: { className?: string }) {
           </p>
 
           <Link
-            href="/dashboard/settings?tab=intelligence"
+            href={KNOWLEDGE_SETTINGS_PATH}
             className="inline-flex text-sm font-semibold text-accent hover:underline"
           >
             Manage business knowledge →

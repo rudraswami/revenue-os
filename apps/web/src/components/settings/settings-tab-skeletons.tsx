@@ -106,6 +106,7 @@ export function IntelligenceTabSkeleton() {
         </div>
         <SectionBlockSkeleton titleWidth="w-36" rows={3} />
         <SectionBlockSkeleton titleWidth="w-44" rows={5} />
+        <SectionBlockSkeleton titleWidth="w-48" rows={3} />
         <SectionBlockSkeleton titleWidth="w-36" rows={4} />
       </div>
     </SettingsTabContentFrame>

@@ -14,6 +14,7 @@ import { SettingsSection } from "@/components/settings/settings-section";
 import { WorkspaceOverview, WorkspaceOverviewLinks } from "@/components/settings/workspace-overview";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { KNOWLEDGE_SETTINGS_PATH } from "@growvisi/shared";
 import type { ShellBootstrapResponse } from "@/lib/shell-bootstrap";
 
 interface WorkspaceHomeProps {
@@ -109,7 +110,7 @@ export function WorkspaceHome({ bootstrap, bootstrapLoading }: WorkspaceHomeProp
           loading={bootstrapLoading}
           status="Business knowledge"
           tone="muted"
-          href="/dashboard/settings?tab=intelligence"
+          href={KNOWLEDGE_SETTINGS_PATH}
         />
         <HealthCard
           icon={Building2}

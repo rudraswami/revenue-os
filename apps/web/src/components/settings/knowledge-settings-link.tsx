@@ -1,11 +1,12 @@
 "use client";
 
+import { KNOWLEDGE_SETTINGS_PATH } from "@growvisi/shared";
 import Link from "next/link";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const SETTINGS_KNOWLEDGE_HREF = "/dashboard/settings?tab=intelligence";
+const SETTINGS_KNOWLEDGE_HREF = KNOWLEDGE_SETTINGS_PATH;
 
 export function KnowledgeSettingsLink({
   variant = "inline",

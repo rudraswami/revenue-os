@@ -11,6 +11,12 @@ export const QUEUES = {
 /** Align digest, Home hot leads, and hot-lead email alerts on one threshold. */
 export const HOT_LEAD_SCORE_THRESHOLD = 70;
 
+/** Settings tab where workspaces manage pasted business knowledge (RAG). */
+export const KNOWLEDGE_SETTINGS_PATH = "/dashboard/settings?tab=intelligence";
+
+/** Reply policy, presets, and guarded WhatsApp auto-send. */
+export const AUTOMATIONS_PATH = "/dashboard/automations";
+
 export const DOMAIN_EVENTS = {
   MESSAGE_RECEIVED: "message.received",
   MESSAGE_SENT: "message.sent",

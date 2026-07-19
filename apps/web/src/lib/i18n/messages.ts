@@ -190,7 +190,7 @@ export const messages = {
       welcomeEyebrow: "AI revenue for WhatsApp",
       welcomeHeadline: "Turn WhatsApp chats into revenue you can track.",
       welcomeSub:
-        "Capture leads. Score intent. Update Pipeline. Your team sends replies — optional guarded auto-send in Intelligence.",
+        "Capture leads. Score intent. Update Pipeline. Your team sends replies — optional guarded auto-send in Automations.",
       welcomePillarsLine: "Capture  ·  Classify  ·  Pipeline",
       pillars: {
         capture: {

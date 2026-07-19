@@ -70,7 +70,7 @@ export class ActionPlannerService {
       ...result,
       intent: result.intent?.includes("knowledge") ? result.intent : "Knowledge gap — pricing/policy",
       suggestedActions: [
-        "Add pricing or policy to Business Knowledge in Intelligence",
+        "Add pricing or policy in Settings → AI & replies",
         ...(result.suggestedActions ?? []).slice(0, 1),
       ],
     };

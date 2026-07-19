@@ -159,7 +159,7 @@ export class AutomationPolicyService {
     if (input.hasIndexedChunks === false && !isCourtesy) {
       pushBlocker(
         "kb_not_indexed",
-        "Business Knowledge is not indexed yet — add docs in Intelligence before auto-answers.",
+        "Business Knowledge is not indexed yet — add docs in Settings → AI & replies before auto-answers.",
       );
       return this.withAck(profile, blockers, {
         outcome: "draft",

@@ -6,6 +6,7 @@ import { ArrowRight, BookOpen, MessageSquare, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { IntelligenceWorkspaceSettings } from "@growvisi/shared";
+import { AUTOMATIONS_PATH } from "@growvisi/shared";
 import { apiFetch } from "@/lib/api-client";
 import {
   AUTONOMY_OPTIONS,
@@ -134,7 +135,7 @@ export function IntelligenceStatusOverview() {
       </div>
 
       <Button variant="outline" size="sm" className="rounded-xl" asChild>
-        <Link href="/dashboard/automations">
+        <Link href={AUTOMATIONS_PATH}>
           Change reply policy in Automations
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>

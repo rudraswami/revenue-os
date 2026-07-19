@@ -135,7 +135,7 @@ export class DigestService {
           dashboardUrl: `${appUrl}/dashboard`,
           inboxUrl: `${appUrl}/dashboard/inbox`,
           insightsUrl: `${appUrl}/dashboard#recommendations`,
-          knowledgeUrl: `${appUrl}/dashboard/automations`,
+          knowledgeUrl: `${appUrl}/dashboard/settings?tab=intelligence`,
         };
 
         let delivered = false;
