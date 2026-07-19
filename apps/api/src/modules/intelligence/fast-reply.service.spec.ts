@@ -1,5 +1,6 @@
 import { FastReplyService } from "./fast-reply.service";
 import type { ConversationContext } from "./context-builder.service";
+import { buildWorkingMemory, defaultBusinessEmployeeProfile } from "@growvisi/shared";
 
 function ctx(
   lastInbound: string,
@@ -17,19 +18,28 @@ function ctx(
       ]
     : [];
 
+  const lead = {
+    id: "lead",
+    stage: "NEW" as const,
+    score: 10,
+    displayName: null,
+    phone: "919999999999",
+    profile: {},
+    aiEnabled: true,
+  };
+
+  const base = {
+    lead,
+    conversation: { contactName: null },
+    messages,
+    observedMemory: [] as ConversationContext["observedMemory"],
+  };
+
   return {
     organizationId: "org",
     conversationId: "conv",
     leadId: "lead",
-    lead: {
-      id: "lead",
-      stage: "NEW",
-      score: 10,
-      displayName: null,
-      phone: "919999999999",
-      profile: {},
-      aiEnabled: true,
-    },
+    lead,
     conversation: {
       id: "conv",
       aiEnabled: true,
@@ -42,6 +52,7 @@ function ctx(
     lastInbound,
     ragQuery: lastInbound,
     observedMemory: [],
+    workingMemory: buildWorkingMemory(base),
   };
 }
 
@@ -64,5 +75,22 @@ describe("FastReplyService", () => {
   it("composes thanks reply", () => {
     const reply = fast.compose("Thanks", "Petals Florist", ctx("Thanks", true));
     expect(reply).toMatch(/welcome|happy|anytime/i);
+  });
+
+  it("uses custom profile greeting and thanks templates", () => {
+    const profile = defaultBusinessEmployeeProfile("Custom Shop");
+    profile.greetingVariants.firstContact = ["Namaste! Custom Shop here — bataiye?"];
+    profile.greetingVariants.returning = ["Welcome back to Custom Shop!"];
+    profile.courtesyTemplates.thanks = ["Dhanyavaad — we're here if you need more help."];
+
+    expect(fast.compose("Hi", "Custom Shop", ctx("Hi", false), profile)).toBe(
+      "Namaste! Custom Shop here — bataiye?",
+    );
+    expect(fast.compose("Hello", "Custom Shop", ctx("Hello", true), profile)).toBe(
+      "Welcome back to Custom Shop!",
+    );
+    expect(fast.compose("Thanks", "Custom Shop", ctx("Thanks", true), profile)).toBe(
+      "Dhanyavaad — we're here if you need more help.",
+    );
   });
 });

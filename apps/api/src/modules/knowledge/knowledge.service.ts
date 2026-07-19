@@ -151,6 +151,7 @@ export class KnowledgeService {
     });
     if (!existing) throw new NotFoundException("Document not found");
     await this.prisma.knowledgeDocument.delete({ where: { id } });
+    this.retrieval.invalidateChunkCountCache(user.organizationId);
     void this.events.emit({
       organizationId: user.organizationId,
       type: DOMAIN_EVENTS.KNOWLEDGE_DOCUMENT_UPDATED,
@@ -198,6 +199,7 @@ export class KnowledgeService {
     }
 
     const { chunks } = await this.embed.embedDocument(documentId, organizationId);
+    this.retrieval.invalidateChunkCountCache(organizationId);
     return chunks;
   }
 }

@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AutomationPolicyPreset,
   IntelligenceWorkspaceSettings,
+  IntelligenceWorkspaceSettingsPatch,
   ReplyAutonomyMode,
 } from "@growvisi/shared";
 import { AUTOMATION_POLICY_PRESETS, REPLY_AUTONOMY_MODES } from "@growvisi/shared";
@@ -61,8 +63,21 @@ export function IntelligenceReplySettingsCard() {
     enabled: !!token,
   });
 
+  const { data: kbHealth } = useQuery({
+    queryKey: ["knowledge-health"],
+    queryFn: () =>
+      apiFetch<{
+        chunkCount: number;
+        gapRiskScore: number;
+        readyForResponsivePreset: boolean;
+      }>("/knowledge/health", { token: token ?? undefined }),
+    enabled: !!token,
+  });
+
+  const responsiveBlocked = kbHealth != null && !kbHealth.readyForResponsivePreset;
+
   const mutation = useMutation({
-    mutationFn: (patch: Partial<IntelligenceWorkspaceSettings>) =>
+    mutationFn: (patch: IntelligenceWorkspaceSettingsPatch) =>
       apiFetch<IntelligenceWorkspaceSettings>("/organizations/intelligence-settings", {
         method: "PATCH",
         token: token ?? undefined,
@@ -122,27 +137,43 @@ export function IntelligenceReplySettingsCard() {
               {AUTOMATION_POLICY_PRESETS.map((preset) => {
                 const meta = PRESET_LABELS[preset];
                 const active = currentPreset === preset;
+                const disabled =
+                  !canManage ||
+                  mutation.isPending ||
+                  (preset === "responsive" && responsiveBlocked);
                 return (
                   <button
                     key={preset}
                     type="button"
-                    disabled={!canManage || mutation.isPending}
-                    onClick={() => canManage && mutation.mutate({ automationPreset: preset })}
+                    disabled={disabled}
+                    onClick={() =>
+                      canManage && !disabled && mutation.mutate({ automationPreset: preset })
+                    }
                     className={cn(
                       "w-full rounded-lg border px-3 py-2 text-left transition",
                       active
                         ? "border-accent/35 bg-bento-mint/40"
                         : "border-border/50 bg-muted/20 hover:border-accent/20",
-                      !canManage && "cursor-not-allowed opacity-70",
+                      disabled && "cursor-not-allowed opacity-70",
                     )}
                   >
                     <p className="text-xs font-semibold text-foreground">{meta.title}</p>
                     <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                      {meta.description}
+                      {preset === "responsive" && responsiveBlocked
+                        ? "Upload Business Knowledge first — Responsive needs indexed docs to auto-send safely."
+                        : meta.description}
                     </p>
                   </button>
                 );
               })}
+              {responsiveBlocked && (
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <Link href="/dashboard/automations" className="font-medium text-foreground underline-offset-2 hover:underline">
+                    Add Business Knowledge
+                  </Link>{" "}
+                  before enabling Responsive auto-send.
+                </p>
+              )}
             </div>
           )}
         </div>

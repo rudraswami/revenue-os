@@ -1,6 +1,7 @@
 "use client";
 
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import type { WorkingMemory } from "@growvisi/shared";
 import { Button } from "@/components/ui/button";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,7 @@ export function InboxTimeline({
   onToggle,
   className,
   hasClassification,
+  workingMemory,
 }: {
   events: InboxTimelineEvent[];
   aiConfidence: number | null | undefined;
@@ -113,6 +115,7 @@ export function InboxTimeline({
   onToggle: () => void;
   className?: string;
   hasClassification?: boolean;
+  workingMemory?: WorkingMemory | null;
 }) {
   const copy = useConversationsCopy();
   const cleaned = dedupeEvents(events);
@@ -188,6 +191,33 @@ export function InboxTimeline({
 
       {open && (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 custom-scrollbar">
+          {workingMemory && (
+            <div className="mb-3 space-y-2 border-b border-border/50 pb-3">
+              <p className="text-xs font-semibold text-foreground">What Growvisi knows</p>
+              <p className="text-[11px] capitalize text-muted-foreground">
+                {workingMemory.engagementPhase.replace(/_/g, " ")}
+                {workingMemory.customerCard.language
+                  ? ` · ${workingMemory.customerCard.language}`
+                  : ""}
+              </p>
+              {workingMemory.customerCard.lastSummary ? (
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  {workingMemory.customerCard.lastSummary}
+                </p>
+              ) : null}
+              {workingMemory.lastQuotedAmount ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Last quoted: {workingMemory.lastQuotedAmount}
+                </p>
+              ) : null}
+              {workingMemory.contradictionFlags.length > 0 ? (
+                <p className="text-[11px] font-medium text-amber-800">
+                  {workingMemory.contradictionFlags.join(", ").replace(/_/g, " ")}
+                </p>
+              ) : null}
+            </div>
+          )}
+
           {confidencePct != null && (
             <div className="mb-3 border-b border-border/50 pb-3">
               <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">

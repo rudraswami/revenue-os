@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type {
   AiClassificationResult,
   AutomationPolicyRules,
+  BusinessEmployeeProfile,
   ExecutionPath,
   IntelligenceWorkspaceSettings,
   KnowledgeHit,
@@ -9,18 +10,21 @@ import type {
 } from "@growvisi/shared";
 import {
   AUTOMATION_PRESET_DEFAULTS,
+  defaultBusinessEmployeeProfile,
+  isDiscountNegotiationMessage,
   isSimpleAck,
   isSimpleGreeting,
   isSimpleThanks,
+  resolveProfileAcknowledgment,
 } from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
-import { resolveReplyIntentKind } from "./reply-intent";
-
-const SENSITIVE_INBOUND =
-  /refund|complaint|angry|furious|legal|lawyer|cancel\s+order|fraud|chargeback|sue|police|speak\s+to\s+(a\s+)?(human|person|manager|agent)/i;
-
-const PRICING_MSG =
-  /pric|cost|fee|rate|package|plan|₹|rs\.?\s*\d|discount|quote|emi|payment|how much/i;
+import {
+  assessReplyRisk,
+  isPricingInbound,
+  isSensitiveInbound,
+  resolveReplyIntentKind,
+} from "./reply-intent";
+import { classificationNeedsHuman } from "@growvisi/shared";
 
 export type AutomationOutcome = "send" | "draft" | "human";
 
@@ -39,6 +43,8 @@ export interface AutomationPolicyResult {
   risk: ReplyRiskLevel;
   reasons: string[];
   blockers: string[];
+  /** Customer-facing holding message when a full auto-reply is blocked. */
+  acknowledgment?: string;
 }
 
 @Injectable()
@@ -57,8 +63,17 @@ export class AutomationPolicyService {
       reasons.push(reason);
     };
 
+    const profile =
+      input.settings.businessProfile ??
+      defaultBusinessEmployeeProfile("our team");
+
     const lastInbound = input.ctx.lastInbound?.trim() ?? "";
-    const risk = this.assessRisk(input, lastInbound);
+    const risk = assessReplyRisk({
+      lastInbound,
+      requiresHuman: classificationNeedsHuman(input.classification),
+      knowledgeGap: input.knowledgeGap,
+      knowledgeHitCount: input.knowledgeHits.length,
+    });
 
     if (input.humanHandling) {
       pushBlocker("human_handling", "You're handling this thread — Growvisi won't message the customer.");
@@ -67,12 +82,47 @@ export class AutomationPolicyService {
 
     if (input.executionPath === "human" || input.classification.requiresHuman) {
       pushBlocker("needs_human", "Customer needs a person — your team should reply.");
-      return { outcome: "human", risk: "high", reasons, blockers };
+      return this.withAck(profile, blockers, {
+        outcome: "human",
+        risk: "high",
+        reasons,
+        blockers,
+      });
     }
 
-    if (SENSITIVE_INBOUND.test(lastInbound)) {
+    if (input.classification.requiresOwner) {
+      pushBlocker("needs_owner", "Owner should handle this thread.");
+      return this.withAck(profile, blockers, {
+        outcome: "human",
+        risk: "high",
+        reasons,
+        blockers,
+      });
+    }
+
+    if (input.classification.recoveryMode) {
+      pushBlocker("recovery_mode", "Recover trust — human should reply with care.");
+      return this.withAck(profile, blockers, {
+        outcome: "human",
+        risk: "high",
+        reasons,
+        blockers,
+      });
+    }
+
+    if (input.classification.apologyRequired) {
+      pushBlocker("apology_required", "Customer needs empathy — draft for your review.");
+      return { outcome: "draft", risk: "medium", reasons, blockers };
+    }
+
+    if (isSensitiveInbound(lastInbound)) {
       pushBlocker("sensitive_topic", "Sensitive topic — human should reply.");
-      return { outcome: "human", risk: "high", reasons, blockers };
+      return this.withAck(profile, blockers, {
+        outcome: "human",
+        risk: "high",
+        reasons,
+        blockers,
+      });
     }
 
     const rules = this.resolveRules(input.settings);
@@ -95,6 +145,21 @@ export class AutomationPolicyService {
 
     if (input.knowledgeGap) {
       pushBlocker("knowledge_gap", "No matching pricing doc — draft or add to Business Knowledge.");
+      return this.withAck(profile, blockers, {
+        outcome: "draft",
+        risk: "medium",
+        reasons,
+        blockers,
+      });
+    }
+
+    const intentKind = resolveReplyIntentKind(lastInbound, input.classification);
+    const discountBlocked =
+      profile.discountAuthority.mode === "none" &&
+      (intentKind === "negotiation" || isDiscountNegotiationMessage(lastInbound));
+
+    if (discountBlocked) {
+      pushBlocker("discount_authority", "Discounts need owner approval — draft for review.");
       return { outcome: "draft", risk: "medium", reasons, blockers };
     }
 
@@ -106,7 +171,7 @@ export class AutomationPolicyService {
       isSimpleGreeting(lastInbound) ||
       isSimpleThanks(lastInbound) ||
       isSimpleAck(lastInbound);
-    const isPricing = PRICING_MSG.test(lastInbound) || resolveReplyIntentKind(lastInbound, input.classification) === "pricing";
+    const isPricing = isPricingInbound(lastInbound) || intentKind === "pricing";
 
     if (isGreeting && rules.autoSendGreetings) {
       reasons.push("Simple courtesy reply — safe to send.");
@@ -135,11 +200,12 @@ export class AutomationPolicyService {
     return { outcome: "draft", risk, reasons, blockers };
   }
 
-  private assessRisk(input: AutomationPolicyInput, lastInbound: string): ReplyRiskLevel {
-    if (SENSITIVE_INBOUND.test(lastInbound)) return "high";
-    if (input.classification.requiresHuman) return "high";
-    if (input.knowledgeGap) return "medium";
-    if (input.knowledgeHits.length === 0) return "medium";
-    return "low";
+  private withAck(
+    profile: BusinessEmployeeProfile,
+    blockers: string[],
+    result: AutomationPolicyResult,
+  ): AutomationPolicyResult {
+    const acknowledgment = resolveProfileAcknowledgment(profile, blockers);
+    return acknowledgment ? { ...result, acknowledgment } : result;
   }
 }

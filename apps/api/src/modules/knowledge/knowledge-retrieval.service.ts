@@ -1,5 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import type { KnowledgeCategory, KnowledgeHit } from "@growvisi/shared";
+import type { KnowledgeCategory, KnowledgeHit, RetrievalResult } from "@growvisi/shared";
+import {
+  buildRetrievalResult,
+  computeGapRiskScore,
+  rankKnowledgeHits,
+  resolveRetrievalCategories,
+  type KnowledgeHealthSummary,
+} from "@growvisi/shared";
 import { KnowledgeEmbedService } from "./knowledge-embed.service";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -9,6 +16,10 @@ export interface RetrieveKnowledgeInput {
   limit?: number;
   categories?: KnowledgeCategory[];
   minSimilarity?: number;
+  /** Pre-classify or post-classify intent for category routing. */
+  intentKind?: string;
+  lastInbound?: string | null;
+  customerNeeds?: string[];
 }
 
 const CHUNK_CACHE_TTL_MS = 60_000;
@@ -22,6 +33,10 @@ export class KnowledgeRetrievalService {
     private readonly prisma: PrismaService,
   ) {}
 
+  invalidateChunkCountCache(organizationId: string): void {
+    this.chunkCountCache.delete(organizationId);
+  }
+
   async hasIndexedChunks(organizationId: string): Promise<boolean> {
     const cached = this.chunkCountCache.get(organizationId);
     if (cached && Date.now() - cached.at < CHUNK_CACHE_TTL_MS) {
@@ -34,9 +49,20 @@ export class KnowledgeRetrievalService {
     return count > 0;
   }
 
-  async retrieve(input: RetrieveKnowledgeInput): Promise<KnowledgeHit[]> {
-    if (!(await this.hasIndexedChunks(input.organizationId))) {
-      return [];
+  async retrieveDetailed(input: RetrieveKnowledgeInput): Promise<RetrievalResult> {
+    const categoriesUsed =
+      input.categories ?? resolveRetrievalCategories(input.intentKind);
+    const hasIndexedChunks = await this.hasIndexedChunks(input.organizationId);
+
+    if (!hasIndexedChunks) {
+      return buildRetrievalResult({
+        hits: [],
+        intentKind: input.intentKind,
+        lastInbound: input.lastInbound,
+        customerNeeds: input.customerNeeds,
+        hasIndexedChunks: false,
+        categoriesUsed,
+      });
     }
 
     const limit = input.limit ?? 5;
@@ -45,10 +71,10 @@ export class KnowledgeRetrievalService {
       input.organizationId,
       input.query,
       limit,
-      input.categories,
+      categoriesUsed,
     );
 
-    return rows
+    const hits: KnowledgeHit[] = rows
       .filter((r) => r.similarity >= minSimilarity)
       .map((r) => ({
         chunkId: r.chunkId,
@@ -59,11 +85,30 @@ export class KnowledgeRetrievalService {
         category: r.category,
         citation: `${r.title} (${Math.round(r.similarity * 100)}% match)`,
       }));
+
+    return buildRetrievalResult({
+      hits,
+      intentKind: input.intentKind,
+      lastInbound: input.lastInbound,
+      customerNeeds: input.customerNeeds,
+      hasIndexedChunks: true,
+      categoriesUsed,
+    });
   }
 
-  formatForPrompt(hits: KnowledgeHit[], maxChunkLen = 320): string {
+  async retrieve(input: RetrieveKnowledgeInput): Promise<KnowledgeHit[]> {
+    const result = await this.retrieveDetailed(input);
+    return result.hits;
+  }
+
+  formatForPrompt(
+    hits: KnowledgeHit[],
+    maxChunkLen = 320,
+    preferredCategories?: KnowledgeCategory[],
+  ): string {
     if (hits.length === 0) return "";
-    return hits
+    const ranked = rankKnowledgeHits(hits, preferredCategories);
+    return ranked
       .map((h) => `- ${h.title}: ${h.content.slice(0, maxChunkLen)}`)
       .join("\n");
   }
@@ -77,7 +122,7 @@ export class KnowledgeRetrievalService {
     });
   }
 
-  async getHealth(organizationId: string) {
+  async getHealth(organizationId: string): Promise<KnowledgeHealthSummary> {
     const [docCount, chunkCount, lastDoc] = await Promise.all([
       this.prisma.knowledgeDocument.count({ where: { organizationId } }),
       this.prisma.knowledgeChunk.count({
@@ -90,10 +135,14 @@ export class KnowledgeRetrievalService {
       }),
     ]);
 
+    const gapRiskScore = computeGapRiskScore({ chunkCount, docCount });
+
     return {
       docCount,
       chunkCount,
       lastIndexedAt: lastDoc?.updatedAt?.toISOString() ?? null,
+      gapRiskScore,
+      readyForResponsivePreset: chunkCount > 0,
     };
   }
 }

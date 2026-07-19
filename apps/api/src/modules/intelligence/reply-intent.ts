@@ -1,5 +1,5 @@
-import type { AiClassificationResult, LeadStage } from "@growvisi/shared";
-import { isSimpleGreeting } from "@growvisi/shared";
+import type { AiClassificationResult, LeadStage, ReplyRiskLevel } from "@growvisi/shared";
+import { buildJudgmentRagQuery, isSimpleGreeting } from "@growvisi/shared";
 
 export type ReplyIntentKind =
   | "greeting"
@@ -12,11 +12,40 @@ export type ReplyIntentKind =
   | "complaint"
   | "general";
 
-const PRICING_MSG =
+/** Shared across policy, routing, and knowledge-gap detection. */
+export const SENSITIVE_INBOUND_PATTERN =
+  /refund|complaint|angry|furious|legal|lawyer|cancel\s+order|fraud|chargeback|sue|police|speak\s+to\s+(a\s+)?(human|person|manager|agent)/i;
+
+export const PRICING_INBOUND_PATTERN =
   /pric|cost|fee|rate|package|plan|₹|rs\.?\s*\d|discount|quote|emi|payment|how much/i;
+
 const TEST_MSG = /^(test(ing)?|hello\s*test|hi\s*test)[\s!.?]*$/i;
 const THANKS_MSG = /^(thanks?|thank\s*you|thx|dhanyavaad|shukriya)[\s!.?]*$/i;
 const BUY_MSG = /ready to (buy|order|purchase)|let'?s (proceed|go ahead)|book\s*now|place\s*order/i;
+
+export function isSensitiveInbound(text: string | null | undefined): boolean {
+  return SENSITIVE_INBOUND_PATTERN.test((text ?? "").trim());
+}
+
+export function isPricingInbound(text: string | null | undefined): boolean {
+  return PRICING_INBOUND_PATTERN.test((text ?? "").trim());
+}
+
+export interface AssessReplyRiskInput {
+  lastInbound?: string | null;
+  requiresHuman?: boolean;
+  knowledgeGap?: boolean;
+  knowledgeHitCount?: number;
+}
+
+/** Shared reply risk heuristic for policy + automation layers. */
+export function assessReplyRisk(input: AssessReplyRiskInput): ReplyRiskLevel {
+  if (isSensitiveInbound(input.lastInbound)) return "high";
+  if (input.requiresHuman) return "high";
+  if (input.knowledgeGap) return "medium";
+  if ((input.knowledgeHitCount ?? 0) === 0) return "medium";
+  return "low";
+}
 
 /** Resolve how to reply from the latest customer message + AI classification. */
 export function resolveReplyIntentKind(
@@ -42,12 +71,12 @@ export function resolveReplyIntentKind(
   if (
     stage === "NEGOTIATION" ||
     /negotiat|discount|counter/i.test(intentText) ||
-    (/negotiat|discount/i.test(msg) && PRICING_MSG.test(msg))
+    (/negotiat|discount/i.test(msg) && isPricingInbound(msg))
   ) {
     return "negotiation";
   }
 
-  if (PRICING_MSG.test(msg) || /pricing|price inquiry|cost/i.test(intentText)) {
+  if (isPricingInbound(msg) || /pricing|price inquiry|cost/i.test(intentText)) {
     return "pricing";
   }
 
@@ -114,9 +143,13 @@ export function playbookForIntent(kind: ReplyIntentKind): string {
 
 export function buildRagQuery(
   lastInbound: string | null | undefined,
-  classification?: Pick<AiClassificationResult, "intent" | "summary"> | null,
+  classification?: Pick<
+    AiClassificationResult,
+    "intent" | "summary" | "replyBrief" | "entities" | "customerNeeds"
+  > | null,
 ): string {
-  const parts = [lastInbound, classification?.intent, classification?.summary]
+  const judgment = classification ? buildJudgmentRagQuery(classification) : "";
+  const parts = [lastInbound, judgment || classification?.intent, classification?.summary]
     .filter((p) => typeof p === "string" && p.trim().length > 0)
     .map((p) => String(p).trim());
   return parts.join(" — ").slice(0, 500) || "customer inquiry";

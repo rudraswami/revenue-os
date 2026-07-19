@@ -322,6 +322,11 @@ export class ConversationsService {
               ? runOutput.suggestedActions.map(String)
               : [],
           tags: Array.isArray(profile.aiTags) ? profile.aiTags.map(String) : [],
+          customerNeeds: Array.isArray(profile.customerNeeds)
+            ? profile.customerNeeds.map(String)
+            : Array.isArray(runOutput.customerNeeds)
+              ? runOutput.customerNeeds.map(String)
+              : [],
           classifiedAt: conversation.lead.lastClassifiedAt.toISOString(),
           runId: lastAiRun?.id ?? null,
           humanCorrected: !!profile.humanCorrectedAt,

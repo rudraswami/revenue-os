@@ -3,6 +3,7 @@ import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { QUEUES } from "@growvisi/shared";
 import { KnowledgeEmbedService } from "../knowledge-embed.service";
+import { KnowledgeRetrievalService } from "../knowledge-retrieval.service";
 
 export interface EmbedJobData {
   documentId: string;
@@ -13,7 +14,10 @@ export interface EmbedJobData {
 export class AiEmbedProcessor extends WorkerHost {
   private readonly logger = new Logger(AiEmbedProcessor.name);
 
-  constructor(private readonly embed: KnowledgeEmbedService) {
+  constructor(
+    private readonly embed: KnowledgeEmbedService,
+    private readonly retrieval: KnowledgeRetrievalService,
+  ) {
     super();
   }
 
@@ -21,5 +25,6 @@ export class AiEmbedProcessor extends WorkerHost {
     const { documentId, organizationId } = job.data;
     this.logger.debug(`Embedding document ${documentId}`);
     await this.embed.embedDocument(documentId, organizationId);
+    this.retrieval.invalidateChunkCountCache(organizationId);
   }
 }

@@ -1,6 +1,7 @@
 import { ExecutionRouterService } from "./execution-router.service";
 import { FastReplyService } from "./fast-reply.service";
 import type { ConversationContext } from "./context-builder.service";
+import { buildWorkingMemory } from "@growvisi/shared";
 
 function ctx(lastInbound: string, outbound = false): ConversationContext {
   const messages = outbound
@@ -22,19 +23,28 @@ function ctx(lastInbound: string, outbound = false): ConversationContext {
       ]
     : [];
 
+  const lead = {
+    id: "lead",
+    stage: "NEW" as const,
+    score: 10,
+    displayName: "Ravi",
+    phone: "919999999999",
+    profile: {},
+    aiEnabled: true,
+  };
+
+  const base = {
+    lead,
+    conversation: { contactName: "Ravi" },
+    messages,
+    observedMemory: [] as ConversationContext["observedMemory"],
+  };
+
   return {
     organizationId: "org",
     conversationId: "conv",
     leadId: "lead",
-    lead: {
-      id: "lead",
-      stage: "NEW",
-      score: 10,
-      displayName: "Ravi",
-      phone: "919999999999",
-      profile: {},
-      aiEnabled: true,
-    },
+    lead,
     conversation: {
       id: "conv",
       aiEnabled: true,
@@ -47,6 +57,7 @@ function ctx(lastInbound: string, outbound = false): ConversationContext {
     lastInbound,
     ragQuery: lastInbound,
     observedMemory: [],
+    workingMemory: buildWorkingMemory(base),
   };
 }
 

@@ -335,6 +335,8 @@ export default function InboxPage() {
         knowledgeGaps: string[];
         observedMemory: Array<{ id: string; type: string; content: string }>;
         replyDecision?: ReplyDecision | null;
+        customerNeeds?: string[];
+        workingMemory?: import("@growvisi/shared").WorkingMemory;
       }>(`/conversations/${selectedId}/intelligence`, { token: token ?? undefined }),
     enabled: !!token && !!selectedId,
   });
@@ -1103,6 +1105,7 @@ export default function InboxPage() {
                 events={timeline?.events ?? []}
                 aiConfidence={timeline?.lead.aiConfidence}
                 hasClassification={!!thread.aiContext}
+                workingMemory={intelligence?.workingMemory}
                 open={showTimeline}
                 onToggle={() => setShowTimeline((v) => !v)}
               />

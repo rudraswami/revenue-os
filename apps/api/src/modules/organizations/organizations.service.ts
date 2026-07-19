@@ -15,13 +15,15 @@ import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
+import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
 import { normalizePaymentIntegration } from "./payment-integration";
 import { mergeCoachingSettings, normalizeWorkspaceOpsSettings } from "./workspace-settings";
 import {
   normalizeIntelligenceSettings,
   readIntelligenceSettingsFromOrg,
+  resolveIntelligenceSettings,
 } from "../intelligence/workspace-intelligence-settings";
-import type { IntelligenceWorkspaceSettings } from "@growvisi/shared";
+import type { IntelligenceWorkspaceSettings, IntelligenceWorkspaceSettingsPatch } from "@growvisi/shared";
 
 export interface ReplyTemplate {
   id: string;
@@ -72,6 +74,7 @@ export class OrganizationsService {
     private readonly entitlements: EntitlementsService,
     private readonly auth: AuthService,
     private readonly whatsappAccounts: WhatsappAccountsService,
+    private readonly knowledgeRetrieval: KnowledgeRetrievalService,
   ) {}
 
   async getCurrent(user: JwtPayload) {
@@ -118,26 +121,65 @@ export class OrganizationsService {
   async getIntelligenceSettings(user: JwtPayload) {
     const org = await this.prisma.organization.findUnique({
       where: { id: user.organizationId },
-      select: { settings: true },
+      select: { settings: true, name: true },
     });
     if (!org) throw new NotFoundException("Organization not found");
     const settings = (org.settings ?? {}) as Record<string, unknown>;
-    return readIntelligenceSettingsFromOrg(settings);
+    return resolveIntelligenceSettings(settings, org.name);
   }
 
   async updateIntelligenceSettings(
     user: JwtPayload,
-    patch: Partial<IntelligenceWorkspaceSettings>,
+    patch: IntelligenceWorkspaceSettingsPatch,
   ) {
     this.assertAdmin(user);
     const org = await this.prisma.organization.findUnique({
       where: { id: user.organizationId },
-      select: { settings: true },
+      select: { settings: true, name: true },
     });
     if (!org) throw new NotFoundException("Organization not found");
     const settings = (org.settings ?? {}) as Record<string, unknown>;
-    const current = readIntelligenceSettingsFromOrg(settings);
-    const next = normalizeIntelligenceSettings({ ...current, ...patch });
+    const current = resolveIntelligenceSettings(settings, org.name);
+
+    if (patch.automationPreset === "responsive") {
+      const health = await this.knowledgeRetrieval.getHealth(user.organizationId);
+      if (!health.readyForResponsivePreset) {
+        throw new BadRequestException(
+          "Upload and index Business Knowledge before enabling the Responsive preset.",
+        );
+      }
+    }
+
+    const mergedProfile = patch.businessProfile
+      ? {
+          ...current.businessProfile,
+          ...patch.businessProfile,
+          voice: { ...current.businessProfile?.voice, ...patch.businessProfile.voice },
+          language: { ...current.businessProfile?.language, ...patch.businessProfile.language },
+          escalation: {
+            ...current.businessProfile?.escalation,
+            ...patch.businessProfile.escalation,
+          },
+          closeActions: {
+            ...current.businessProfile?.closeActions,
+            ...patch.businessProfile.closeActions,
+          },
+          greetingVariants: {
+            ...current.businessProfile?.greetingVariants,
+            ...patch.businessProfile.greetingVariants,
+          },
+        }
+      : current.businessProfile;
+    const next = resolveIntelligenceSettings(
+      {
+        intelligence: {
+          ...current,
+          ...patch,
+          businessProfile: mergedProfile,
+        },
+      },
+      org.name,
+    );
     await this.prisma.organization.update({
       where: { id: user.organizationId },
       data: {

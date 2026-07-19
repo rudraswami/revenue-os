@@ -1,7 +1,15 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { ReplyDecision, ReplyRiskLevel, AiClassificationResult, KnowledgeHit } from "@growvisi/shared";
-import { isSimpleGreeting } from "@growvisi/shared";
+import type { ReplyDecision, ReplyRiskLevel, AiClassificationResult, KnowledgeHit, BusinessEmployeeProfile } from "@growvisi/shared";
+import {
+  buildCloseActionsBlock,
+  buildVoiceInstructions,
+  defaultBusinessEmployeeProfile,
+  formatContactName,
+  formatCustomerCardBlock,
+  isSimpleGreeting,
+  resolveComposeLanguageInstruction,
+} from "@growvisi/shared";
 import {
   buildRagQuery,
   playbookForIntent,
@@ -85,11 +93,15 @@ export class ReplyComposerService {
     let hits: KnowledgeHit[] = input.pipelineContext?.knowledgeHits ?? [];
     if (hits.length === 0 && !input.pipelineContext) {
       const ragQuery = buildRagQuery(ctx.lastInbound, classification);
-      hits = await this.knowledge.retrieve({
+      const retrieval = await this.knowledge.retrieveDetailed({
         organizationId: input.organizationId,
         query: ragQuery,
         limit: 5,
+        intentKind,
+        lastInbound: ctx.lastInbound,
+        customerNeeds: classification?.customerNeeds,
       });
+      hits = retrieval.hits;
     }
     spans?.measure("compose_rag_ms", "compose_start");
 
@@ -107,6 +119,9 @@ export class ReplyComposerService {
     }
 
     const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
+    const customerCardBlock = ctx.workingMemory
+      ? formatCustomerCardBlock(ctx.workingMemory)
+      : "";
     const businessName =
       input.pipelineContext?.businessName ??
       (
@@ -116,7 +131,12 @@ export class ReplyComposerService {
         })
       )?.name;
 
-    const contactName = ctx.conversation.contactName ?? ctx.lead.displayName ?? "there";
+    const businessProfile: BusinessEmployeeProfile =
+      input.pipelineContext?.businessProfile ??
+      defaultBusinessEmployeeProfile(businessName?.trim() || "our team");
+
+    const rawContactName = ctx.conversation.contactName ?? ctx.lead.displayName ?? "there";
+    const contactName = formatContactName(businessProfile, rawContactName);
     const intent = classification?.intent;
     const summary = classification?.summary;
     const nextAction = classification?.nextAction;
@@ -170,6 +190,7 @@ export class ReplyComposerService {
                 content: this.systemPrompt({
                   knowledgeBlock,
                   memoryBlock,
+                  customerCardBlock,
                   knowledgeGap: Boolean(input.knowledgeGap),
                   risk,
                   intent,
@@ -184,6 +205,8 @@ export class ReplyComposerService {
                   intentKind,
                   businessName,
                   contactName,
+                  businessProfile,
+                  classification: classification ?? undefined,
                 }),
               },
               {
@@ -321,6 +344,7 @@ export class ReplyComposerService {
   private systemPrompt(opts: {
     knowledgeBlock: string;
     memoryBlock: string;
+    customerCardBlock: string;
     knowledgeGap: boolean;
     risk: ReplyRiskLevel;
     intent?: string;
@@ -335,9 +359,26 @@ export class ReplyComposerService {
     intentKind: string;
     businessName?: string | null;
     contactName?: string;
+    businessProfile: BusinessEmployeeProfile;
+    classification?: AiClassificationResult;
   }): string {
+    const voiceLines = buildVoiceInstructions(opts.businessProfile);
+    const languageLine = resolveComposeLanguageInstruction(
+      opts.businessProfile,
+      opts.lastInbound,
+    );
+    const classificationLanguage = opts.classification?.language;
+    const languageInstruction =
+      classificationLanguage && classificationLanguage !== "mixed"
+        ? `Customer is writing in ${classificationLanguage} — match that language.`
+        : languageLine;
+    const closeActions = buildCloseActionsBlock(opts.businessProfile, opts.intentKind);
+    const escalation = opts.businessProfile.escalation;
+
     return [
       `You are the WhatsApp sales assistant for ${opts.businessName ?? "this business"}. Indian SMB tone: warm, clear, professional.`,
+      ...voiceLines,
+      languageInstruction,
       opts.autoSend
         ? "This goes out automatically on WhatsApp — sound like a strong rep, not a bot. 1–3 sentences max."
         : "A teammate will review before sending.",
@@ -345,12 +386,27 @@ export class ReplyComposerService {
         ? "Do not say 'Hello again' or 'nice to hear from you' if the thread already has messages."
         : "",
       opts.playbook,
+      opts.classification?.replyBrief
+        ? `Reply checklist: ${opts.classification.replyBrief}`
+        : "",
+      opts.classification?.customerNeeds?.length
+        ? `Address each customer need: ${opts.classification.customerNeeds.join("; ")}`
+        : "",
+      opts.classification?.unansweredFromCustomer?.length
+        ? `Unanswered questions to cover: ${opts.classification.unansweredFromCustomer.join("; ")}`
+        : "",
       opts.intent ? `Thread intent: ${opts.intent}` : "",
       opts.sentiment ? `Sentiment: ${opts.sentiment}` : "",
       opts.summary ? `Context: ${opts.summary}` : "",
       opts.stage ? `Deal stage: ${opts.stage}` : "",
       opts.lastInbound
         ? `Reply to this exact message from ${opts.contactName ?? "the customer"}: "${opts.lastInbound}"`
+        : "",
+      escalation.contactName
+        ? `If you must defer to a human, mention ${escalation.contactName} will follow up — do not invent other names.`
+        : "",
+      opts.businessProfile.discountAuthority.mode === "none"
+        ? "Never promise discounts or price cuts — escalate discount requests to the team."
         : "",
       "Never invent prices, discounts, or policies. Use business knowledge when present.",
       opts.knowledgeGap
@@ -360,6 +416,8 @@ export class ReplyComposerService {
         ? `Business knowledge:\n\n${opts.knowledgeBlock}`
         : "",
       opts.memoryBlock ? `Customer memory:\n${opts.memoryBlock}` : "",
+      opts.customerCardBlock ? `Customer card:\n${opts.customerCardBlock}` : "",
+      closeActions ?? "",
     ]
       .filter(Boolean)
       .join("\n\n");

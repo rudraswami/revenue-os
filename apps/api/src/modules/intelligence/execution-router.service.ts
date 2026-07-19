@@ -3,7 +3,11 @@ import type { AiClassificationResult, ReplyRiskLevel } from "@growvisi/shared";
 import { isSimpleGreeting, isSimpleThanks } from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
 import { FastReplyService } from "./fast-reply.service";
-import { resolveReplyIntentKind } from "./reply-intent";
+import {
+  isPricingInbound,
+  isSensitiveInbound,
+  resolveReplyIntentKind,
+} from "./reply-intent";
 
 export type ExecutionPath = "fast" | "standard" | "complex" | "human";
 
@@ -14,12 +18,6 @@ export interface ExecutionRoute {
   confidence: number;
   risk: ReplyRiskLevel;
 }
-
-const SENSITIVE_INBOUND =
-  /refund|complaint|angry|furious|legal|lawyer|cancel\s+order|fraud|chargeback|sue|police|speak\s+to\s+(a\s+)?(human|person|manager|agent)/i;
-
-const PRICING_MSG =
-  /pric|cost|fee|rate|package|plan|₹|rs\.?\s*\d|discount|quote|emi|payment|how much/i;
 
 @Injectable()
 export class ExecutionRouterService {
@@ -33,7 +31,7 @@ export class ExecutionRouterService {
       return this.route("human", "general", "No inbound message", 1, "low");
     }
 
-    if (SENSITIVE_INBOUND.test(msg)) {
+    if (isSensitiveInbound(msg)) {
       return this.route("human", "complaint", "Sensitive inbound — human review", 0.95, "high");
     }
 
@@ -46,7 +44,7 @@ export class ExecutionRouterService {
       return this.route("fast", kind, "Simple greeting, thanks, or ack", 0.95, "low");
     }
 
-    if (PRICING_MSG.test(msg)) {
+    if (isPricingInbound(msg)) {
       return this.route("standard", "pricing", "Pricing inquiry", 0.75, "medium");
     }
 
@@ -72,7 +70,7 @@ export class ExecutionRouterService {
       return this.route("human", pre.intentKind, "Classification requires human", result.confidence, "high");
     }
 
-    if (SENSITIVE_INBOUND.test(ctx.lastInbound ?? "")) {
+    if (isSensitiveInbound(ctx.lastInbound)) {
       return this.route("human", "complaint", "Sensitive inbound", 0.95, "high");
     }
 

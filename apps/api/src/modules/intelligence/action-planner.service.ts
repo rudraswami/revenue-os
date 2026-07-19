@@ -8,12 +8,9 @@ import type {
   ReplyDecision,
   ReplyAutonomyMode,
 } from "@growvisi/shared";
-import { HOT_LEAD_SCORE_THRESHOLD } from "@growvisi/shared";
+import { HOT_LEAD_SCORE_THRESHOLD, detectMissingTopics } from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
 import { ReplyPolicyService } from "./reply-policy.service";
-
-const PRICING_TOPIC =
-  /pric|cost|fee|rate|package|₹|rs\.?\s*\d|discount|quote|emi|payment/i;
 
 export interface ClassificationPlanInput {
   ctx: ConversationContext;
@@ -42,10 +39,24 @@ export interface ClassificationPlanInput {
 @Injectable()
 export class ActionPlannerService {
   constructor(private readonly replyPolicy: ReplyPolicyService) {}
-  detectKnowledgeGap(ctx: ConversationContext, knowledgeHits: KnowledgeHit[]): boolean {
-    const topic = `${ctx.lastInbound ?? ""} ${ctx.ragQuery}`;
-    if (!PRICING_TOPIC.test(topic)) return false;
-    return knowledgeHits.length === 0;
+  detectKnowledgeGap(
+    ctx: ConversationContext,
+    knowledgeHits: KnowledgeHit[],
+    opts?: {
+      intentKind?: string;
+      classification?: Pick<AiClassificationResult, "customerNeeds">;
+      hasIndexedChunks?: boolean;
+    },
+  ): boolean {
+    return (
+      detectMissingTopics({
+        intentKind: opts?.intentKind,
+        lastInbound: ctx.lastInbound,
+        customerNeeds: opts?.classification?.customerNeeds,
+        hits: knowledgeHits,
+        hasIndexedChunks: opts?.hasIndexedChunks ?? true,
+      }).length > 0
+    );
   }
 
   applyKnowledgeGapGuard(
@@ -173,28 +184,74 @@ export class ActionPlannerService {
         },
         aiRunId,
       });
-    } else if (replyDecision.mode === "draft") {
-      actions.push({
-        type: "reply.draft",
-        executor: "growvisi",
-        payload: {
-          conversationId: ctx.conversationId,
-          leadId: ctx.leadId,
-          defer: true,
-          knowledgeGap: input.handoffType === "knowledge_gap",
-          replyDecision,
-        },
-        aiRunId,
-      });
+    } else {
+      const humanAckOnly =
+        Boolean(replyDecision.acknowledgmentText) &&
+        replyDecision.blockers?.some((b) =>
+          ["sensitive_topic", "needs_human"].includes(b),
+        );
+
+      if (
+        replyDecision.acknowledgmentText &&
+        input.workspaceAutonomy === "auto_guarded" &&
+        input.autoSendPlanOk &&
+        input.withinReplyWindow
+      ) {
+        actions.push({
+          type: "reply.send",
+          executor: "growvisi",
+          payload: {
+            conversationId: ctx.conversationId,
+            leadId: ctx.leadId,
+            fastReplyText: replyDecision.acknowledgmentText,
+            replyDecision: {
+              ...replyDecision,
+              mode: "send",
+              risk: "low",
+              reasons: [
+                ...replyDecision.reasons,
+                "Sent holding message from your business profile.",
+              ],
+            },
+          },
+          aiRunId,
+        });
+      }
+
+      if (replyDecision.mode === "draft" && !humanAckOnly) {
+        actions.push({
+          type: "reply.draft",
+          executor: "growvisi",
+          payload: {
+            conversationId: ctx.conversationId,
+            leadId: ctx.leadId,
+            defer: true,
+            knowledgeGap: input.handoffType === "knowledge_gap",
+            replyDecision,
+          },
+          aiRunId,
+        });
+      }
     }
 
     return { actions, replyDecision };
   }
 
-  knowledgeGapTopics(hits: KnowledgeHit[], ctx: ConversationContext): string[] {
-    if (hits.length > 0) return [];
-    const topic = `${ctx.lastInbound ?? ""}`;
-    if (PRICING_TOPIC.test(topic)) return ["pricing or packages"];
-    return [];
+  knowledgeGapTopics(
+    hits: KnowledgeHit[],
+    ctx: ConversationContext,
+    opts?: {
+      intentKind?: string;
+      classification?: Pick<AiClassificationResult, "customerNeeds">;
+      hasIndexedChunks?: boolean;
+    },
+  ): string[] {
+    return detectMissingTopics({
+      intentKind: opts?.intentKind,
+      lastInbound: ctx.lastInbound,
+      customerNeeds: opts?.classification?.customerNeeds,
+      hits,
+      hasIndexedChunks: opts?.hasIndexedChunks ?? true,
+    });
   }
 }

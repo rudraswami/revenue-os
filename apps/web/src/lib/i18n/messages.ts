@@ -182,7 +182,7 @@ export const messages = {
         step1: "Customer messages your WhatsApp number",
         step2: "AI classifies intent and scores the lead",
         step3: "Deal appears in Pipeline automatically",
-        step4: "Your team replies — Growvisi never auto-replies",
+        step4: "Your team replies — or enable Send simple replies for guarded auto-send",
       },
       connectedBanner: "WhatsApp connected",
     },
@@ -190,7 +190,7 @@ export const messages = {
       welcomeEyebrow: "AI revenue for WhatsApp",
       welcomeHeadline: "Turn WhatsApp chats into revenue you can track.",
       welcomeSub:
-        "Capture leads. Score intent. Update Pipeline. Your team replies — we never auto-reply.",
+        "Capture leads. Score intent. Update Pipeline. Your team sends replies — optional guarded auto-send in Intelligence.",
       welcomePillarsLine: "Capture  ·  Classify  ·  Pipeline",
       pillars: {
         capture: {
@@ -226,7 +226,7 @@ export const messages = {
       metaWindowHint: "Complete setup in the Meta window…",
       connectingNumber: "Connecting your number…",
       tryAgain: "Try again",
-      connectTrust: "Secure connection via Meta. We never auto-reply to your customers.",
+      connectTrust: "Secure connection via Meta. Customer replies stay with your team unless you enable Send simple replies.",
       metaUnavailable:
         "One-click connect isn't available right now. Please try again shortly.",
       advancedOptions: "Advanced options",
@@ -387,7 +387,7 @@ export const messages = {
         },
         "growvisi-replies": {
           q: "Does Growvisi auto-reply to my customers?",
-          a: "No. Your team replies from Conversations or WhatsApp. Growvisi classifies intent, tracks pipeline, and alerts you when a customer needs a human.",
+          a: "By default your team sends every reply. Enable Send simple replies in Automations for guarded auto-send on greetings, thanks, and grounded FAQs. Complaints and ungrounded pricing always stay with your team.",
         },
         pricing: {
           q: "What happens after the 14-day trial?",
@@ -545,7 +545,7 @@ export const messages = {
       razorpayNote: "INR billing via Razorpay when you upgrade",
       registerFailed: "Could not create your workspace.",
       humanReplyNote:
-        "Your team replies on WhatsApp — Growvisi never auto-messages customers.",
+        "Your team replies on WhatsApp — optional Send simple replies for guarded auto-send.",
       trialBullets: "500 leads · 1 WhatsApp number · 14 days free",
       stepLabel: "Step 1 of 2 · Create workspace",
       whatsNextTitle: "What happens next",
@@ -663,7 +663,7 @@ export const messages = {
       description:
         "ES-first playbook for agencies installing Growvisi. Find this anytime in Settings → Growth, or open it from Agency hub when installing a client.",
       cardHumans: "Humans reply",
-      cardHumansBody: "Conversations or WhatsApp directly — Growvisi never auto-replies.",
+      cardHumansBody: "Conversations or WhatsApp directly — guarded auto-send only when enabled.",
       cardAi: "Growvisi AI classifies",
       cardAiBody: "Intent, score, handoffs, pipeline — not a chatbot.",
       cardIndia: "India-ready",
@@ -681,7 +681,7 @@ export const messages = {
         "Growvisi bills INR ₹/mo for the revenue layer. Approved Tech Providers set META_PARTNER_SOLUTION_ID so Embedded Signup attaches to your partner solution.",
       step1Title: "Who replies to customers",
       step1Body:
-        "Your client's team replies from Growvisi Conversations (or WhatsApp). Optional Meta Business Agent for FAQ. Growvisi AI never auto-sends customer messages.",
+        "Your client's team replies from Growvisi Conversations (or WhatsApp). Optional Meta Business Agent for FAQ. Growvisi only auto-sends when Send simple replies is on.",
       step2Title: "Enable Agency hub & create a client",
       step2Body: "On Operator, enable Agency hub and add a client workspace (isolated billing and WhatsApp).",
       step3Title: "Connect WhatsApp with Embedded Signup",
@@ -827,7 +827,7 @@ export const messages = {
       emptyActive: "Waiting for your first WhatsApp",
       emptyFilterHint: "Try another filter or check back when new messages arrive.",
       emptyStartHint:
-        "From your phone, message your business WhatsApp number. Growvisi will classify it here — we never auto-reply.",
+        "From your phone, message your business WhatsApp number. Growvisi will classify it here — auto-send only if you enable Send simple replies.",
       whatsappNotConnected: "WhatsApp not connected",
       whatsappNotConnectedHint: "Connect your business number to see customer messages here.",
       connectWhatsapp: "Connect WhatsApp",

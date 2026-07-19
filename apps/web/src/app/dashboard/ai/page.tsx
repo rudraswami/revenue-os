@@ -7,6 +7,7 @@ import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
+import { KnowledgeHealthCard } from "@/components/dashboard/knowledge-health-card";
 import { apiFetch } from "@/lib/api-client";
 import { CTA, CONVERSATIONS } from "@/lib/brand-copy";
 import { useAuthStore } from "@/stores/auth-store";
@@ -127,11 +128,21 @@ export default function AiStudioPage() {
     retry: false,
   });
 
+  const { data: kbHealth } = useQuery({
+    queryKey: ["knowledge-health"],
+    queryFn: () =>
+      apiFetch<{ chunkCount: number; gapRiskScore: number }>("/knowledge/health", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+    retry: false,
+  });
+
   const recentClassifications = (activityFeed ?? [])
     .filter((a) => a.type === "ai_classification")
     .slice(0, 6);
 
-  const ragChunks = (knowledgeDocs ?? []).reduce((n, d) => n + (d.chunkCount ?? 0), 0);
+  const ragChunks = kbHealth?.chunkCount ?? (knowledgeDocs ?? []).reduce((n, d) => n + (d.chunkCount ?? 0), 0);
   const isActive = capabilities?.aiClassification;
 
   return (
@@ -248,7 +259,8 @@ export default function AiStudioPage() {
 
       {/* Capabilities + RAG status */}
       <div className="mb-8 grid gap-4 lg:grid-cols-2">
-        <DashboardPanel title="What AI does" description="Classifies and advises — your team sends human replies from Inbox. Growvisi never auto-messages customers.">
+        <KnowledgeHealthCard />
+        <DashboardPanel title="What AI does" description="Classifies and advises — your team sends human replies from Inbox. Growvisi never auto-messages customers without policy approval.">
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>
               <strong className="text-foreground">Classification:</strong>{" "}
@@ -266,13 +278,14 @@ export default function AiStudioPage() {
             <li>
               <strong className="text-foreground">Business context (RAG):</strong>{" "}
               {ragChunks > 0
-                ? `${ragChunks} knowledge chunks indexed for classify + suggest`
-                : "Add docs in Settings → Business context"}
+                ? `${ragChunks} knowledge chunks indexed${kbHealth && kbHealth.gapRiskScore >= 50 ? " — some topics may still be missing" : ""}`
+                : "Add docs in Automations → Business Knowledge"}
             </li>
           </ul>
         </DashboardPanel>
 
         <DashboardPanel
+          className="lg:col-span-2"
           title="Recent classifications"
           description="Live explainers from your workspace — not marketing claims."
         >

@@ -1,4 +1,5 @@
 import type { AiClassificationResult } from "./types";
+import type { WorkingMemory } from "./working-memory";
 
 export const KNOWLEDGE_CATEGORIES = [
   "general",
@@ -70,6 +71,10 @@ export interface ConversationIntelligenceView {
   }>;
   knowledgeGaps: string[];
   replyDecision?: ReplyDecision | null;
+  /** Latest structured needs from classification (Inbox chips). */
+  customerNeeds?: string[];
+  /** Phase 3 — engagement + customer card snapshot. */
+  workingMemory?: WorkingMemory;
 }
 
 /** Workspace default for how Growvisi handles customer replies. */
@@ -96,6 +101,8 @@ export interface ReplyDecision {
   evaluatedAt: string;
   /** Phase 2: would auto-send if workspace allowed */
   autoEligible?: boolean;
+  /** Holding message sent when policy blocks a full auto-reply (Employee Handbook ack). */
+  acknowledgmentText?: string;
 }
 
 /** How aggressively Growvisi may auto-send on WhatsApp (auto_guarded only). */
@@ -132,7 +139,28 @@ export interface IntelligenceWorkspaceSettings {
   /** Optional overrides; merged on top of preset defaults server-side. */
   automationRules?: Partial<AutomationPolicyRules>;
   safety?: Partial<AutomationSafetySettings>;
+  /** How Growvisi represents this business — voice, escalation, close actions. */
+  businessProfile?: BusinessEmployeeProfile;
 }
+
+/** PATCH body for intelligence settings — nested businessProfile fields are partial. */
+export type BusinessEmployeeProfilePatch = {
+  profileVersion?: number;
+  voice?: Partial<BusinessVoiceProfile>;
+  language?: Partial<BusinessLanguageProfile>;
+  escalation?: Partial<BusinessEscalationProfile>;
+  closeActions?: Partial<BusinessCloseActions>;
+  discountAuthority?: Partial<BusinessDiscountAuthority>;
+  acknowledgments?: Partial<Record<string, string>>;
+  greetingVariants?: Partial<BusinessGreetingVariants>;
+  courtesyTemplates?: Partial<BusinessCourtesyTemplates>;
+};
+
+export type IntelligenceWorkspaceSettingsPatch = Partial<
+  Omit<IntelligenceWorkspaceSettings, "businessProfile">
+> & {
+  businessProfile?: BusinessEmployeeProfilePatch;
+};
 
 export const AUTOMATION_PRESET_DEFAULTS: Record<
   AutomationPolicyPreset,
@@ -168,6 +196,263 @@ export const DEFAULT_AUTOMATION_SAFETY: AutomationSafetySettings = {
   maxSendsPerVelocityWindow: 3,
   velocityWindowMinutes: 2,
 };
+
+/** How Growvisi speaks and operates on behalf of the business (Employee Handbook). */
+export const BUSINESS_VOICE_REGISTERS = ["casual", "professional"] as const;
+export type BusinessVoiceRegister = (typeof BUSINESS_VOICE_REGISTERS)[number];
+
+export const BUSINESS_EMOJI_POLICIES = ["none", "sparingly"] as const;
+export type BusinessEmojiPolicy = (typeof BUSINESS_EMOJI_POLICIES)[number];
+
+export const BUSINESS_LANGUAGES = ["en", "hi", "hinglish"] as const;
+export type BusinessLanguage = (typeof BUSINESS_LANGUAGES)[number];
+
+export const DISCOUNT_AUTHORITY_MODES = ["none", "preset_max"] as const;
+export type DiscountAuthorityMode = (typeof DISCOUNT_AUTHORITY_MODES)[number];
+
+export interface BusinessVoiceProfile {
+  register: BusinessVoiceRegister;
+  useFirstName: boolean;
+  emoji: BusinessEmojiPolicy;
+  signOff?: string;
+}
+
+export interface BusinessLanguageProfile {
+  default: BusinessLanguage;
+  mirrorCustomer: boolean;
+}
+
+export interface BusinessEscalationProfile {
+  contactName: string;
+  contactPhone?: string;
+  slaMinutes: number;
+}
+
+export interface BusinessCloseActions {
+  paymentLink?: string;
+  bookingUrl?: string;
+  callNumber?: string;
+}
+
+export interface BusinessDiscountAuthority {
+  mode: DiscountAuthorityMode;
+  maxPercent?: number;
+}
+
+export interface BusinessGreetingVariants {
+  firstContact: string[];
+  returning: string[];
+}
+
+export interface BusinessCourtesyTemplates {
+  thanks: string[];
+  checking: string;
+}
+
+/** Per-workspace operational profile for the AI employee. Stored in org.settings.intelligence.businessProfile */
+export interface BusinessEmployeeProfile {
+  profileVersion: number;
+  voice: BusinessVoiceProfile;
+  language: BusinessLanguageProfile;
+  escalation: BusinessEscalationProfile;
+  closeActions: BusinessCloseActions;
+  discountAuthority: BusinessDiscountAuthority;
+  /** Policy blocker code → short customer-facing ack message */
+  acknowledgments: Record<string, string>;
+  greetingVariants: BusinessGreetingVariants;
+  courtesyTemplates: BusinessCourtesyTemplates;
+}
+
+const MAX_STRING = 500;
+const MAX_TEMPLATE_ITEMS = 8;
+const MAX_ACK_CODES = 20;
+
+function trimString(value: unknown, max = MAX_STRING): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.slice(0, max);
+}
+
+function stringArray(value: unknown, maxItems = MAX_TEMPLATE_ITEMS): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v) => typeof v === "string" && v.trim().length > 0)
+    .map((v) => String(v).trim().slice(0, MAX_STRING))
+    .slice(0, maxItems);
+}
+
+function substituteBusinessName(text: string, businessName: string): string {
+  return text.replace(/\{businessName\}/gi, businessName);
+}
+
+export function defaultBusinessEmployeeProfile(businessName: string): BusinessEmployeeProfile {
+  const biz = businessName.trim() || "us";
+  return {
+    profileVersion: 1,
+    voice: {
+      register: "casual",
+      useFirstName: true,
+      emoji: "sparingly",
+      signOff: `— Team ${biz}`,
+    },
+    language: {
+      default: "hinglish",
+      mirrorCustomer: true,
+    },
+    escalation: {
+      contactName: "our team",
+      slaMinutes: 120,
+    },
+    closeActions: {},
+    discountAuthority: {
+      mode: "none",
+    },
+    acknowledgments: {
+      sensitive_topic: `Thanks for reaching out. Someone from ${biz} will reply shortly.`,
+      needs_human: `Got it — a teammate from ${biz} will get back to you soon.`,
+      knowledge_gap: `Thanks for your question. We're checking the details and will reply shortly.`,
+    },
+    greetingVariants: {
+      firstContact: [
+        `Hi! Thanks for messaging ${biz}. What can we help you with today?`,
+        `Hello! Welcome to ${biz} — how can we assist you?`,
+      ],
+      returning: [
+        "Hi! How can we help you today?",
+        "Hello! What would you like to know?",
+      ],
+    },
+    courtesyTemplates: {
+      thanks: [
+        "You're welcome! Let us know if you need anything else.",
+        "Happy to help! Reach out anytime.",
+      ],
+      checking: `Let me check with the team and get back to you shortly.`,
+    },
+  };
+}
+
+/** Normalize stored JSON into a complete BusinessEmployeeProfile. */
+export function normalizeBusinessEmployeeProfile(
+  raw: unknown,
+  businessName: string,
+): BusinessEmployeeProfile {
+  const defaults = defaultBusinessEmployeeProfile(businessName);
+  const input = (raw && typeof raw === "object" ? raw : {}) as Partial<BusinessEmployeeProfile>;
+
+  const voiceIn: Partial<BusinessVoiceProfile> =
+    input.voice && typeof input.voice === "object" ? input.voice : {};
+  const languageIn: Partial<BusinessLanguageProfile> =
+    input.language && typeof input.language === "object" ? input.language : {};
+  const escalationIn: Partial<BusinessEscalationProfile> =
+    input.escalation && typeof input.escalation === "object" ? input.escalation : {};
+  const closeIn: Partial<BusinessCloseActions> =
+    input.closeActions && typeof input.closeActions === "object" ? input.closeActions : {};
+  const discountIn: Partial<BusinessDiscountAuthority> =
+    input.discountAuthority && typeof input.discountAuthority === "object"
+      ? input.discountAuthority
+      : {};
+
+  const acknowledgments: Record<string, string> = { ...defaults.acknowledgments };
+  if (input.acknowledgments && typeof input.acknowledgments === "object") {
+    for (const [code, msg] of Object.entries(input.acknowledgments)) {
+      const clean = trimString(msg, 280);
+      if (clean && Object.keys(acknowledgments).length < MAX_ACK_CODES) {
+        acknowledgments[code.slice(0, 64)] = clean;
+      }
+    }
+  }
+
+  const firstContact = stringArray(input.greetingVariants?.firstContact);
+  const returning = stringArray(input.greetingVariants?.returning);
+  const thanks = stringArray(input.courtesyTemplates?.thanks);
+
+  const discountMode = DISCOUNT_AUTHORITY_MODES.includes(
+    discountIn.mode as DiscountAuthorityMode,
+  )
+    ? (discountIn.mode as DiscountAuthorityMode)
+    : defaults.discountAuthority.mode;
+
+  return {
+    profileVersion:
+      typeof input.profileVersion === "number" && input.profileVersion > 0
+        ? Math.floor(input.profileVersion)
+        : defaults.profileVersion,
+    voice: {
+      register: BUSINESS_VOICE_REGISTERS.includes(voiceIn.register as BusinessVoiceRegister)
+        ? (voiceIn.register as BusinessVoiceRegister)
+        : defaults.voice.register,
+      useFirstName:
+        typeof voiceIn.useFirstName === "boolean"
+          ? voiceIn.useFirstName
+          : defaults.voice.useFirstName,
+      emoji: BUSINESS_EMOJI_POLICIES.includes(voiceIn.emoji as BusinessEmojiPolicy)
+        ? (voiceIn.emoji as BusinessEmojiPolicy)
+        : defaults.voice.emoji,
+      signOff: trimString(voiceIn.signOff, 120) ?? defaults.voice.signOff,
+    },
+    language: {
+      default: BUSINESS_LANGUAGES.includes(languageIn.default as BusinessLanguage)
+        ? (languageIn.default as BusinessLanguage)
+        : defaults.language.default,
+      mirrorCustomer:
+        typeof languageIn.mirrorCustomer === "boolean"
+          ? languageIn.mirrorCustomer
+          : defaults.language.mirrorCustomer,
+    },
+    escalation: {
+      contactName:
+        trimString(escalationIn.contactName, 80) ?? defaults.escalation.contactName,
+      contactPhone: trimString(escalationIn.contactPhone, 20),
+      slaMinutes:
+        typeof escalationIn.slaMinutes === "number" &&
+        escalationIn.slaMinutes >= 5 &&
+        escalationIn.slaMinutes <= 1440
+          ? Math.floor(escalationIn.slaMinutes)
+          : defaults.escalation.slaMinutes,
+    },
+    closeActions: {
+      paymentLink: trimString(closeIn.paymentLink, 300),
+      bookingUrl: trimString(closeIn.bookingUrl, 300),
+      callNumber: trimString(closeIn.callNumber, 20),
+    },
+    discountAuthority: {
+      mode: discountMode,
+      maxPercent:
+        discountMode === "preset_max" &&
+        typeof discountIn.maxPercent === "number" &&
+        discountIn.maxPercent > 0 &&
+        discountIn.maxPercent <= 50
+          ? Math.floor(discountIn.maxPercent)
+          : undefined,
+    },
+    acknowledgments,
+    greetingVariants: {
+      firstContact:
+        firstContact.length > 0
+          ? firstContact.map((t) => substituteBusinessName(t, businessName.trim() || "us"))
+          : defaults.greetingVariants.firstContact,
+      returning:
+        returning.length > 0
+          ? returning.map((t) => substituteBusinessName(t, businessName.trim() || "us"))
+          : defaults.greetingVariants.returning,
+    },
+    courtesyTemplates: {
+      thanks: thanks.length > 0 ? thanks : defaults.courtesyTemplates.thanks,
+      checking:
+        trimString(input.courtesyTemplates?.checking, 280) ??
+        defaults.courtesyTemplates.checking,
+    },
+  };
+}
+
+export function resolveBusinessEmployeeProfile(
+  stored: Partial<BusinessEmployeeProfile> | undefined,
+  businessName: string,
+): BusinessEmployeeProfile {
+  return normalizeBusinessEmployeeProfile(stored ?? {}, businessName);
+}
 
 export const DEFAULT_INTELLIGENCE_SETTINGS: IntelligenceWorkspaceSettings = {
   replyAutonomy: "assist",

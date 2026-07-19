@@ -1,5 +1,17 @@
 import { Body, Controller, Delete, Get, Param, Patch, UseGuards } from "@nestjs/common";
-import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from "class-validator";
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  ValidateNested,
+} from "class-validator";
 import { Type } from "class-transformer";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
@@ -7,12 +19,108 @@ import { SkipSubscriptionCheck } from "../../common/decorators/skip-subscription
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
-import type { JwtPayload, LeadStage, MembershipRole } from "@growvisi/shared";
+import type { JwtPayload, LeadStage, MembershipRole, IntelligenceWorkspaceSettings } from "@growvisi/shared";
 import { AssignmentService } from "../assignments/assignment.service";
 import { DigestService } from "../digest/digest.service";
 import { OrganizationsService } from "./organizations.service";
 import type { AssignmentRulesConfig } from "./assignment-rules";
 import type { WorkspaceOpsSettings } from "./workspace-settings";
+
+class BusinessVoiceDto {
+  @IsOptional()
+  @IsEnum(["casual", "professional"])
+  register?: "casual" | "professional";
+
+  @IsOptional()
+  @IsBoolean()
+  useFirstName?: boolean;
+
+  @IsOptional()
+  @IsEnum(["none", "sparingly"])
+  emoji?: "none" | "sparingly";
+}
+
+class BusinessLanguageDto {
+  @IsOptional()
+  @IsEnum(["en", "hi", "hinglish"])
+  default?: "en" | "hi" | "hinglish";
+
+  @IsOptional()
+  @IsBoolean()
+  mirrorCustomer?: boolean;
+}
+
+class BusinessEscalationDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  contactName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  contactPhone?: string;
+}
+
+class BusinessCloseActionsDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  paymentLink?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  bookingUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  callNumber?: string;
+}
+
+class BusinessGreetingVariantsDto {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  @ArrayMaxSize(8)
+  firstContact?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  @ArrayMaxSize(8)
+  returning?: string[];
+}
+
+class BusinessProfilePatchDto {
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BusinessVoiceDto)
+  voice?: BusinessVoiceDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BusinessLanguageDto)
+  language?: BusinessLanguageDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BusinessEscalationDto)
+  escalation?: BusinessEscalationDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BusinessCloseActionsDto)
+  closeActions?: BusinessCloseActionsDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BusinessGreetingVariantsDto)
+  greetingVariants?: BusinessGreetingVariantsDto;
+}
 
 class UpdateIntelligenceSettingsDto {
   @IsOptional()
@@ -22,6 +130,11 @@ class UpdateIntelligenceSettingsDto {
   @IsOptional()
   @IsEnum(["careful", "balanced", "responsive"])
   automationPreset?: "careful" | "balanced" | "responsive";
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BusinessProfilePatchDto)
+  businessProfile?: BusinessProfilePatchDto;
 }
 
 class UpdateReplyTemplatesDto {

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import { BusinessEmployeeProfileCard } from "@/components/dashboard/business-employee-profile-card";
 import { DailyDigestCard } from "@/components/dashboard/daily-digest-card";
 import { IntelligenceReplySettingsCard } from "@/components/dashboard/intelligence-reply-settings-card";
 import { Button } from "@/components/ui/button";
@@ -196,9 +197,12 @@ export default function AutomationsPage() {
         }
       />
 
-      <div className="mb-8 grid gap-6 lg:grid-cols-2">
-        <DailyDigestCard />
-        <IntelligenceReplySettingsCard />
+      <div className="mb-8 space-y-6">
+        <BusinessEmployeeProfileCard />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <DailyDigestCard />
+          <IntelligenceReplySettingsCard />
+        </div>
       </div>
 
       {/* Stats bar */}

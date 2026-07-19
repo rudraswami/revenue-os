@@ -1,4 +1,4 @@
-import type { AiClassificationResult, KnowledgeHit } from "@growvisi/shared";
+import type { AiClassificationResult, BusinessEmployeeProfile, KnowledgeHit } from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
 import type { ExecutionRoute } from "./execution-router.service";
 import type { PipelineSpans } from "./pipeline-spans";
@@ -8,6 +8,7 @@ export interface PipelineContext {
   ctx: ConversationContext;
   knowledgeHits: KnowledgeHit[];
   businessName: string;
+  businessProfile: BusinessEmployeeProfile;
   knowledgeGap: boolean;
   executionRoute?: ExecutionRoute;
   spans?: PipelineSpans;

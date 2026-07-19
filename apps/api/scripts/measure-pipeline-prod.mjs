@@ -1,14 +1,16 @@
 /**
- * Measure live pipeline latency by running AiClassifyService.process() against production DB.
- * Exercises the same code path deployed on Vercel (inline workers, no webhook wrapper).
+ * Measure live pipeline latency against production DB using local API build.
+ * Exercises AiClassifyService.process() — same path as deployed inline workers.
  *
  * Usage:
  *   node apps/api/scripts/measure-pipeline-prod.mjs [greeting|thanks|pricing|all]
+ *   node apps/api/scripts/measure-pipeline-prod.mjs probe-batch [--runs=3]
  */
 import { createRequire } from "module";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { buildBaselineReport } from "./pipeline-baseline-utils.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -81,7 +83,7 @@ async function runScenario(conv, testText) {
   });
 
   const pipelineStart = Date.now();
-  console.log(`\nInbound ${inbound.id} "${testText}" at ${new Date().toISOString()}`);
+  console.error(`\nInbound ${inbound.id} "${testText}" at ${new Date().toISOString()}`);
 
   const { NestFactory } = await import("@nestjs/core");
   const { AppModule } = await import("../dist/app.module.js");
@@ -130,9 +132,7 @@ async function runScenario(conv, testText) {
       orderBy: { createdAt: "desc" },
     });
 
-    const e2eMs = outbound
-      ? outbound.createdAt.getTime() - inbound.createdAt.getTime()
-      : null;
+    const e2eMs = outbound ? outbound.createdAt.getTime() - inbound.createdAt.getTime() : null;
 
     return {
       measured_at: new Date().toISOString(),
@@ -140,13 +140,20 @@ async function runScenario(conv, testText) {
       process_wall_ms: processMs,
       customer_e2e_ms: e2eMs,
       outbound_preview: outbound?.content?.slice(0, 100) ?? null,
-      execution_path: classifyRun?.output?.executionPath ?? classifyRun?.output?.fastPath ?? null,
+      execution_path:
+        classifyRun?.output?.metrics?.executionPath ??
+        classifyRun?.output?.executionPath ??
+        classifyRun?.output?.fastPath ??
+        null,
+      reply_mode: classifyRun?.output?.metrics?.replyMode ?? null,
+      blockers: classifyRun?.output?.metrics?.blockers ?? [],
+      grounding_percent: classifyRun?.output?.metrics?.groundingPercent ?? null,
+      metrics: classifyRun?.output?.metrics ?? null,
       spans: classifyRun?.output?.spans ?? composeRun?.input?.spans ?? null,
+      classify_latency_ms: classifyRun?.latencyMs ?? null,
+      compose_latency_ms: composeRun?.latencyMs ?? null,
       classify_run: classifyRun
-        ? {
-            latencyMs: classifyRun.latencyMs,
-            output: classifyRun.output,
-          }
+        ? { latencyMs: classifyRun.latencyMs, output: classifyRun.output }
         : null,
       compose_run: composeRun
         ? {
@@ -162,27 +169,69 @@ async function runScenario(conv, testText) {
   }
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function parseRunsArg() {
+  const flag = process.argv.find((a) => a.startsWith("--runs="));
+  if (flag) return Math.max(1, parseInt(flag.split("=")[1], 10) || 1);
+  return parseInt(process.env.PROBE_RUNS || "1", 10);
+}
+
 async function main() {
   ensureBootstrapEnv();
+
+  if (!existsSync(join(__dirname, "../dist/main.js"))) {
+    throw new Error("API dist not found. Run: cd apps/api && npm run build");
+  }
 
   const conv = await prisma.conversation.findFirst({
     where: { id: CONVERSATION_ID },
     include: { lead: true, whatsappAccount: true },
   });
-  if (!conv?.lead) throw new Error("Test conversation not found");
+  if (!conv?.lead) throw new Error(`Test conversation not found: ${CONVERSATION_ID}`);
 
-  const scenarioArg = process.argv[2] || "all";
+  const mode = process.argv[2] || "all";
+  const runsPerScenario = mode === "probe-batch" ? parseRunsArg() : 1;
+
+  const scenarioKeys =
+    mode === "probe-batch" || mode === "all"
+      ? Object.keys(SCENARIOS)
+      : SCENARIOS[mode]
+        ? [mode]
+        : null;
+
   const texts =
-    scenarioArg === "all"
-      ? Object.values(SCENARIOS)
-      : [SCENARIOS[scenarioArg] ?? scenarioArg];
+    scenarioKeys === null
+      ? [mode]
+      : scenarioKeys.flatMap((key) => {
+          const base = SCENARIOS[key];
+          return Array.from({ length: runsPerScenario }, (_, i) =>
+            runsPerScenario > 1 ? `${base} (${i + 1})` : base,
+          );
+        });
 
   const results = [];
-  for (const testText of texts) {
-    results.push(await runScenario(conv, testText));
+  for (let i = 0; i < texts.length; i++) {
+    results.push(await runScenario(conv, texts[i]));
+    // Respect safety velocity rail (3 AI sends / 2 min) between auto-send probes
+    if (i < texts.length - 1) await sleep(2500);
   }
 
-  console.log(JSON.stringify({ conversation_id: CONVERSATION_ID, results }, null, 2));
+  const report = buildBaselineReport(results);
+  console.log(
+    JSON.stringify(
+      {
+        conversation_id: CONVERSATION_ID,
+        mode,
+        runs_per_scenario: runsPerScenario,
+        baseline: report,
+      },
+      null,
+      2,
+    ),
+  );
   await prisma.$disconnect();
 }
 

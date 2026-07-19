@@ -11,6 +11,7 @@ import type {
 } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import type { ConversationContext } from "./context-builder.service";
+import { assessReplyRisk } from "./reply-intent";
 import { AutomationPolicyService } from "./automation-policy.service";
 
 export interface ReplyPolicyInput {
@@ -123,11 +124,31 @@ export class ReplyPolicyService {
       return this.decision("send", confidence, policy.risk, reasons, blockers, evaluatedAt, true);
     }
 
+    const acknowledgmentText = policy.acknowledgment;
+
     if (policy.outcome === "human") {
-      return this.decision("draft", confidence, policy.risk, reasons, blockers, evaluatedAt, false);
+      return this.decision(
+        "draft",
+        confidence,
+        policy.risk,
+        reasons,
+        blockers,
+        evaluatedAt,
+        false,
+        acknowledgmentText,
+      );
     }
 
-    return this.decision("draft", confidence, policy.risk, reasons, blockers, evaluatedAt, false);
+    return this.decision(
+      "draft",
+      confidence,
+      policy.risk,
+      reasons,
+      blockers,
+      evaluatedAt,
+      false,
+      acknowledgmentText,
+    );
   }
 
   async persistDecision(
@@ -159,14 +180,12 @@ export class ReplyPolicyService {
   }
 
   private assessRisk(input: ReplyPolicyInput): ReplyRiskLevel {
-    const lastInbound = input.ctx.lastInbound ?? "";
-    const SENSITIVE =
-      /refund|complaint|angry|furious|legal|lawyer|cancel\s+order|fraud|chargeback|sue|police|speak\s+to\s+(a\s+)?(human|person|manager|agent)/i;
-    if (SENSITIVE.test(lastInbound)) return "high";
-    if (input.classification.requiresHuman) return "high";
-    if (input.knowledgeGap) return "medium";
-    if (input.knowledgeHits.length === 0) return "medium";
-    return "low";
+    return assessReplyRisk({
+      lastInbound: input.ctx.lastInbound,
+      requiresHuman: input.classification.requiresHuman,
+      knowledgeGap: input.knowledgeGap,
+      knowledgeHitCount: input.knowledgeHits.length,
+    });
   }
 
   private compositeConfidence(input: ReplyPolicyInput, risk: ReplyRiskLevel): number {
@@ -187,6 +206,7 @@ export class ReplyPolicyService {
     blockers: string[],
     evaluatedAt: string,
     autoEligible: boolean,
+    acknowledgmentText?: string,
   ): ReplyDecision {
     return {
       mode,
@@ -196,6 +216,7 @@ export class ReplyPolicyService {
       blockers: blockers.length ? blockers : undefined,
       evaluatedAt,
       autoEligible,
+      acknowledgmentText,
     };
   }
 }

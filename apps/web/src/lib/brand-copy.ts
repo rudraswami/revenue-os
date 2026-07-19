@@ -167,7 +167,7 @@ export const HOME_META_COMPARE = {
     { topic: "YOUR TURN — who owns the reply", meta: false, growvisi: true },
     { topic: "Pipeline + deal ₹ in INR", meta: false, growvisi: true },
     { topic: "Win / loss analytics", meta: false, growvisi: true },
-    { topic: "Growvisi auto-replies customers", meta: "n/a", growvisi: "Never" },
+    { topic: "Growvisi auto-replies customers", meta: "n/a", growvisi: "Optional — guarded simple replies only" },
   ],
 } as const;
 
@@ -176,7 +176,7 @@ export const HOME_TRUST = {
   items: [
     "Meta WhatsApp Cloud API",
     "Razorpay · INR billing",
-    "Humans reply — Growvisi never auto-messages customers",
+    "You control replies — optional guarded auto-send",
     "14-day trial · no credit card",
   ],
 } as const;
@@ -189,7 +189,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Does AI reply to customers automatically?",
-    a: "No. Growvisi AI classifies and scores — it does not auto-send replies. Your team sends human messages from Conversations (or replies in WhatsApp directly). Optional Meta Business Agent can handle first-line FAQ in the WhatsApp app.",
+    a: "By default your team sends every reply from Conversations or WhatsApp. You can enable Send simple replies in Intelligence so Growvisi auto-sends low-risk, grounded messages — greetings, thanks, and FAQs from your Business Knowledge. Complaints, ungrounded pricing, and deal terms always stay with your team. Optional Meta Business Agent can handle first-line FAQ in the WhatsApp app.",
   },
   {
     q: "What is YOUR TURN?",
@@ -228,7 +228,7 @@ export const MARKETING_SUPPORT = {
   whatsAppCta: "Open WhatsApp",
   aiTitle: "Product assistant",
   aiBody:
-    "AI answers pricing and product FAQs on this site. For sales or Meta setup help, message us on WhatsApp — we never auto-reply your customers.",
+    "AI answers pricing and product FAQs on this site. For sales or Meta setup help, message us on WhatsApp. On your workspace, Growvisi only auto-sends when you turn on Send simple replies.",
   aiPlaceholder: "Ask about pricing, trial, YOUR TURN…",
   aiPlaceholderHi: "कीमत, ट्रायल, YOUR TURN…",
   localeEn: "EN",
@@ -260,7 +260,7 @@ export const MARKETING_SUPPORT = {
     "meta-compare": "Meta Inbox vs Growvisi YOUR TURN",
     compare: "CRM vs YOUR TURN on WhatsApp",
     product: "Inbox, Pipeline & YOUR TURN tour",
-    trust: "Humans reply — never auto-sent",
+    trust: "You control replies on your number",
     faq: "Ask before your 14-day trial",
     cta: "Start with YOUR TURN today",
     default: "Questions about YOUR TURN?",
@@ -323,7 +323,7 @@ export const PILOT_ROLLOUT = [
     id: "w2",
     week: "Week 2–3",
     title: "Team adopts Inbox + Pipeline",
-    detail: "Take over on handoffs. Move deals with ₹ values. Humans reply — never auto-sent.",
+    detail: "Take over on handoffs. Move deals with ₹ values. Your team owns high-stakes replies; optional guarded auto-send for simple messages.",
     signal: "Pipeline ₹ visible",
   },
   {
@@ -351,7 +351,7 @@ export const AUTH = {
   trialBadge: "14-day free trial",
   trialBullets: "500 leads · 1 WhatsApp number · No credit card",
   humanReplyNote:
-    "Your team replies on WhatsApp — Growvisi never auto-messages customers.",
+    "Your team replies on WhatsApp. Enable Send simple replies in Intelligence for guarded auto-send on low-risk messages.",
   stepLabel: "Step 1 of 2 · Create workspace",
   whatsNextTitle: "What happens next",
   whatsNextSteps: [
@@ -421,7 +421,7 @@ export const CONVERSATIONS = {
   /** Composer */
   composePlaceholder: "Write your WhatsApp reply…",
   composeFooter:
-    "You send this message — Growvisi never auto-replies to customers.",
+    "You send this message from your business number. Growvisi only auto-sends when Send simple replies is on in Intelligence.",
   composeCollapsed: "Reply from Growvisi",
   /** Empty right pane */
   selectTitle: "Choose a conversation",

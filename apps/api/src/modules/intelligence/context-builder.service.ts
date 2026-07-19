@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { LeadStage } from "@growvisi/shared";
+import { buildWorkingMemory, type WorkingMemory } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface ConversationContextMessage {
@@ -41,6 +42,7 @@ export interface ConversationContext {
     source: string;
     createdAt: Date;
   }>;
+  workingMemory: WorkingMemory;
 }
 
 @Injectable()
@@ -87,6 +89,41 @@ export class ContextBuilderService {
       take: 12,
     });
 
+    const observedMemory = memories.map((m) => {
+        const meta =
+          m.metadata && typeof m.metadata === "object"
+            ? (m.metadata as Record<string, unknown>)
+            : {};
+        return {
+          id: m.id,
+          type: m.type,
+          content: m.content,
+          source: typeof meta.source === "string" ? meta.source : "system",
+          createdAt: m.createdAt,
+        };
+      });
+
+    const messageRows = ordered.map((m) => ({
+      id: m.id,
+      direction: m.direction,
+      content: m.content,
+      sentByAi: m.sentByAi,
+      createdAt: m.createdAt,
+    }));
+
+    const workingMemory = buildWorkingMemory({
+      lead: {
+        stage: conversation.lead.stage as LeadStage,
+        score: conversation.lead.score,
+        displayName: conversation.lead.displayName,
+        phone: conversation.lead.phone,
+        profile,
+      },
+      conversation: { contactName: conversation.contactName },
+      messages: messageRows,
+      observedMemory,
+    });
+
     return {
       organizationId,
       conversationId,
@@ -107,29 +144,12 @@ export class ContextBuilderService {
         contactName: conversation.contactName,
         lastInboundAt: conversation.lastInboundAt,
       },
-      messages: ordered.map((m) => ({
-        id: m.id,
-        direction: m.direction,
-        content: m.content,
-        sentByAi: m.sentByAi,
-        createdAt: m.createdAt,
-      })),
+      messages: messageRows,
       transcript,
       lastInbound,
       ragQuery,
-      observedMemory: memories.map((m) => {
-        const meta =
-          m.metadata && typeof m.metadata === "object"
-            ? (m.metadata as Record<string, unknown>)
-            : {};
-        return {
-          id: m.id,
-          type: m.type,
-          content: m.content,
-          source: typeof meta.source === "string" ? meta.source : "system",
-          createdAt: m.createdAt,
-        };
-      }),
+      observedMemory,
+      workingMemory,
     };
   }
 

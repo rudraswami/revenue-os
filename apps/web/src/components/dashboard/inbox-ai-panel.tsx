@@ -14,6 +14,7 @@ export interface InboxAiContext {
   nextAction: string;
   suggestedActions: string[];
   tags: string[];
+  customerNeeds?: string[];
   classifiedAt: string;
   humanCorrected?: boolean;
   humanCorrectedAt?: string | null;
@@ -59,7 +60,9 @@ export function InboxAiPanel({
     }
   }, [requiresHuman, coachTakeover, canEdit]);
 
-  if (!requiresHuman && knowledgeGaps.length === 0) return null;
+  if (!requiresHuman && knowledgeGaps.length === 0 && !(aiContext?.customerNeeds?.length ?? 0)) {
+    return null;
+  }
 
   const suggestedTitle =
     aiContext?.nextAction || aiContext?.suggestedActions[0] || undefined;
@@ -72,6 +75,19 @@ export function InboxAiPanel({
             No docs matched for {knowledgeGaps.join(", ")}. Add them in Intelligence for
             grounded replies.
           </p>
+        </div>
+      )}
+
+      {(aiContext?.customerNeeds?.length ?? 0) > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {aiContext!.customerNeeds!.map((need) => (
+            <span
+              key={need}
+              className="rounded-full border border-accent/25 bg-bento-mint/50 px-2 py-0.5 text-[11px] font-medium text-foreground"
+            >
+              {need}
+            </span>
+          ))}
         </div>
       )}
 

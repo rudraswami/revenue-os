@@ -4,6 +4,7 @@ import { GROWVISI_WEB_URL, HOT_LEAD_SCORE_THRESHOLD } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
+import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import {
   getIstNow,
@@ -21,6 +22,7 @@ export class DigestService {
     private readonly email: EmailService,
     private readonly config: ConfigService,
     private readonly entitlements: EntitlementsService,
+    private readonly knowledge: KnowledgeRetrievalService,
     private readonly whatsapp: WhatsappMessagingService,
   ) {}
 
@@ -131,6 +133,7 @@ export class DigestService {
           dashboardUrl: `${appUrl}/dashboard`,
           inboxUrl: `${appUrl}/dashboard/inbox`,
           insightsUrl: `${appUrl}/dashboard#recommendations`,
+          knowledgeUrl: `${appUrl}/dashboard/automations`,
         };
 
         let delivered = false;
@@ -188,6 +191,8 @@ export class DigestService {
       hotLeads,
       overdueTasks,
       openTasksByMember,
+      kbHealth,
+      recentKnowledgeGaps,
     ] = await Promise.all([
       this.prisma.lead.aggregate({
         where: {
@@ -245,6 +250,15 @@ export class DigestService {
         },
         _count: { id: true },
       }),
+      this.knowledge.getHealth(organizationId),
+      this.prisma.aiRun.count({
+        where: {
+          organizationId,
+          type: "classify",
+          createdAt: { gte: dayAgo },
+          output: { path: ["metrics", "knowledgeGap"], equals: true },
+        },
+      }),
     ]);
 
     const memberIds = openTasksByMember
@@ -289,7 +303,9 @@ export class DigestService {
       handoffs > 0 ||
       unread > 0 ||
       hotLeadRows.length > 0 ||
-      overdueTasks > 0;
+      overdueTasks > 0 ||
+      kbHealth.gapRiskScore >= 50 ||
+      recentKnowledgeGaps > 0;
 
     return {
       hasActivity,
@@ -300,6 +316,12 @@ export class DigestService {
       overdueTasks,
       hotLeads: hotLeadRows,
       teamWorkload,
+      kbHealth: {
+        gapRiskScore: kbHealth.gapRiskScore,
+        chunkCount: kbHealth.chunkCount,
+        readyForResponsivePreset: kbHealth.readyForResponsivePreset,
+      },
+      recentKnowledgeGaps,
     };
   }
 
@@ -339,6 +361,18 @@ export class DigestService {
       }).format(n);
 
     const hi = digest.digestLocale === "hi";
+    const kbAlert =
+      snapshot.kbHealth.gapRiskScore >= 50 || snapshot.recentKnowledgeGaps > 0;
+    const kbLine = kbAlert
+      ? hi
+        ? snapshot.kbHealth.chunkCount === 0
+          ? "⚠️ Business Knowledge खाली है — rate card अपलोड करें"
+          : `⚠️ ${snapshot.recentKnowledgeGaps} बार जवाब docs में नहीं मिला (24h)`
+        : snapshot.kbHealth.chunkCount === 0
+          ? "⚠️ Business Knowledge empty — upload rate card & FAQs"
+          : `⚠️ ${snapshot.recentKnowledgeGaps} reply(ies) lacked matching docs (24h)`
+      : null;
+
     const pipelineStr = formatInr(snapshot.pipelineInr);
     const templateParams = [
       organizationName,
@@ -369,6 +403,7 @@ export class DigestService {
     const lines = hi
       ? [
           `Growvisi — ${organizationName}`,
+          kbLine,
           `पाइपलाइन: ${pipelineStr}`,
           `कल जीते: ${snapshot.wonYesterday}`,
           snapshot.handoffs > 0 ? `हैंडऑफ: ${snapshot.handoffs}` : null,
@@ -378,6 +413,7 @@ export class DigestService {
         ]
       : [
           `Growvisi — ${organizationName}`,
+          kbLine,
           `Pipeline: ${pipelineStr}`,
           `Won (24h): ${snapshot.wonYesterday}`,
           snapshot.handoffs > 0 ? `Handoffs: ${snapshot.handoffs}` : null,

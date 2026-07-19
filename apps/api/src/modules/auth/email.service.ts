@@ -217,6 +217,13 @@ export class EmailService {
       nextAction: string | null;
     }>;
     teamWorkload: Array<{ name: string; openTasks: number }>;
+    kbHealth?: {
+      gapRiskScore: number;
+      chunkCount: number;
+      readyForResponsivePreset: boolean;
+    };
+    recentKnowledgeGaps?: number;
+    knowledgeUrl?: string;
   }): Promise<void> {
     const formatInr = (n: number) =>
       new Intl.NumberFormat("en-IN", {
@@ -245,6 +252,24 @@ export class EmailService {
             .join("")
         : "";
 
+    const kb = opts.kbHealth;
+    const kbAlert =
+      kb &&
+      (kb.gapRiskScore >= 50 || (opts.recentKnowledgeGaps ?? 0) > 0);
+    const kbBlock = kbAlert
+      ? `<div style="margin:20px 0;padding:14px 16px;background:#fff8e6;border-radius:10px;border:1px solid #f5d98c">
+          <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#8a5b00">Business Knowledge gap</p>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#5c4a1a">
+            ${
+              kb!.chunkCount === 0
+                ? "No indexed docs yet — upload your rate card and FAQs so Growvisi can answer pricing and policy questions."
+                : `${opts.recentKnowledgeGaps ?? 0} customer question(s) in the last 24h had no matching doc. Gap risk: ${kb!.gapRiskScore}/100.`
+            }
+            ${opts.knowledgeUrl ? ` <a href="${opts.knowledgeUrl}" style="color:#006c49;font-weight:600">Add Business Knowledge</a>` : ""}
+          </p>
+        </div>`
+      : "";
+
     await this.sendRaw({
       to: opts.to,
       subject: `Your Growvisi morning brief — ${opts.organizationName}`,
@@ -267,6 +292,8 @@ export class EmailService {
             ${opts.overdueTasks > 0 ? `<li><strong>${opts.overdueTasks}</strong> overdue task${opts.overdueTasks > 1 ? "s" : ""}</li>` : ""}
             ${opts.handoffs === 0 && opts.unread === 0 && opts.overdueTasks === 0 ? "<li>You're on track — no urgent items.</li>" : ""}
           </ul>
+
+          ${kbBlock}
 
           <p style="font-size:13px;font-weight:700;margin:20px 0 8px">Hot leads</p>
           <table style="width:100%;border-collapse:collapse;font-size:13px">${hotRows}</table>

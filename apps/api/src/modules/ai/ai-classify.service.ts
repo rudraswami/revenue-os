@@ -3,8 +3,8 @@ import { ConfigService } from "@nestjs/config";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { createHash } from "crypto";
-import type { AiClassificationResult, JwtPayload, LeadStage } from "@growvisi/shared";
-import { DOMAIN_EVENTS, LEAD_STAGE_ORDER, QUEUES } from "@growvisi/shared";
+import type { AiClassificationResult, JwtPayload, LeadStage, ReplyDecision } from "@growvisi/shared";
+import { DOMAIN_EVENTS, HOT_LEAD_SCORE_THRESHOLD, LEAD_STAGE_ORDER, applyClassificationJudgmentGuards, normalizeClassificationResult, QUEUES } from "@growvisi/shared";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 import { AutomationsService } from "../automations/automations.service";
@@ -20,11 +20,16 @@ import { ExecutionRouterService, type ExecutionRoute } from "../intelligence/exe
 import { FastReplyService } from "../intelligence/fast-reply.service";
 import { ObservedMemoryService } from "../intelligence/observed-memory.service";
 import type { DeferredCrmSync, PipelineContext } from "../intelligence/pipeline-context";
-import { PipelineSpans } from "../intelligence/pipeline-spans";
+import {
+  PipelineSpans,
+  buildPipelineTurnMetrics,
+  type PipelineTurnMetrics,
+} from "../intelligence/pipeline-spans";
 import { ReplyPolicyService } from "../intelligence/reply-policy.service";
 import { ReplySafetyRailsService } from "../intelligence/reply-safety-rails.service";
 import { ReplySendService } from "../intelligence/reply-send.service";
-import { readIntelligenceSettingsFromOrg } from "../intelligence/workspace-intelligence-settings";
+import { resolveReplyIntentKind } from "../intelligence/reply-intent";
+import { readIntelligenceSettingsFromOrg, resolveIntelligenceSettings } from "../intelligence/workspace-intelligence-settings";
 import type { IntelligenceWorkspaceSettings } from "@growvisi/shared";
 import { useBackgroundWorkers } from "../../config/workers";
 import { deferBackgroundTask } from "../../common/utils/defer-background";
@@ -401,8 +406,9 @@ export class AiClassifyService {
         org?.settings && typeof org.settings === "object"
           ? (org.settings as Record<string, unknown>)
           : {};
-      const intelligenceSettings = readIntelligenceSettingsFromOrg(orgSettings);
+      const intelligenceSettings = resolveIntelligenceSettings(orgSettings, org?.name ?? "our team");
       const businessName = org?.name ?? "our team";
+      const businessProfile = intelligenceSettings.businessProfile!;
 
       const preRoute = this.executionRouter.routePreClassify(ctx);
 
@@ -411,19 +417,34 @@ export class AiClassifyService {
         intelligenceSettings.replyAutonomy === "auto_guarded" &&
         !data.refreshAfterCorrection
       ) {
-        const sent = await this.tryFastPathSend(data, ctx, {
+        const fastResult = await this.tryFastPathSend(data, ctx, {
           businessName,
+          businessProfile,
           preRoute,
           spans,
           aiRunId,
           intelligenceSettings,
         });
-        if (sent) {
+        if (fastResult.sent) {
           await this.finalizeAiRun(aiRunId, {
             fastPath: true,
             executionPath: "fast",
             spans: spans.toJSON(),
           });
+          await this.appendPipelineObservability(
+            aiRunId,
+            spans,
+            buildPipelineTurnMetrics({
+              executionPath: "fast",
+              replyDecision: fastResult.replyDecision,
+              knowledgeHits: [],
+              knowledgeGap: false,
+              stageChanged: false,
+              safetyBlocked: fastResult.safetyBlocked,
+              fastPath: true,
+            }),
+            0,
+          );
           deferBackgroundTask(() =>
             this.runBackgroundClassifyOnly(data, ctx, {
               apiKey,
@@ -440,6 +461,7 @@ export class AiClassifyService {
         apiKey,
         prefs,
         businessName,
+        businessProfile,
         intelligenceSettings,
         preRoute,
         spans,
@@ -463,7 +485,8 @@ export class AiClassifyService {
       apiKey: string;
       prefs: Awaited<ReturnType<AutomationsService["getPreferencesForOrg"]>>;
       businessName: string;
-      intelligenceSettings: ReturnType<typeof readIntelligenceSettingsFromOrg>;
+      businessProfile: import("@growvisi/shared").BusinessEmployeeProfile;
+      intelligenceSettings: ReturnType<typeof resolveIntelligenceSettings>;
       preRoute: ExecutionRoute;
       spans: PipelineSpans;
       aiRunId: string;
@@ -474,14 +497,21 @@ export class AiClassifyService {
     const classifyStarted = Date.now();
 
     opts.spans.mark("rag_start");
-    const knowledgeHits = await this.knowledge.retrieve({
+    const retrieval = await this.knowledge.retrieveDetailed({
       organizationId: data.organizationId,
       query: ctx.ragQuery,
       limit: 4,
+      intentKind: opts.preRoute.intentKind,
+      lastInbound: ctx.lastInbound,
     });
+    const knowledgeHits = retrieval.hits;
     opts.spans.measure("rag_ms", "rag_start");
 
-    const businessContext = this.knowledge.formatForPrompt(knowledgeHits);
+    const businessContext = this.knowledge.formatForPrompt(
+      knowledgeHits,
+      320,
+      retrieval.categoriesUsed,
+    );
     const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
     const combinedContext = [businessContext, memoryBlock ? `Observed facts:\n${memoryBlock}` : ""]
       .filter(Boolean)
@@ -499,10 +529,15 @@ export class AiClassifyService {
     );
     opts.spans.measure("classify_llm_ms", "classify_llm_start");
 
-    const knowledgeGap = this.planner.detectKnowledgeGap(ctx, knowledgeHits);
+    const knowledgeGap = this.planner.detectKnowledgeGap(ctx, knowledgeHits, {
+      intentKind: resolveReplyIntentKind(ctx.lastInbound, result),
+      classification: result,
+      hasIndexedChunks: retrieval.hasIndexedChunks,
+    });
     if (knowledgeGap) {
       result = this.planner.applyKnowledgeGapGuard(result, true);
     }
+    result = applyClassificationJudgmentGuards(result);
 
     const executionRoute = this.executionRouter.refineAfterClassify(
       opts.preRoute,
@@ -544,6 +579,7 @@ export class AiClassifyService {
       opts.prefs.stage &&
       !data.lockStage &&
       this.executor.shouldUpdateStage(ctx.lead.stage, result.stage, result.confidence);
+    const stageChanged = updateStage;
 
     const score = this.executor.computeScore(
       result,
@@ -551,10 +587,21 @@ export class AiClassifyService {
       ctx.lead.score,
     );
 
+    if (knowledgeGap && score >= HOT_LEAD_SCORE_THRESHOLD) {
+      result = {
+        ...result,
+        suggestedActions: [
+          "Hot lead needs an answer — add Business Knowledge or reply in Inbox",
+          ...(result.suggestedActions ?? []),
+        ].slice(0, 3),
+      };
+    }
+
     const pipelineContext: PipelineContext = {
       ctx,
       knowledgeHits,
       businessName: opts.businessName,
+      businessProfile: opts.businessProfile,
       knowledgeGap,
       executionRoute,
       spans: opts.spans,
@@ -568,7 +615,7 @@ export class AiClassifyService {
       autoStageEnabled: opts.prefs.stage,
       lockStage: Boolean(data.lockStage),
       lockHandoff: Boolean(data.lockHandoff),
-      stageChanged: false,
+      stageChanged,
       score,
       handoffType: knowledgeGap ? "knowledge_gap" : "complex",
       workspaceAutonomy: opts.intelligenceSettings.replyAutonomy,
@@ -614,10 +661,27 @@ export class AiClassifyService {
       classification: result,
       actions,
       ctx,
-      stageChanged: false,
+      stageChanged,
       pipelineContext,
     });
     opts.spans.measure("execute_plan_ms", "execute_plan_start");
+
+    await this.appendPipelineObservability(
+      opts.aiRunId,
+      opts.spans,
+      buildPipelineTurnMetrics({
+        executionPath: executionRoute.path,
+        replyDecision,
+        knowledgeHits,
+        knowledgeGap,
+        stageChanged,
+        safetyBlocked,
+        fastPath: false,
+        classification: result,
+        groundingConfidence: retrieval.groundingConfidence,
+      }),
+      classifyLatencyMs,
+    );
 
     deferBackgroundTask(() =>
       this.runDeferredCrmSync({
@@ -630,7 +694,7 @@ export class AiClassifyService {
         updateStage,
         lockStage: Boolean(data.lockStage),
         lockHandoff: Boolean(data.lockHandoff),
-        stageChanged: false,
+        stageChanged,
         score,
         knowledgeGap,
         correlationId: opts.correlationId,
@@ -654,12 +718,19 @@ export class AiClassifyService {
     },
   ) {
     const model = this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini";
-    const knowledgeHits = await this.knowledge.retrieve({
+    const retrieval = await this.knowledge.retrieveDetailed({
       organizationId: data.organizationId,
       query: ctx.ragQuery,
       limit: 4,
+      intentKind: opts.preRoute.intentKind,
+      lastInbound: ctx.lastInbound,
     });
-    const businessContext = this.knowledge.formatForPrompt(knowledgeHits);
+    const knowledgeHits = retrieval.hits;
+    const businessContext = this.knowledge.formatForPrompt(
+      knowledgeHits,
+      320,
+      retrieval.categoriesUsed,
+    );
     const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
     const combinedContext = [businessContext, memoryBlock ? `Observed facts:\n${memoryBlock}` : ""]
       .filter(Boolean)
@@ -675,10 +746,15 @@ export class AiClassifyService {
       data.humanFeedback,
     );
 
-    const knowledgeGap = this.planner.detectKnowledgeGap(ctx, knowledgeHits);
+    const knowledgeGap = this.planner.detectKnowledgeGap(ctx, knowledgeHits, {
+      intentKind: resolveReplyIntentKind(ctx.lastInbound, result),
+      classification: result,
+      hasIndexedChunks: retrieval.hasIndexedChunks,
+    });
     if (knowledgeGap) {
       result = this.planner.applyKnowledgeGapGuard(result, true);
     }
+    result = applyClassificationJudgmentGuards(result);
 
     const bgRun = await this.prisma.aiRun.create({
       data: {
@@ -698,6 +774,7 @@ export class AiClassifyService {
       opts.prefs.stage &&
       !data.lockStage &&
       this.executor.shouldUpdateStage(ctx.lead.stage, result.stage, result.confidence);
+    const stageChanged = updateStage;
 
     const score = this.executor.computeScore(
       result,
@@ -715,7 +792,7 @@ export class AiClassifyService {
       updateStage,
       lockStage: Boolean(data.lockStage),
       lockHandoff: Boolean(data.lockHandoff),
-      stageChanged: false,
+      stageChanged,
       score,
       knowledgeGap,
       correlationId: data.correlationId ?? "",
@@ -732,14 +809,27 @@ export class AiClassifyService {
     ctx: Awaited<ReturnType<ContextBuilderService["buildForConversation"]>>,
     opts: {
       businessName: string;
+      businessProfile: import("@growvisi/shared").BusinessEmployeeProfile;
       preRoute: ExecutionRoute;
       spans: PipelineSpans;
       aiRunId: string;
       intelligenceSettings: IntelligenceWorkspaceSettings;
     },
-  ): Promise<boolean> {
-    const fastText = this.fastReply.compose(ctx.lastInbound, opts.businessName, ctx);
-    if (!fastText) return false;
+  ): Promise<
+    | { sent: false }
+    | {
+        sent: true;
+        replyDecision: ReplyDecision;
+        safetyBlocked?: { code: string; reason: string };
+      }
+  > {
+    const fastText = this.fastReply.compose(
+      ctx.lastInbound,
+      opts.businessName,
+      ctx,
+      opts.businessProfile,
+    );
+    if (!fastText) return { sent: false };
 
     const stub = this.stubClassification(ctx, opts.preRoute);
     const withinReplyWindow =
@@ -751,7 +841,7 @@ export class AiClassifyService {
       await this.entitlements.assertPlanAtLeast(data.organizationId, "growth");
       autoSendPlanOk = true;
     } catch {
-      return false;
+      return { sent: false };
     }
 
     const safetyCheck = await this.safetyRails.checkVelocity({
@@ -776,12 +866,13 @@ export class AiClassifyService {
       safetyBlocked,
     });
 
-    if (replyDecision.mode !== "send") return false;
+    if (replyDecision.mode !== "send") return { sent: false };
 
     const pipelineContext: PipelineContext = {
       ctx,
       knowledgeHits: [],
       businessName: opts.businessName,
+      businessProfile: opts.businessProfile,
       knowledgeGap: false,
       executionRoute: opts.preRoute,
       spans: opts.spans,
@@ -803,7 +894,7 @@ export class AiClassifyService {
       replyDecision,
     );
 
-    return true;
+    return { sent: true, replyDecision, safetyBlocked };
   }
 
   private async runDeferredCrmSync(sync: DeferredCrmSync) {
@@ -907,6 +998,33 @@ export class AiClassifyService {
     }
   }
 
+  private async appendPipelineObservability(
+    aiRunId: string,
+    spans: PipelineSpans,
+    metrics: PipelineTurnMetrics,
+    classifyLatencyMs: number,
+  ) {
+    const row = await this.prisma.aiRun.findUnique({
+      where: { id: aiRunId },
+      select: { output: true },
+    });
+    const prev =
+      row?.output && typeof row.output === "object"
+        ? (row.output as Record<string, unknown>)
+        : {};
+
+    await this.prisma.aiRun.update({
+      where: { id: aiRunId },
+      data: {
+        output: {
+          ...prev,
+          spans: { ...spans.toJSON(), classify_llm_ms: classifyLatencyMs },
+          metrics,
+        } as object,
+      },
+    });
+  }
+
   private async finalizeAiRun(
     aiRunId: string,
     output: Record<string, unknown>,
@@ -967,6 +1085,16 @@ Return JSON with these keys:
 - summary: 1-2 sentence summary of what happened in this conversation so far
 - tags: array of 1-4 short tags that describe this lead (e.g. "high-intent", "price-sensitive", "returning-customer", "urgent", "bulk-order")
 - nextAction: the single most important thing the sales rep should do right now (e.g. "Send pricing PDF", "Call within 2 hours", "Follow up on delivery status")
+- customerNeeds: array of 1-4 distinct things the customer wants in their latest message(s) — split multi-part asks (e.g. price AND delivery AND EMI = 3 items)
+- replyBrief: one sentence checklist for drafting the next reply (what must be addressed)
+- language: "en" | "hi" | "hinglish" | "mixed" — language the customer is using
+- entities: object with optional keys location, budget, product, quantity (only if mentioned)
+- dealTemperature: "cold" | "warm" | "hot"
+- unansweredFromCustomer: questions the customer asked that are not yet answered in the thread
+- apologyRequired: true if customer is upset and deserves empathy first
+- recoveryMode: true if we need to win back trust after a bad experience
+- requiresOwner: true if only the business owner should handle (legal, large deal, angry VIP)
+- buyingSignals: array of 0-3 short phrases showing purchase intent
 
 Current pipeline stage: ${currentStage}.${contextBlock}${feedbackBlock}`,
             },
@@ -994,23 +1122,32 @@ Current pipeline stage: ${currentStage}.${contextBlock}${feedbackBlock}`,
       throw new Error("No classification returned");
     }
 
-    const parsed = JSON.parse(raw) as Partial<AiClassificationResult>;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     const stage = this.normalizeStage(parsed.stage);
     const confidence = Math.min(1, Math.max(0, Number(parsed.confidence) || 0));
 
-    return {
-      stage,
-      confidence,
-      intent: String(parsed.intent ?? "General inquiry"),
-      sentiment: parsed.sentiment ?? "neutral",
-      suggestedActions: Array.isArray(parsed.suggestedActions)
-        ? parsed.suggestedActions.map(String)
-        : [],
-      requiresHuman: Boolean(parsed.requiresHuman),
-      summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 500) : undefined,
-      tags: Array.isArray(parsed.tags) ? parsed.tags.map(String).slice(0, 4) : [],
-      nextAction: typeof parsed.nextAction === "string" ? parsed.nextAction.slice(0, 200) : undefined,
-    };
+    return normalizeClassificationResult(
+      {
+        stage,
+        confidence,
+        intent: String(parsed.intent ?? "General inquiry"),
+        sentiment:
+          parsed.sentiment === "positive" ||
+          parsed.sentiment === "negative" ||
+          parsed.sentiment === "neutral"
+            ? parsed.sentiment
+            : "neutral",
+        suggestedActions: Array.isArray(parsed.suggestedActions)
+          ? parsed.suggestedActions.map(String)
+          : [],
+        requiresHuman: Boolean(parsed.requiresHuman),
+        summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 500) : undefined,
+        tags: Array.isArray(parsed.tags) ? parsed.tags.map(String).slice(0, 4) : [],
+        nextAction:
+          typeof parsed.nextAction === "string" ? parsed.nextAction.slice(0, 200) : undefined,
+      },
+      parsed,
+    );
   }
 
   private async hasCompletedClassifyForMessage(

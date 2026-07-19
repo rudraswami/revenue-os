@@ -4,7 +4,9 @@ import {
   DEFAULT_INTELLIGENCE_SETTINGS,
   REPLY_AUTONOMY_MODES,
   AUTOMATION_PRESET_DEFAULTS,
+  normalizeBusinessEmployeeProfile,
   type AutomationPolicyPreset,
+  type BusinessEmployeeProfile,
   type IntelligenceWorkspaceSettings,
   type ReplyAutonomyMode,
 } from "@growvisi/shared";
@@ -44,6 +46,33 @@ export function readIntelligenceSettingsFromOrg(
       ? settings.intelligence
       : {};
   return normalizeIntelligenceSettings(intel);
+}
+
+/** Resolve intelligence settings with a fully normalized business employee profile. */
+export function resolveIntelligenceSettings(
+  settings: Record<string, unknown> | null | undefined,
+  businessName: string,
+): IntelligenceWorkspaceSettings {
+  const intel =
+    settings?.intelligence && typeof settings.intelligence === "object"
+      ? (settings.intelligence as Partial<IntelligenceWorkspaceSettings>)
+      : {};
+  const base = normalizeIntelligenceSettings(intel);
+  return {
+    ...base,
+    businessProfile: normalizeBusinessEmployeeProfile(intel.businessProfile, businessName),
+  };
+}
+
+export function readBusinessProfileFromOrg(
+  settings: Record<string, unknown> | null | undefined,
+  businessName: string,
+): BusinessEmployeeProfile {
+  const intel =
+    settings?.intelligence && typeof settings.intelligence === "object"
+      ? (settings.intelligence as Partial<IntelligenceWorkspaceSettings>)
+      : {};
+  return normalizeBusinessEmployeeProfile(intel.businessProfile, businessName);
 }
 
 export { AUTOMATION_PRESET_DEFAULTS, DEFAULT_AUTOMATION_SAFETY };

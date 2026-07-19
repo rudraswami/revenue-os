@@ -1,18 +1,58 @@
 import { AutomationPolicyService } from "./automation-policy.service";
 import type { ConversationContext } from "./context-builder.service";
-import { DEFAULT_INTELLIGENCE_SETTINGS } from "@growvisi/shared";
+import { DEFAULT_INTELLIGENCE_SETTINGS, buildWorkingMemory, defaultBusinessEmployeeProfile } from "@growvisi/shared";
 
 function baseCtx(overrides: Partial<ConversationContext> = {}): ConversationContext {
-  return {
+  const lead = {
+    id: "l1",
+    stage: "NEW" as const,
+    score: 10,
+    displayName: "Test",
+    phone: "91",
+    profile: {},
+    aiEnabled: true,
+  };
+  const messages =
+    overrides.messages ??
+    ([
+      {
+        id: "m1",
+        direction: "INBOUND",
+        content: "Hi",
+        sentByAi: false,
+        createdAt: new Date(),
+      },
+    ] as ConversationContext["messages"]);
+  const observedMemory = overrides.observedMemory ?? [];
+  const base = {
     conversationId: "c1",
     leadId: "l1",
     lastInbound: "Hi",
     ragQuery: "Hi",
     transcript: "Customer: Hi",
-    conversation: { aiEnabled: true },
-    lead: { stage: "NEW", score: 10, displayName: "Test", phone: "91" },
-    observedMemory: [],
+    conversation: { aiEnabled: true, id: "c1", metadata: {}, contactName: null, lastInboundAt: null },
+    lead,
+    observedMemory,
+    messages,
+    organizationId: "org1",
+    workingMemory: buildWorkingMemory({
+      lead,
+      conversation: { contactName: null },
+      messages,
+      observedMemory,
+    }),
+  };
+  return {
+    ...base,
     ...overrides,
+    workingMemory:
+      overrides.workingMemory ??
+      buildWorkingMemory({
+        lead: overrides.lead ?? lead,
+        conversation: { contactName: overrides.conversation?.contactName ?? null },
+        messages,
+        observedMemory,
+      }),
   } as ConversationContext;
 }
 
@@ -130,5 +170,106 @@ describe("AutomationPolicyService", () => {
     });
     expect(result.outcome).toBe("human");
     expect(result.blockers).toContain("human_handling");
+    expect(result.acknowledgment).toBeUndefined();
+  });
+
+  it("returns acknowledgment for sensitive inbound", () => {
+    const result = service.evaluate({
+      settings: DEFAULT_INTELLIGENCE_SETTINGS,
+      ctx: baseCtx({ lastInbound: "I want a refund now" }),
+      classification: {
+        stage: "NEGOTIATION",
+        confidence: 0.9,
+        intent: "Complaint",
+        sentiment: "negative",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [],
+      knowledgeGap: false,
+      executionPath: "human",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("human");
+    expect(result.acknowledgment).toBeTruthy();
+  });
+
+  it("drafts discount negotiation when authority is none", () => {
+    const result = service.evaluate({
+      settings: {
+        ...DEFAULT_INTELLIGENCE_SETTINGS,
+        replyAutonomy: "auto_guarded",
+        businessProfile: defaultBusinessEmployeeProfile("Shop"),
+      },
+      ctx: baseCtx({ lastInbound: "Can you give 15% discount?" }),
+      classification: {
+        stage: "NEGOTIATION",
+        confidence: 0.85,
+        intent: "Negotiation",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "pricing",
+          title: "Pricing",
+          content: "Starter ₹999",
+          similarity: 0.9,
+          citation: "Pricing",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("draft");
+    expect(result.blockers).toContain("discount_authority");
+  });
+
+  it("human for requiresOwner judgment", () => {
+    const result = service.evaluate({
+      settings: DEFAULT_INTELLIGENCE_SETTINGS,
+      ctx: baseCtx({ lastInbound: "I need to speak to the owner about bulk pricing" }),
+      classification: {
+        stage: "PROPOSAL",
+        confidence: 0.85,
+        intent: "Enterprise pricing",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+        requiresOwner: true,
+      },
+      knowledgeHits: [],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("human");
+    expect(result.blockers).toContain("needs_owner");
+  });
+
+  it("drafts when apology is required", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "Very disappointed with the service" }),
+      classification: {
+        stage: "NEGOTIATION",
+        confidence: 0.8,
+        intent: "Complaint",
+        sentiment: "negative",
+        suggestedActions: [],
+        requiresHuman: false,
+        apologyRequired: true,
+      },
+      knowledgeHits: [],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("draft");
+    expect(result.blockers).toContain("apology_required");
   });
 });

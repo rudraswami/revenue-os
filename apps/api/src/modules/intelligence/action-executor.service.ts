@@ -124,6 +124,11 @@ export class ActionExecutorService {
           summary: result.summary,
           nextAction: result.nextAction,
           aiTags: result.tags,
+          customerNeeds: result.customerNeeds,
+          replyBrief: result.replyBrief,
+          classificationLanguage: result.language,
+          entities: result.entities ? { ...result.entities } : undefined,
+          dealTemperature: result.dealTemperature,
         },
         ...(opts.updateStage
           ? {

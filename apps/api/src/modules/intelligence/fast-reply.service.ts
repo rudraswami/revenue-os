@@ -1,29 +1,31 @@
 import { Injectable } from "@nestjs/common";
-import { isSimpleAck, isSimpleGreeting, isSimpleThanks } from "@growvisi/shared";
+import type { BusinessEmployeeProfile } from "@growvisi/shared";
+import { defaultBusinessEmployeeProfile, isSimpleAck, isSimpleGreeting, isSimpleThanks } from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
 
-const GREETING_TEMPLATES = [
+/** Legacy fallbacks when profile pools are unexpectedly empty. */
+const LEGACY_GREETING_TEMPLATES = [
   (biz: string) => `Hi! Thanks for messaging ${biz}. What can we help you with today?`,
   (biz: string) => `Hello! Welcome to ${biz} — how can we assist you?`,
-  (biz: string) => `Hi there! You're speaking with ${biz}. What are you looking for?`,
 ];
 
-const RETURNING_GREETING_TEMPLATES = [
+const LEGACY_RETURNING_GREETING_TEMPLATES = [
   () => `Hi! How can we help you today?`,
   () => `Hello! What would you like to know?`,
-  () => `Hi — happy to help. What do you need?`,
 ];
 
-const THANKS_TEMPLATES = [
+const LEGACY_THANKS_TEMPLATES = [
   () => `You're welcome! Let us know if you need anything else.`,
   () => `Happy to help! Reach out anytime.`,
-  () => `Anytime! We're here if you have more questions.`,
 ];
 
 @Injectable()
 export class FastReplyService {
   /** Thread already has a business/AI outbound message — avoid "welcome again". */
   threadAlreadyGreeted(ctx: ConversationContext): boolean {
+    if (ctx.workingMemory) {
+      return ctx.workingMemory.threadAlreadyEngaged;
+    }
     return ctx.messages.some(
       (m) => m.direction === "OUTBOUND" && (m.content?.trim().length ?? 0) > 0,
     );
@@ -37,20 +39,39 @@ export class FastReplyService {
     lastInbound: string | null | undefined,
     businessName: string,
     ctx: ConversationContext,
+    businessProfile?: BusinessEmployeeProfile,
   ): string | null {
     if (!lastInbound?.trim()) return null;
 
     const biz = businessName.trim() || "us";
+    const profile = businessProfile ?? defaultBusinessEmployeeProfile(biz);
     const returning = this.threadAlreadyGreeted(ctx);
     const hash = lastInbound.length + ctx.messages.length;
 
     if (isSimpleThanks(lastInbound) || isSimpleAck(lastInbound)) {
-      return THANKS_TEMPLATES[hash % THANKS_TEMPLATES.length]();
+      const pool = profile.courtesyTemplates.thanks;
+      if (pool.length > 0) {
+        return pool[hash % pool.length];
+      }
+      return LEGACY_THANKS_TEMPLATES[hash % LEGACY_THANKS_TEMPLATES.length]();
     }
 
     if (isSimpleGreeting(lastInbound)) {
-      const pool = returning ? RETURNING_GREETING_TEMPLATES : GREETING_TEMPLATES;
-      return pool[hash % pool.length](biz);
+      if (returning) {
+        const pool = profile.greetingVariants.returning;
+        if (pool.length > 0) {
+          return pool[hash % pool.length];
+        }
+        return LEGACY_RETURNING_GREETING_TEMPLATES[
+          hash % LEGACY_RETURNING_GREETING_TEMPLATES.length
+        ]();
+      }
+
+      const pool = profile.greetingVariants.firstContact;
+      if (pool.length > 0) {
+        return pool[hash % pool.length];
+      }
+      return LEGACY_GREETING_TEMPLATES[hash % LEGACY_GREETING_TEMPLATES.length](biz);
     }
 
     return null;

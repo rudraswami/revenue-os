@@ -50,6 +50,54 @@ export class ObservedMemoryService {
       );
     }
 
+    const entities = result.entities;
+    if (entities?.product?.trim()) {
+      writes.push(
+        this.upsertFact(ctx.conversationId, `Product: ${entities.product.trim()}`, {
+          key: "entity:product",
+          source: "ai",
+          aiRunId,
+        }),
+      );
+    }
+    if (entities?.budget?.trim()) {
+      writes.push(
+        this.upsertFact(ctx.conversationId, `Budget: ${entities.budget.trim()}`, {
+          key: "entity:budget",
+          source: "ai",
+          aiRunId,
+        }),
+      );
+    }
+    if (entities?.location?.trim()) {
+      writes.push(
+        this.upsertFact(ctx.conversationId, `Location: ${entities.location.trim()}`, {
+          key: "entity:location",
+          source: "ai",
+          aiRunId,
+        }),
+      );
+    }
+    if (entities?.quantity?.trim()) {
+      writes.push(
+        this.upsertFact(ctx.conversationId, `Quantity: ${entities.quantity.trim()}`, {
+          key: "entity:quantity",
+          source: "ai",
+          aiRunId,
+        }),
+      );
+    }
+
+    if (result.language) {
+      writes.push(
+        this.upsertFact(ctx.conversationId, `Language: ${result.language}`, {
+          key: "language",
+          source: "ai",
+          aiRunId,
+        }),
+      );
+    }
+
     await Promise.all(writes);
   }
 

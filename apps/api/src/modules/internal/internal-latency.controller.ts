@@ -3,6 +3,7 @@ import { SkipThrottle } from "@nestjs/throttler";
 import { CronSecretGuard } from "../../common/guards/cron-secret.guard";
 import { AiClassifyService } from "../ai/ai-classify.service";
 import { PrismaService } from "../prisma/prisma.service";
+import type { PipelineTurnMetrics } from "../intelligence/pipeline-spans";
 
 const DEFAULT_CONVERSATION_ID = "cmrq48t840002lb04e1yd6532";
 
@@ -94,6 +95,9 @@ export class InternalLatencyController {
       ? outbound.createdAt.getTime() - inbound.createdAt.getTime()
       : null;
 
+    const classifyOutput = classifyRun?.output as Record<string, unknown> | null;
+    const metrics = (classifyOutput?.metrics as PipelineTurnMetrics | undefined) ?? null;
+
     return {
       ok: true,
       measured_at: new Date().toISOString(),
@@ -103,13 +107,12 @@ export class InternalLatencyController {
       customer_e2e_ms: customerE2eMs,
       outbound_preview: outbound?.content?.slice(0, 100) ?? null,
       execution_path:
-        (classifyRun?.output as Record<string, unknown> | null)?.executionPath ??
-        (classifyRun?.output as Record<string, unknown> | null)?.fastPath ??
-        null,
-      spans:
-        (classifyRun?.output as Record<string, unknown> | null)?.spans ??
-        (composeRun?.input as Record<string, unknown> | null)?.spans ??
-        null,
+        classifyOutput?.executionPath ?? classifyOutput?.fastPath ?? metrics?.executionPath ?? null,
+      spans: classifyOutput?.spans ?? (composeRun?.input as Record<string, unknown> | null)?.spans ?? null,
+      metrics,
+      reply_mode: metrics?.replyMode ?? null,
+      blockers: metrics?.blockers ?? [],
+      grounding_percent: metrics?.groundingPercent ?? null,
       classify_run: classifyRun
         ? {
             id: classifyRun.id,
