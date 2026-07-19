@@ -35,6 +35,8 @@ interface AuthState {
   > | null;
   setHydrated: (value: boolean) => void;
   setSession: (session: AuthSession) => void;
+  /** Update profile/org from /auth/me without touching tokens. */
+  patchProfile: (me: Pick<AuthSession, "user" | "organization" | "role" | "onboarding">) => void;
   /** Update access token from peer tab without wiping profile */
   patchAccessToken: (accessToken: string, refreshToken?: string) => void;
   setTransientFailure: (
@@ -64,15 +66,30 @@ export const useAuthStore = create<AuthState>()(
       setHydrated: (hydrated) => set({ hydrated }),
       setSession: (session) => {
         syncAuthCookie(true);
-        persistRefreshToken(session.refreshToken);
+        const refreshToken = session.refreshToken?.trim() || null;
+        if (refreshToken) persistRefreshToken(refreshToken);
         set({
           accessToken: session.accessToken,
-          refreshToken: session.refreshToken,
+          refreshToken: refreshToken ?? get().refreshToken,
           user: session.user,
           organization: session.organization,
           role: session.role,
           onboarding: session.onboarding,
           lastTransientFailure: null,
+        });
+      },
+      patchProfile: (me) => {
+        const current = get();
+        const roleChangeNotice =
+          current.role && current.role !== me.role
+            ? { previousRole: current.role, newRole: me.role }
+            : current.roleChangeNotice;
+        set({
+          user: me.user,
+          organization: me.organization,
+          role: me.role,
+          onboarding: me.onboarding,
+          roleChangeNotice,
         });
       },
       patchAccessToken: (accessToken, refreshToken) => {
@@ -111,10 +128,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "growvisi-auth",
-      // NOTE: refreshToken is deliberately NOT persisted to localStorage (XSS surface).
-      // It is mirrored in sessionStorage + HttpOnly cookie — see refresh-token-persist.ts.
+      // refreshToken persisted for silent refresh after reload (www → api cross-origin).
+      // HttpOnly cookie is still primary when the browser sends it.
       partialize: (state) => ({
         accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
         user: state.user,
         organization: state.organization,
         role: state.role,
@@ -122,6 +140,7 @@ export const useAuthStore = create<AuthState>()(
         onboardingDismissed: state.onboardingDismissed,
       }),
       onRehydrateStorage: () => (state) => {
+        if (state?.refreshToken) persistRefreshToken(state.refreshToken);
         state?.setHydrated(true);
       },
     },

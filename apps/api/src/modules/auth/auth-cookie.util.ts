@@ -40,13 +40,13 @@ function refreshMaxAgeMs(): number {
 }
 
 function baseOptions(): CookieOptions {
-  // www.growvisi.in and api.growvisi.in share registrable domain (growvisi.in) —
-  // same-site subrequests. Lax is more reliable than None across browsers.
   const prod = isProd();
+  // www → api.growvisi.in is cross-origin; None+Secure is required for reliable
+  // cookie round-trip on credentialed fetch in all major browsers.
   return {
     httpOnly: true,
     secure: prod,
-    sameSite: "lax",
+    sameSite: prod ? "none" : "lax",
     domain: cookieDomain(),
     path: COOKIE_PATH,
   };

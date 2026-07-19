@@ -52,16 +52,11 @@ export function isEmailVerified(user: AuthUser | null | undefined): boolean {
   return !!user?.emailVerified;
 }
 
-/** Patch user/org profile into the store without wiping the refresh token. */
+/** Patch user/org profile into the store without touching tokens. */
 export function applyMeResponse(me: MeResponse) {
   const current = useAuthStore.getState();
   if (!current.accessToken) return;
-  if (current.role && current.role !== me.role) {
-    useAuthStore.getState().setRoleChangeNotice(current.role, me.role);
-  }
-  useAuthStore.getState().setSession({
-    accessToken: current.accessToken,
-    refreshToken: current.refreshToken ?? "",
+  useAuthStore.getState().patchProfile({
     user: me.user,
     organization: me.organization,
     role: me.role,

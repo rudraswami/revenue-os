@@ -22,7 +22,6 @@ function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const { t } = useAuthI18n();
   const token = searchParams.get("token") ?? "";
-  const setSession = useAuthStore((s) => s.setSession);
   const [state, setState] = useState<VerifyState>(token ? "loading" : "missing");
   const [error, setError] = useState<string | null>(null);
 
@@ -51,9 +50,7 @@ function VerifyEmailForm() {
 
         const current = useAuthStore.getState();
         if (current.accessToken && current.user) {
-          setSession({
-            accessToken: current.accessToken,
-            refreshToken: current.refreshToken ?? "",
+          useAuthStore.getState().patchProfile({
             user: { ...current.user, emailVerified: res.emailVerified },
             organization: current.organization!,
             role: current.role!,
