@@ -1,6 +1,7 @@
 /**
- * Use BullMQ workers only on long-running hosts (not Vercel serverless).
- * On Vercel, jobs must run inline in the webhook/request — queue workers never stay alive.
+ * Use BullMQ background processors only on long-running hosts (not Vercel serverless).
+ * On Vercel, jobs are enqueued to Redis when REDIS_URL is set, then processed inline
+ * via waitUntil in the same invocation — queue workers never stay alive.
  */
 export function useBackgroundWorkers(): boolean {
   if (process.env.USE_INLINE_WORKERS === "1") return false;

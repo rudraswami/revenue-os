@@ -17,27 +17,34 @@ export class HealthController {
   async check() {
     await this.prisma.$queryRaw`SELECT 1`;
 
+    const redisUrl = this.config.get<string>("REDIS_URL")?.trim();
     const workersEnabled = useBackgroundWorkers();
-    let redis: "ok" | "skipped" | "error" = workersEnabled ? "error" : "skipped";
+    const onVercel = process.env.VERCEL === "1";
 
-    if (workersEnabled) {
-      const url = this.config.get<string>("REDIS_URL")?.trim();
-      if (!url) {
+    let redis: "ok" | "missing" | "error" = "missing";
+
+    if (redisUrl) {
+      const client = new Redis(redisUrl, { maxRetriesPerRequest: 1, connectTimeout: 3_000 });
+      try {
+        const pong = await client.ping();
+        redis = pong === "PONG" ? "ok" : "error";
+      } catch {
         redis = "error";
-      } else {
-        const client = new Redis(url, { maxRetriesPerRequest: 1, connectTimeout: 3_000 });
-        try {
-          const pong = await client.ping();
-          redis = pong === "PONG" ? "ok" : "error";
-        } catch {
-          redis = "error";
-        } finally {
-          client.disconnect();
-        }
+      } finally {
+        client.disconnect();
       }
     }
 
-    const status = redis === "error" ? "degraded" : "ok";
+    const queueMode = workersEnabled
+      ? "background-workers"
+      : onVercel
+        ? "vercel-queue+waitUntil"
+        : redisUrl
+          ? "inline+queue"
+          : "inline-only";
+
+    const status =
+      redis === "error" || (onVercel && redis === "missing") ? "degraded" : "ok";
 
     return {
       status,
@@ -46,7 +53,9 @@ export class HealthController {
       checks: {
         database: "ok",
         redis,
-        workers: workersEnabled ? "enabled" : "inline",
+        queueMode,
+        cookieDomain: Boolean(this.config.get<string>("COOKIE_DOMAIN")?.trim()),
+        cronConfigured: Boolean(this.config.get<string>("CRON_SECRET")?.trim()),
       },
     };
   }

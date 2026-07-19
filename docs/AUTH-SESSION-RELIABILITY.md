@@ -6,7 +6,7 @@ Do **not** change JWT lifetimes here. This documents required production configu
 
 | Setting | Expected value | Where |
 |---------|----------------|--------|
-| `COOKIE_DOMAIN` | `.growvisi.in` | API (Vercel/Railway) env |
+| `COOKIE_DOMAIN` | `.growvisi.in` | API (Vercel/Railway) env — **required in production**; API refuses to start if missing or invalid |
 | Refresh cookie name | `growvisi_rt` | `auth-cookie.util.ts` |
 | `HttpOnly` | `true` | code |
 | `Secure` | `true` in production | code (`NODE_ENV=production` or `VERCEL=1`) |

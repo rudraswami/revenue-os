@@ -158,10 +158,29 @@ for (const [key, value] of Object.entries(WEB_VARS)) {
 }
 
 console.log("\n═══ Done ═══");
-console.log("Redeploy for changes to take effect:");
+
+const INFRA_FROM_LOCAL = ["REDIS_URL", "CRON_SECRET", "JWT_SECRET", "TOKEN_ENCRYPTION_KEY", "OPENAI_API_KEY"];
+const missingLocal = INFRA_FROM_LOCAL.filter((k) => !String(env[k] ?? "").trim());
+console.log("\n═══ Production infra ═══");
+console.log(`  COOKIE_DOMAIN → always set to ${DOMAIN.COOKIE} on API`);
+if (missingLocal.length > 0) {
+  console.warn(
+    `  ⚠ Not in local .env (skipped or empty on Vercel): ${missingLocal.join(", ")}`,
+  );
+  console.warn(
+    "    API production deploy will FAIL to start without REDIS_URL, CRON_SECRET, COOKIE_DOMAIN.",
+  );
+  console.warn("    Generate CRON_SECRET: openssl rand -base64 32");
+} else {
+  console.log("  ✓ REDIS_URL, CRON_SECRET, JWT_SECRET present in local .env");
+}
+
+console.log("\nVerify after deploy:");
+console.log(`  curl -s ${DOMAIN.API}/api/v1/health | jq .checks`);
+
+console.log("\nRedeploy for changes to take effect:");
 console.log("  cd apps/api && vercel deploy --prod");
 console.log("  cd apps/web && vercel deploy --prod");
 console.log("\nOptional — add to .env then re-run this script:");
 console.log("  SENTRY_DSN / NEXT_PUBLIC_SENTRY_DSN (from sentry.io project)");
 console.log("  RAZORPAY_* (from Razorpay Dashboard)");
-console.log("  REDIS_URL (Upstash rediss:// for BullMQ on Vercel)");

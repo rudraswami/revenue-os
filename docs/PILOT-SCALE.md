@@ -19,7 +19,9 @@ Growvisi on **Vercel serverless** runs WhatsApp classify and embed jobs **inline
 
 ## Production secrets (fail-fast)
 
-On `VERCEL_ENV=production`, API startup requires: `WHATSAPP_APP_SECRET` or `META_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `CRON_SECRET`, `TOKEN_ENCRYPTION_KEY`, `OPENAI_API_KEY`.
+On `VERCEL_ENV=production`, API startup **requires**: `WHATSAPP_APP_SECRET` or `META_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `REDIS_URL` (Upstash `rediss://`), `CRON_SECRET` (min 16 chars), `COOKIE_DOMAIN` (e.g. `.growvisi.in`), and `JWT_SECRET` (min 32 chars).
+
+Recommended: `TOKEN_ENCRYPTION_KEY`, `OPENAI_API_KEY`, `RAZORPAY_*`.
 
 Razorpay keys are recommended (warn-only) until billing is configured.
 

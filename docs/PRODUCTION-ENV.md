@@ -60,6 +60,12 @@ JWT_REFRESH_EXPIRES_IN=7d
 
 NODE_ENV=production
 
+# Required — refresh cookies shared across www ↔ api (must start with ".")
+COOKIE_DOMAIN=.growvisi.in
+
+# Required — Vercel Cron auth (openssl rand -base64 32)
+CRON_SECRET=your-cron-secret-min-16-chars
+
 NEXT_PUBLIC_APP_URL=https://growvisi.com
 
 CORS_ORIGINS=https://growvisi.com,https://www.growvisi.com
@@ -200,13 +206,15 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ## Checklist before going live
 
-
-
-- [ ] API health: `https://api.growvisi.com/api/v1/health` → `ok`
+- [ ] API health: `https://api.growvisi.com/api/v1/health` → `status: "ok"`, `checks.redis: "ok"`, `checks.cookieDomain: true`, `checks.cronConfigured: true`
 
 - [ ] Web loads: `https://growvisi.com/register`
 
-- [ ] `REDIS_URL` on Vercel API is **Upstash** (`rediss://...`), not localhost
+- [ ] **`REDIS_URL`** on Vercel API is **Upstash** (`rediss://...`), not localhost — **required**; deploy fails without it
+
+- [ ] **`CRON_SECRET`** set on API (min 16 chars) — Vercel Cron sends it automatically to `/internal/cron/*`
+
+- [ ] **`COOKIE_DOMAIN=.growvisi.in`** on API — **required**; refresh works across www ↔ api
 
 - [ ] Meta webhook verified with same `WHATSAPP_VERIFY_TOKEN`
 

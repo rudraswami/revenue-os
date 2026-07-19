@@ -121,14 +121,12 @@ Local `apps/api/vercel.json` includes cron — **not live until code is deployed
 
 | Runtime | Behavior |
 |---------|----------|
-| **Local / Docker** | BullMQ + Redis (`REDIS_URL`) — `AI_CLASSIFY` and `WHATSAPP_INBOUND` jobs run in background workers. |
-| **Vercel + `REDIS_URL`** | `useBackgroundWorkers()` is true when `REDIS_URL` is set — same BullMQ queues as local (Upstash recommended). |
-| **Vercel without Redis** | `VERCEL=1` and no `REDIS_URL` — jobs run **inline** in the webhook/request handler. OK for low volume only. |
+| **Local / Docker** | BullMQ + Redis (`REDIS_URL`) — `AI_CLASSIFY` and `WHATSAPP_INBOUND` jobs run in background workers when `useBackgroundWorkers()` is true. |
+| **Vercel + `REDIS_URL`** | Jobs enqueue to Upstash Redis; processors run in the same serverless invocation via `waitUntil` (no long-lived workers). **REDIS_URL is required in production** — API refuses to start without it. |
+| **Vercel without Redis** | **Blocked in production** — env validation fails at startup. |
 | **Debug** | `USE_INLINE_WORKERS=1` forces inline processing even with Redis. |
 
-Ensure `REDIS_URL` is set on production API (Upstash `rediss://...`) for reliable classify + inbound at scale.
-
-Cron jobs in `apps/api/vercel.json` include `scheduled-campaigns` (hourly) — requires `CRON_SECRET` on all `/internal/cron/*` routes.
+Ensure `REDIS_URL` is set on production API (Upstash `rediss://...`). Also required: `CRON_SECRET` (Vercel Cron auth) and `COOKIE_DOMAIN=.growvisi.in` (refresh cookie across subdomains).
 
 ---
 

@@ -113,14 +113,89 @@ class EnvironmentVariables {
   OPENAI_API_KEY?: string;
 }
 
-function isProductionEnv(config: Record<string, unknown>): boolean {
-  return config.VERCEL_ENV === "production" || config.NODE_ENV === "production";
+/** True only for live production — not Vercel preview or local dev. */
+export function isStrictProductionEnv(config: Record<string, unknown>): boolean {
+  const onVercel = config.VERCEL === "1" || config.VERCEL === true;
+  if (onVercel) {
+    return config.VERCEL_ENV === "production";
+  }
+  return config.NODE_ENV === "production";
 }
 
 function requireProdSecret(label: string, value: unknown, missing: string[]): void {
   if (!value || (typeof value === "string" && !value.trim())) {
     missing.push(label);
   }
+}
+
+function sanitizeEnvString(value: unknown): string {
+  return String(value ?? "")
+    .replace(/\r/g, "")
+    .trim();
+}
+
+/** Validates COOKIE_DOMAIN format for cross-subdomain refresh cookies. */
+export function validateCookieDomain(value: unknown): string {
+  const domain = sanitizeEnvString(value);
+  if (!domain) {
+    throw new Error(
+      "[env] COOKIE_DOMAIN is required in production (e.g. .growvisi.in) so refresh " +
+        "cookies work across www.growvisi.in and api.growvisi.in.",
+    );
+  }
+  if (!domain.startsWith(".")) {
+    throw new Error(
+      `[env] COOKIE_DOMAIN="${domain}" must start with "." (e.g. .growvisi.in) for subdomain cookie sharing.`,
+    );
+  }
+  if (domain.includes("://") || domain.includes("/")) {
+    throw new Error(
+      `[env] COOKIE_DOMAIN must be a bare domain like .growvisi.in — not a URL.`,
+    );
+  }
+  return domain;
+}
+
+/** Validates REDIS_URL for production queue offload (Upstash on Vercel). */
+export function validateProductionRedisUrl(value: unknown, onVercel: boolean): string {
+  const url = sanitizeEnvString(value);
+  if (!url) {
+    throw new Error(
+      "[env] REDIS_URL is required in production — BullMQ queues for inbound WhatsApp " +
+        "and AI classify/embed run through Redis (Upstash rediss:// on Vercel). " +
+        "Without it, work runs inline in webhook handlers and can time out.",
+    );
+  }
+  const lower = url.toLowerCase();
+  if (lower.includes("localhost") || lower.includes("127.0.0.1")) {
+    throw new Error("[env] REDIS_URL cannot point to localhost in production.");
+  }
+  if (onVercel && !lower.startsWith("rediss://") && !lower.startsWith("redis://")) {
+    throw new Error("[env] REDIS_URL must be a valid redis:// or rediss:// URL.");
+  }
+  if (onVercel && lower.startsWith("redis://") && !lower.includes("upstash")) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[env] REDIS_URL uses redis:// on Vercel — prefer Upstash rediss:// for TLS.",
+    );
+  }
+  return url;
+}
+
+/** Validates CRON_SECRET for Vercel Cron routes in vercel.json. */
+export function validateCronSecret(value: unknown): string {
+  const secret = sanitizeEnvString(value);
+  if (!secret) {
+    throw new Error(
+      "[env] CRON_SECRET is required in production — Vercel cron jobs in vercel.json " +
+        "(token refresh, campaigns, digest, retention) authenticate with this secret. " +
+        "Generate: openssl rand -base64 32",
+    );
+  }
+  if (secret.length < 16) {
+    throw new Error("[env] CRON_SECRET must be at least 16 characters.");
+  }
+  return secret;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
@@ -132,30 +207,21 @@ export function validateEnv(config: Record<string, unknown>) {
     throw new Error(errors.toString());
   }
 
-  if ((validated.JWT_SECRET ?? "").length < 32) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      "[env] JWT_SECRET is shorter than 32 characters — use a longer random secret in production.",
-    );
-  }
+  const isProd = isStrictProductionEnv(config);
+  const onVercel = config.VERCEL === "1" || config.VERCEL === true;
 
-  const isProd = isProductionEnv(config);
   if (isProd) {
-    const cookieDomain = String(config.COOKIE_DOMAIN ?? "")
-      .replace(/\r/g, "")
-      .trim();
-    if (!cookieDomain) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        "[env] COOKIE_DOMAIN is not set — refresh cookies will not be shared across " +
-          "subdomains (www.growvisi.in ↔ api.growvisi.in). Users may be logged out after access JWT expiry.",
-      );
-    } else if (!cookieDomain.startsWith(".")) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[env] COOKIE_DOMAIN="${cookieDomain}" should start with "." (e.g. .growvisi.in) for subdomain sharing.`,
+    const jwtSecret = sanitizeEnvString(validated.JWT_SECRET);
+    if (jwtSecret.length < 32) {
+      throw new Error(
+        "[env] JWT_SECRET must be at least 32 characters in production. " +
+          "Generate: openssl rand -base64 32",
       );
     }
+
+    validateCookieDomain(config.COOKIE_DOMAIN);
+    validateProductionRedisUrl(config.REDIS_URL, onVercel);
+    validateCronSecret(config.CRON_SECRET);
 
     const missingRequired: string[] = [];
     requireProdSecret(
@@ -173,19 +239,19 @@ export function validateEnv(config: Record<string, unknown>) {
     }
 
     const missingRecommended: Array<[string, unknown]> = [
-      ["CRON_SECRET", config.CRON_SECRET],
       ["TOKEN_ENCRYPTION_KEY", config.TOKEN_ENCRYPTION_KEY],
       ["OPENAI_API_KEY", config.OPENAI_API_KEY],
-      ["REDIS_URL", config.REDIS_URL],
       ["RAZORPAY_WEBHOOK_SECRET", config.RAZORPAY_WEBHOOK_SECRET],
       ["RAZORPAY_KEY_ID", config.RAZORPAY_KEY_ID],
+      ["WEBHOOK_PUBLIC_URL", config.WEBHOOK_PUBLIC_URL],
+      ["CORS_ORIGINS", config.CORS_ORIGINS],
     ];
     const missingRecommendedLabels = missingRecommended.filter(([, v]) => !v).map(([k]) => k);
     if (missingRecommendedLabels.length > 0) {
       // eslint-disable-next-line no-console
       console.warn(
         `[env] Production is missing recommended secrets: ${missingRecommendedLabels.join(", ")}. ` +
-          "API will start in degraded mode (inline workers, no AI/cron until set).",
+          "Some features (AI, billing, CORS) may be degraded until set.",
       );
     }
 
@@ -196,6 +262,11 @@ export function validateEnv(config: Record<string, unknown>) {
           "Set a dedicated TOKEN_ENCRYPTION_KEY so JWT rotation does not break stored tokens.",
       );
     }
+  } else if ((validated.JWT_SECRET ?? "").length < 32) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[env] JWT_SECRET is shorter than 32 characters — use a longer random secret in production.",
+    );
   }
 
   return validated;
