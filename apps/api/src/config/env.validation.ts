@@ -238,6 +238,22 @@ export function validateEnv(config: Record<string, unknown>) {
       );
     }
 
+    const razorpayKeyId = sanitizeEnvString(config.RAZORPAY_KEY_ID);
+    if (razorpayKeyId) {
+      const razorpayMissing: string[] = [];
+      requireProdSecret("RAZORPAY_KEY_SECRET", config.RAZORPAY_KEY_SECRET, razorpayMissing);
+      requireProdSecret("RAZORPAY_PLAN_STARTER", config.RAZORPAY_PLAN_STARTER, razorpayMissing);
+      requireProdSecret("RAZORPAY_PLAN_GROWTH", config.RAZORPAY_PLAN_GROWTH, razorpayMissing);
+      requireProdSecret("RAZORPAY_PLAN_PRO", config.RAZORPAY_PLAN_PRO, razorpayMissing);
+      requireProdSecret("RAZORPAY_WEBHOOK_SECRET", config.RAZORPAY_WEBHOOK_SECRET, razorpayMissing);
+      if (razorpayMissing.length > 0) {
+        throw new Error(
+          `[env] RAZORPAY_KEY_ID is set but billing is incomplete: ${razorpayMissing.join(", ")}. ` +
+            "Add all Razorpay plan IDs and webhook secret, or remove RAZORPAY_KEY_ID until ready.",
+        );
+      }
+    }
+
     const missingRecommended: Array<[string, unknown]> = [
       ["TOKEN_ENCRYPTION_KEY", config.TOKEN_ENCRYPTION_KEY],
       ["OPENAI_API_KEY", config.OPENAI_API_KEY],

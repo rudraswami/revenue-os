@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   GROWVISI_PLANS,
@@ -18,13 +18,43 @@ interface RazorpaySubscription {
 }
 
 @Injectable()
-export class RazorpayService {
+export class RazorpayService implements OnModuleInit {
   private readonly logger = new Logger(RazorpayService.name);
 
   constructor(private readonly config: ConfigService) {}
 
+  onModuleInit() {
+    if (!this.isConfigured()) return;
+
+    const missingPlans = PAID_PLAN_IDS.filter((id) => !this.planIdFor(id));
+    if (missingPlans.length > 0) {
+      this.logger.warn(
+        `Razorpay API keys set but plan IDs missing for: ${missingPlans.join(", ")}. ` +
+          "Checkout will fail until RAZORPAY_PLAN_STARTER/GROWTH/PRO are set.",
+      );
+      return;
+    }
+
+    this.logger.log("Razorpay billing ready — Solo, Team, and Operator plans configured.");
+
+    if (isProductionDeploy() && !this.config.get<string>("RAZORPAY_WEBHOOK_SECRET")?.trim()) {
+      this.logger.error(
+        "RAZORPAY_WEBHOOK_SECRET missing in production — subscription webhooks will be rejected. " +
+          "Add webhook at https://api.growvisi.in/api/v1/webhooks/razorpay",
+      );
+    }
+  }
+
   isConfigured(): boolean {
     return !!(this.keyId() && this.keySecret());
+  }
+
+  arePlansConfigured(): boolean {
+    return PAID_PLAN_IDS.every((id) => !!this.planIdFor(id));
+  }
+
+  isCheckoutReady(): boolean {
+    return this.isConfigured() && this.arePlansConfigured();
   }
 
   planCatalog() {

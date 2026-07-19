@@ -33,7 +33,7 @@ export class BillingService {
       status: sub?.status ?? "TRIALING",
       cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
       currentPeriodEnd: sub?.currentPeriodEnd ?? null,
-      razorpayConfigured: this.razorpay.isConfigured(),
+      razorpayConfigured: this.razorpay.isCheckoutReady(),
       plans: this.razorpay.planCatalog(),
       entitlements: snapshot.access,
       usage: snapshot.usage,

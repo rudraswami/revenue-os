@@ -58,13 +58,13 @@ const keys = [
   "RAZORPAY_PLAN_PRO",
 ];
 
-const missing = keys.filter((k) => !env[k]);
-if (missing.length === keys.length) {
+const present = keys.filter((k) => env[k]);
+if (present.length === 0) {
   console.error("No RAZORPAY_* vars in .env — add keys from Razorpay Dashboard first.");
   process.exit(1);
 }
 
-console.log("Updating revenue-os-api Razorpay env (production)…");
+console.log(`Pushing ${present.length} Razorpay var(s) to revenue-os-api (production)…`);
 for (const key of keys) {
   setEnv(apiDir, key, env[key]);
 }
