@@ -251,7 +251,7 @@ export class AutomationPolicyService {
         pushBlocker("low_answerability", answerability.reason);
         return { outcome: "draft", risk: "medium", reasons, blockers };
       } else if (answerability.score < rules.minGroundingSimilarity) {
-        pushBlocker("low_answerability", answerability.reason);
+        pushBlocker("weak_grounding", "Draft for your review.");
         return { outcome: "draft", risk, reasons, blockers };
       }
     }

@@ -75,10 +75,7 @@ export class ReplyPolicyService {
     const risk = this.assessRisk(input);
     const confidence = this.compositeConfidence(input, risk);
 
-    if (input.knowledgeHits.length > 0) {
-      const top = input.knowledgeHits[0];
-      reasons.push(`Grounded in “${top.title}” (${Math.round(top.similarity * 100)}% match).`);
-    } else if (input.knowledgeGap) {
+    if (input.knowledgeGap) {
       reasons.push(
         "No pricing docs matched — reply will ask clarifying questions (no invented prices).",
       );

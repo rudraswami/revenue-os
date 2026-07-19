@@ -77,6 +77,12 @@ describe("ExecutionRouterService", () => {
     expect(route.intentKind).toBe("thanks");
   });
 
+  it("routes Great to fast path as ack", () => {
+    const route = router.routePreClassify(ctx("Great", true));
+    expect(route.path).toBe("fast");
+    expect(route.intentKind).toBe("ack");
+  });
+
   it("routes pricing to standard path", () => {
     const route = router.routePreClassify(ctx("What is your pricing?"));
     expect(route.path).toBe("standard");

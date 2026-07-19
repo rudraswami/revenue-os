@@ -5,7 +5,8 @@ const SIMPLE_GREETING =
 const SIMPLE_THANKS =
   /^(thanks?|thank\s*you|thx|dhanyavaad|shukriya)[\s!.?]*$/i;
 
-const SIMPLE_ACK = /^(ok+ay?|k|kk|sure|got\s*it|👍|🙏)[\s!.?]*$/i;
+const SIMPLE_ACK =
+  /^(ok+ay?|k|kk|sure|got\s*it|great|nice|cool|awesome|perfect|wonderful|lovely|superb|excellent|amazing|fantastic|good|sounds\s*good|all\s*good|noted|👍|🙏)[\s!.?]*$/i;
 
 export function isSimpleGreeting(text: string | null | undefined): boolean {
   if (!text?.trim()) return false;

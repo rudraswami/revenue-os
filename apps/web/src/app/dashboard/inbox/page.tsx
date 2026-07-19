@@ -1011,22 +1011,18 @@ export default function InboxPage() {
                     </p>
                   </div>
                 )}
-                {(replyDecision || awaitingAiDraft) && (
+                {awaitingAiDraft && (
+                  <div className="mb-2 flex items-center gap-2 rounded-lg px-1 py-0.5 text-xs text-muted-foreground">
+                    <span
+                      className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-accent/25 border-t-accent"
+                      aria-hidden
+                    />
+                    <span>{copy.aiDraftGenerating}</span>
+                  </div>
+                )}
+                {replyDecision?.mode === "send" && (
                   <div className="mb-2">
-                    {awaitingAiDraft ? (
-                      <div className="flex items-center gap-2 rounded-lg px-1 py-0.5 text-xs text-muted-foreground">
-                        <span
-                          className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-accent/25 border-t-accent"
-                          aria-hidden
-                        />
-                        <span>{copy.aiDraftGenerating}</span>
-                      </div>
-                    ) : (
-                      <InboxReplyDecision
-                        decision={replyDecision}
-                        hasDraft={!!thread.pendingDraft?.suggestion}
-                      />
-                    )}
+                    <InboxReplyDecision decision={replyDecision} />
                   </div>
                 )}
                 {showComposer ? (
@@ -1044,7 +1040,6 @@ export default function InboxPage() {
                     }
                     suggestPending={suggestMutation.isPending}
                     onSuggest={() => suggestMutation.mutate()}
-                    draftSources={draftMeta?.sources}
                     templates={
                       thread.pendingDraft?.suggestion ? undefined : replyTemplates?.templates
                     }
@@ -1052,13 +1047,7 @@ export default function InboxPage() {
                     onMinimize={() => setShowComposer(false)}
                     draftNote={
                       thread.aiEnabled && thread.pendingDraft?.suggestion
-                        ? [
-                            replyDecision?.reasons.find((r) =>
-                              r.startsWith("Auto-reply blocked"),
-                            ),
-                            replyDecision?.reasons[0],
-                            copy.aiDraftNote,
-                          ].find(Boolean)
+                        ? copy.aiDraftReady
                         : undefined
                     }
                   />
