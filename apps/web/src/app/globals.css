@@ -50,6 +50,33 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-sans);
 }
 
+@keyframes settings-tab-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-tab-panel {
+  animation: settings-tab-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.settings-tab-panel-pending {
+  opacity: 0.72;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-tab-panel {
+    animation: none;
+  }
+}
+
 .display-xl {
   font-family: var(--font-sans);
   font-size: clamp(2.25rem, 4.5vw, 3rem);

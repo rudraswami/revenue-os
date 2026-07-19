@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Key, Trash2 } from "lucide-react";
+import { Key, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useMutationPendingId } from "@/hooks/use-mutation-pending-id";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { formatRelative } from "@/lib/crm";
 import { useAuthStore } from "@/stores/auth-store";
@@ -54,6 +55,8 @@ export function ApiKeysSettingsCard() {
       apiFetch(`/api-keys/${id}`, { method: "DELETE", token: token ?? undefined }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["api-keys"] }),
   });
+
+  const pendingRevokeId = useMutationPendingId(revokeMutation);
 
   if (isError) {
     return (
@@ -106,9 +109,9 @@ curl -H "Authorization: Bearer ${newSecret}" \\
         <Button
           type="button"
           size="sm"
-         
           className="rounded-xl"
           disabled={createMutation.isPending || !name.trim()}
+          isLoading={createMutation.isPending}
           onClick={() => createMutation.mutate()}
         >
           Create key
@@ -142,7 +145,11 @@ curl -H "Authorization: Bearer ${newSecret}" \\
                 disabled={revokeMutation.isPending}
                 onClick={() => revokeMutation.mutate(k.id)}
               >
-                <Trash2 className="h-4 w-4" />
+                {pendingRevokeId === k.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
               </Button>
             </li>
           ))}

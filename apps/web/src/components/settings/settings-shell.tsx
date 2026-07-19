@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   BookOpen,
   CreditCard,
@@ -28,6 +28,7 @@ import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
 import { IndustryTemplateCard } from "@/components/settings/industry-template-card";
 import { IntelligenceTabHeader } from "@/components/settings/intelligence-tab-header";
 import { SettingsCollapsibleSection } from "@/components/settings/settings-collapsible-section";
+import { SettingsTabTransition } from "@/components/settings/settings-tab-transition";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SettingsAccessPanel } from "@/components/settings/settings-plan-gate";
 import { SettingsTabSkeleton } from "@/components/settings/settings-tab-skeletons";
@@ -289,6 +290,7 @@ export function SettingsShell() {
   const searchParams = useSearchParams();
   const { t } = useI18n();
   const [isTabPending, startTabTransition] = useTransition();
+  const mobileNavRef = useRef<HTMLDivElement>(null);
   const role = useAuthStore((s) => s.role);
   const isAdmin = canManageTeam(role);
   const roleReady = !!role;
@@ -338,14 +340,17 @@ export function SettingsShell() {
     setActiveTab(resolved);
   }, [searchParams, accessCtx]);
 
+  useEffect(() => {
+    const el = mobileNavRef.current?.querySelector<HTMLElement>(`[data-tab-id="${activeTab}"]`);
+    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [activeTab]);
+
   const current = tabById[activeTab] ?? buildTabMeta(activeTab, t);
   const tabAllowed = canAccessSettingsTab(activeTab, accessCtx);
   const showAccessPanel = !tabAllowed && roleReady;
   const contentLoading = bootstrapLoading && !bootstrap;
   const showTabSkeleton =
-    !roleReady ||
-    isTabPending ||
-    (contentLoading && activeTab === "workspace");
+    !roleReady || (contentLoading && activeTab === "workspace");
 
   function selectTab(id: SettingsTabId) {
     if (!canAccessSettingsTabRole(id, role) || id === activeTab) return;
@@ -404,7 +409,7 @@ export function SettingsShell() {
                             type="button"
                             onClick={() => selectTab(tab.id)}
                             className={cn(
-                              "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition",
+                              "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-200",
                               active
                                 ? "bg-accent/10 text-accent shadow-sm"
                                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -427,7 +432,10 @@ export function SettingsShell() {
         </nav>
 
         <div className="lg:hidden">
-          <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+          <div
+            ref={mobileNavRef}
+            className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar scroll-smooth"
+          >
             {visibleTabs.map((tab) => {
               const active = activeTab === tab.id;
               const locked = navTabLocked(tab.id);
@@ -435,9 +443,10 @@ export function SettingsShell() {
                 <button
                   key={tab.id}
                   type="button"
+                  data-tab-id={tab.id}
                   onClick={() => selectTab(tab.id)}
                   className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition-colors duration-150",
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition-all duration-200",
                     active
                       ? "bg-accent/10 text-accent ring-1 ring-accent/15"
                       : "bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -453,22 +462,29 @@ export function SettingsShell() {
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="mb-5 flex items-start gap-3">
+          <div
+            className={cn(
+              "mb-5 flex items-start gap-3 transition-opacity duration-200",
+              isTabPending && "opacity-80",
+            )}
+          >
             <div
               className={cn(
-                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bento-mint text-accent",
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bento-mint text-accent transition-transform duration-200",
                 current.iconClassName,
               )}
             >
               <current.icon className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-lg font-bold tracking-tight">{current.label}</h2>
-              <p className="mt-0.5 text-sm text-muted-foreground">{current.description}</p>
+              <p className="mt-0.5 min-h-[2.5rem] text-sm text-muted-foreground sm:min-h-[1.25rem]">
+                {current.description}
+              </p>
             </div>
           </div>
 
-          <div className="min-h-[640px] w-full">
+          <SettingsTabTransition tabKey={activeTab} isPending={isTabPending} className="min-h-[640px] w-full">
             {showTabSkeleton ? (
               <SettingsTabSkeleton tab={activeTab} />
             ) : showAccessPanel ? (
@@ -487,7 +503,7 @@ export function SettingsShell() {
                 bootstrapLoading={bootstrapLoading || isFetching}
               />
             )}
-          </div>
+          </SettingsTabTransition>
         </div>
       </div>
     </div>

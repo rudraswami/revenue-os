@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Link2, MousePointerClick, Trash2 } from "lucide-react";
+import { Copy, Link2, MousePointerClick, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useMutationPendingId } from "@/hooks/use-mutation-pending-id";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -81,6 +82,8 @@ export function TrackingLinksCard() {
     },
   });
 
+  const pendingDeleteId = useMutationPendingId(deleteMut);
+
   async function copyUrl(url: string, id: string) {
     await navigator.clipboard.writeText(url);
     setCopied(id);
@@ -139,6 +142,7 @@ export function TrackingLinksCard() {
       <Button
         size="sm"
         disabled={!name.trim() || !phone.trim() || createMut.isPending}
+        isLoading={createMut.isPending}
         onClick={() => createMut.mutate()}
       >
         Create tracked link
@@ -177,9 +181,14 @@ export function TrackingLinksCard() {
                     size="sm"
                     variant="ghost"
                     className="text-destructive"
+                    disabled={deleteMut.isPending}
                     onClick={() => deleteMut.mutate(link.id)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {pendingDeleteId === link.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>

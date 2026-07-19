@@ -24,6 +24,7 @@ import {
   KNOWLEDGE_UPLOAD_EXTENSIONS,
 } from "@growvisi/shared";
 import { useAuthStore } from "@/stores/auth-store";
+import { useMutationPendingId } from "@/hooks/use-mutation-pending-id";
 import { cn } from "@/lib/utils";
 
 const ACCEPT_UPLOAD = KNOWLEDGE_UPLOAD_EXTENSIONS.join(",");
@@ -149,6 +150,9 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
     if (!canManage || uploadMutation.isPending) return;
     uploadMutation.mutate(file);
   }
+
+  const pendingReindexId = useMutationPendingId(reindexMutation);
+  const pendingDeleteId = useMutationPendingId(deleteMutation);
 
   function startEdit(doc: KnowledgeDoc) {
     setEditingId(doc.id);
@@ -409,7 +413,11 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                         disabled={reindexMutation.isPending}
                         onClick={() => reindexMutation.mutate(doc.id)}
                       >
-                        <RefreshCw className="h-3.5 w-3.5" />
+                        {pendingReindexId === doc.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                       <Button
                         type="button"
@@ -420,7 +428,11 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                         onClick={() => deleteMutation.mutate(doc.id)}
                         aria-label="Delete"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        {pendingDeleteId === doc.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                     </div>
                   )}

@@ -1,11 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Webhook } from "lucide-react";
+import { Trash2, Webhook, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useMutationPendingId } from "@/hooks/use-mutation-pending-id";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { canManageTeam } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
@@ -95,6 +96,10 @@ export function WebhooksSettingsCard() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["webhooks"] }),
   });
 
+  const pendingTestId = useMutationPendingId(testMut);
+  const pendingDeleteId = useMutationPendingId(deleteMut);
+  const pendingToggle = toggleMut.isPending ? toggleMut.variables : undefined;
+
   function toggleEvent(id: string) {
     setEvents((prev) => (prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]));
   }
@@ -162,6 +167,7 @@ export function WebhooksSettingsCard() {
           <Button
             size="sm"
             disabled={!url.trim() || events.length === 0 || createMut.isPending}
+            isLoading={createMut.isPending}
             onClick={() => createMut.mutate()}
           >
             Add endpoint
@@ -191,7 +197,7 @@ export function WebhooksSettingsCard() {
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={ep.enabled}
-                    disabled={!isAdmin || toggleMut.isPending}
+                    disabled={!isAdmin || (toggleMut.isPending && pendingToggle?.id === ep.id)}
                     onCheckedChange={(enabled) => toggleMut.mutate({ id: ep.id, enabled })}
                   />
                   {isAdmin && (
@@ -201,6 +207,7 @@ export function WebhooksSettingsCard() {
                         variant="outline"
                         onClick={() => testMut.mutate(ep.id)}
                         disabled={testMut.isPending}
+                        isLoading={pendingTestId === ep.id}
                       >
                         Test
                       </Button>
@@ -208,9 +215,14 @@ export function WebhooksSettingsCard() {
                         size="sm"
                         variant="ghost"
                         className="text-destructive"
+                        disabled={deleteMut.isPending}
                         onClick={() => deleteMut.mutate(ep.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {pendingDeleteId === ep.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </>
                   )}
