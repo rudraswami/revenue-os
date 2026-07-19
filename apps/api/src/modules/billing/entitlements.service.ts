@@ -4,7 +4,7 @@ import { isProductionDeploy } from "../../config/production";
 import { metaReviewerEmail } from "../../config/meta-reviewer";
 import { PrismaService } from "../prisma/prisma.service";
 
-export type LimitReason = "seats" | "whatsapp" | "leads" | "agency_clients";
+export type LimitReason = "seats" | "whatsapp" | "leads" | "agency_clients" | "campaign_recipients";
 
 @Injectable()
 export class EntitlementsService {
@@ -46,6 +46,10 @@ export class EntitlementsService {
   suggestUpgrade(planId: GrowvisiPlanId, reason: LimitReason): GrowvisiPlanId {
     if (planId === "pro") return "pro";
     if (reason === "agency_clients") return "pro";
+    if (reason === "campaign_recipients") {
+      if (planId === "growth") return "pro";
+      return "growth";
+    }
     if (reason === "whatsapp") {
       if (planId === "trial" || planId === "starter") return "growth";
       return "pro";
@@ -272,6 +276,74 @@ export class EntitlementsService {
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
   }
 
+  async countMonthlyCampaignRecipientsSent(organizationId: string): Promise<number> {
+    const monthStart = new Date();
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+    return this.prisma.campaignRecipient.count({
+      where: {
+        campaign: { organizationId },
+        sentAt: { gte: monthStart },
+        status: { notIn: ["PENDING", "SKIPPED"] },
+      },
+    });
+  }
+
+  async assertCampaignPerSendLimit(
+    organizationId: string,
+    recipientCount: number,
+  ): Promise<void> {
+    const access = await this.assertHasAccess(organizationId);
+    const perSend = access.limits.maxCampaignRecipientsPerSend;
+    if (perSend <= 0) {
+      this.throwCapacityLimit({
+        code: "CAMPAIGN_NOT_AVAILABLE",
+        message: "Campaigns require the Growth plan or higher.",
+        reason: "campaign_recipients",
+        limit: 0,
+        used: 0,
+        planId: access.planId,
+      });
+    }
+    if (recipientCount > perSend) {
+      this.throwCapacityLimit({
+        code: "CAMPAIGN_RECIPIENT_LIMIT",
+        message: `Your ${access.planId} plan allows up to ${perSend.toLocaleString("en-IN")} recipients per campaign.`,
+        reason: "campaign_recipients",
+        limit: perSend,
+        used: recipientCount,
+        planId: access.planId,
+      });
+    }
+  }
+
+  async assertCampaignMonthlySendCapacity(
+    organizationId: string,
+    additionalRecipients: number,
+  ): Promise<void> {
+    const access = await this.assertHasAccess(organizationId);
+    const used = await this.countMonthlyCampaignRecipientsSent(organizationId);
+    const monthly = access.limits.monthlyCampaignRecipients;
+    if (used + additionalRecipients > monthly) {
+      this.throwCapacityLimit({
+        code: "CAMPAIGN_MONTHLY_LIMIT",
+        message: `You've sent ${used.toLocaleString("en-IN")} of ${monthly.toLocaleString("en-IN")} campaign messages this month on ${access.planId}. Upgrade for more.`,
+        reason: "campaign_recipients",
+        limit: monthly,
+        used,
+        planId: access.planId,
+      });
+    }
+  }
+
+  async assertCampaignRecipientCapacity(
+    organizationId: string,
+    additionalRecipients: number,
+  ): Promise<void> {
+    await this.assertCampaignPerSendLimit(organizationId, additionalRecipients);
+    await this.assertCampaignMonthlySendCapacity(organizationId, additionalRecipients);
+  }
+
   /** Throwing check for dashboard actions (add contact / outbound). */
   async assertCanCreateLead(organizationId: string): Promise<void> {
     const access = await this.assertHasAccess(organizationId);
@@ -299,13 +371,15 @@ export class EntitlementsService {
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
 
-    const [whatsappNumbers, teamMembers, monthlyLeads, agencyClients] = await Promise.all([
+    const [whatsappNumbers, teamMembers, monthlyLeads, agencyClients, monthlyCampaignRecipients] =
+      await Promise.all([
       this.prisma.whatsappAccount.count({ where: { organizationId, isActive: true } }),
       this.prisma.organizationMember.count({ where: { organizationId } }),
       this.prisma.lead.count({
         where: { organizationId, createdAt: { gte: monthStart } },
       }),
       this.prisma.agencyClient.count({ where: { agencyOrganizationId: organizationId } }),
+      this.countMonthlyCampaignRecipientsSent(organizationId),
     ]);
 
     const usage = {
@@ -313,6 +387,7 @@ export class EntitlementsService {
       teamMembers,
       monthlyLeads,
       agencyClients,
+      monthlyCampaignRecipients,
     };
     const limits = access.limits;
 

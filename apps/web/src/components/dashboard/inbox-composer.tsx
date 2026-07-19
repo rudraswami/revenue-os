@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronDown, Loader2, Send } from "lucide-react";
+import { ChevronDown, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { cn } from "@/lib/utils";
 
@@ -147,7 +148,7 @@ export function InboxComposer({
               disabled={!draft.trim() || sendPending || sendDisabled}
             >
               {sendPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <GrowvisiSpinner size="xs" />
               ) : (
                 <>
                   <Send className="mr-1.5 h-3.5 w-3.5 sm:hidden" />

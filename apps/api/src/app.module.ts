@@ -58,6 +58,7 @@ import { QUEUES } from "@growvisi/shared";
       { name: QUEUES.WHATSAPP_INBOUND },
       { name: QUEUES.AI_CLASSIFY },
       { name: QUEUES.AI_EMBED },
+      { name: QUEUES.CAMPAIGN_SEND },
     ),
     PrismaModule,
     HealthModule,

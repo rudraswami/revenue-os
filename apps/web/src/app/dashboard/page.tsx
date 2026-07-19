@@ -11,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { HomeRecommendationsPanel } from "@/components/dashboard/home-recommendations-panel";
+import { HomeCampaignRepliesPanel } from "@/components/dashboard/home-campaign-replies-panel";
 import { HomeConnectionHealthBanner } from "@/components/dashboard/home-connection-health-banner";
 import { HomeGoLiveBanner } from "@/components/dashboard/home-go-live-banner";
 import { HomeAgencyPortfolioBanner } from "@/components/dashboard/home-agency-portfolio-banner";
@@ -149,6 +150,21 @@ export default function DashboardPage() {
     placeholderData: (prev) => prev,
   });
 
+  const { data: billing } = useQuery({
+    queryKey: ["billing-status"],
+    queryFn: () =>
+      apiFetch<{ planId: string; entitlements?: { hasAccess: boolean } }>("/billing", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+    staleTime: STALE.config,
+  });
+
+  const campaignsPlanOk =
+    billing?.entitlements?.hasAccess &&
+    billing.planId !== "trial" &&
+    billing.planId !== "starter";
+
   const isLoading = (showAnalytics && funnelLoading) || convLoading;
   const dashboardError = showAnalytics ? funnelErrorObj ?? convErrorObj : convErrorObj;
   const trialOrPlanBlocked =
@@ -216,6 +232,10 @@ export default function DashboardPage() {
         slaSnapshot={slaSnapshot}
         teamWorkload={teamWorkload}
       />
+
+      <div className="mt-8">
+        <HomeCampaignRepliesPanel enabled={!!campaignsPlanOk} />
+      </div>
 
       <div className="mt-8">
         <HomeRecommendationsPanel />

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CreditCard, ExternalLink, Loader2 } from "lucide-react";
+import { CreditCard, ExternalLink } from "lucide-react";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
@@ -182,7 +183,7 @@ export function BillingSettingsCard() {
                     onClick={() => checkoutMutation.mutate(plan.id)}
                   >
                     {checkoutPlan === plan.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <GrowvisiSpinner size="xs" />
                     ) : isCurrent ? (
                       "Current plan"
                     ) : (
@@ -220,7 +221,7 @@ export function BillingSettingsCard() {
                 }}
               >
                 {cancelMutation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <GrowvisiSpinner size="xs" />
                 ) : (
                   "Cancel subscription"
                 )}

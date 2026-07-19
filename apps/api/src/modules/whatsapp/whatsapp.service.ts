@@ -48,7 +48,12 @@ import { BusinessEventService } from "../events/business-event.service";
 import { AssignmentService } from "../assignments/assignment.service";
 import { TrackingService } from "../tracking/tracking.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
+import {
+  mapInboundMessageStatusToCampaignStatus,
+  shouldAdvanceCampaignRecipientStatus,
+} from "./campaign-delivery.util";
 import { EntitlementsService } from "../billing/entitlements.service";
+import { attributeInboundCampaignReply } from "../campaigns/campaign-reply-attribution";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 
 @Injectable()
@@ -446,6 +451,20 @@ export class WhatsappService {
         .catch(() => undefined);
     }
 
+    if (!isReaction) {
+      void attributeInboundCampaignReply(this.prisma, {
+        organizationId,
+        whatsappAccountId,
+        contactPhone: from,
+        conversationId: conversation.id,
+        messageId: message.id,
+        leadId: lead?.id ?? null,
+      }).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Campaign reply attribution failed: ${msg}`);
+      });
+    }
+
     if (isNewLead && lead) {
       void this.webhooks.emit(organizationId, "lead.created", {
         leadId: lead.id,
@@ -521,13 +540,6 @@ export class WhatsappService {
     }
   }
 
-  private static CAMPAIGN_STATUS_RANK: Record<string, number> = {
-    SENT: 1,
-    DELIVERED: 2,
-    READ: 3,
-    FAILED: -1,
-  };
-
   /** Meta delivery webhooks → campaign recipient + aggregate counts. */
   private async updateCampaignRecipientStatus(
     organizationId: string,
@@ -543,21 +555,10 @@ export class WhatsappService {
     });
     if (!recipient) return;
 
-    const campaignStatus =
-      mapped === "DELIVERED"
-        ? "DELIVERED"
-        : mapped === "READ"
-          ? "READ"
-          : mapped === "FAILED"
-            ? "FAILED"
-            : mapped === "SENT"
-              ? "SENT"
-              : null;
+    const campaignStatus = mapInboundMessageStatusToCampaignStatus(mapped);
     if (!campaignStatus) return;
 
-    const prevRank = WhatsappService.CAMPAIGN_STATUS_RANK[recipient.status] ?? 0;
-    const newRank = WhatsappService.CAMPAIGN_STATUS_RANK[campaignStatus] ?? 0;
-    if (campaignStatus !== "FAILED" && newRank <= prevRank) return;
+    if (!shouldAdvanceCampaignRecipientStatus(recipient.status, campaignStatus)) return;
 
     await this.prisma.campaignRecipient.update({
       where: { id: recipient.id },

@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MessageSquarePlus } from "lucide-react";
+import { MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import {
   Dialog,
   DialogBody,
@@ -310,7 +311,7 @@ export function OutboundCompose({
           <Button type="button" onClick={() => sendMut.mutate()} disabled={!canSend}>
             {sendMut.isPending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…
+                <GrowvisiSpinner size="xs" className="mr-2" /> Sending…
               </>
             ) : (
               "Send message"

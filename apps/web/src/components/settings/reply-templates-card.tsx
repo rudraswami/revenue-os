@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MessageSquarePlus, Plus, Trash2 } from "lucide-react";
+import { MessageSquarePlus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { GrowvisiSpinner } from "@/components/ui/loading";
@@ -157,7 +157,7 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
               disabled={saveMutation.isPending}
               onClick={() => saveMutation.mutate(templates)}
             >
-              {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+              {saveMutation.isPending ? <GrowvisiSpinner size="xs" /> : "Save"}
             </Button>
           )}
         </div>

@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   CheckCircle2,
-  Loader2,
   MessageCircle,
   Plus,
   ShieldCheck,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
@@ -444,7 +444,7 @@ export default function WhatsappConnect({
               onClick={() => void handleConnect()}
             >
               {(phase === "waiting_meta" || phase === "saving") && (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <GrowvisiSpinner size="sm" />
               )}
               {metaCtaLabel}
             </Button>
@@ -523,7 +523,7 @@ export default function WhatsappConnect({
               onClick={() => void handleConnect()}
             >
               {(phase === "waiting_meta" || phase === "saving") && (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <GrowvisiSpinner size="sm" />
               )}
               {phase === "waiting_meta"
                 ? "Complete setup in the Facebook window…"

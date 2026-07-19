@@ -2,8 +2,9 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { canWrite } from "@/lib/permissions";
@@ -91,7 +92,7 @@ export function InsightActionButtons({
             disabled={apiMut.isPending}
             onClick={() => apiMut.mutate(action)}
           >
-            {apiMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : action.label}
+            {apiMut.isPending ? <GrowvisiSpinner size="xs" /> : action.label}
           </Button>
         ) : null,
       )}
@@ -106,7 +107,7 @@ export function InsightActionButtons({
           title="Snooze for 7 days"
         >
           {dismissMut.isPending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <GrowvisiSpinner size="xs" />
           ) : (
             <>
               <X className="h-3 w-3" />

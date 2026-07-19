@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { InboxCampaignAttributionBanner } from "@/components/dashboard/inbox-campaign-attribution-banner";
 import { InboxThreadSkeleton } from "@/components/ui/skeleton";
 import { LEAD_STAGES, STAGE_BADGE, formatInr } from "@/lib/crm";
 import { HOT_LEAD_SCORE_THRESHOLD, formatRelationshipPhase, type LeadStage, type ReplyDecision } from "@growvisi/shared";
@@ -89,6 +90,12 @@ interface ConversationDetail {
   } | null;
   requiresHuman?: boolean;
   handoffReason?: string | null;
+  campaignAttribution?: {
+    campaignId: string;
+    campaignName: string;
+    recipientId?: string;
+    attributedAt?: string;
+  } | null;
   assignment?: AssignmentExplain | null;
   aiContext?: InboxAiContext | null;
   assignedTo: { id: string; name: string | null; email: string } | null;
@@ -1041,6 +1048,9 @@ export default function InboxPage() {
                   )}
                 </div>
               </div>
+              {thread.campaignAttribution && (
+                <InboxCampaignAttributionBanner attribution={thread.campaignAttribution} />
+              )}
               <InboxThreadDetailsMobile
                 stage={thread.lead?.stage as LeadStage | undefined}
                 score={thread.lead?.score}

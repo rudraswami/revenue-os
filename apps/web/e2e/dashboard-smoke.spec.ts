@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const email = process.env.E2E_EMAIL ?? "meta.reviewer@growvisi.in";
-const password = process.env.E2E_PASSWORD ?? "MetaReview2026!Growvisi";
+const email = process.env.E2E_EMAIL;
+const password = process.env.E2E_PASSWORD;
 
 async function acceptCookiesIfVisible(page: Page) {
   const accept = page.getByRole("button", { name: /^accept$/i });
@@ -45,7 +45,7 @@ async function visitDashboardPath(page: Page, path: string) {
   await expect(page).not.toHaveURL(/\/onboarding/);
 }
 
-test.describe("Growvisi dashboard E2E", () => {
+test.describe("Growvisi public smoke", () => {
   test("marketing home loads", async ({ page }) => {
     await page.goto("/");
     await acceptCookiesIfVisible(page);
@@ -58,11 +58,21 @@ test.describe("Growvisi dashboard E2E", () => {
     await expect(page.getByLabel(/password/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
   });
+});
 
-  test("login → dashboard → conversations → settings", async ({ page }) => {
+test.describe("Growvisi dashboard E2E", () => {
+  test.beforeAll(() => {
+    if (!email || !password) {
+      throw new Error(
+        "E2E_EMAIL and E2E_PASSWORD are required. In CI these are set after db:seed (demo@growvisi.com).",
+      );
+    }
+  });
+
+  test("login → conversations → settings", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel(/email/i).fill(email);
-    await page.getByLabel(/password/i).fill(password);
+    await page.getByLabel(/email/i).fill(email!);
+    await page.getByLabel(/password/i).fill(password!);
     await page.getByRole("button", { name: /sign in/i }).click();
 
     const workspaceBtn = page.locator(".auth-workspace-btn").first();

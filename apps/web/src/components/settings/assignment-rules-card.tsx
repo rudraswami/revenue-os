@@ -1,9 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { GitBranch, Loader2, Plus, Trash2 } from "lucide-react";
+import { GitBranch, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -300,7 +301,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
                 disabled={mutation.isPending}
               >
                 {mutation.isPending ? (
-                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  <GrowvisiSpinner size="xs" className="mr-1" />
                 ) : null}
                 Save rules
               </Button>

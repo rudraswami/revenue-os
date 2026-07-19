@@ -1,9 +1,10 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ClipboardPaste, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { ClipboardPaste, ExternalLink, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
@@ -189,7 +190,7 @@ export function WhatsappTokenRefresh({
               disabled={!looksLikeMetaToken(accessToken) || mutation.isPending}
               onClick={() => mutation.mutate()}
             >
-              {mutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+              {mutation.isPending && <GrowvisiSpinner size="xs" className="mr-2" />}
               Save new token
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>

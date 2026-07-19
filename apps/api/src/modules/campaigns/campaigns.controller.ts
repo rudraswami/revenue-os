@@ -5,8 +5,10 @@ import {
   Get,
   Param,
   Post,
+  Res,
   UseGuards,
 } from "@nestjs/common";
+import type { Response } from "express";
 import {
   IsArray,
   IsDateString,
@@ -169,6 +171,32 @@ export class CampaignsController {
     return this.campaigns.previewAudience(user, dto.audience);
   }
 
+  @Get("metrics/replies")
+  replyMetrics(@CurrentUser() user: JwtPayload) {
+    return this.campaigns.getReplyMetrics(user);
+  }
+
+  @Get(":id/export")
+  exportRecipients(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Res() res: Response,
+  ) {
+    return this.campaigns.exportRecipientsCsv(user, id).then((csv) => {
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="growvisi-campaign-${id.slice(0, 8)}-recipients.csv"`,
+      );
+      res.send(csv);
+    });
+  }
+
+  @Get(":id/progress")
+  progress(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.campaigns.getProgress(user, id);
+  }
+
   @Get(":id")
   get(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.campaigns.get(user, id);
@@ -188,6 +216,14 @@ export class CampaignsController {
   @Roles(...MANAGE_ROLES)
   import(@CurrentUser() user: JwtPayload, @Body() dto: ImportCampaignDto) {
     return this.campaigns.createFromImport(user, dto);
+  }
+
+  @Post(":id/retry-failed")
+  @RequireEmailVerified()
+  @RequireCapability("campaigns.manage")
+  @Roles(...MANAGE_ROLES)
+  retryFailed(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.campaigns.retryFailed(user, id);
   }
 
   @Post(":id/send")

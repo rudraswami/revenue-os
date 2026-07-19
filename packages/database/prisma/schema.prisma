@@ -868,6 +868,7 @@ model Campaign {
   sentCount       Int            @default(0)
   deliveredCount  Int            @default(0)
   failedCount     Int            @default(0)
+  replyCount      Int            @default(0)
   createdById     String?
   scheduledAt     DateTime?
   startedAt       DateTime?
@@ -892,12 +893,17 @@ model CampaignRecipient {
   status      CampaignRecipientStatus @default(PENDING)
   error       String?
   sentAt      DateTime?
+  repliedAt   DateTime?
+  conversationId String?
+  replyMessageId String?
   createdAt   DateTime                @default(now())
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, status])
   @@index([waMessageId])
+  @@index([campaignId, phone])
+  @@index([conversationId])
   @@map("campaign_recipients")
 }
 

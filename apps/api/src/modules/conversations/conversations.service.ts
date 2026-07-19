@@ -24,6 +24,7 @@ import {
   parseAssignmentMeta,
   withAssignmentMeta,
 } from "./assignment-metadata";
+import { parseCampaignAttributionMeta } from "../campaigns/campaign-reply-attribution";
 
 @Injectable()
 export class ConversationsService {
@@ -462,6 +463,7 @@ export class ConversationsService {
       requiresHuman: meta.requiresHuman === true,
       handoffReason: typeof meta.handoffReason === "string" ? meta.handoffReason : null,
       handoffAt: typeof meta.handoffAt === "string" ? meta.handoffAt : null,
+      campaignAttribution: parseCampaignAttributionMeta(meta),
       pendingDraft:
         meta.pendingDraft && typeof meta.pendingDraft === "object"
           ? (meta.pendingDraft as {

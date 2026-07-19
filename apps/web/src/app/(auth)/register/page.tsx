@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { GrowvisiLogoLoader } from "@/components/ui/loading";
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthPageTransition } from "@/components/auth/auth-page-transition";
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -155,7 +155,7 @@ function RegisterForm() {
               aria-live="polite"
               aria-busy="true"
             >
-              <Loader2 className="h-8 w-8 animate-spin text-accent" aria-hidden />
+              <GrowvisiLogoLoader size="md" showOrbit />
               <p className="text-sm font-medium text-foreground">{overlayMessage}</p>
               {submitPhase === "redirecting" && (
                 <p className="text-xs text-muted-foreground">{t("auth.workspaceReady")}</p>

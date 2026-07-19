@@ -50,10 +50,12 @@ jobs:
       - run: pnpm db:push
         env:
           DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
 
       - run: pnpm typecheck
         env:
           DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
           JWT_SECRET: ci-test-secret-minimum-32-characters-long
           REDIS_URL: redis://localhost:6379
 
@@ -61,6 +63,7 @@ jobs:
         run: pnpm test
         env:
           DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
           JWT_SECRET: ci-test-secret-minimum-32-characters-long
           REDIS_URL: redis://localhost:6379
 
@@ -70,4 +73,29 @@ jobs:
       - run: pnpm build
         env:
           DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
           JWT_SECRET: ci-test-secret-minimum-32-characters-long
+          REDIS_URL: redis://localhost:6379
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api/v1
+
+      - name: Seed E2E user
+        run: pnpm --filter @growvisi/database exec tsx prisma/seed.ts
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          SEED_USER_EMAIL: demo@growvisi.com
+          SEED_USER_PASSWORD: demo123456
+
+      - name: Install Playwright
+        run: pnpm --filter @growvisi/web exec playwright install chromium --with-deps
+
+      - name: E2E smoke tests
+        run: pnpm --filter @growvisi/web test:e2e
+        env:
+          CI: true
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          JWT_SECRET: ci-test-secret-minimum-32-characters-long
+          REDIS_URL: redis://localhost:6379
+          E2E_EMAIL: demo@growvisi.com
+          E2E_PASSWORD: demo123456

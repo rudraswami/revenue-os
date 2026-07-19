@@ -6,7 +6,6 @@ import {
   ArrowRight,
   CheckCircle2,
   CircleDashed,
-  Loader2,
   MessageSquare,
   RefreshCw,
   Shield,
@@ -14,6 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { apiFetch } from "@/lib/api-client";
 import {
   connectionSummary,
@@ -78,7 +78,7 @@ export function WhatsappConnectionHealth() {
   if (isLoading || !data) {
     return (
       <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-5 py-6 text-sm text-muted-foreground shadow-sm">
-        <Loader2 className="h-4 w-4 animate-spin text-accent" />
+        <GrowvisiSpinner size="xs" className="text-accent" />
         Loading connection status…
       </div>
     );

@@ -4,6 +4,7 @@ export const QUEUES = {
   /** Reserved — customer replies stay in Meta Business Agent; Growvisi does not auto-send WhatsApp. */
   AI_RESPOND: "ai.respond",
   AI_EMBED: "ai.embed",
+  CAMPAIGN_SEND: "campaign.send",
   NOTIFICATIONS: "notifications.dispatch",
   ANALYTICS: "analytics.aggregate",
 } as const;

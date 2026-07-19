@@ -1,14 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
   ChevronRight,
+  Download,
   FileUp,
-  Loader2,
   Megaphone,
+  MessageCircleReply,
   Send,
   Trash2,
   Upload,
@@ -17,6 +19,11 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import {
+  CampaignDeliveryFunnel,
+  buildCampaignDeliveryStats,
+} from "@/components/dashboard/campaign-delivery-funnel";
+import { GrowvisiSpinner } from "@/components/ui/loading";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { apiFetch, ApiError, apiDownload, toUserMessage } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import {
@@ -51,6 +58,7 @@ import {
   defaultScheduleLocal,
   localDatetimeToIso,
   toDatetimeLocalValue,
+  formatIstPreview,
   type CampaignSaveMode,
 } from "@/components/dashboard/campaign-schedule-picker";
 import { TemplatePreviewBubble } from "@/components/dashboard/template-preview-bubble";
@@ -65,10 +73,13 @@ interface CampaignRow {
   sentCount: number;
   failedCount: number;
   deliveredCount: number;
+  replyCount?: number;
   createdAt: string;
   scheduledAt?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
+  deliveryPct?: number;
+  replyRatePct?: number;
 }
 
 interface PreviewSample {
@@ -83,6 +94,17 @@ interface CampaignDetail extends CampaignRow {
   whatsappAccountId?: string | null;
   messageBody?: string | null;
   scheduledAt?: string | null;
+  readCount?: number;
+  replyCount?: number;
+  replyRatePct?: number;
+  deliveryStats?: {
+    pending: number;
+    sent: number;
+    delivered: number;
+    read: number;
+    failed: number;
+    replied?: number;
+  };
   audienceFilter?: {
     source?: string;
     languageCode?: string;
@@ -96,11 +118,15 @@ interface CampaignDetail extends CampaignRow {
     status: string;
     error?: string | null;
     sentAt?: string | null;
+    repliedAt?: string | null;
+    conversationId?: string | null;
   }>;
+  recipientsTruncated?: boolean;
 }
 
 type CreateMode = "audience" | "import";
 type ListFilter = "all" | "draft" | "scheduled" | "sent";
+type RecipientFilter = "all" | "pending" | "sent" | "delivered" | "read" | "failed" | "replied";
 
 const LIST_FILTERS: { id: ListFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -108,6 +134,40 @@ const LIST_FILTERS: { id: ListFilter; label: string }[] = [
   { id: "scheduled", label: "Scheduled" },
   { id: "sent", label: "Sent" },
 ];
+
+const CAMPAIGN_WA_ACCOUNT_KEY = "growvisi:campaign-whatsapp-account-id";
+
+function CampaignListMetrics({
+  deliveryPct,
+  replyRatePct,
+  sent,
+}: {
+  deliveryPct: number;
+  replyRatePct: number;
+  sent: boolean;
+}) {
+  if (!sent) return null;
+  return (
+    <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-whatsapp transition-all"
+            style={{ width: `${Math.min(100, deliveryPct)}%` }}
+          />
+        </div>
+        <span className="w-8 text-right text-xs font-bold tabular-nums text-foreground">
+          {deliveryPct}%
+        </span>
+      </div>
+      {replyRatePct > 0 && (
+        <span className="text-[11px] font-medium text-violet-700">
+          {replyRatePct}% replied
+        </span>
+      )}
+    </div>
+  );
+}
 
 function parseCsvRecipients(text: string): Array<{ phone: string; name?: string }> {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
@@ -128,6 +188,7 @@ function parseCsvRecipients(text: string): Array<{ phone: string; name?: string 
 }
 
 export default function CampaignsPage() {
+  const searchParams = useSearchParams();
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canManage = canManageCampaigns(role);
@@ -171,6 +232,12 @@ export default function CampaignsPage() {
   const [detailScheduleLocal, setDetailScheduleLocal] = useState(defaultScheduleLocal);
   const [whatsappAccountId, setWhatsappAccountId] = useState<string>("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [recipientFilter, setRecipientFilter] = useState<RecipientFilter>("all");
+
+  useEffect(() => {
+    const campaignId = searchParams.get("campaign");
+    if (campaignId) setDetailId(campaignId);
+  }, [searchParams]);
 
   const { data: whatsappAccounts } = useQuery({
     queryKey: QUERY_KEYS.whatsappAccounts,
@@ -185,11 +252,31 @@ export default function CampaignsPage() {
 
   const activeAccounts = (whatsappAccounts ?? []).filter((a) => a.isActive);
 
+  useEffect(() => {
+    if (activeAccounts.length === 0) return;
+    const saved = localStorage.getItem(CAMPAIGN_WA_ACCOUNT_KEY);
+    if (saved && activeAccounts.some((a) => a.id === saved)) {
+      setWhatsappAccountId(saved);
+    } else if (!whatsappAccountId && activeAccounts.length === 1) {
+      setWhatsappAccountId(activeAccounts[0].id);
+    }
+  }, [activeAccounts, whatsappAccountId]);
+
+  useEffect(() => {
+    if (whatsappAccountId) {
+      localStorage.setItem(CAMPAIGN_WA_ACCOUNT_KEY, whatsappAccountId);
+    }
+  }, [whatsappAccountId]);
+
   const { data: campaigns, isLoading, isError, refetch } = useQuery({
     queryKey: ["campaigns"],
     queryFn: () => apiFetch<CampaignRow[]>("/campaigns", { token: token ?? undefined }),
     enabled: !!token && campaignsPlanOk,
     retry: false,
+    refetchInterval: (query) => {
+      const rows = query.state.data;
+      return rows?.some((c) => c.status === "RUNNING") ? 3_000 : false;
+    },
   });
 
   const { data: tags } = useQuery({
@@ -202,6 +289,32 @@ export default function CampaignsPage() {
     queryKey: ["campaign", detailId],
     queryFn: () => apiFetch<CampaignDetail>(`/campaigns/${detailId}`, { token: token ?? undefined }),
     enabled: !!token && !!detailId && campaignsPlanOk,
+    refetchInterval: (query) =>
+      query.state.data?.status === "RUNNING" ? 3_000 : false,
+  });
+
+  interface CampaignProgress {
+    status: CampaignStatus;
+    totalRecipients: number;
+    progressPct: number;
+    deliveryPct: number;
+    pending: number;
+    sent: number;
+    delivered: number;
+    read: number;
+    failed: number;
+    attempted: number;
+    deliveredOrRead: number;
+  }
+
+  const { data: progress } = useQuery({
+    queryKey: ["campaign-progress", detailId],
+    queryFn: () =>
+      apiFetch<CampaignProgress>(`/campaigns/${detailId}/progress`, {
+        token: token ?? undefined,
+      }),
+    enabled: !!token && !!detailId && campaignsPlanOk && detail?.status === "RUNNING",
+    refetchInterval: 3_000,
   });
 
   function audience() {
@@ -307,10 +420,30 @@ export default function CampaignsPage() {
       apiFetch(`/campaigns/${id}/send`, { method: "POST", token: token ?? undefined }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["campaigns"] });
-      if (detailId) void qc.invalidateQueries({ queryKey: ["campaign", detailId] });
+      if (detailId) {
+        void qc.invalidateQueries({ queryKey: ["campaign", detailId] });
+        void qc.invalidateQueries({ queryKey: ["campaign-progress", detailId] });
+      }
     },
     onError: (err) =>
-      setError(toUserMessage(err, "Could not send campaign")),
+      setError(toUserMessage(err, "Could not start campaign send")),
+  });
+
+  const retryMut = useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/campaigns/${id}/retry-failed`, {
+        method: "POST",
+        token: token ?? undefined,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["campaigns"] });
+      if (detailId) {
+        void qc.invalidateQueries({ queryKey: ["campaign", detailId] });
+        void qc.invalidateQueries({ queryKey: ["campaign-progress", detailId] });
+      }
+    },
+    onError: (err) =>
+      setError(toUserMessage(err, "Could not retry failed recipients")),
   });
 
   const deleteMut = useMutation({
@@ -654,7 +787,7 @@ export default function CampaignsPage() {
                   disabled={previewMut.isPending}
                 >
                   {previewMut.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <GrowvisiSpinner size="sm" />
                   ) : (
                     <Users className="h-4 w-4" />
                   )}
@@ -670,12 +803,12 @@ export default function CampaignsPage() {
             <div className="flex-1" />
             {mode === "audience" ? (
               <Button size="sm" onClick={() => createMut.mutate()} disabled={!canSubmitAudience}>
-                {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {createMut.isPending ? <GrowvisiSpinner size="sm" /> : null}
                 {saveMode === "schedule" ? "Schedule campaign" : "Save campaign"}
               </Button>
             ) : (
               <Button size="sm" onClick={() => importMut.mutate()} disabled={!canSubmitImport}>
-                {importMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {importMut.isPending ? <GrowvisiSpinner size="sm" /> : null}
                 {saveMode === "schedule" ? "Schedule import" : "Import & save"}
               </Button>
             )}
@@ -719,11 +852,14 @@ export default function CampaignsPage() {
               <li key={c.id}>
                 <button
                   type="button"
-                  className="flex w-full flex-wrap items-center gap-3 px-5 py-4 text-left transition hover:bg-muted/30"
+                  className="group flex w-full flex-wrap items-center gap-3 px-5 py-4 text-left transition hover:bg-muted/30"
                   onClick={() => setDetailId(c.id)}
                 >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent/15 to-violet-100 text-accent transition group-hover:from-accent/25">
+                    <Megaphone className="h-4 w-4" />
+                  </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate font-semibold text-foreground">{c.name}</p>
                       <span
                         className={cn(
@@ -739,9 +875,18 @@ export default function CampaignsPage() {
                           {formatDateTimeIst(c.scheduledAt)}
                         </span>
                       )}
+                      {(c.replyCount ?? 0) > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
+                          <MessageCircleReply className="h-3 w-3" />
+                          {c.replyCount} {c.replyCount === 1 ? "reply" : "replies"}
+                        </span>
+                      )}
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {c.totalRecipients} recipients
+                      {c.status === "RUNNING" && (
+                        <span className="font-medium text-amber-700"> · Sending…</span>
+                      )}
                       {c.sentCount > 0 && ` · ${c.sentCount} sent`}
                       {c.deliveredCount > 0 && ` · ${c.deliveredCount} delivered`}
                       {c.failedCount > 0 && ` · ${c.failedCount} failed`}
@@ -749,7 +894,12 @@ export default function CampaignsPage() {
                       {` · ${formatDate(c.createdAt)}`}
                     </p>
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <CampaignListMetrics
+                    deliveryPct={c.deliveryPct ?? 0}
+                    replyRatePct={c.replyRatePct ?? 0}
+                    sent={c.sentCount > 0}
+                  />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5" />
                 </button>
               </li>
             ))}
@@ -809,58 +959,83 @@ export default function CampaignsPage() {
                     )}
                   </div>
 
-                  {detail.totalRecipients > 0 && (
-                    <div className="mb-4">
-                      <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                        <span>Delivery progress</span>
+                  {detail.status === "RUNNING" && progress && (
+                    <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3">
+                      <div className="mb-2 flex items-center justify-between text-xs font-medium text-amber-950">
+                        <span>Sending in progress…</span>
                         <span>
-                          {detail.sentCount} sent
-                          {detail.deliveredCount > 0 && ` · ${detail.deliveredCount} delivered`}
-                          {" / "}
-                          {detail.totalRecipients}
+                          {progress.attempted}/{progress.totalRecipients} ({progress.progressPct}%)
                         </span>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div className="h-2 overflow-hidden rounded-full bg-amber-100">
                         <div
                           className="h-full rounded-full bg-accent transition-all"
-                          style={{
-                            width: `${Math.min(100, (detail.sentCount / detail.totalRecipients) * 100)}%`,
-                          }}
+                          style={{ width: `${progress.progressPct}%` }}
                         />
                       </div>
-                      {detail.deliveredCount > 0 && (
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-whatsapp transition-all"
-                            style={{
-                              width: `${Math.min(100, (detail.deliveredCount / detail.totalRecipients) * 100)}%`,
-                            }}
-                          />
-                        </div>
-                      )}
+                      <p className="mt-2 text-xs text-amber-900/80">
+                        Delivered or read: {progress.deliveredOrRead} · Failed: {progress.failed}
+                      </p>
                     </div>
                   )}
 
-                  {detail.whatsappAccountId && (
-                    <p className="mb-4 text-xs text-muted-foreground">
-                      Send from:{" "}
-                      <strong className="text-foreground">
-                        {activeAccounts.find((a) => a.id === detail.whatsappAccountId)
-                          ?.displayPhoneNumber ?? "Selected number"}
-                      </strong>
-                    </p>
+                  {detail.totalRecipients > 0 && (
+                    <div className="mb-4">
+                      <p className="mb-2 text-xs font-medium text-muted-foreground">
+                        Delivery funnel
+                      </p>
+                      <CampaignDeliveryFunnel
+                        stats={
+                          detail.deliveryStats
+                            ? {
+                                total: detail.totalRecipients,
+                                ...detail.deliveryStats,
+                                replied:
+                                  detail.deliveryStats.replied ?? detail.replyCount ?? 0,
+                              }
+                            : buildCampaignDeliveryStats({
+                                totalRecipients: detail.totalRecipients,
+                                sentCount: detail.sentCount,
+                                deliveredCount: detail.deliveredCount,
+                                failedCount: detail.failedCount,
+                                readCount: detail.readCount,
+                                replyCount: detail.replyCount,
+                              })
+                        }
+                      />
+                    </div>
                   )}
 
-                  <div className="mb-4 grid grid-cols-2 gap-3 text-sm">
+                  <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
                     <Stat label="Recipients" value={String(detail.totalRecipients)} />
-                    <Stat label="Sent" value={String(detail.sentCount)} />
                     <Stat label="Delivered" value={String(detail.deliveredCount)} />
-                    <Stat label="Failed" value={String(detail.failedCount)} />
                     <Stat
-                      label="Created"
-                      value={formatDate(detail.createdAt)}
+                      label="Replies"
+                      value={String(detail.replyCount ?? detail.deliveryStats?.replied ?? 0)}
+                      highlight={(detail.replyCount ?? 0) > 0}
                     />
+                    <Stat label="Sent" value={String(detail.sentCount)} />
+                    <Stat label="Read" value={String(detail.readCount ?? detail.deliveryStats?.read ?? 0)} />
+                    <Stat label="Failed" value={String(detail.failedCount)} />
                   </div>
+
+                  {(detail.whatsappAccountId || detail.createdAt) && (
+                    <p className="mb-4 text-xs text-muted-foreground">
+                      {detail.whatsappAccountId && (
+                        <>
+                          Send from:{" "}
+                          <strong className="text-foreground">
+                            {activeAccounts.find((a) => a.id === detail.whatsappAccountId)
+                              ?.displayPhoneNumber ?? "Selected number"}
+                          </strong>
+                        </>
+                      )}
+                      {detail.whatsappAccountId && detail.createdAt && (
+                        <span className="mx-2 text-border">·</span>
+                      )}
+                      {detail.createdAt && <>Created {formatDate(detail.createdAt)}</>}
+                    </p>
+                  )}
 
                   {detail.templateName && (
                     <div className="mb-4 rounded-xl border border-border/80 bg-background p-3">
@@ -883,7 +1058,7 @@ export default function CampaignsPage() {
                   {(detail.status === "DRAFT" || detail.status === "FAILED") && (
                     <div className="mb-5 rounded-xl border border-border/80 p-3">
                       <p className="text-xs font-medium text-muted-foreground">
-                        Schedule instead of sending now
+                        Schedule instead of sending now (IST)
                       </p>
                       <Input
                         type="datetime-local"
@@ -892,6 +1067,11 @@ export default function CampaignsPage() {
                         className="mt-2 h-10 text-sm"
                         min={toDatetimeLocalValue(new Date(Date.now() + 6 * 60_000))}
                       />
+                      {formatIstPreview(detailScheduleLocal) && (
+                        <p className="mt-2 text-xs font-medium text-foreground">
+                          Sends {formatIstPreview(detailScheduleLocal)} IST
+                        </p>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -906,7 +1086,7 @@ export default function CampaignsPage() {
                         }}
                       >
                         {scheduleMut.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <GrowvisiSpinner size="sm" />
                         ) : (
                           <CalendarClock className="h-4 w-4" />
                         )}
@@ -915,11 +1095,65 @@ export default function CampaignsPage() {
                     </div>
                   )}
 
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">
-                    Recipients
-                  </p>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Recipients
+                      {detail.recipientsTruncated && (
+                        <span className="ml-1 font-normal text-muted-foreground/80">
+                          (showing first 500 of {detail.totalRecipients})
+                        </span>
+                      )}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {detail.totalRecipients > 0 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1.5 text-xs"
+                          onClick={() => {
+                            if (!token || !detail.id) return;
+                            void apiDownload(
+                              `/campaigns/${detail.id}/export`,
+                              `growvisi-campaign-${detail.name.replace(/\s+/g, "-").slice(0, 24)}.csv`,
+                              token,
+                            );
+                          }}
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Export CSV
+                        </Button>
+                      )}
+                      <div className="flex flex-wrap gap-1">
+                      {(
+                        [
+                          ["all", "All"],
+                          ["replied", "Replied"],
+                          ["delivered", "Delivered"],
+                          ["read", "Read"],
+                          ["failed", "Failed"],
+                          ["pending", "Pending"],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <FilterChip
+                          key={id}
+                          active={recipientFilter === id}
+                          onClick={() => setRecipientFilter(id)}
+                        >
+                          {label}
+                        </FilterChip>
+                      ))}
+                      </div>
+                    </div>
+                  </div>
                   <ul className="divide-y divide-border/60 rounded-xl border border-border/80">
-                    {detail.recipients.map((r) => (
+                    {detail.recipients
+                      .filter((r) => {
+                        if (recipientFilter === "all") return true;
+                        if (recipientFilter === "replied") return !!r.repliedAt;
+                        return r.status === recipientFilter.toUpperCase();
+                      })
+                      .map((r) => (
                       <li key={r.id} className="px-3 py-2.5">
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
@@ -930,18 +1164,35 @@ export default function CampaignsPage() {
                               <p className="text-xs text-muted-foreground">{r.phone}</p>
                             )}
                           </div>
-                          <span
-                            className={cn(
-                              "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
-                              r.status === "SENT" || r.status === "DELIVERED"
-                                ? "bg-bento-mint text-accent"
-                                : r.status === "FAILED"
-                                  ? "bg-destructive/10 text-destructive"
-                                  : "bg-muted text-muted-foreground",
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            {r.repliedAt && (
+                              <Link
+                                href={
+                                  r.conversationId
+                                    ? `/dashboard/inbox?c=${r.conversationId}`
+                                    : "/dashboard/inbox"
+                                }
+                                className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-800 hover:bg-violet-200/80"
+                              >
+                                <MessageCircleReply className="h-3 w-3" />
+                                Replied
+                              </Link>
                             )}
-                          >
-                            {r.status}
-                          </span>
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-0.5 text-xs font-semibold",
+                                r.status === "SENT" ||
+                                r.status === "DELIVERED" ||
+                                r.status === "READ"
+                                  ? "bg-bento-mint text-accent"
+                                  : r.status === "FAILED"
+                                    ? "bg-destructive/10 text-destructive"
+                                    : "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {r.status}
+                            </span>
+                          </div>
                         </div>
                         {r.error && (
                           <p className="mt-1 text-xs text-destructive">{r.error}</p>
@@ -960,6 +1211,26 @@ export default function CampaignsPage() {
                     {error}
                   </p>
                 )}
+                {(detail.status === "COMPLETED" || detail.status === "FAILED") &&
+                  detail.failedCount > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={retryMut.isPending}
+                      onClick={() => {
+                        setError(null);
+                        retryMut.mutate(detail.id);
+                      }}
+                    >
+                      {retryMut.isPending ? (
+                        <GrowvisiSpinner size="sm" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      Retry failed ({detail.failedCount})
+                    </Button>
+                  )}
                 {detail.status === "SCHEDULED" && (
                   <div className="flex gap-2">
                     <Button
@@ -971,7 +1242,7 @@ export default function CampaignsPage() {
                       disabled={sendMut.isPending}
                     >
                       {sendMut.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <GrowvisiSpinner size="sm" />
                       ) : (
                         <Send className="h-4 w-4" />
                       )}
@@ -996,7 +1267,7 @@ export default function CampaignsPage() {
                     disabled={sendMut.isPending}
                   >
                     {sendMut.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <GrowvisiSpinner size="sm" />
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
@@ -1045,13 +1316,28 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-border/80 bg-background px-3 py-2">
-      <p className="text-xs font-medium text-muted-foreground">
-        {label}
+    <div
+      className={cn(
+        "rounded-xl border px-3 py-2.5",
+        highlight
+          ? "border-violet-200/80 bg-gradient-to-br from-violet-50/90 to-background"
+          : "border-border/80 bg-background",
+      )}
+    >
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className={cn("text-lg font-bold tabular-nums", highlight && "text-violet-900")}>
+        {value}
       </p>
-      <p className="text-sm font-bold">{value}</p>
     </div>
   );
 }
