@@ -4,9 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
-import { BusinessEmployeeProfileCard } from "@/components/dashboard/business-employee-profile-card";
 import { DailyDigestCard } from "@/components/dashboard/daily-digest-card";
-import { IntelligenceReplySettingsCard } from "@/components/dashboard/intelligence-reply-settings-card";
+import { WhatsAppAutoReplySetup } from "@/components/dashboard/whatsapp-auto-reply-setup";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -185,15 +184,15 @@ export default function AutomationsPage() {
     <div className="dashboard-page">
       <PageHeader
         title="Automations"
-        description="Server-side workflows that help your team close faster — saved per workspace."
+        description="Set up WhatsApp replies and team workflows — saved per workspace."
         badge={
           <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-bold text-accent">
-            {activeCount} active
+            {activeCount} team workflows on
           </span>
         }
         action={
           <Button variant="outline" size="sm" className="rounded-xl" asChild>
-            <Link href="/dashboard/ai">Intelligence</Link>
+            <Link href="/dashboard/ai">Business Knowledge</Link>
           </Button>
         }
       />
@@ -205,22 +204,16 @@ export default function AutomationsPage() {
         />
       ) : null}
 
-      <div className="mb-8 space-y-6">
-        <BusinessEmployeeProfileCard />
-        <div className="grid gap-6 lg:grid-cols-2">
-          <DailyDigestCard />
-          <IntelligenceReplySettingsCard />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Reply policy is also in{" "}
-          <Link href="/dashboard/settings?tab=intelligence" className="font-semibold text-accent hover:underline">
-            Settings → Intelligence
-          </Link>
-          .
+      <WhatsAppAutoReplySetup />
+
+      <div className="my-10 border-t border-border/60" />
+
+      <div className="mb-6">
+        <h2 className="text-base font-bold text-foreground">Team workflows</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Email alerts and pipeline updates that run in the background — separate from WhatsApp replies.
         </p>
       </div>
-
-      {/* Stats bar */}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-bento-mint/40 p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white">
@@ -249,17 +242,17 @@ export default function AutomationsPage() {
 
       <DashboardPanel
         noPadding
-        className="mb-8 border-accent/20 bg-bento-mint/40"
+        className="mb-8"
         delay={0.05}
       >
         <div className="p-5 text-sm">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-accent" />
-            <p className="font-semibold">AI-powered revenue workflows</p>
+            <p className="font-semibold">How team workflows run</p>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Stage updates and hot-lead alerts fire when AI classifies messages. Follow-up and stale-deal
-            reminders run once daily. Manual stage moves can trigger email alerts when enabled.
+            reminders run once daily.
           </p>
         </div>
       </DashboardPanel>
@@ -364,6 +357,10 @@ export default function AutomationsPage() {
           })}
         </div>
       )}
+
+      <div className="mt-10">
+        <DailyDigestCard />
+      </div>
 
       {/* Automation execution log */}
       <div className="mt-8">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   BusinessEmployeeProfile,
@@ -17,6 +18,7 @@ import { apiFetch } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 
 type ProfileDraft = {
   voice: NonNullable<BusinessEmployeeProfile["voice"]>;
@@ -115,13 +117,18 @@ function ToggleRow({
   );
 }
 
-export function BusinessEmployeeProfileCard() {
+export function BusinessEmployeeProfileCard({
+  variant = "full",
+}: {
+  variant?: "full" | "compact";
+}) {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const canManage = canManageCampaigns(role);
   const queryClient = useQueryClient();
   const { success, error: toastError } = useToast();
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(variant === "full");
 
   const { data, isLoading } = useQuery({
     queryKey: ["intelligence-settings"],
@@ -177,8 +184,12 @@ export function BusinessEmployeeProfileCard() {
 
   return (
     <DashboardPanel
-      title="How should Growvisi represent you?"
-      description="Voice, greetings, and escalation details used when Growvisi drafts or sends simple replies on WhatsApp."
+      title={variant === "compact" ? "Your greeting messages" : "How should Growvisi represent you?"}
+      description={
+        variant === "compact"
+          ? "These are sent for Hi, Thanks, and simple replies. One greeting per line."
+          : "Voice, greetings, and escalation details used when Growvisi drafts or sends simple replies on WhatsApp."
+      }
       action={
         canManage ? (
           <Button
@@ -189,7 +200,7 @@ export function BusinessEmployeeProfileCard() {
               draft && mutation.mutate({ businessProfile: draftToPatch(draft) })
             }
           >
-            {mutation.isPending ? "Saving…" : "Save profile"}
+            {mutation.isPending ? "Saving…" : "Save"}
           </Button>
         ) : null
       }
@@ -198,10 +209,65 @@ export function BusinessEmployeeProfileCard() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <div className="space-y-6">
-          <section className="space-y-3">
+          {variant === "compact" && (
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Voice
+              Step 3 · What should customers hear first?
             </p>
+          )}
+
+          <section className="space-y-3">
+            {variant === "full" && (
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Greetings
+              </p>
+            )}
+            <FieldLabel
+              title="First message from a new customer"
+              hint="One greeting per line. Use {businessName} for your shop name."
+            >
+              <textarea
+                disabled={!canManage || mutation.isPending}
+                value={draft.firstContactText}
+                onChange={(e) => updateDraft("firstContactText", e.target.value)}
+                rows={variant === "compact" ? 2 : 3}
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
+              />
+            </FieldLabel>
+            <FieldLabel
+              title="When they message again"
+              hint="Shorter is fine — e.g. “Hi! How can we help today?”"
+            >
+              <textarea
+                disabled={!canManage || mutation.isPending}
+                value={draft.returningText}
+                onChange={(e) => updateDraft("returningText", e.target.value)}
+                rows={2}
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
+              />
+            </FieldLabel>
+          </section>
+
+          {variant === "compact" && (
+            <div className="border-t border-border/60 pt-2">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-2 py-2 text-left text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                onClick={() => setShowAdvanced((v) => !v)}
+              >
+                <span>Voice, language &amp; escalation (optional)</span>
+                <ChevronDown
+                  className={cn("h-4 w-4 shrink-0 transition", showAdvanced && "rotate-180")}
+                />
+              </button>
+            </div>
+          )}
+
+          {(variant === "full" || showAdvanced) && (
+            <>
+              <section className="space-y-3 border-t border-border/60 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Voice
+                </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <FieldLabel title="Tone" hint="Casual for D2C; professional for B2B.">
                 <Select
@@ -276,33 +342,6 @@ export function BusinessEmployeeProfileCard() {
                 updateDraft("language", { ...draft.language, mirrorCustomer })
               }
             />
-          </section>
-
-          <section className="space-y-3 border-t border-border/60 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Greetings
-            </p>
-            <FieldLabel
-              title="First contact"
-              hint="One greeting per line. Use {businessName} for your shop name."
-            >
-              <textarea
-                disabled={!canManage || mutation.isPending}
-                value={draft.firstContactText}
-                onChange={(e) => updateDraft("firstContactText", e.target.value)}
-                rows={3}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
-              />
-            </FieldLabel>
-            <FieldLabel title="Returning customers" hint="One greeting per line.">
-              <textarea
-                disabled={!canManage || mutation.isPending}
-                value={draft.returningText}
-                onChange={(e) => updateDraft("returningText", e.target.value)}
-                rows={2}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
-              />
-            </FieldLabel>
           </section>
 
           <section className="space-y-3 border-t border-border/60 pt-4">
@@ -388,6 +427,8 @@ export function BusinessEmployeeProfileCard() {
               </FieldLabel>
             </div>
           </section>
+            </>
+          )}
 
           {!canManage && (
             <p className="text-xs text-muted-foreground">
