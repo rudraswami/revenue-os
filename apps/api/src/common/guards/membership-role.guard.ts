@@ -22,7 +22,11 @@ export class MembershipRoleGuard implements CanActivate {
     }
     const { user } = context.switchToHttp().getRequest<{ user: JwtPayload }>();
     if (!user || !roles.includes(user.role)) {
-      throw new ForbiddenException("Insufficient permissions");
+      throw new ForbiddenException({
+        message: "Insufficient permissions",
+        code: "ROLE_REQUIRED",
+        roles,
+      });
     }
     return true;
   }

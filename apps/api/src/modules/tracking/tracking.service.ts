@@ -172,6 +172,7 @@ export class TrackingService {
   }
 
   async metricsByCampaign(organizationId: string) {
+    await this.assertGrowthPlus(organizationId);
     const leads = await this.prisma.lead.findMany({
       where: { organizationId },
       select: { profile: true, source: true, stage: true },

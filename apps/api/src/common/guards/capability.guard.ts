@@ -23,12 +23,19 @@ export class CapabilityGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest<{ user: JwtPayload }>();
     if (!user?.role) {
-      throw new ForbiddenException("Insufficient permissions");
+      throw new ForbiddenException({
+        message: "Insufficient permissions",
+        code: "ROLE_REQUIRED",
+      });
     }
 
     const missing = required.filter((cap) => !hasCapability(user.role, cap));
     if (missing.length > 0) {
-      throw new ForbiddenException("You do not have permission to do this.");
+      throw new ForbiddenException({
+        message: "You do not have permission to do this.",
+        code: "MISSING_CAPABILITY",
+        capabilities: missing,
+      });
     }
     return true;
   }

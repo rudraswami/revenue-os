@@ -49,6 +49,11 @@ describe("capabilities", () => {
     expect(canInviteRole("ADMIN", "ADMIN")).toBe(true);
   });
 
+  it("team can view team analytics", () => {
+    expect(hasCapability("AGENT", "analytics.view.team")).toBe(true);
+    expect(hasCapability("VIEWER", "analytics.view.team")).toBe(false);
+  });
+
   it("admin has billing capability", () => {
     expect(hasCapability("ADMIN", "billing.manage")).toBe(true);
     expect(hasCapability("MANAGER", "billing.manage")).toBe(false);

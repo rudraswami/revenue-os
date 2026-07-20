@@ -48,6 +48,7 @@ export class AutomationsController {
   constructor(private readonly automations: AutomationsService) {}
 
   @Get("preferences")
+  @RequireCapability("automations.manage")
   getPreferences(@CurrentUser() user: JwtPayload) {
     return this.automations.getPreferences(user);
   }
@@ -61,11 +62,13 @@ export class AutomationsController {
   }
 
   @Get("logs")
+  @RequireCapability("automations.manage")
   getLogs(@CurrentUser() user: JwtPayload) {
     return this.automations.getRecentLogs(user.organizationId);
   }
 
   @Get("stats")
+  @RequireCapability("automations.manage")
   getStats(@CurrentUser() user: JwtPayload) {
     return this.automations.getLogStats(user.organizationId);
   }

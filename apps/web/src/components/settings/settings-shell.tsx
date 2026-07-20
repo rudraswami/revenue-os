@@ -46,7 +46,7 @@ import WhatsappConnect from "@/components/settings/whatsapp-connect";
 import { useSettingsBootstrap } from "@/hooks/use-settings-bootstrap";
 import type { ShellBootstrapResponse } from "@/lib/shell-bootstrap";
 import { logout } from "@/lib/auth-session";
-import { canManageTeam } from "@/lib/permissions";
+import { canManageBilling, canManageTeam } from "@/lib/permissions";
 import {
   canAccessSettingsTab,
   canAccessSettingsTabRole,
@@ -105,12 +105,14 @@ function resolveTabFromLocation(search: string, hash: string): SettingsTabId | n
 function SettingsTabContent({
   tab,
   isAdmin,
+  canManagePayment,
   onLogout,
   bootstrap,
   bootstrapLoading,
 }: {
   tab: SettingsTabId;
   isAdmin: boolean;
+  canManagePayment: boolean;
   onLogout: () => void;
   bootstrap?: ShellBootstrapResponse;
   bootstrapLoading: boolean;
@@ -211,7 +213,14 @@ function SettingsTabContent({
             title="Payment → Won"
             description="Connect your Razorpay store so paid customers move to Won automatically."
           >
-            <PaymentIntegrationCard />
+            {canManagePayment ? (
+              <PaymentIntegrationCard />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Razorpay webhook setup is limited to workspace owners and admins. Ask them to
+                configure Payment → Won in Settings → Growth.
+              </p>
+            )}
           </SettingsSection>
         </div>
       );
@@ -296,6 +305,7 @@ export function SettingsShell() {
   const mobileNavRef = useRef<HTMLDivElement>(null);
   const role = useAuthStore((s) => s.role);
   const isAdmin = canManageTeam(role);
+  const canManagePayment = canManageBilling(role);
   const roleReady = !!role;
 
   const { data: bootstrap, isLoading: bootstrapLoading, isFetching, isError, error, refetch } =
@@ -517,6 +527,7 @@ export function SettingsShell() {
               <SettingsTabContent
                 tab={activeTab}
                 isAdmin={isAdmin}
+                canManagePayment={canManagePayment}
                 onLogout={() => void handleLogout()}
                 bootstrap={bootstrap}
                 bootstrapLoading={bootstrapLoading || isFetching}

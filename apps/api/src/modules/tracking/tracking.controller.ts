@@ -68,7 +68,6 @@ export class TrackingController {
   @Get("tracking/metrics")
   @UseGuards(JwtAuthGuard, SubscriptionGuard, MembershipRoleGuard)
   @RequireCapability("analytics.view.team")
-  @Roles(...MANAGE_ROLES)
   metrics(@CurrentUser() user: JwtPayload) {
     return this.tracking.metricsByCampaign(user.organizationId);
   }

@@ -63,6 +63,12 @@ export function toUserMessage(error: unknown, fallback = "Something went wrong. 
     if (error.code === "EMAIL_NOT_VERIFIED") {
       return error.message || "Verify your email to activate your workspace.";
     }
+    if (error.code === "MISSING_CAPABILITY") {
+      return "You need a higher workspace role for this action. Ask your workspace owner or admin.";
+    }
+    if (error.code === "ROLE_REQUIRED") {
+      return "You need a higher workspace role for this action. Ask your workspace owner or admin.";
+    }
     if (error.code && FRICTION_CODES.has(error.code)) {
       return error.message;
     }

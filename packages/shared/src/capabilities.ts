@@ -131,6 +131,7 @@ const TEAM_CAPS = new Set<Capability>([
   "contacts.create",
   "contacts.edit.own",
   "tags.manage",
+  "analytics.view.team",
 ]);
 
 const VIEWER_CAPS = new Set<Capability>(["team.view", "contacts.view.team"]);
@@ -158,7 +159,7 @@ export const ROLE_INVITE_DESCRIPTIONS: Record<MembershipRole, string> = {
   OWNER: "Workspace creator with full control.",
   ADMIN: "Billing, WhatsApp, team, and all workspace settings.",
   MANAGER: "Assign leads, run campaigns, and manage the sales floor.",
-  AGENT: "Reply in Inbox, update pipeline, and complete follow-ups.",
+  AGENT: "Reply in Inbox, update pipeline, view team analytics, and complete follow-ups.",
   VIEWER: "Read-only access (legacy).",
 };
 

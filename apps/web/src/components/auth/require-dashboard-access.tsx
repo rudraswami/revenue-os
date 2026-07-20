@@ -33,7 +33,7 @@ export function RequireDashboardAccess({
         <EmptyState
           icon={<Lock className="h-6 w-6" />}
           title="You don't have access to this page"
-          description="Ask a workspace admin if you need permission."
+          description="Analytics is available to workspace owners, admins, managers, and team members. Viewer accounts cannot open this page — ask a workspace admin if you need access."
           actionHref="/dashboard"
           actionLabel="Back to home"
         />

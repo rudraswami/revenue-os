@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch, toUserMessage } from "@/lib/api-client";
+import { canManageBilling } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { useShellPaymentIntegration } from "@/hooks/use-shell-data";
 import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
@@ -18,13 +19,16 @@ interface PaymentIntegration {
 
 export function PaymentIntegrationCard() {
   const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
   const qc = useQueryClient();
   const [secret, setSecret] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canManage = canManageBilling(role);
 
   const { data, isLoading } = useShellPaymentIntegration<PaymentIntegration>({
     allowFetchBeforeBootstrap: true,
+    enabled: canManage,
   });
 
   const saveMut = useMutation({
