@@ -178,7 +178,13 @@ export class ReplySendService {
       intent: opts.classification?.intent,
     });
 
-    this.realtime.emitMessageNew(organizationId, { conversationId });
+    this.realtime.emitMessageNew(organizationId, {
+      conversationId,
+      messageId: message.id,
+      direction: "OUTBOUND",
+      content: message.content,
+      createdAt: message.createdAt.toISOString(),
+    });
     this.realtime.emitInboxUpdated(organizationId, conversationId);
 
     void this.events.emit({

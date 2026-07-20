@@ -32,6 +32,7 @@ import { AgencyModule } from "./modules/agency/agency.module";
 import { SupportModule } from "./modules/support/support.module";
 import { IntelligenceModule } from "./modules/intelligence/intelligence.module";
 import { EventsModule } from "./modules/events/events.module";
+import { ServerCacheModule } from "./modules/server-cache/server-cache.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
 
@@ -61,6 +62,7 @@ import { QUEUES } from "@growvisi/shared";
       { name: QUEUES.CAMPAIGN_SEND },
     ),
     PrismaModule,
+    ServerCacheModule,
     HealthModule,
     AuthModule,
     OrganizationsModule,

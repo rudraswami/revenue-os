@@ -1,0 +1,27 @@
+{
+  "certified_at": "2026-07-20T13:49:32.757Z",
+  "phase": "A",
+  "list_conversation_rows": 2,
+  "list_load_api": {
+    "stats": 3,
+    "other": 1,
+    "list": 2
+  },
+  "thread_open_api": {
+    "other": 1,
+    "thread_bundle": 1
+  },
+  "legacy_inbox_context_calls": 0,
+  "legacy_conversation_calls": 0,
+  "thread_bundle_calls": 1,
+  "switch_thread_api": {
+    "other": 1,
+    "thread_bundle": 1
+  },
+  "warm_switch_back_api": {
+    "other": 1,
+    "thread_bundle": 1
+  },
+  "warm_switch_back_thread_fetches": 1,
+  "verdict": "PASS"
+}

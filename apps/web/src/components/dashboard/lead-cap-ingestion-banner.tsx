@@ -1,10 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
-import { apiFetch } from "@/lib/api-client";
-import { QUERY_KEYS, STALE } from "@/lib/query-config";
-import { useAuthStore } from "@/stores/auth-store";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
 
 interface BillingWithSignals {
   usage?: { monthlyLeads: number };
@@ -25,14 +22,7 @@ interface BillingWithSignals {
  * Messages still land in Conversations — only pipeline scoring is paused.
  */
 export function LeadCapIngestionBanner({ className }: { className?: string }) {
-  const token = useAuthStore((s) => s.accessToken);
-
-  const { data } = useQuery({
-    queryKey: QUERY_KEYS.billing,
-    queryFn: () => apiFetch<BillingWithSignals>("/billing", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: STALE.dashboard,
-  });
+  const { data } = useShellBilling<BillingWithSignals>();
 
   const capped = data?.signals?.leadsIngestionCapped ?? data?.friction?.leadsAtLimit;
   const hasAccess = data?.entitlements?.hasAccess ?? true;

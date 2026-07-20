@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -15,6 +15,8 @@ import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { trackConversionFriction } from "@/lib/conversion-friction-analytics";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 
 interface BillingStatus {
   planId: string;
@@ -54,11 +56,14 @@ export default function PricingPage() {
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const [checkoutOpened, setCheckoutOpened] = useState(false);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["billing-status"],
-    queryFn: () => apiFetch<BillingStatus>("/billing", { token: token ?? undefined }),
-    enabled: !!token,
-  });
+  const { data, isLoading, isError } = useShellBilling<BillingStatus>({ preferFresh: true });
+
+  useEffect(() => {
+    if (!checkoutOpened) return;
+    const refreshBilling = () => invalidateWorkspaceShellCache();
+    window.addEventListener("focus", refreshBilling);
+    return () => window.removeEventListener("focus", refreshBilling);
+  }, [checkoutOpened]);
 
   useEffect(() => {
     if (!reasonParam) return;

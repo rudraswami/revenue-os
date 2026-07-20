@@ -8,6 +8,7 @@ import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import { cn } from "@/lib/utils";
 import { looksLikeMetaToken } from "@/lib/whatsapp-onboarding";
 
@@ -48,8 +49,7 @@ export function WhatsappTokenRefresh({
       setSuccess(true);
       setError(null);
       setAccessToken("");
-      void queryClient.invalidateQueries({ queryKey: ["whatsapp-connection-health"] });
-      void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
+      invalidateWorkspaceShellCache(queryClient);
     },
     onError: (e) => {
       setError(toUserMessage(e, "Could not refresh token."));

@@ -1,0 +1,63 @@
+{
+  "certified_at": "2026-07-20T14:15:45.755Z",
+  "environment": "local-dev",
+  "api_url": "http://localhost:4000/api/v1",
+  "conversation_id": "cmrt9otsh0009s1i7hrgcqy90",
+  "samples": 10,
+  "probes": [
+    {
+      "phase": "P0-4-auth-cache",
+      "health_cache_metrics": null,
+      "auth_me_ms": {
+        "cold": {
+          "p50": 1115,
+          "p95": 1122
+        },
+        "warm": {
+          "p50": 1112,
+          "p95": 1150
+        }
+      },
+      "pass_warm_p95_under_150ms": false,
+      "note": "Warm p95 ≤150ms is a local sanity check; staging Redis soak still required."
+    },
+    {
+      "phase": "P0-3-inbox-bundle",
+      "conversation_id": "cmrt9otsh0009s1i7hrgcqy90",
+      "latency_ms": {
+        "legacy_dual_serial": {
+          "p50": 2107,
+          "p95": 2274
+        },
+        "thread_bundle": {
+          "p50": 1398,
+          "p95": 1824
+        }
+      },
+      "payload_ratio": 1.0142,
+      "e2e_winner": "bundle",
+      "checks": {
+        "bundle_faster_than_legacy_p95": true,
+        "payload_ratio_ok": true,
+        "thread_p95_within_400ms": false
+      },
+      "phase_c_db_queries": {
+        "status": "DOCUMENTED_STATIC",
+        "bundle_total_approx": 8,
+        "debt_id": "TB-1",
+        "note": "See docs/certification/artifacts/inbox/phase-c-static-2026-07-20.json"
+      }
+    }
+  ],
+  "verdict": "CONDITIONAL_GO",
+  "blockers": [
+    "Thread bundle p95 1824ms > 400ms (waiver ok on remote DB)"
+  ],
+  "still_pending": [
+    "Inbox Phases E–H (React Profiler, memory, stress, failure)",
+    "§10 production sign-off",
+    "P0-4 staging Redis partition soak",
+    "P0-5 inbox message landing after defer ACK (manual)",
+    "P1 TB-1 dedupe getThreadBundle queries"
+  ]
+}

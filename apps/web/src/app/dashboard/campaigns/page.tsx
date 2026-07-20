@@ -68,6 +68,9 @@ import {
 } from "@/components/dashboard/campaign-schedule-picker";
 import { TemplatePreviewBubble } from "@/components/dashboard/template-preview-bubble";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
+import { useShellBootstrapSettled } from "@/hooks/use-shell-bootstrap-settled";
+import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
 
 interface CampaignRow {
   id: string;
@@ -172,16 +175,15 @@ export default function CampaignsPage() {
   const canManage = canManageCampaigns(role);
   const qc = useQueryClient();
 
-  const { data: billing } = useQuery({
-    queryKey: ["billing-status"],
-    queryFn: () =>
-      apiFetch<{ planId: string; entitlements?: { hasAccess: boolean } }>("/billing", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-  });
+  const shellSettled = useShellBootstrapSettled();
 
-  const campaignsPlanOk = parseCampaignsPlanOk(billing);
+  const { data: billing } = useShellBilling<{
+    planId: string;
+    entitlements?: { hasAccess: boolean };
+  }>();
+
+  const billingReady = shellSettled && billing !== undefined;
+  const campaignsPlanOk = billingReady ? parseCampaignsPlanOk(billing) : null;
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<CreateMode>("audience");
@@ -219,16 +221,9 @@ export default function CampaignsPage() {
     if (campaignId) setDetailId(campaignId);
   }, [searchParams]);
 
-  const { data: whatsappAccounts } = useQuery({
-    queryKey: QUERY_KEYS.whatsappAccounts,
-    queryFn: () =>
-      apiFetch<Array<{ id: string; displayPhoneNumber: string; isActive: boolean }>>(
-        "/whatsapp-accounts",
-        { token: token ?? undefined },
-      ),
-    enabled: !!token,
-    staleTime: STALE.config,
-  });
+  const { data: whatsappAccounts } = useShellWhatsappAccounts<
+    Array<{ id: string; displayPhoneNumber: string; isActive: boolean }>
+  >();
 
   const activeAccounts = (whatsappAccounts ?? []).filter((a) => a.isActive);
 
@@ -255,14 +250,14 @@ export default function CampaignsPage() {
         "/campaigns/metrics/replies",
         { token: token ?? undefined },
       ),
-    enabled: !!token && campaignsPlanOk,
+    enabled: !!token && campaignsPlanOk === true,
     staleTime: 60_000,
   });
 
   const { data: campaigns, isLoading, isError, refetch } = useQuery({
     queryKey: ["campaigns"],
     queryFn: () => apiFetch<CampaignRow[]>("/campaigns", { token: token ?? undefined }),
-    enabled: !!token && campaignsPlanOk,
+    enabled: !!token && campaignsPlanOk === true,
     retry: false,
     refetchInterval: (query) => {
       const rows = query.state.data;
@@ -279,7 +274,7 @@ export default function CampaignsPage() {
   const { data: detail, isLoading: detailLoading } = useQuery({
     queryKey: ["campaign", detailId],
     queryFn: () => apiFetch<CampaignDetail>(`/campaigns/${detailId}`, { token: token ?? undefined }),
-    enabled: !!token && !!detailId && campaignsPlanOk,
+    enabled: !!token && !!detailId && campaignsPlanOk === true,
     refetchInterval: (query) =>
       query.state.data?.status === "RUNNING" ? 3_000 : false,
   });
@@ -304,7 +299,7 @@ export default function CampaignsPage() {
       apiFetch<CampaignProgress>(`/campaigns/${detailId}/progress`, {
         token: token ?? undefined,
       }),
-    enabled: !!token && !!detailId && campaignsPlanOk && detail?.status === "RUNNING",
+    enabled: !!token && !!detailId && campaignsPlanOk === true && detail?.status === "RUNNING",
     refetchInterval: 3_000,
   });
 
@@ -629,9 +624,9 @@ export default function CampaignsPage() {
         />
       </div>
 
-      {!campaignsPlanOk && <CampaignsPlanGate className="mb-6" />}
+      {campaignsPlanOk === false && <CampaignsPlanGate className="mb-6" />}
 
-      {campaignsPlanOk && (
+      {campaignsPlanOk === true && (
         <CampaignsHubStats
           campaigns={campaigns}
           replyMetrics={replyMetrics}
@@ -639,13 +634,13 @@ export default function CampaignsPage() {
         />
       )}
 
-      {canManage && !campaignsPlanOk && (
+      {canManage && campaignsPlanOk === false && (
         <div className="mb-6 rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
           You have view-only access. Ask an admin or manager to create and send campaigns.
         </div>
       )}
 
-      {canManage && campaignsPlanOk && (
+      {canManage && campaignsPlanOk === true && (
         <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
           <strong className="font-semibold">Meta policy:</strong> Business-initiated outbound
           messages must use a <strong>pre-approved WhatsApp template</strong> from WhatsApp
@@ -654,7 +649,7 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      {canManage && campaignsPlanOk && (
+      {canManage && campaignsPlanOk === true && (
         <div className="mb-6 overflow-hidden rounded-3xl border border-accent/20 bg-card elev-1">
           <div className="border-b border-border/70 bg-gradient-to-r from-bento-mint/50 via-card to-violet-50/40 px-5 py-6 md:px-8">
             <h3 className="font-sans text-xl font-bold tracking-tight text-foreground">

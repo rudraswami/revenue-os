@@ -1,0 +1,66 @@
+
+> growvisi@0.1.0 certify:inbox /Users/apple/Documents/revenue-os
+> node scripts/certify-inbox-thread-bundle.mjs
+
+Inbox Thread Bundle — Production Certification Probe
+
+=== Static audit (no network) ===
+
+Client request budget (thread open with lead):
+  Before: GET /conversations/:id + GET /inbox-context + GET /leads/:id/timeline = 3 HTTP
+  After:  GET /conversations/:id/thread + GET /leads/:id/timeline = 2 HTTP
+  Savings: 1 round-trip per thread open
+
+Server DB (parallel bundle — static code review):
+  getById:           ~4 queries (conversation, messages, aiRun, assignee)
+  getInboxContext:   ~4 queries (conversation DUPLICATE, messages DUPLICATE, memories, chunkCount)
+  Bundle total:      ~8+ queries — TB-1 dedup follow-up
+
+Automated unit tests:
+  pnpm --filter @growvisi/web test   (inbox-thread-bundle + inbox-query-cache)
+  pnpm --filter @growvisi/api test -- conversations.service.thread-bundle.spec.ts
+
+Performance budgets: {
+  "thread_p95_ms": 400,
+  "bundle_payload_max_bytes": 153600,
+  "payload_ratio_max": 1.05
+}
+
+=== Live probe: http://127.0.0.1:4000/api/v1 conversation=cmrt9otm60003s1i7dnqhhixd samples=10 ===
+
+{
+  "certified_at": "2026-07-20T13:50:22.883Z",
+  "api_url": "http://127.0.0.1:4000/api/v1",
+  "conversation_id": "cmrt9otm60003s1i7dnqhhixd",
+  "samples": 10,
+  "latency_ms": {
+    "legacy_dual_serial": {
+      "p50": 2447,
+      "p95": 2515
+    },
+    "thread_bundle": {
+      "p50": 1429,
+      "p95": 1452
+    }
+  },
+  "payload_bytes": {
+    "get_by_id": 1805,
+    "inbox_context": 524,
+    "combined_legacy": 2329,
+    "thread_bundle": 2362,
+    "ratio_bundle_to_legacy": 1.0142
+  },
+  "budgets": {
+    "thread_p95_ms": 400,
+    "bundle_payload_max_bytes": 153600,
+    "payload_ratio_max": 1.05
+  },
+  "checks": {
+    "thread_p95_within_budget": false,
+    "payload_ratio_ok": true,
+    "bundle_faster_than_legacy_serial_p95": true
+  },
+  "e2e_winner": "bundle",
+  "note": "Legacy measured as parallel fetch wall-clock sum (2 HTTP). Real browsers pay extra RTT for 2 round-trips; bundle wins more in practice."
+}
+ ELIFECYCLE  Command failed with exit code 1.

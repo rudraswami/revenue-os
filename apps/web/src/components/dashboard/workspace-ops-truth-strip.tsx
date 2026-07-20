@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { ArrowRight } from "lucide-react";
-import { apiFetch } from "@/lib/api-client";
 import { trackActivation } from "@/lib/activation-analytics";
 import { canManageBilling } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
+import { useShellAgencyStatus, useShellOnboardingProgress } from "@/hooks/use-shell-data";
 
 type OpsProgress = {
   whatsappConnected: boolean;
@@ -60,25 +59,12 @@ function planLabel(planId: string, paid: boolean, trialEndsAt: string | null) {
  * Actions live in the FAB (WorkspaceAssistFab), not a second checklist here.
  */
 export function WorkspaceOpsTruthStrip() {
-  const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const viewedRef = useRef(false);
 
-  const { data: agencyStatus } = useQuery({
-    queryKey: ["agency-status"],
-    queryFn: () => apiFetch<{ isAgency: boolean }>("/agency/status", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
-
-  const { data: progress } = useQuery({
-    queryKey: ["onboarding-progress"],
-    queryFn: () =>
-      apiFetch<OpsProgress>("/organizations/onboarding-progress", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token && !agencyStatus?.isAgency,
-    staleTime: 30_000,
+  const { data: agencyStatus } = useShellAgencyStatus();
+  const { data: progress } = useShellOnboardingProgress<OpsProgress>({
+    enabled: !agencyStatus?.isAgency,
     refetchInterval: 60_000,
   });
 

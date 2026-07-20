@@ -36,11 +36,14 @@ export interface ShellBootstrapResponse {
     };
   };
   agency: {
+    kind: string;
     isAgency: boolean;
     canEnableAgency: boolean;
+    clientCount: number;
+    clientLimit: number;
   };
   whatsapp: {
-    accounts: Array<{ isActive: boolean }>;
+    accounts: Array<{ isActive: boolean; id?: string; displayPhoneNumber?: string }>;
     connectionHealth?: {
       tokenHealth?: { valid?: boolean; needsRefresh: boolean };
     };
@@ -53,6 +56,14 @@ export interface ShellBootstrapResponse {
   paymentIntegration?: {
     hasWebhookSecret: boolean;
     autoWinOnPayment: boolean;
+    webhookUrl: string;
+  };
+  onboardingCoaching?: {
+    coaching?: {
+      eligible: boolean;
+      hasTakeover?: boolean;
+      next: null | { id: string };
+    };
   };
 }
 
@@ -65,6 +76,9 @@ export function seedDashboardShellCache(
   queryClient.setQueryData(QUERY_KEYS.billing, data.billing);
   queryClient.setQueryData(QUERY_KEYS.whatsappAccounts, data.whatsapp.accounts);
   queryClient.setQueryData(QUERY_KEYS.onboardingProgress, data.onboardingProgress);
+  if (data.onboardingCoaching) {
+    queryClient.setQueryData(QUERY_KEYS.onboardingCoaching, data.onboardingCoaching);
+  }
   queryClient.setQueryData(QUERY_KEYS.conversationCapabilities, data.capabilities);
   queryClient.setQueryData(QUERY_KEYS.agencyStatus, data.agency);
 

@@ -7,6 +7,8 @@ import { createHash } from "crypto";
 import { DOMAIN_EVENTS, QUEUES } from "@growvisi/shared";
 import { isProductionDeploy } from "../../config/production";
 import { useBackgroundWorkers } from "../../config/workers";
+import { WEBHOOK_ACK_ENQUEUE_TIMEOUT_MS } from "../../config/webhook-ack";
+import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { withTimeout } from "../../common/utils/with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -41,6 +43,9 @@ export interface InboundMessageEvent {
   leadId: string | null;
   contactPhone: string;
   waMessageId: string;
+  direction: "INBOUND";
+  content: string | null;
+  createdAt: string;
 }
 
 import { AiClassifyService } from "../ai/ai-classify.service";
@@ -110,37 +115,46 @@ export class WhatsappService {
       },
     });
 
-    // Serverless without Redis — process inline; otherwise queue handles async work.
-    if (!useBackgroundWorkers()) {
-      await this.processInline(event.id, payload);
-      return { received: true, eventId: event.id };
-    }
-
-    const jobId = createHash("sha256")
-      .update(JSON.stringify({ id: event.id, entry: payload.entry }))
-      .digest("hex");
-
-    try {
-      // Bounded: if Redis is configured but unreachable, ioredis buffers the
-      // command and waits indefinitely, hanging this request forever. Fail
-      // fast and fall back to inline processing instead.
-      await withTimeout(
-        this.inboundQueue.add(
-          "process",
-          { webhookEventId: event.id, payload },
-          { jobId, removeOnComplete: 1000, removeOnFail: 5000 },
-        ),
-        5_000,
-        "Queue unavailable",
-      );
-    } catch (err) {
-      this.logger.warn(
-        `Could not enqueue webhook ${event.id} (${err instanceof Error ? err.message : err}) — processing inline`,
-      );
-      await this.processInline(event.id, payload);
-    }
+    this.scheduleWebhookProcessing(event.id, payload);
 
     return { received: true, eventId: event.id };
+  }
+
+  /** ACK path only — never await heavy processing here. */
+  scheduleWebhookProcessing(eventId: string, payload: WhatsappWebhookPayload): void {
+    const runInline = () => this.processInline(eventId, payload);
+
+    if (useBackgroundWorkers()) {
+      const jobId = createHash("sha256")
+        .update(JSON.stringify({ id: eventId, entry: payload.entry }))
+        .digest("hex");
+
+      void this.tryEnqueueWebhook(eventId, payload, jobId).catch((err) => {
+        this.logger.warn(
+          `Webhook ${eventId} enqueue failed (${err instanceof Error ? err.message : err}) — processing via defer`,
+        );
+        deferBackgroundTask(runInline);
+      });
+      return;
+    }
+
+    deferBackgroundTask(runInline);
+  }
+
+  private async tryEnqueueWebhook(
+    eventId: string,
+    payload: WhatsappWebhookPayload,
+    jobId: string,
+  ): Promise<void> {
+    await withTimeout(
+      this.inboundQueue.add(
+        "process",
+        { webhookEventId: eventId, payload },
+        { jobId, removeOnComplete: 1000, removeOnFail: 5000 },
+      ),
+      WEBHOOK_ACK_ENQUEUE_TIMEOUT_MS,
+      "Queue unavailable",
+    );
   }
 
   private async processInline(eventId: string, payload: WhatsappWebhookPayload) {
@@ -158,6 +172,10 @@ export class WhatsappService {
         orgIds.add(inbound.organizationId);
         this.realtime.emitMessageNew(inbound.organizationId, {
           conversationId: inbound.conversationId,
+          messageId: inbound.messageId,
+          direction: inbound.direction,
+          content: inbound.content,
+          createdAt: inbound.createdAt,
         });
 
         const correlationId = this.businessEvents.createCorrelationId();
@@ -196,7 +214,6 @@ export class WhatsappService {
         where: { id: eventId },
         data: { error: message },
       });
-      throw err;
     }
   }
 
@@ -507,6 +524,9 @@ export class WhatsappService {
       leadId: lead?.id ?? null,
       contactPhone: from,
       waMessageId,
+      direction: "INBOUND" as const,
+      content,
+      createdAt: message.createdAt.toISOString(),
     };
   }
 

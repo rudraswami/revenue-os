@@ -1,5 +1,6 @@
 import { EntitlementsService } from "./entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ServerCacheService } from "../server-cache/server-cache.service";
 
 describe("EntitlementsService lead cap signals", () => {
   const prisma = {
@@ -9,7 +10,13 @@ describe("EntitlementsService lead cap signals", () => {
     },
   } as unknown as PrismaService;
 
-  const service = new EntitlementsService(prisma);
+  const cache = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
+    del: jest.fn().mockResolvedValue(undefined),
+  } as unknown as ServerCacheService;
+
+  const service = new EntitlementsService(prisma, cache);
 
   beforeEach(() => {
     jest.clearAllMocks();

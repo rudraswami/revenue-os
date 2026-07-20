@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api-client";
 import { applyMeResponse } from "@/lib/auth-session";
 import type { MeResponse } from "@/lib/auth-types";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import { useAuthStore } from "@/stores/auth-store";
 
 /**
@@ -27,8 +28,11 @@ export function useAuthMe(options?: { cacheOnly?: boolean }) {
   });
 
   useEffect(() => {
-    if (query.data) {
-      applyMeResponse(query.data);
+    if (!query.data) return;
+    const prevRole = useAuthStore.getState().role;
+    applyMeResponse(query.data);
+    if (prevRole && query.data.role !== prevRole) {
+      invalidateWorkspaceShellCache();
     }
   }, [query.data]);
 

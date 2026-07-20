@@ -1,53 +1,71 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/query-config";
+import { getActiveInboxConversationId } from "@/lib/inbox-active-thread";
+import { invalidateInboxThreadQueries } from "@/lib/inbox-thread-bundle";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
+import {
+  handleMessageNewCacheUpdate,
+  refreshConversationLists,
+  refreshQueueStats,
+  type MessageNewRealtimePayload,
+} from "@/lib/realtime-inbox-cache";
 
-export interface RealtimeRefreshPayload {
-  conversationId?: string;
+export interface RealtimeRefreshPayload extends MessageNewRealtimePayload {
   leadId?: string;
 }
 
-/** Targeted invalidation — prefer narrow keys over blanket refetch storms. */
+/** Targeted cache updates — never blanket-invalidate the full inbox unless unavoidable. */
 export function handleRealtimeEvent(
   queryClient: QueryClient,
   event: string,
   payload: RealtimeRefreshPayload = {},
 ): void {
   const { conversationId, leadId } = payload;
+  const activeConversationId = getActiveInboxConversationId();
 
   switch (event) {
     case "message.new":
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
-      if (conversationId) {
-        void queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] });
-      }
+      handleMessageNewCacheUpdate(queryClient, payload, { activeConversationId });
+      refreshQueueStats(queryClient);
       break;
     case "inbox.updated":
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
+      refreshQueueStats(queryClient);
       if (conversationId) {
-        void queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] });
+        void queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.conversationThread(conversationId),
+          refetchType: "active",
+        });
+      } else {
+        refreshConversationLists(queryClient);
       }
       break;
     case "lead.stage.changed":
     case "lead.classified":
-    case "lead.handoff":
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
+      refreshQueueStats(queryClient);
       if (conversationId) {
-        void queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] });
+        invalidateInboxThreadQueries(queryClient, conversationId);
       }
       if (leadId) {
-        void queryClient.invalidateQueries({ queryKey: ["lead-timeline", leadId] });
+        void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.leadTimeline(leadId) });
+      }
+      break;
+    case "lead.handoff":
+      refreshQueueStats(queryClient);
+      if (conversationId) {
+        invalidateInboxThreadQueries(queryClient, conversationId);
       }
       break;
     case "whatsapp.setup.updated":
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.shellBootstrap });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.whatsappAccounts });
+      invalidateWorkspaceShellCache(queryClient);
       break;
     default:
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
+      refreshQueueStats(queryClient);
+      if (conversationId) {
+        void queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.conversationThread(conversationId),
+          refetchType: "active",
+        });
+      }
   }
 }

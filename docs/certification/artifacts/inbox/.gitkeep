@@ -1,0 +1,2 @@
+# Store certification run JSON summaries here (e.g. certify-inbox-2026-07-20.json).
+# Large traces, heap snapshots, and HAR files stay local — do not commit.

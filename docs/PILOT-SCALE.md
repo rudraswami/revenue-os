@@ -27,4 +27,17 @@ Razorpay keys are recommended (warn-only) until billing is configured.
 
 ## Always-on workers (post-pilot)
 
-See PRD **B-P1-6**. Run a long-lived Node process (Railway/Fly/ECS) with the same API image, `USE_INLINE_WORKERS=0`, and shared `REDIS_URL` + Postgres.
+See PRD **B-P1-6**. Run a long-lived Node process (Railway/Fly/ECS) with the same API image:
+
+```bash
+# Build once
+pnpm --filter @growvisi/api build
+
+# Worker host (no HTTP) — shares REDIS_URL + Postgres with Vercel API
+WORKER_ONLY=1 USE_INLINE_WORKERS=0 REDIS_URL=rediss://... \
+  pnpm --filter @growvisi/api start:worker
+```
+
+- Vercel API: `VERCEL=1` → enqueue only (`queueMode: vercel-queue+waitUntil`)
+- Worker host: `WORKER_ONLY=1` → BullMQ consumers (`GET /health/queues` returns job counts)
+- Certify: `pnpm certify:worker-queue`

@@ -8,6 +8,7 @@ import { apiFetch } from "@/lib/api-client";
 import { formatMessage } from "@/lib/i18n/format-message";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useAuthStore } from "@/stores/auth-store";
+import { useShellAgencyStatus } from "@/hooks/use-shell-data";
 import { AgencyConnectionBadge, type AgencyConnectionStatus } from "@/components/dashboard/agency-connection-badge";
 
 /** Agency hub: portfolio WhatsApp health at a glance on Home. */
@@ -15,12 +16,7 @@ export function HomeAgencyPortfolioBanner() {
   const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
 
-  const { data: agencyStatus } = useQuery({
-    queryKey: ["agency-status"],
-    queryFn: () => apiFetch<{ isAgency: boolean }>("/agency/status", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
+  const { data: agencyStatus } = useShellAgencyStatus();
 
   const { data: summary } = useQuery({
     queryKey: ["agency-clients-health"],

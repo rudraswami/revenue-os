@@ -9,6 +9,7 @@ import { WhatsappMetaSetupGuide } from "@/components/settings/whatsapp-meta-setu
 import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import { looksLikeMetaToken, normalizeMetaToken, type DiscoveredPhone } from "@/lib/whatsapp-onboarding";
 import { cn } from "@/lib/utils";
 
@@ -94,7 +95,7 @@ export function WhatsappManualConnect({
         firstMessageReceived: false,
         complete: true,
       });
-      void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
+      invalidateWorkspaceShellCache(queryClient);
       onConnected?.();
     },
     onError: (e) => {

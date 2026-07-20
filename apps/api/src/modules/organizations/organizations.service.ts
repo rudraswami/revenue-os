@@ -25,6 +25,12 @@ import { EmailService } from "../auth/email.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
 import { KnowledgeService } from "../knowledge/knowledge.service";
+import { ServerCacheService } from "../server-cache/server-cache.service";
+import {
+  SERVER_CACHE_TTL,
+  onboardingCacheKey,
+  shellBootstrapCacheKey,
+} from "../server-cache/server-cache.keys";
 import { normalizePaymentIntegration } from "./payment-integration";
 import { mergeCoachingSettings, normalizeWorkspaceOpsSettings } from "./workspace-settings";
 import {
@@ -87,6 +93,7 @@ export class OrganizationsService {
     private readonly whatsappAccounts: WhatsappAccountsService,
     private readonly knowledgeRetrieval: KnowledgeRetrievalService,
     private readonly knowledge: KnowledgeService,
+    private readonly serverCache: ServerCacheService,
   ) {}
 
   async getCurrent(user: JwtPayload) {
@@ -363,13 +370,19 @@ export class OrganizationsService {
       throw new BadRequestException("You cannot change your own role.");
     }
 
-    return this.prisma.organizationMember.update({
+    await this.serverCache.invalidateMembership(member.userId, user.organizationId);
+    void this.serverCache.invalidateShellBootstrap(user.organizationId);
+
+    const updated = await this.prisma.organizationMember.update({
       where: { id: memberId },
       data: { role },
       include: {
         user: { select: { id: true, email: true, name: true, avatarUrl: true, lastLoginAt: true } },
       },
     });
+    await this.serverCache.invalidateMembership(updated.userId, user.organizationId);
+    void this.serverCache.invalidateShellBootstrap(user.organizationId);
+    return updated;
   }
 
   async removeMember(user: JwtPayload, memberId: string) {
@@ -386,6 +399,8 @@ export class OrganizationsService {
     }
 
     const removedUserId = member.userId;
+    await this.serverCache.invalidateMembership(removedUserId, user.organizationId);
+    void this.serverCache.invalidateShellBootstrap(user.organizationId);
 
     await this.prisma.$transaction([
       this.prisma.conversation.updateMany({
@@ -402,6 +417,8 @@ export class OrganizationsService {
       }),
       this.prisma.organizationMember.delete({ where: { id: memberId } }),
     ]);
+    await this.serverCache.invalidateMembership(removedUserId, user.organizationId);
+    void this.serverCache.invalidateShellBootstrap(user.organizationId);
     return { ok: true };
   }
 
@@ -567,6 +584,8 @@ export class OrganizationsService {
         where: { id: invite.id },
         data: { acceptedAt: new Date() },
       });
+      await this.serverCache.invalidateMembership(user.sub, invite.organizationId);
+      void this.serverCache.invalidateShellBootstrap(invite.organizationId);
       const session = await this.auth.switchOrganization(user.sub, invite.organizationId);
       return { ...session, alreadyMember: true };
     }
@@ -599,6 +618,8 @@ export class OrganizationsService {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
+    await this.serverCache.invalidateMembership(user.sub, invite.organizationId);
+    void this.serverCache.invalidateShellBootstrap(invite.organizationId);
     const session = await this.auth.switchOrganization(user.sub, invite.organizationId);
     return { ...session, alreadyMember: false };
   }
@@ -652,17 +673,39 @@ export class OrganizationsService {
         },
       },
     });
+    void this.serverCache.invalidateShellBootstrap(user.organizationId);
     return this.getPaymentIntegration(user);
   }
 
   /** Single round-trip for dashboard shell: identity, billing, WhatsApp, setup FAB inputs. */
   async getShellBootstrap(user: JwtPayload) {
-    const [me, billing, agency, accounts, onboardingProgress] = await Promise.all([
+    const orgId = user.organizationId;
+    const cacheKey = shellBootstrapCacheKey(orgId, user.sub);
+    const version = await this.serverCache.getShellBootstrapVersion(orgId);
+    const cached = await this.serverCache.get<{ version: number; payload: Awaited<ReturnType<OrganizationsService["buildShellBootstrapUncached"]>> }>(
+      cacheKey,
+    );
+    if (cached && cached.version === version) {
+      return cached.payload;
+    }
+
+    const payload = await this.buildShellBootstrapUncached(user);
+    await this.serverCache.set(
+      cacheKey,
+      { version, payload },
+      SERVER_CACHE_TTL.shellBootstrapSec,
+    );
+    return payload;
+  }
+
+  private async buildShellBootstrapUncached(user: JwtPayload) {
+    const [me, billing, agency, accounts, onboardingProgress, onboardingCoaching] = await Promise.all([
       this.auth.getMe(user),
       this.billing.getStatus(user),
       this.agency.getStatus(user),
       this.whatsappAccounts.list(user),
       this.getOnboardingProgress(user.organizationId),
+      this.getOnboardingCoaching(user.organizationId),
     ]);
 
     const connected = accounts.some((a) => a.isActive);
@@ -686,6 +729,7 @@ export class OrganizationsService {
         connectionHealth,
       },
       onboardingProgress,
+      onboardingCoaching,
       capabilities,
       paymentIntegration,
     };
@@ -746,6 +790,19 @@ export class OrganizationsService {
   }
 
   async getOnboardingProgress(organizationId: string) {
+    const cacheKey = onboardingCacheKey(organizationId);
+    const cached =
+      await this.serverCache.get<
+        Awaited<ReturnType<OrganizationsService["computeOnboardingProgress"]>>
+      >(cacheKey);
+    if (cached) return cached;
+
+    const result = await this.computeOnboardingProgress(organizationId);
+    await this.serverCache.set(cacheKey, result, SERVER_CACHE_TTL.onboardingSec);
+    return result;
+  }
+
+  private async computeOnboardingProgress(organizationId: string) {
     const [
       whatsappAccount,
       firstInbound,

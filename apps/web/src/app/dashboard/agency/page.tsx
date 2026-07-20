@@ -28,6 +28,8 @@ import { useI18n } from "@/lib/i18n/locale-provider";
 import { formatMessage } from "@/lib/i18n/format-message";
 import { formatInr } from "@/lib/crm";
 import { trackAgencyPartner } from "@/lib/agency-partner-analytics";
+import { useShellAgencyStatus } from "@/hooks/use-shell-data";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   AgencyConnectionBadge,
@@ -93,7 +95,7 @@ function clientNeedsAttention(c: AgencyClientRow): boolean {
 }
 
 function invalidateAgencyQueries(qc: ReturnType<typeof useQueryClient>) {
-  void qc.invalidateQueries({ queryKey: ["agency-status"] });
+  invalidateWorkspaceShellCache(qc);
   void qc.invalidateQueries({ queryKey: ["agency-clients-health"] });
 }
 
@@ -106,11 +108,8 @@ export default function AgencyPage() {
   const [connectClient, setConnectClient] = useState<AgencyClientRow | null>(null);
   const qc = useQueryClient();
 
-  const { data: status, isLoading: statusLoading, isError: statusError, refetch: refetchStatus } = useQuery({
-    queryKey: ["agency-status"],
-    queryFn: () => apiFetch<AgencyStatus>("/agency/status", { token: token ?? undefined }),
-    enabled: !!token,
-  });
+  const { data: status, isLoading: statusLoading, isError: statusError, refetch: refetchStatus } =
+    useShellAgencyStatus<AgencyStatus>();
 
   const { data: health, isLoading: healthLoading, isError: healthError, refetch: refetchHealth } = useQuery({
     queryKey: ["agency-clients-health"],

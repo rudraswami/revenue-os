@@ -1,0 +1,10 @@
+{
+  "certified_at": "2026-07-20T14:35:00.000Z",
+  "verdict": "CERTIFIED",
+  "api_tests": 130,
+  "fixes": ["RC-1", "RC-2", "RC-3", "RC-4", "RC-5", "RC-6"],
+  "soak": {
+    "unit": "server-cache.service.spec.ts",
+    "live_probe": "pnpm certify:redis-soak"
+  }
+}

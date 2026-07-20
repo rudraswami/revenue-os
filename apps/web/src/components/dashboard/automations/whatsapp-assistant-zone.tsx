@@ -16,6 +16,7 @@ import type {
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { canManageCampaigns } from "@/lib/permissions";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { AUTONOMY_OPTIONS, PRESET_OPTIONS } from "@/lib/automation-scenarios";
@@ -126,11 +127,7 @@ export function WhatsAppAssistantZone() {
     enabled: !!token,
   });
 
-  const { data: billing } = useQuery({
-    queryKey: ["billing-status"],
-    queryFn: () => apiFetch<{ planId: GrowvisiPlanId }>("/billing", { token: token ?? undefined }),
-    enabled: !!token,
-  });
+  const { data: billing } = useShellBilling<{ planId: GrowvisiPlanId }>();
 
   const { data: kbHealth } = useQuery({
     queryKey: ["knowledge-health"],

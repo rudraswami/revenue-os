@@ -15,6 +15,9 @@ import { Button } from "@/components/ui/button";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
+import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { runEmbeddedSignup } from "@/lib/facebook-sdk";
 import { WhatsappConnectPathPicker } from "@/components/settings/whatsapp-connect-path-picker";
@@ -93,17 +96,8 @@ export default function WhatsappConnect({
   const { t } = useI18n();
   const { success, error: toastError } = useToast();
 
-  const { data: accounts, isLoading: accountsLoading, isError: accountsError, error: accountsErrorObj } = useQuery({
-    queryKey: QUERY_KEYS.whatsappAccounts,
-    queryFn: () => apiFetch<WhatsappAccount[]>("/whatsapp-accounts", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: STALE.config,
-    placeholderData: (prev) => prev,
-    retry: (failureCount, err) => {
-      if (err instanceof ApiError && (err.status === 402 || err.status === 403)) return false;
-      return failureCount < 1;
-    },
-  });
+  const { data: accounts, isLoading: accountsLoading, isError: accountsError, error: accountsErrorObj } =
+    useShellWhatsappAccounts<WhatsappAccount[]>({ allowFetchBeforeBootstrap: true });
 
   const { data: config, isLoading: configLoading } = useQuery({
     queryKey: ["embedded-signup-config"],
@@ -119,16 +113,10 @@ export default function WhatsappConnect({
   const initialConnectLoading =
     (!accounts && accountsLoading) || (!config && configLoading);
 
-  const { data: billing } = useQuery({
-    queryKey: QUERY_KEYS.billing,
-    queryFn: () =>
-      apiFetch<{ usage: { whatsappNumbers: number }; limits: { whatsappNumbers: number } }>(
-        "/billing",
-        { token: token ?? undefined },
-      ),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
+  const { data: billing } = useShellBilling<{
+    usage: { whatsappNumbers: number };
+    limits: { whatsappNumbers: number };
+  }>({ allowFetchBeforeBootstrap: true });
 
   const completeMutation = useMutation({
     mutationFn: (payload: {
@@ -160,10 +148,7 @@ export default function WhatsappConnect({
         firstMessageReceived: onboarding?.firstMessageReceived ?? false,
         complete: onboarding?.firstMessageReceived ?? false,
       });
-      void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
-      void queryClient.invalidateQueries({ queryKey: ["onboarding-progress"] });
-      void queryClient.invalidateQueries({ queryKey: ["billing-status"] });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.shellBootstrap });
+      invalidateWorkspaceShellCache(queryClient);
     },
     onError: (e) => {
       setPhase("error");
@@ -178,7 +163,7 @@ export default function WhatsappConnect({
       setConnectedAccount(null);
       setPhase("idle");
       success(t("toast.whatsappDisconnected"));
-      void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
+      invalidateWorkspaceShellCache(queryClient);
     },
     onError: (e) => {
       toastError(toUserMessage(e, t("toast.actionFailed")));

@@ -8,6 +8,7 @@ import {
   clearPersistedRefreshToken,
   persistRefreshToken,
 } from "@/lib/refresh-token-persist";
+import { clearSessionQueryCache } from "@/lib/session-query-cache";
 import type { LogoutReason, RefreshResultKind } from "@/lib/auth-session-death";
 import type { MembershipRole } from "@growvisi/shared";
 import type { AuthOrganization, AuthSession, AuthUser, OnboardingStatus } from "@/lib/auth-types";
@@ -116,6 +117,7 @@ export const useAuthStore = create<AuthState>()(
         syncAuthCookie(false);
         clearPersistedRefreshToken();
         clearRefreshCoordination();
+        clearSessionQueryCache();
         if (!opts?.skipBroadcast) broadcastSessionEnded(reason);
         set({
           accessToken: null,

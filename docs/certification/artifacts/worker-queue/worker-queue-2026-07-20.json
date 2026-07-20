@@ -1,0 +1,20 @@
+{
+  "certified_at": "2026-07-20T14:51:08.045Z",
+  "api_url": "http://localhost:4000/api/v1",
+  "health_status": 200,
+  "queues_status": 200,
+  "process_role": "api",
+  "queue_mode": "inline-only",
+  "workers_enabled": false,
+  "redis": "missing",
+  "queue_counts": null,
+  "checks": {
+    "health_ok": true,
+    "queues_endpoint_ok": true,
+    "background_workers_on_process": false,
+    "queue_counts_present": false
+  },
+  "note": "This API process does not run BullMQ consumers. Deploy apps/api with WORKER_ONLY=1 on Railway/Fly for production worker host.",
+  "status": "PASS_API_ONLY",
+  "blockers": []
+}

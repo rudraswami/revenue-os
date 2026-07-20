@@ -138,6 +138,8 @@ export class BillingService {
       data: { cancelAtPeriodEnd: true },
     });
 
+    await this.entitlements.invalidateAccessCache(user.organizationId);
+
     this.audit.log({
       organizationId: user.organizationId,
       userId: user.sub,
@@ -239,6 +241,8 @@ export class BillingService {
           status === "CANCELED" ? false : sub.cancelAtPeriodEnd,
       },
     });
+
+    await this.entitlements.invalidateAccessCache(sub.organizationId);
 
     await this.prisma.webhookEvent.update({
       where: { id: eventRecord.id },

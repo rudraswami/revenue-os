@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -17,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { useShellOnboardingProgress } from "@/hooks/use-shell-data";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { WhatsappIngestionVerifier } from "@/components/settings/whatsapp-ingestion-verifier";
@@ -66,13 +68,7 @@ export function WhatsappGoLiveChecklist({
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["onboarding-progress"],
-    queryFn: () =>
-      apiFetch<OnboardingProgressResponse>("/organizations/onboarding-progress", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
+  const { data, isLoading } = useShellOnboardingProgress<OnboardingProgressResponse>({
     refetchInterval: 4000,
   });
 
@@ -85,7 +81,7 @@ export function WhatsappGoLiveChecklist({
         { method: "POST", token: token ?? undefined },
       ),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["onboarding-progress"] });
+      invalidateWorkspaceShellCache(queryClient);
     },
   });
 

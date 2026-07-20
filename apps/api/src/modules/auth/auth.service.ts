@@ -12,6 +12,7 @@ import { createHash, randomBytes } from "crypto";
 import type { JwtPayload } from "@growvisi/shared";
 import { DEFAULT_PIPELINE_STAGES, GROWVISI_WEB_URL } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { ServerCacheService } from "../server-cache/server-cache.service";
 import { EmailService } from "./email.service";
 import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, DeleteAccountDto, UpdateProfileDto, VerifyEmailDto } from "./dto/auth.dto";
 import { isEmailVerificationRequired } from "../../config/email-verification";
@@ -52,6 +53,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly email: EmailService,
+    private readonly serverCache: ServerCacheService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthSessionResponse> {
@@ -556,6 +558,12 @@ export class AuthService {
       }
     }
 
+    await Promise.all(
+      memberships.map((m) =>
+        this.serverCache.invalidateMembership(user.sub, m.organizationId),
+      ),
+    );
+
     await this.prisma.$transaction(async (tx) => {
       for (const m of owned) {
         await tx.organization.delete({ where: { id: m.organizationId } });
@@ -784,6 +792,8 @@ export class AuthService {
 
       return { user, organization: invite.organization };
     });
+
+    await this.serverCache.invalidateMembership(result.user.id, invite.organizationId);
 
     return this.buildSessionResponse(
       {

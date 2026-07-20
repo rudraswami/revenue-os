@@ -7,7 +7,7 @@ const isCI = !!process.env.CI;
 const baseURL =
   process.env.E2E_BASE_URL ?? (isCI ? "http://localhost:3000" : "http://localhost:3000");
 
-const ciEnv = {
+const ciApiEnv = {
   DATABASE_URL:
     process.env.DATABASE_URL ??
     "postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os",
@@ -16,8 +16,15 @@ const ciEnv = {
     "postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os",
   JWT_SECRET: process.env.JWT_SECRET ?? "ci-test-secret-minimum-32-characters-long",
   REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
-  NODE_ENV: "production",
+  NODE_ENV: "development",
+  VERCEL: "",
   PORT: "4000",
+};
+
+const ciWebEnv = {
+  ...ciApiEnv,
+  NODE_ENV: "production",
+  NEXT_PUBLIC_API_URL: "http://127.0.0.1:4000/api/v1",
 };
 
 export default defineConfig({
@@ -48,7 +55,7 @@ export default defineConfig({
           url: "http://127.0.0.1:4000/api/v1/health",
           timeout: 120_000,
           reuseExistingServer: false,
-          env: ciEnv,
+          env: ciApiEnv,
         },
         {
           command: "pnpm start --port 3000",
@@ -56,10 +63,7 @@ export default defineConfig({
           url: "http://127.0.0.1:3000",
           timeout: 120_000,
           reuseExistingServer: false,
-          env: {
-            ...ciEnv,
-            NEXT_PUBLIC_API_URL: "http://127.0.0.1:4000/api/v1",
-          },
+          env: ciWebEnv,
         },
       ]
     : process.env.E2E_START_SERVERS === "1"
@@ -70,6 +74,9 @@ export default defineConfig({
             url: "http://127.0.0.1:4000/api/v1/health",
             timeout: 120_000,
             reuseExistingServer: true,
+            env: {
+              ...ciApiEnv,
+            },
           },
           {
             command: "pnpm dev:web",

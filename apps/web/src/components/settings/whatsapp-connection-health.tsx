@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useShellConnectionHealth } from "@/hooks/use-shell-data";
 import {
   ArrowRight,
   CheckCircle2,
@@ -14,13 +14,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GrowvisiSpinner } from "@/components/ui/loading";
-import { apiFetch } from "@/lib/api-client";
 import {
   connectionSummary,
   healthPillars,
   type HealthCheck,
 } from "@/lib/whatsapp-health-copy";
-import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
 type ConnectionHealthData = {
@@ -63,16 +61,8 @@ const PILLAR_ICONS: Record<string, typeof Smartphone> = {
 };
 
 export function WhatsappConnectionHealth() {
-  const token = useAuthStore((s) => s.accessToken);
-
-  const { data, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["whatsapp-connection-health"],
-    queryFn: () =>
-      apiFetch<ConnectionHealthData>("/whatsapp-accounts/connection-health", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: 30_000,
+  const { data, isLoading, refetch, isFetching } = useShellConnectionHealth<ConnectionHealthData>({
+    allowFetchBeforeBootstrap: true,
   });
 
   if (isLoading || !data) {

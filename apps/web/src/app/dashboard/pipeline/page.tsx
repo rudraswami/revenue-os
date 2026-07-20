@@ -13,6 +13,8 @@ import { PipelineSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { apiDownload, apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { CTA } from "@/lib/brand-copy";
+import { QUERY_KEYS } from "@/lib/query-config";
+import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
 import { useAuthStore } from "@/stores/auth-store";
 import { canExportContacts, canMoveLead } from "@/lib/permissions";
 import type { LeadStage } from "@growvisi/shared";
@@ -115,7 +117,7 @@ export default function PipelinePage() {
     }
   }, [searchParams]);
 
-  const pipelineQueryKey = ["pipeline", filter, perStageLimit] as const;
+  const pipelineQueryKey = QUERY_KEYS.pipeline(filter, perStageLimit);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: pipelineQueryKey,
@@ -132,7 +134,7 @@ export default function PipelinePage() {
   });
 
   const { data: summary } = useQuery({
-    queryKey: ["pipeline-summary"],
+    queryKey: QUERY_KEYS.pipelineSummary,
     queryFn: () =>
       apiFetch<PipelineSummary>("/leads/pipeline/summary", {
         token: token ?? undefined,
@@ -140,13 +142,7 @@ export default function PipelinePage() {
     enabled: !!token,
   });
 
-  const { data: whatsappAccounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token,
-  });
+  const { data: whatsappAccounts } = useShellWhatsappAccounts();
 
   const grouped = data?.grouped;
   const hasMoreByStage = data?.hasMoreByStage;

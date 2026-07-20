@@ -1,35 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, MessageCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api-client";
-import { useAuthStore } from "@/stores/auth-store";
+import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
 
 const DISMISS_KEY = "growvisi-wa-banner-dismissed";
 
 export function WhatsappSetupBanner() {
-  const token = useAuthStore((s) => s.accessToken);
   const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
     setDismissed(sessionStorage.getItem(DISMISS_KEY) === "1");
   }, []);
 
-  const { data: accounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token,
-    staleTime: 30_000,
-  });
-
+  const { data: accounts } = useShellWhatsappAccounts();
   const connected = accounts?.some((a) => a.isActive) ?? false;
 
-  if (connected || dismissed) return null;
+  if (connected || dismissed || accounts === undefined) return null;
 
   function dismiss() {
     sessionStorage.setItem(DISMISS_KEY, "1");

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useToastOptional } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { apiFetch } from "@/lib/api-client";
+import { useShellAgencyStatus } from "@/hooks/use-shell-data";
 import { useAuthStore } from "@/stores/auth-store";
 import { trackAgencyPartner } from "@/lib/agency-partner-analytics";
 
@@ -27,14 +28,10 @@ export default function PartnerPage() {
   const token = useAuthStore((s) => s.accessToken);
   const orgName = useAuthStore((s) => s.organization?.name) ?? "Growvisi partner";
 
-  const { data: agencyStatus } = useQuery({
-    queryKey: ["agency-status"],
-    queryFn: () =>
-      apiFetch<{ isAgency: boolean; canEnableAgency: boolean }>("/agency/status", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-  });
+  const { data: agencyStatus } = useShellAgencyStatus<{
+    isAgency: boolean;
+    canEnableAgency: boolean;
+  }>();
 
   useEffect(() => {
     trackAgencyPartner("partner_kit_view", {

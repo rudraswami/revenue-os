@@ -18,6 +18,7 @@ import { WhatsappOnboardingFaq } from "@/components/settings/whatsapp-onboarding
 import { WhatsappPhonePicker } from "@/components/settings/whatsapp-phone-picker";
 import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import {
   looksLikeMetaToken,
   normalizeMetaToken,
@@ -172,8 +173,7 @@ export function WhatsappConnectWizard({
         firstMessageReceived: onboarding?.firstMessageReceived ?? false,
         complete: true,
       });
-      void queryClient.invalidateQueries({ queryKey: ["whatsapp-accounts"] });
-      void queryClient.invalidateQueries({ queryKey: ["whatsapp-connection-health"] });
+      invalidateWorkspaceShellCache(queryClient);
       setStep("verify");
       toastSuccess("WhatsApp number connected");
       onConnected?.();

@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, BookOpen, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SettingsSection } from "@/components/settings/settings-section";
-import { apiFetch } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { useAuthStore } from "@/stores/auth-store";
+import { useShellAgencyStatus } from "@/hooks/use-shell-data";
 
 /**
  * Settings entry for Partner install kit — enablement docs, not daily nav.
@@ -15,17 +13,8 @@ import { useAuthStore } from "@/stores/auth-store";
  */
 export function PartnerInstallKitSettingsCard() {
   const { t } = useI18n();
-  const token = useAuthStore((s) => s.accessToken);
 
-  const { data: agencyStatus } = useQuery({
-    queryKey: ["agency-status"],
-    queryFn: () =>
-      apiFetch<{ isAgency: boolean; canEnableAgency: boolean }>("/agency/status", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: 120_000,
-  });
+  const { data: agencyStatus } = useShellAgencyStatus();
 
   const show = !!agencyStatus?.isAgency || !!agencyStatus?.canEnableAgency;
   if (!show) return null;

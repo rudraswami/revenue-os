@@ -1,39 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api-client";
 import { formatMessage } from "@/lib/i18n/format-message";
 import { useI18n } from "@/lib/i18n/locale-provider";
-import { useAuthStore } from "@/stores/auth-store";
 import { useGlobalDashboardBanner } from "@/components/dashboard/use-global-dashboard-banner";
+import { useShellAgencyStatus, useShellOnboardingProgress } from "@/hooks/use-shell-data";
 
 /** Home banner when WhatsApp is connected but go-live checklist is incomplete. */
 export function HomeGoLiveBanner() {
   const { t } = useI18n();
-  const token = useAuthStore((s) => s.accessToken);
   const globalBanner = useGlobalDashboardBanner();
 
-  const { data: agencyStatus } = useQuery({
-    queryKey: ["agency-status"],
-    queryFn: () => apiFetch<{ isAgency: boolean }>("/agency/status", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
-
-  const { data: progress } = useQuery({
-    queryKey: ["onboarding-progress"],
-    queryFn: () =>
-      apiFetch<{
-        goLive: { connected: boolean; progressPct: number };
-      }>("/organizations/onboarding-progress", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token && !agencyStatus?.isAgency,
-    staleTime: 30_000,
-  });
+  const { data: agencyStatus } = useShellAgencyStatus();
+  const { data: progress } = useShellOnboardingProgress<{
+    goLive: { connected: boolean; progressPct: number };
+  }>({ enabled: !agencyStatus?.isAgency });
 
   const goLive = progress?.goLive;
   if (agencyStatus?.isAgency || globalBanner || !goLive?.connected || goLive.progressPct >= 100) {

@@ -1,11 +1,15 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { AlertTriangle, CreditCard } from "lucide-react";
-import { apiFetch } from "@/lib/api-client";
 import { shouldShowWhatsappConnectBanner } from "@/lib/whatsapp-connection-state";
 import { useAuthStore } from "@/stores/auth-store";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
+import {
+  useShellAgencyStatus,
+  useShellConversationCapabilities,
+  useShellWhatsappAccounts,
+} from "@/hooks/use-shell-data";
 
 interface BillingEntitlements {
   status?: string;
@@ -20,14 +24,7 @@ interface BillingEntitlements {
 }
 
 export function TrialExpiredBanner() {
-  const token = useAuthStore((s) => s.accessToken);
-
-  const { data } = useQuery({
-    queryKey: ["billing-status"],
-    queryFn: () => apiFetch<BillingEntitlements>("/billing", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
+  const { data } = useShellBilling<BillingEntitlements>();
 
   const access = data?.entitlements;
   const subscriptionStatus = data?.status ?? access?.status;
@@ -106,18 +103,7 @@ export function TrialExpiredBanner() {
 }
 
 export function AiCapabilitiesBanner() {
-  const token = useAuthStore((s) => s.accessToken);
-
-  const { data: capabilities } = useQuery({
-    queryKey: ["conversation-capabilities"],
-    queryFn: () =>
-      apiFetch<{ aiClassification: boolean; aiSuggestReply: boolean }>(
-        "/conversations/capabilities",
-        { token: token ?? undefined },
-      ),
-    enabled: !!token,
-    staleTime: 300_000,
-  });
+  const { data: capabilities } = useShellConversationCapabilities();
 
   if (!capabilities || capabilities.aiClassification) return null;
 
@@ -157,20 +143,8 @@ export function OnboardingBanner() {
   const token = useAuthStore((s) => s.accessToken);
   const persistedWhatsappConnected = useAuthStore((s) => s.onboarding?.whatsappConnected);
 
-  const { data: agencyStatus } = useQuery({
-    queryKey: ["agency-status"],
-    queryFn: () => apiFetch<{ isAgency: boolean }>("/agency/status", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
-
-  const { data: accounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token && !agencyStatus?.isAgency,
-  });
+  const { data: agencyStatus } = useShellAgencyStatus();
+  const { data: accounts } = useShellWhatsappAccounts();
 
   const showBanner = shouldShowWhatsappConnectBanner({
     hasToken: !!token,

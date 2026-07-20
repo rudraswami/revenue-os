@@ -1,103 +1,62 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-client";
-import { QUERY_KEYS, STALE } from "@/lib/query-config";
-import { computeSetupActions } from "@/lib/setup-actions";
+import { computeSetupActions, type OnboardingProgressInput } from "@/lib/setup-actions";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
+import {
+  useShellConversationCapabilities,
+  useShellConnectionHealth,
+  useShellOnboardingProgress,
+  useShellPaymentIntegration,
+  useShellWhatsappAccounts,
+} from "@/hooks/use-shell-data";
+import { canManageBilling } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 
 export type { SetupAction, SetupActionPriority } from "@/lib/setup-actions";
 
 export function usePendingSetupActions() {
-  const token = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.role);
+  const canManagePayment = canManageBilling(role);
 
-  const { data: billing } = useQuery({
-    queryKey: QUERY_KEYS.billing,
-    queryFn: () =>
-      apiFetch<{
-        entitlements?: {
-          trialExpired: boolean;
-          trialEndsAt: string | null;
-          hasAccess: boolean;
-          planId: string;
-        };
-        usage?: {
-          teamMembers: number;
-          whatsappNumbers: number;
-          monthlyLeads: number;
-        };
-        limits?: {
-          teamMembers: number;
-          whatsappNumbers: number;
-          monthlyLeads: number;
-        };
-        friction?: {
-          seatsAtLimit: boolean;
-          whatsappAtLimit: boolean;
-          leadsAtLimit: boolean;
-          primaryReason: string | null;
-          suggestedPlan: string | null;
-        };
-      }>("/billing", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: STALE.dashboard,
-  });
+  const { data: billing } = useShellBilling<{
+    entitlements?: {
+      trialExpired: boolean;
+      trialEndsAt: string | null;
+      hasAccess: boolean;
+      planId: string;
+    };
+    usage?: {
+      teamMembers: number;
+      whatsappNumbers: number;
+      monthlyLeads: number;
+    };
+    limits?: {
+      teamMembers: number;
+      whatsappNumbers: number;
+      monthlyLeads: number;
+    };
+    friction?: {
+      seatsAtLimit: boolean;
+      whatsappAtLimit: boolean;
+      leadsAtLimit: boolean;
+      primaryReason: string | null;
+      suggestedPlan: string | null;
+    };
+  }>();
 
-  const { data: progress } = useQuery({
-    queryKey: QUERY_KEYS.onboardingProgress,
-    queryFn: () =>
-      apiFetch<Parameters<typeof computeSetupActions>[0]["progress"]>(
-        "/organizations/onboarding-progress",
-        { token: token ?? undefined },
-      ),
-    enabled: !!token,
-    staleTime: STALE.dashboard,
-  });
+  const { data: progress } = useShellOnboardingProgress<OnboardingProgressInput>();
 
-  const { data: accounts } = useQuery({
-    queryKey: QUERY_KEYS.whatsappAccounts,
-    queryFn: () =>
-      apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: STALE.dashboard,
-  });
-
+  const { data: accounts } = useShellWhatsappAccounts();
   const connected = accounts?.some((a) => a.isActive) ?? false;
 
-  const { data: health } = useQuery({
-    queryKey: QUERY_KEYS.whatsappConnectionHealth,
-    queryFn: () =>
-      apiFetch<{ tokenHealth?: { valid?: boolean; needsRefresh: boolean } }>(
-        "/whatsapp-accounts/connection-health",
-        { token: token ?? undefined },
-      ),
-    enabled: !!token && connected,
-    staleTime: STALE.live,
-  });
+  const { data: health } = useShellConnectionHealth({ enabled: connected });
 
-  const { data: payment } = useQuery({
-    queryKey: QUERY_KEYS.paymentIntegration,
-    queryFn: () =>
-      apiFetch<{ hasWebhookSecret: boolean; autoWinOnPayment: boolean }>(
-        "/organizations/payment-integration",
-        { token: token ?? undefined },
-      ),
-    enabled: !!token,
-    staleTime: STALE.config,
-  });
+  const { data: payment } = useShellPaymentIntegration({ enabled: canManagePayment });
 
-  const { data: capabilities } = useQuery({
-    queryKey: QUERY_KEYS.conversationCapabilities,
-    queryFn: () =>
-      apiFetch<{ aiClassification: boolean }>("/conversations/capabilities", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: STALE.config,
-  });
+  const { data: capabilities } = useShellConversationCapabilities<{
+    aiClassification: boolean;
+  }>();
 
   const derived = useMemo(
     () =>
@@ -113,11 +72,10 @@ export function usePendingSetupActions() {
   );
 
   const isLoading =
-    !!token &&
-    (billing === undefined ||
-      progress === undefined ||
-      accounts === undefined ||
-      (connected && health === undefined));
+    billing === undefined ||
+    progress === undefined ||
+    accounts === undefined ||
+    (connected && health === undefined);
 
   return {
     ...derived,

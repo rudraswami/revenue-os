@@ -1,15 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api-client";
 import { formatMessage } from "@/lib/i18n/format-message";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { connectionSummary, type HealthCheck } from "@/lib/whatsapp-health-copy";
-import { useAuthStore } from "@/stores/auth-store";
 import { useGlobalDashboardBanner } from "@/components/dashboard/use-global-dashboard-banner";
+import { useShellConnectionHealth, useShellOnboardingProgress } from "@/hooks/use-shell-data";
 import { cn } from "@/lib/utils";
 
 type ConnectionHealthData = {
@@ -33,32 +31,16 @@ type ConnectionHealthData = {
 /** Compact Home alert when WhatsApp connection needs attention (not full settings panel). */
 export function HomeConnectionHealthBanner() {
   const { t } = useI18n();
-  const token = useAuthStore((s) => s.accessToken);
   const globalBanner = useGlobalDashboardBanner();
 
-  const { data: progress } = useQuery({
-    queryKey: ["onboarding-progress"],
-    queryFn: () =>
-      apiFetch<{ goLive: { connected: boolean } }>("/organizations/onboarding-progress", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
-
+  const { data: progress } = useShellOnboardingProgress<{ goLive: { connected: boolean } }>();
   const connected = progress?.goLive?.connected ?? false;
 
-  const { data: health } = useQuery({
-    queryKey: ["whatsapp-connection-health"],
-    queryFn: () =>
-      apiFetch<ConnectionHealthData>("/whatsapp-accounts/connection-health", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token && connected,
-    staleTime: 60_000,
+  const { data: health } = useShellConnectionHealth<ConnectionHealthData>({
+    enabled: connected,
   });
 
-  if (globalBanner || !connected || !health) return null;
+  if (globalBanner || !connected || !health?.checks?.length) return null;
 
   const passed = health.checks.filter((c) => c.ok).length;
   const healthPct = health.checks.length

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
-import { HOT_LEAD_SCORE_THRESHOLD, activationNextMilestone } from "@growvisi/shared";
+import { DEFAULT_PIPELINE_STAGES, HOT_LEAD_SCORE_THRESHOLD, activationNextMilestone } from "@growvisi/shared";
 import { requireLeadOwnership } from "../../common/auth/authorization";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -15,11 +15,26 @@ import { AutomationsService } from "../automations/automations.service";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 import {
   computePipelineSignals,
-  matchesPipelineFilter,
+  HOT_SCORE_THRESHOLD,
   OPEN_STAGES,
   readProfileSlice,
   type PipelineFilter,
 } from "./pipeline.helpers";
+
+const PIPELINE_STAGES = DEFAULT_PIPELINE_STAGES.map((s) => s.stage);
+
+const PIPELINE_LEAD_INCLUDE = {
+  conversation: {
+    select: {
+      id: true,
+      unreadCount: true,
+      lastMessageAt: true,
+      lastInboundAt: true,
+      metadata: true,
+    },
+  },
+  tags: { include: { tag: true } },
+} as const;
 
 export interface ContactListFilters {
   q?: string;
@@ -62,28 +77,117 @@ export class LeadsService {
     const validFilters: PipelineFilter[] = ["hot", "stale", "mine", "unassigned"];
     const activeFilter =
       filter && validFilters.includes(filter) ? filter : undefined;
+    const limit = Math.min(Math.max(perStageLimit, 10), 200);
+    const orgId = user.organizationId;
 
-    const leads = await this.prisma.lead.findMany({
-      where: { organizationId: user.organizationId },
-      orderBy: { updatedAt: "desc" },
-      include: {
-        conversation: {
-          select: {
-            id: true,
-            unreadCount: true,
-            lastMessageAt: true,
-            lastInboundAt: true,
-            metadata: true,
-          },
-        },
-        tags: { include: { tag: true } },
-      },
-    });
+    const [runsToday, stageResults] = await Promise.all([
+      this.automations.getRunsToday(orgId),
+      this.fetchPipelineStageRows(orgId, user.sub, activeFilter, limit),
+    ]);
 
+    const allRows = stageResults.flatMap((r) => r.rows.slice(0, limit));
+    if (allRows.length === 0) {
+      return {
+        grouped: {},
+        automationRunsToday: runsToday,
+        hasMoreByStage: Object.fromEntries(
+          stageResults.filter((r) => r.hasMore).map((r) => [r.stage, true]),
+        ),
+        perStageLimit: limit,
+      };
+    }
+
+    const mapped = await this.mapPipelineLeadRows(allRows);
+    const byId = new Map(mapped.map((lead) => [lead.id, lead]));
+
+    const grouped: Record<string, typeof mapped> = {};
+    const hasMoreByStage: Record<string, boolean> = {};
+    for (const { stage, rows, hasMore } of stageResults) {
+      const stageLeads = rows
+        .slice(0, limit)
+        .map((row) => byId.get(row.id))
+        .filter((lead): lead is (typeof mapped)[number] => lead != null);
+      if (stageLeads.length > 0) grouped[stage] = stageLeads;
+      if (hasMore) hasMoreByStage[stage] = true;
+    }
+
+    return { grouped, automationRunsToday: runsToday, hasMoreByStage, perStageLimit: limit };
+  }
+
+  private async fetchPipelineStageRows(
+    organizationId: string,
+    userId: string,
+    filter: PipelineFilter | undefined,
+    limit: number,
+  ) {
+    if (filter === "stale") {
+      const staleIds = await this.listStaleLeadIds(organizationId);
+      if (staleIds.length === 0) {
+        return PIPELINE_STAGES.map((stage) => ({ stage, rows: [], hasMore: false }));
+      }
+      return this.queryPipelineStages(
+        { organizationId, id: { in: staleIds } },
+        limit,
+      );
+    }
+
+    const baseWhere = { organizationId };
+    if (filter === "mine") {
+      return this.queryPipelineStages({ ...baseWhere, ownerId: userId }, limit);
+    }
+    if (filter === "unassigned") {
+      return this.queryPipelineStages({ ...baseWhere, ownerId: null }, limit);
+    }
+    if (filter === "hot") {
+      return this.queryPipelineStages(
+        { ...baseWhere, score: { gte: HOT_SCORE_THRESHOLD } },
+        limit,
+      );
+    }
+
+    return this.queryPipelineStages(baseWhere, limit);
+  }
+
+  private async queryPipelineStages(
+    baseWhere: { organizationId: string; [key: string]: unknown },
+    limit: number,
+  ) {
+    return Promise.all(
+      PIPELINE_STAGES.map(async (stage) => {
+        const rows = await this.prisma.lead.findMany({
+          where: { ...baseWhere, stage },
+          orderBy: { updatedAt: "desc" },
+          take: limit + 1,
+          include: PIPELINE_LEAD_INCLUDE,
+        });
+        return { stage, rows, hasMore: rows.length > limit };
+      }),
+    );
+  }
+
+  private async mapPipelineLeadRows(
+    leads: Array<{
+      id: string;
+      stage: LeadStage;
+      score: number;
+      ownerId: string | null;
+      updatedAt: Date;
+      profile: unknown;
+      tags: Array<{ tag: { id: string; name: string; color: string | null } }>;
+      conversation: {
+        id: string;
+        unreadCount: number;
+        lastMessageAt: Date | null;
+        lastInboundAt: Date | null;
+        metadata: unknown;
+      } | null;
+      [key: string]: unknown;
+    }>,
+  ) {
     const leadIds = leads.map((l) => l.id);
     const ownerIds = [...new Set(leads.map((l) => l.ownerId).filter(Boolean))] as string[];
 
-    const [stageHistories, owners, runsToday] = await Promise.all([
+    const [stageHistories, owners] = await Promise.all([
       leadIds.length > 0
         ? this.prisma.leadStageHistory.findMany({
             where: { leadId: { in: leadIds } },
@@ -97,7 +201,6 @@ export class LeadsService {
             select: { id: true, name: true, email: true },
           })
         : [],
-      this.automations.getRunsToday(user.organizationId),
     ]);
 
     const ownerMap = new Map(owners.map((o) => [o.id, o]));
@@ -110,14 +213,14 @@ export class LeadsService {
       }
     }
 
-    const mapped = leads.map(({ tags, conversation, profile, ownerId, ...rest }) => {
+    return leads.map(({ tags, conversation, profile, ownerId, ...rest }) => {
       const convMeta = (conversation?.metadata ?? {}) as Record<string, unknown>;
       const requiresHuman = convMeta.requiresHuman === true;
       const stageEnteredAt = stageEnteredMap.get(rest.id) ?? rest.updatedAt;
       const profileSlice = readProfileSlice(profile);
       const signals = computePipelineSignals({
-        stage: rest.stage,
-        score: rest.score,
+        stage: rest.stage as LeadStage,
+        score: rest.score as number,
         stageEnteredAt,
         lastInboundAt: conversation?.lastInboundAt,
         unreadCount: conversation?.unreadCount ?? 0,
@@ -148,31 +251,6 @@ export class LeadsService {
         tags: tags.map((lt) => ({ id: lt.tag.id, name: lt.tag.name, color: lt.tag.color })),
       };
     });
-
-    const filtered = activeFilter
-      ? mapped.filter((lead) => matchesPipelineFilter(activeFilter, lead, user.sub))
-      : mapped;
-
-    const grouped = filtered.reduce(
-      (acc, lead) => {
-        const stage = lead.stage;
-        if (!acc[stage]) acc[stage] = [];
-        acc[stage].push(lead);
-        return acc;
-      },
-      {} as Record<string, typeof filtered>,
-    );
-
-    const hasMoreByStage: Record<string, boolean> = {};
-    const limit = Math.min(Math.max(perStageLimit, 10), 200);
-    for (const stage of Object.keys(grouped)) {
-      if (grouped[stage].length > limit) {
-        hasMoreByStage[stage] = true;
-        grouped[stage] = grouped[stage].slice(0, limit);
-      }
-    }
-
-    return { grouped, automationRunsToday: runsToday, hasMoreByStage, perStageLimit: limit };
   }
 
   async getPipelineSummary(user: JwtPayload) {

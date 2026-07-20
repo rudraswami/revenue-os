@@ -21,6 +21,7 @@ import type { GrowvisiPlanId } from "@growvisi/shared";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { canManageCampaigns, canManageTeam } from "@/lib/permissions";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
 import { useToast } from "@/components/ui/toast";
 import { CONVERSATIONS } from "@/lib/brand-copy";
 import {
@@ -114,11 +115,7 @@ export function TeamAlertsZone() {
     initialData: DEFAULT_AUTOMATIONS,
   });
 
-  const { data: billing } = useQuery({
-    queryKey: ["billing-status"],
-    queryFn: () => apiFetch<{ planId: GrowvisiPlanId }>("/billing", { token: token ?? undefined }),
-    enabled: !!token,
-  });
+  const { data: billing } = useShellBilling<{ planId: GrowvisiPlanId }>();
 
   const growthPlanOk = PLAN_RANK[billing?.planId ?? "trial"] >= PLAN_RANK.growth;
 

@@ -1,0 +1,20 @@
+{
+  "certified_at": "2026-07-20T14:30:00.000Z",
+  "phase": "C",
+  "method": "static_code_review",
+  "status": "PASS",
+  "tb1_resolved": true,
+  "getThreadBundle_queries_approx": {
+    "conversation_with_includes": 1,
+    "messages": 1,
+    "ai_run_latest": 1,
+    "conversation_memories": 1,
+    "kb_chunk_count": 1,
+    "assignee_user_conditional": "0-1 if assignment metadata has byUserId"
+  },
+  "bundle_total_approx": 5,
+  "legacy_dual_approx": 8,
+  "debt_id": null,
+  "blocks_certification": false,
+  "note": "TB-1 fixed July 2026 — getThreadBundle shares single conversation + messages fetch between detail and inbox context."
+}

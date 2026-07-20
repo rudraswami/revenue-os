@@ -7,8 +7,9 @@ Use this on every dashboard / inbox / pipeline PR.
 - [ ] No GET endpoints with write side effects (classify, persist activation, etc.)
 - [ ] Shell routes use `GET /organizations/shell-bootstrap` or shared `QUERY_KEYS` — no duplicate `/auth/me` + `/billing` + `/onboarding-progress` storms
 - [ ] Live counters (inbox unread, queue tabs) use `GET /conversations/stats?scope=queue` with `useVisibleRefetchInterval` — not full stats
-- [ ] Thread open uses slim endpoints (`/inbox-context`, `/knowledge-gaps`) — not full `/intelligence`
+- [ ] Thread open uses `GET /conversations/:id/thread` bundle + lazy `/knowledge-gaps` — not separate `/conversations/:id` + `/inbox-context` on inbox mount
 - [ ] Messages paginated (latest 50 + `before` cursor); pipeline capped per stage with `perStageLimit`
+- [ ] Sidebar hover prefetches inbox/pipeline/contacts/analytics data (`route-prefetch.ts`)
 
 ## UI responsiveness
 
@@ -33,7 +34,9 @@ Use this on every dashboard / inbox / pipeline PR.
 
 - [ ] SLA metrics batch first-inbound lookup (no per-conversation N+1)
 - [ ] GIN index on `Conversation.metadata` for handoff filters (migration `20260719160000_performance_indexes.sql`)
+- [ ] Server-side Redis caches: entitlements, membership, shell-bootstrap, queue-stats (15s), onboarding (60s)
 - [ ] Server-side entitlements enforced — UI gates mirror API only
+- [ ] Dashboard layout RSC-hydrates shell-bootstrap when refresh cookie present
 
 ## Deploy
 

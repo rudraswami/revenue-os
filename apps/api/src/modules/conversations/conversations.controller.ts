@@ -209,6 +209,12 @@ export class ConversationsController {
     res.send(Buffer.from(media.data));
   }
 
+  @Get(":id/thread")
+  @RequireCapability("inbox.reply")
+  getThread(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.conversations.getThreadBundle(user, id);
+  }
+
   @Get(":id")
   @RequireCapability("inbox.reply")
   get(@CurrentUser() user: JwtPayload, @Param("id") id: string) {

@@ -41,6 +41,10 @@ export class WhatsappInboundProcessor extends WorkerHost {
         orgIds.add(event.organizationId);
         this.realtime.emitMessageNew(event.organizationId, {
           conversationId: event.conversationId,
+          messageId: event.messageId,
+          direction: event.direction,
+          content: event.content,
+          createdAt: event.createdAt,
         });
 
         const correlationId = this.businessEvents.createCorrelationId();

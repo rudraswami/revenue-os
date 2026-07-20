@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, ExternalLink } from "lucide-react";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { useState } from "react";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -42,11 +44,7 @@ export function BillingSettingsCard() {
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const [cancelMsg, setCancelMsg] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["billing-status"],
-    queryFn: () => apiFetch<BillingStatus>("/billing", { token: token ?? undefined }),
-    enabled: !!token,
-  });
+  const { data, isLoading } = useShellBilling<BillingStatus>({ preferFresh: true });
 
   const checkoutMutation = useMutation({
     mutationFn: (planId: string) =>
@@ -76,7 +74,7 @@ export function BillingSettingsCard() {
       }),
     onSuccess: (res) => {
       setCancelMsg(res.message);
-      void qc.invalidateQueries({ queryKey: ["billing-status"] });
+      invalidateWorkspaceShellCache(qc);
     },
   });
 

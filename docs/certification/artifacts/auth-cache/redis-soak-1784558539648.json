@@ -1,0 +1,65 @@
+{
+  "certified_at": "2026-07-20T14:42:19.647Z",
+  "phase": "P0-4-redis-soak",
+  "api_url": "http://localhost:4000/api/v1",
+  "redis_url_configured": false,
+  "health_cache_metrics": {
+    "enabled": false,
+    "hits": 0,
+    "misses": 6,
+    "sets": 0,
+    "dels": 0,
+    "errors": 0,
+    "timeouts": 0,
+    "invalidations": 0,
+    "invalidationFailures": 0
+  },
+  "auth_me_samples": [
+    {
+      "ok": true,
+      "ms": 1109.579791
+    },
+    {
+      "ok": true,
+      "ms": 1217.9578340000003
+    },
+    {
+      "ok": true,
+      "ms": 1077.0761249999996
+    },
+    {
+      "ok": true,
+      "ms": 1083.158875
+    },
+    {
+      "ok": true,
+      "ms": 1096.260625
+    },
+    {
+      "ok": true,
+      "ms": 925.3223750000006
+    },
+    {
+      "ok": true,
+      "ms": 881.1432910000003
+    },
+    {
+      "ok": true,
+      "ms": 1086.1301670000012
+    },
+    {
+      "ok": true,
+      "ms": 840.401417000001
+    },
+    {
+      "ok": true,
+      "ms": 1068.20125
+    }
+  ],
+  "all_auth_ok": true,
+  "partition_soak": {
+    "status": "UNIT_TESTED",
+    "note": "Live Redis partition requires staging ops — server-cache.service.spec.ts covers timeout/retry fallback."
+  },
+  "pass": true
+}

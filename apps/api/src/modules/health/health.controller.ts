@@ -3,7 +3,9 @@ import { ConfigService } from "@nestjs/config";
 import { SkipThrottle } from "@nestjs/throttler";
 import Redis from "ioredis";
 import { PrismaService } from "../prisma/prisma.service";
-import { useBackgroundWorkers } from "../../config/workers";
+import { ServerCacheService } from "../server-cache/server-cache.service";
+import { getProcessRole, getQueueMode, useBackgroundWorkers } from "../../config/workers";
+import { QueueHealthService } from "./queue-health.service";
 
 @SkipThrottle()
 @Controller("health")
@@ -11,6 +13,8 @@ export class HealthController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly serverCache: ServerCacheService,
+    private readonly queueHealth: QueueHealthService,
   ) {}
 
   @Get()
@@ -35,28 +39,43 @@ export class HealthController {
       }
     }
 
-    const queueMode = workersEnabled
-      ? "background-workers"
-      : onVercel
-        ? "vercel-queue+waitUntil"
-        : redisUrl
-          ? "inline+queue"
-          : "inline-only";
+    const queueMode = getQueueMode();
 
     const status =
       redis === "error" || (onVercel && redis === "missing") ? "degraded" : "ok";
 
     return {
       status,
-      service: "growvisi-api",
+      service: process.env.WORKER_ONLY === "1" ? "growvisi-worker" : "growvisi-api",
+      processRole: getProcessRole(),
       timestamp: new Date().toISOString(),
       checks: {
         database: "ok",
         redis,
         queueMode,
+        workersEnabled,
         cookieDomain: Boolean(this.config.get<string>("COOKIE_DOMAIN")?.trim()),
         cronConfigured: Boolean(this.config.get<string>("CRON_SECRET")?.trim()),
+        serverCache: {
+          enabled: this.serverCache.isEnabled(),
+          ...this.serverCache.getMetrics(),
+        },
       },
+    };
+  }
+
+  @Get("queues")
+  async queues() {
+    const counts = await this.queueHealth.getJobCounts();
+    return {
+      processRole: getProcessRole(),
+      queueMode: getQueueMode(),
+      workersEnabled: useBackgroundWorkers(),
+      queues: counts,
+      note:
+        counts == null
+          ? "Processors not registered on this process — run WORKER_ONLY=1 worker host for BullMQ consumers."
+          : undefined,
     };
   }
 }

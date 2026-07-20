@@ -16,6 +16,10 @@ import { RealtimeBroadcastService } from "./realtime-broadcast.service";
 
 export interface MessageNewEvent {
   conversationId: string;
+  messageId?: string;
+  direction?: "INBOUND" | "OUTBOUND";
+  content?: string | null;
+  createdAt?: string;
 }
 
 @WebSocketGateway({

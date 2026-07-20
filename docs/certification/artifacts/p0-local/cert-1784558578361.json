@@ -1,0 +1,71 @@
+{
+  "certified_at": "2026-07-20T14:42:11.603Z",
+  "environment": "local-dev",
+  "api_url": "http://localhost:4000/api/v1",
+  "conversation_id": "cmrt9otsh0009s1i7hrgcqy90",
+  "samples": 10,
+  "probes": [
+    {
+      "phase": "P0-4-auth-cache",
+      "health_cache_metrics": {
+        "enabled": false,
+        "hits": 0,
+        "misses": 17,
+        "sets": 0,
+        "dels": 0,
+        "errors": 0,
+        "timeouts": 0,
+        "invalidations": 0,
+        "invalidationFailures": 0
+      },
+      "auth_me_ms": {
+        "cold": {
+          "p50": 882,
+          "p95": 1100
+        },
+        "warm": {
+          "p50": 1195,
+          "p95": 3992
+        }
+      },
+      "pass_warm_p95_under_150ms": false,
+      "note": "Warm p95 ≤150ms is a local sanity check; staging Redis soak still required."
+    },
+    {
+      "phase": "P0-3-inbox-bundle",
+      "conversation_id": "cmrt9otsh0009s1i7hrgcqy90",
+      "latency_ms": {
+        "legacy_dual_serial": {
+          "p50": 2150,
+          "p95": 2276
+        },
+        "thread_bundle": {
+          "p50": 804,
+          "p95": 1138
+        }
+      },
+      "payload_ratio": 1.0142,
+      "e2e_winner": "bundle",
+      "checks": {
+        "bundle_faster_than_legacy_p95": true,
+        "payload_ratio_ok": true,
+        "thread_p95_within_400ms": false
+      },
+      "phase_c_db_queries": {
+        "status": "PASS",
+        "bundle_total_approx": 5,
+        "tb1_resolved": true,
+        "note": "TB-1 deduped — see phase-c-static-2026-07-20.json"
+      }
+    }
+  ],
+  "verdict": "CONDITIONAL_GO",
+  "blockers": [
+    "Thread bundle p95 1138ms > 400ms (waiver ok on remote DB)"
+  ],
+  "still_pending": [
+    "Manual DevTools Phases E/F before production canary",
+    "Product §10 sign-off",
+    "Staging re-run: pnpm certify:p0-local"
+  ]
+}

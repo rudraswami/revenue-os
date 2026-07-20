@@ -21,6 +21,7 @@ import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { WhatsappTemplatePicker } from "@/components/dashboard/whatsapp-template-picker";
 import { cn } from "@/lib/utils";
+import { refreshConversationLists } from "@/lib/realtime-inbox-cache";
 import { useAuthStore } from "@/stores/auth-store";
 
 /** India-first dial codes for SMB outbound. Value is digits only (no +). */
@@ -136,7 +137,7 @@ export function OutboundCompose({
         }),
       }),
     onSuccess: (data) => {
-      void qc.invalidateQueries({ queryKey: ["conversations"] });
+      refreshConversationLists(qc);
       onSent(data.conversation.id);
       onClose();
       resetForm();

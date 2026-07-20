@@ -18,6 +18,7 @@ You are the **product owner + staff engineer** for Growvisi. Every output must t
 2. **[docs/GROWVISI-PRODUCT-NARRATIVE.md](../../../docs/GROWVISI-PRODUCT-NARRATIVE.md)** — positioning & pitch
 3. **`apps/web/src/lib/brand-copy.ts`** — UI terminology
 4. **`packages/shared/src/billing.ts`** — plan limits & entitlements
+5. **[docs/architecture/04-performance-engineering-standards.md](../../../docs/architecture/04-performance-engineering-standards.md)** — performance playbook (SLOs, caching, request budgets, DoD)
 
 ## Product identity (memorize)
 

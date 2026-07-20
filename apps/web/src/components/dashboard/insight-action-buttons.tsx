@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { refreshConversationLists } from "@/lib/realtime-inbox-cache";
 import { useAuthStore } from "@/stores/auth-store";
 import { canWrite } from "@/lib/permissions";
 
@@ -51,7 +52,7 @@ export function InsightActionButtons({
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["insights"] });
       void qc.invalidateQueries({ queryKey: ["tasks"] });
-      void qc.invalidateQueries({ queryKey: ["conversations"] });
+      refreshConversationLists(qc);
       onActionDone?.();
     },
   });

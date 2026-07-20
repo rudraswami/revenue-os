@@ -29,7 +29,13 @@ import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
 import { InboxThreadDetailsMobile } from "@/components/dashboard/inbox-thread-details-mobile";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
-import { QUERY_KEYS } from "@/lib/query-config";
+import { measureInteraction, startInteraction } from "@/lib/performance";
+import { QUERY_KEYS, STALE } from "@/lib/query-config";
+import {
+  useShellConversationCapabilities,
+  useShellOnboardingCoaching,
+  useShellWhatsappAccounts,
+} from "@/hooks/use-shell-data";
 import { useToast } from "@/components/ui/toast";
 import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
 import { useAuthStore } from "@/stores/auth-store";
@@ -51,6 +57,19 @@ import {
   replaceOptimisticOutboundMessage,
   type InboxThreadMessage,
 } from "@/lib/inbox-query-cache";
+import { setActiveInboxConversationId } from "@/lib/inbox-active-thread";
+import {
+  refreshConversationLists,
+  refreshQueueStats,
+} from "@/lib/realtime-inbox-cache";
+import {
+  cancelInboxThreadQueries,
+  conversationIdFromThreadKey,
+  invalidateInboxThreadQueries,
+  seedInboxThreadBundleCache,
+  syncInboxThreadBundleConversation,
+  type InboxThreadBundle,
+} from "@/lib/inbox-thread-bundle";
 
 interface ConversationRow {
   id: string;
@@ -171,9 +190,16 @@ export default function InboxPage() {
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const queueDefaultedRef = useRef(false);
   const urlHadFilterRef = useRef(false);
+  const threadOpenMarkRef = useRef<string | null>(null);
+  const threadOpenStartedRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     setHasOlderOverride(null);
+  }, [selectedId]);
+
+  useEffect(() => {
+    setActiveInboxConversationId(selectedId);
+    return () => setActiveInboxConversationId(null);
   }, [selectedId]);
 
   useEffect(() => {
@@ -213,7 +239,7 @@ export default function InboxPage() {
   }, []);
 
   const { data: listData, isLoading: listLoading, isError: listError, refetch: refetchList } = useQuery({
-    queryKey: ["conversations", searchDebounced, listFilter, listScope],
+    queryKey: [...QUERY_KEYS.conversationsList, searchDebounced, listFilter, listScope],
     queryFn: () => {
       const params = new URLSearchParams({ pageSize: "50" });
       if (searchDebounced) params.set("q", searchDebounced);
@@ -242,19 +268,7 @@ export default function InboxPage() {
     refetchInterval: statsPollInterval,
   });
 
-  const { data: coachingProgress } = useQuery({
-    queryKey: QUERY_KEYS.onboardingCoaching,
-    queryFn: () =>
-      apiFetch<{
-        coaching?: {
-          eligible: boolean;
-          hasTakeover?: boolean;
-          next: null | { id: string };
-        };
-      }>("/organizations/onboarding-progress?scope=coaching", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: 30_000,
-  });
+  const { data: coachingProgress } = useShellOnboardingCoaching();
   const coachTakeover =
     !!coachingProgress?.coaching?.eligible &&
     coachingProgress.coaching.next?.id === "takeover";
@@ -266,13 +280,7 @@ export default function InboxPage() {
     postCloseUnread: 0,
   };
 
-  const { data: whatsappAccounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token,
-  });
+  const { data: whatsappAccounts } = useShellWhatsappAccounts();
 
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
 
@@ -294,33 +302,61 @@ export default function InboxPage() {
     trackQueue("queue_default_applied", { filter: next, yourTurn: queueCounts.yourTurn });
   }, [queueDefaultReady, hasWhatsapp, convStats, queueCounts, selectedId]);
 
-  const { data: thread, isLoading: threadLoading, isError: threadError, refetch: refetchThread } = useQuery({
-    queryKey: ["conversation", selectedId],
-    queryFn: () =>
-      apiFetch<ConversationDetail>(`/conversations/${selectedId}`, { token: token ?? undefined }),
+  const {
+    data: threadBundle,
+    isLoading: threadLoading,
+    isError: threadError,
+    refetch: refetchThread,
+  } = useQuery({
+    queryKey: selectedId ? QUERY_KEYS.conversationThread(selectedId) : ["conversation-thread"],
+    queryFn: async ({ queryKey, signal }) => {
+      const conversationId = conversationIdFromThreadKey(queryKey);
+      if (!conversationId) {
+        throw new Error("Missing conversation id in thread query key");
+      }
+      const bundle = await apiFetch<InboxThreadBundle>(`/conversations/${conversationId}/thread`, {
+        token: token ?? undefined,
+        signal,
+      });
+      seedInboxThreadBundleCache(queryClient, conversationId, bundle);
+      return bundle;
+    },
     enabled: !!token && !!selectedId,
+    staleTime: STALE.live,
     refetchInterval: threadPollInterval,
   });
+
+  const thread = threadBundle?.conversation as ConversationDetail | undefined;
+  const inboxContext = threadBundle?.inboxContext;
+
+  useEffect(() => {
+    if (!selectedId || !thread || threadLoading) return;
+    if (threadOpenMarkRef.current === selectedId) return;
+    const started = threadOpenStartedRef.current[selectedId];
+    if (started == null) return;
+    threadOpenMarkRef.current = selectedId;
+    measureInteraction("inbox.open_thread", started, { conversationId: selectedId });
+  }, [selectedId, thread, threadLoading]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    if (threadOpenStartedRef.current[selectedId] == null) {
+      threadOpenStartedRef.current[selectedId] = startInteraction();
+      threadOpenMarkRef.current = null;
+    }
+  }, [selectedId]);
 
   const leadId = thread?.lead?.id;
 
   const { data: timeline } = useQuery({
-    queryKey: ["lead-timeline", leadId],
+    queryKey: leadId ? QUERY_KEYS.leadTimeline(leadId) : ["lead-timeline"],
     queryFn: () =>
       apiFetch<LeadTimeline>(`/leads/${leadId}/timeline`, { token: token ?? undefined }),
     enabled: !!token && !!leadId,
     refetchInterval: timelinePollInterval,
   });
 
-  const { data: capabilities } = useQuery({
-    queryKey: ["conversation-capabilities"],
-    queryFn: () =>
-      apiFetch<{ aiSuggestReply: boolean }>("/conversations/capabilities", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: 300_000,
-  });
+  const { data: capabilities } = useShellConversationCapabilities();
 
   const { data: replyTemplates } = useQuery({
     queryKey: ["reply-templates"],
@@ -362,19 +398,6 @@ export default function InboxPage() {
     });
   }, [thread?.id, thread?.pendingDraft?.createdAt, thread?.aiEnabled]);
 
-  const { data: inboxContext } = useQuery({
-    queryKey: ["conversation-inbox-context", selectedId],
-    queryFn: () =>
-      apiFetch<{
-        knowledgeGaps?: string[];
-        replyDecision?: ReplyDecision | null;
-        workingMemory?: import("@growvisi/shared").WorkingMemory;
-        kbHealth?: import("@growvisi/shared").KnowledgeHealthSummary;
-      }>(`/conversations/${selectedId}/inbox-context`, { token: token ?? undefined }),
-    enabled: !!token && !!selectedId,
-    staleTime: 60_000,
-  });
-
   const shouldLoadKnowledgeGaps =
     !!thread &&
     inboxContext != null &&
@@ -382,11 +405,14 @@ export default function InboxPage() {
     (thread.requiresHuman || thread.aiEnabled);
 
   const { data: knowledgeGapsData } = useQuery({
-    queryKey: ["conversation-knowledge-gaps", selectedId],
-    queryFn: () =>
-      apiFetch<{ knowledgeGaps: string[] }>(`/conversations/${selectedId}/knowledge-gaps`, {
+    queryKey: selectedId ? QUERY_KEYS.conversationKnowledgeGaps(selectedId) : ["conversation-knowledge-gaps"],
+    queryFn: ({ queryKey, signal }) => {
+      const conversationId = queryKey[1] as string;
+      return apiFetch<{ knowledgeGaps: string[] }>(`/conversations/${conversationId}/knowledge-gaps`, {
         token: token ?? undefined,
-      }),
+        signal,
+      });
+    },
     enabled: !!token && !!selectedId && shouldLoadKnowledgeGaps,
     staleTime: 120_000,
   });
@@ -407,7 +433,7 @@ export default function InboxPage() {
       setDraft(res.suggestion);
       setDraftMeta({ aiRunId: res.aiRunId, sources: res.sources ?? [] });
       setSendError(null);
-      void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
+      if (selectedId) invalidateInboxThreadQueries(queryClient, selectedId);
     },
     onError: (e) => {
       setSendError(toUserMessage(e, "Could not suggest a reply."));
@@ -422,7 +448,7 @@ export default function InboxPage() {
         body: JSON.stringify({ aiEnabled }),
       }),
     onSuccess: (updated) => {
-      queryClient.setQueryData(["conversation", selectedId], updated);
+      if (selectedId) syncInboxThreadBundleConversation(queryClient, selectedId, updated);
     },
     onError: (e) => showMutationError(e, "Could not update AI settings."),
   });
@@ -458,8 +484,9 @@ export default function InboxPage() {
         body: JSON.stringify({ assignToUserId }),
       }),
     onSuccess: (updated) => {
-      queryClient.setQueryData(["conversation", selectedId], updated);
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      if (!selectedId) return;
+      syncInboxThreadBundleConversation(queryClient, selectedId, updated);
+      refreshQueueStats(queryClient);
     },
     onError: (e) => showMutationError(e, "Could not assign this conversation."),
   });
@@ -473,21 +500,20 @@ export default function InboxPage() {
       }),
     onMutate: async ({ stage }) => {
       if (!selectedId) return;
-      await queryClient.cancelQueries({ queryKey: ["conversation", selectedId] });
-      await queryClient.cancelQueries({ queryKey: ["conversations"] });
-      const previousThread = queryClient.getQueryData<ConversationDetail>([
-        "conversation",
-        selectedId,
-      ]);
+      await cancelInboxThreadQueries(queryClient, selectedId);
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.conversationsList });
+      const previousThread = queryClient.getQueryData<ConversationDetail>(
+        QUERY_KEYS.conversation(selectedId),
+      );
       const previousLists = queryClient.getQueriesData<{ data: ConversationRow[] }>({
-        queryKey: ["conversations"],
+        queryKey: QUERY_KEYS.conversationsList,
       });
       patchThreadLeadStage(queryClient, selectedId, stage);
       return { previousThread, previousLists };
     },
     onError: (e, _vars, context) => {
       if (selectedId && context?.previousThread) {
-        queryClient.setQueryData(["conversation", selectedId], context.previousThread);
+        syncInboxThreadBundleConversation(queryClient, selectedId, context.previousThread);
       }
       context?.previousLists?.forEach(([key, data]) => {
         queryClient.setQueryData(key, data);
@@ -495,10 +521,9 @@ export default function InboxPage() {
       showMutationError(e, "Could not update pipeline stage.");
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      if (selectedId) invalidateInboxThreadQueries(queryClient, selectedId);
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
-      if (leadId) void queryClient.invalidateQueries({ queryKey: ["lead-timeline", leadId] });
+      if (leadId) void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.leadTimeline(leadId) });
     },
   });
 
@@ -523,14 +548,13 @@ export default function InboxPage() {
       }),
     onMutate: async () => {
       if (!selectedId) return;
-      await queryClient.cancelQueries({ queryKey: ["conversation", selectedId] });
-      await queryClient.cancelQueries({ queryKey: ["conversations"] });
-      const previousThread = queryClient.getQueryData<ConversationDetail>([
-        "conversation",
-        selectedId,
-      ]);
+      await cancelInboxThreadQueries(queryClient, selectedId);
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.conversationsList });
+      const previousThread = queryClient.getQueryData<ConversationDetail>(
+        QUERY_KEYS.conversation(selectedId),
+      );
       const previousLists = queryClient.getQueriesData<{ data: ConversationRow[] }>({
-        queryKey: ["conversations"],
+        queryKey: QUERY_KEYS.conversationsList,
       });
       const previousStats = {
         full: queryClient.getQueryData(QUERY_KEYS.conversationStats()),
@@ -544,7 +568,7 @@ export default function InboxPage() {
     },
     onError: (e, _vars, context) => {
       if (selectedId && context?.previousThread) {
-        queryClient.setQueryData(["conversation", selectedId], context.previousThread);
+        syncInboxThreadBundleConversation(queryClient, selectedId, context.previousThread);
       }
       context?.previousLists?.forEach(([key, data]) => {
         queryClient.setQueryData(key, data);
@@ -556,10 +580,7 @@ export default function InboxPage() {
       showMutationError(e, "Could not resolve handoff.");
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationStats() });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
+      refreshQueueStats(queryClient);
     },
   });
 
@@ -572,9 +593,9 @@ export default function InboxPage() {
       }),
     onSuccess: (updated) => {
       trackCoaching("coaching_takeover_complete");
-      queryClient.setQueryData(["conversation", selectedId], updated);
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
+      if (!selectedId) return;
+      syncInboxThreadBundleConversation(queryClient, selectedId, updated);
+      refreshQueueStats(queryClient);
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.onboardingCoaching });
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.onboardingProgress });
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -604,15 +625,14 @@ export default function InboxPage() {
     onMutate: async ({ content }) => {
       if (!selectedId) return;
 
-      await queryClient.cancelQueries({ queryKey: ["conversation", selectedId] });
-      await queryClient.cancelQueries({ queryKey: ["conversations"] });
+      await cancelInboxThreadQueries(queryClient, selectedId);
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.conversationsList });
 
-      const previousThread = queryClient.getQueryData<ConversationDetail>([
-        "conversation",
-        selectedId,
-      ]);
+      const previousThread = queryClient.getQueryData<ConversationDetail>(
+        QUERY_KEYS.conversation(selectedId),
+      );
       const previousLists = queryClient.getQueriesData<{ data: ConversationRow[] }>({
-        queryKey: ["conversations"],
+        queryKey: QUERY_KEYS.conversationsList,
       });
       const savedDraft = draft;
       const savedDraftMeta = draftMeta;
@@ -662,7 +682,7 @@ export default function InboxPage() {
     },
     onError: (e, _vars, context) => {
       if (selectedId && context?.previousThread) {
-        queryClient.setQueryData(["conversation", selectedId], context.previousThread);
+        syncInboxThreadBundleConversation(queryClient, selectedId, context.previousThread);
       }
       context?.previousLists?.forEach(([key, data]) => {
         queryClient.setQueryData(key, data);
@@ -674,11 +694,7 @@ export default function InboxPage() {
       setSendError(toUserMessage(e, "Message could not be sent."));
     },
     onSettled: () => {
-      if (!selectedId) return;
-      void queryClient.invalidateQueries({ queryKey: ["conversation", selectedId] });
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationStats() });
+      refreshQueueStats(queryClient);
     },
   });
 
@@ -708,10 +724,9 @@ export default function InboxPage() {
       method: "POST",
       token: token ?? undefined,
     }).catch(() => {
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversation", id] });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationQueueStats });
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationStats() });
+      refreshConversationLists(queryClient);
+      invalidateInboxThreadQueries(queryClient, id);
+      refreshQueueStats(queryClient);
     });
   }
 

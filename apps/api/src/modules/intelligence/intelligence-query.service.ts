@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type { JwtPayload } from "@growvisi/shared";
 import { computeGapRiskScore } from "@growvisi/shared";
+import type { Conversation, ConversationMemory, Lead, Message } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { ContextBuilderService } from "./context-builder.service";
 import { resolveReplyIntentKind } from "./reply-intent";
@@ -34,6 +35,30 @@ export class IntelligenceQueryService {
     );
 
     const chunkCount = await this.knowledge.getCachedChunkCount(user.organizationId);
+    return this.formatInboxContext(ctx, chunkCount);
+  }
+
+  /** TB-1: inbox context from preloaded conversation + messages (thread bundle). */
+  async buildInboxContextForBundle(
+    organizationId: string,
+    conversation: Conversation & { lead: Lead | null },
+    messages: Message[],
+    memories: ConversationMemory[],
+  ) {
+    const ctx = this.contextBuilder.assembleFromLoaded(
+      organizationId,
+      conversation,
+      messages,
+      memories,
+    );
+    const chunkCount = await this.knowledge.getCachedChunkCount(organizationId);
+    return this.formatInboxContext(ctx, chunkCount);
+  }
+
+  private formatInboxContext(
+    ctx: Awaited<ReturnType<ContextBuilderService["buildForConversation"]>>,
+    chunkCount: number,
+  ) {
     const meta = ctx.conversation.metadata ?? {};
 
     return {

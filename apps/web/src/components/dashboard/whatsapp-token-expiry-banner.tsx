@@ -1,44 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api-client";
-import { useAuthStore } from "@/stores/auth-store";
+import {
+  useShellConnectionHealth,
+  useShellWhatsappAccounts,
+} from "@/hooks/use-shell-data";
 
 /**
  * Global banner — only when token is invalid or expires in &lt; 4 hours.
  * "Soon" warnings live in Settings → WhatsApp only (temp tokens are ~24h).
  */
 export function WhatsappTokenExpiryBanner() {
-  const token = useAuthStore((s) => s.accessToken);
-
-  const { data: accounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token,
-    staleTime: 30_000,
-  });
-
+  const { data: accounts } = useShellWhatsappAccounts();
   const connected = accounts?.some((a) => a.isActive) ?? false;
 
-  const { data: health } = useQuery({
-    queryKey: ["whatsapp-connection-health"],
-    queryFn: () =>
-      apiFetch<{
-        tokenHealth?: {
-          valid?: boolean;
-          needsRefresh: boolean;
-          hoursRemaining: number | null;
-          hint?: string;
-        };
-      }>("/whatsapp-accounts/connection-health", { token: token ?? undefined }),
-    enabled: !!token && connected,
-    staleTime: 30_000,
-    refetchInterval: 2 * 60_000,
+  const { data: health } = useShellConnectionHealth<{
+    tokenHealth?: {
+      valid?: boolean;
+      needsRefresh: boolean;
+      hoursRemaining: number | null;
+      hint?: string;
+    };
+  }>({
+    enabled: connected,
+    refetchInterval: connected ? 2 * 60_000 : false,
   });
 
   const th = health?.tokenHealth;

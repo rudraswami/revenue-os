@@ -6,6 +6,7 @@ import { measureInteraction, startInteraction } from "@/lib/performance";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { seedDashboardShellCache, type ShellBootstrapResponse } from "@/lib/shell-bootstrap";
 import { useAuthStore } from "@/stores/auth-store";
+import { useShellBootstrapInitial } from "@/components/dashboard/shell-bootstrap-initial";
 
 /**
  * One request for dashboard shell state — seeds caches for sidebar, banners, setup FAB.
@@ -15,6 +16,7 @@ export function useDashboardShellBootstrap() {
   const queryClient = useQueryClient();
   const hydrated = useAuthStore((s) => s.hydrated);
   const token = useAuthStore((s) => s.accessToken);
+  const initialShell = useShellBootstrapInitial();
 
   return useQuery({
     queryKey: QUERY_KEYS.shellBootstrap,
@@ -28,8 +30,9 @@ export function useDashboardShellBootstrap() {
       return data;
     },
     enabled: hydrated && !!token,
-    staleTime: STALE.dashboard,
-    refetchOnWindowFocus: true,
+    initialData: initialShell ?? undefined,
+    staleTime: STALE.config,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });
 }

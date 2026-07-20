@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { LeadStage } from "@growvisi/shared";
 import { buildWorkingMemory, resolveContextMessageLimit, type WorkingMemory } from "@growvisi/shared";
+import type { Conversation, ConversationMemory, Lead, Message } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface ConversationContextMessage {
@@ -65,6 +66,34 @@ export class ContextBuilderService {
       throw new NotFoundException("Conversation not found");
     }
 
+    const stage = (conversation.lead?.stage ?? "NEW") as LeadStage;
+    const effectiveLimit =
+      messageLimit ?? resolveContextMessageLimit(stage);
+
+    const [messages, memories] = await Promise.all([
+      this.prisma.message.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: "desc" },
+        take: effectiveLimit,
+      }),
+      this.prisma.conversationMemory.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+      }),
+    ]);
+
+    return this.assembleFromLoaded(organizationId, conversation, messages, memories);
+  }
+
+  /** TB-1: build inbox context without re-fetching conversation/messages. */
+  assembleFromLoaded(
+    organizationId: string,
+    conversation: Conversation & { lead: Lead | null },
+    messages: Message[],
+    memories: ConversationMemory[],
+  ): ConversationContext {
+    const conversationId = conversation.id;
     const hasLeadRecord = Boolean(conversation.lead);
     const leadRow = conversation.lead ?? {
       id: `pending:${conversationId}`,
@@ -76,18 +105,16 @@ export class ContextBuilderService {
       aiEnabled: conversation.aiEnabled,
     };
 
-    const stage = leadRow.stage as LeadStage;
-    const effectiveLimit =
-      messageLimit ?? resolveContextMessageLimit(stage);
-
-    const messages = await this.prisma.message.findMany({
-      where: { conversationId },
-      orderBy: { createdAt: "desc" },
-      take: effectiveLimit,
-    });
-
     const ordered = [...messages].reverse();
-    const transcript = this.buildTranscript(ordered);
+    const messageRows = ordered.map((m) => ({
+      id: m.id,
+      direction: m.direction,
+      content: m.content,
+      sentByAi: m.sentByAi,
+      createdAt: m.createdAt,
+    }));
+
+    const transcript = this.buildTranscript(messageRows);
     const lastInbound = [...ordered]
       .reverse()
       .find((m) => m.direction === "INBOUND")?.content ?? null;
@@ -102,25 +129,19 @@ export class ContextBuilderService {
         ? (conversation.metadata as Record<string, unknown>)
         : {};
 
-    const memories = await this.prisma.conversationMemory.findMany({
-      where: { conversationId },
-      orderBy: { createdAt: "desc" },
-      take: 12,
-    });
-
     const observedMemory = memories.map((m) => {
-        const meta =
-          m.metadata && typeof m.metadata === "object"
-            ? (m.metadata as Record<string, unknown>)
-            : {};
-        return {
-          id: m.id,
-          type: m.type,
-          content: m.content,
-          source: typeof meta.source === "string" ? meta.source : "system",
-          createdAt: m.createdAt,
-        };
-      });
+      const meta =
+        m.metadata && typeof m.metadata === "object"
+          ? (m.metadata as Record<string, unknown>)
+          : {};
+      return {
+        id: m.id,
+        type: m.type,
+        content: m.content,
+        source: typeof meta.source === "string" ? meta.source : "system",
+        createdAt: m.createdAt,
+      };
+    });
 
     const summaryFromMemory =
       observedMemory.find((m) => m.type === "summary")?.content ?? null;
@@ -133,14 +154,6 @@ export class ContextBuilderService {
         .map((p) => String(p).trim())
         .join(" — ")
         .slice(0, 600) || (lastInbound ?? transcript).slice(0, 600);
-
-    const messageRows = ordered.map((m) => ({
-      id: m.id,
-      direction: m.direction,
-      content: m.content,
-      sentByAi: m.sentByAi,
-      createdAt: m.createdAt,
-    }));
 
     const workingMemory = buildWorkingMemory({
       lead: {

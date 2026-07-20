@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { CTA } from "@/lib/brand-copy";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
+import { useShellOnboardingProgress } from "@/hooks/use-shell-data";
 import { useAuthStore } from "@/stores/auth-store";
 
 /**
@@ -16,15 +17,7 @@ import { useAuthStore } from "@/stores/auth-store";
 export function ReturnToWorkBanner() {
   const token = useAuthStore((s) => s.accessToken);
 
-  const { data: progress } = useQuery({
-    queryKey: ["onboarding-progress"],
-    queryFn: () =>
-      apiFetch<{ aiClassified: boolean }>("/organizations/onboarding-progress", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: STALE.dashboard,
-  });
+  const { data: progress } = useShellOnboardingProgress<{ aiClassified: boolean }>();
 
   const { data: stats } = useQuery({
     queryKey: QUERY_KEYS.conversationStats(),

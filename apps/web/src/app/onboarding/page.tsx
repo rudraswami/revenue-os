@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
@@ -48,17 +48,9 @@ function OnboardingPageContent() {
     router.push(fromAgency ? "/dashboard/agency" : "/dashboard");
   }
 
-  const { data: accounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
-    queryFn: () =>
-      apiFetch<Array<{ isActive: boolean; displayPhoneNumber: string; verifiedName: string | null }>>(
-        "/whatsapp-accounts",
-        { token: token ?? undefined },
-      ),
-    enabled: !!token,
-    staleTime: 60_000,
-    placeholderData: (prev) => prev,
-  });
+  const { data: accounts } = useShellWhatsappAccounts<
+    Array<{ isActive: boolean; displayPhoneNumber: string; verifiedName: string | null }>
+  >({ allowFetchBeforeBootstrap: true });
 
   const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;
   const activeAccount = accounts?.find((a) => a.isActive);

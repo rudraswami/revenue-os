@@ -42,7 +42,10 @@ import { applySession, logout } from "@/lib/auth-session";
 import type { AuthSession, MeResponse } from "@/lib/auth-types";
 import { canManageBilling, canManageCampaigns, canViewTeamAnalytics } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
+import { useShellAgencyStatus, useShellWhatsappAccounts } from "@/hooks/use-shell-data";
 import { useI18n } from "@/lib/i18n/locale-provider";
+import { getQueryClientRef } from "@/lib/query-client-ref";
+import { prefetchDashboardRoute } from "@/lib/route-prefetch";
 import { cn } from "@/lib/utils";
 
 type NavGroup = {
@@ -104,6 +107,7 @@ function NavLink({
   active,
   unread,
   onNavigate,
+  onPrefetch,
 }: {
   item: {
     href: string;
@@ -115,6 +119,7 @@ function NavLink({
   active: boolean;
   unread: number;
   onNavigate?: () => void;
+  onPrefetch?: () => void;
 }) {
   const showUnread = item.badge === "unread" && unread > 0;
 
@@ -122,6 +127,9 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
+      onMouseEnter={onPrefetch}
+      onFocus={onPrefetch}
+      prefetch
       className={cn(
         "relative flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
         active
@@ -339,14 +347,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const { data: me } = useAuthMe({ cacheOnly: true });
 
-  const { data: accounts } = useQuery({
-    queryKey: ["whatsapp-accounts"],
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
+  const { data: accounts } = useShellWhatsappAccounts();
 
   const { data: stats } = useQuery({
     queryKey: QUERY_KEYS.conversationQueueStats,
@@ -358,15 +359,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     refetchInterval: statsPollInterval,
   });
 
-  const { data: agencyStatus } = useQuery({
-    queryKey: QUERY_KEYS.agencyStatus,
-    queryFn: () =>
-      apiFetch<{ isAgency: boolean; canEnableAgency: boolean }>("/agency/status", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: 120_000,
-  });
+  const { data: agencyStatus } = useShellAgencyStatus();
 
   const navGroups = buildNavGroups({
     showAgency: !!(agencyStatus?.isAgency || agencyStatus?.canEnableAgency),
@@ -381,6 +374,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   async function handleLogout() {
     await logout();
     router.replace("/login");
+  }
+
+  function handleRoutePrefetch(href: string) {
+    const qc = getQueryClientRef();
+    if (!qc) return;
+    prefetchDashboardRoute(qc, href, token);
   }
 
   async function switchWorkspace(organizationId: string) {
@@ -436,6 +435,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     active={active}
                     unread={unread}
                     onNavigate={onNavigate}
+                    onPrefetch={() => handleRoutePrefetch(item.href)}
                   />
                 );
               })}

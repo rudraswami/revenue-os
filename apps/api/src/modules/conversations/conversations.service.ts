@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { ConfigService } from "@nestjs/config";
 import { LeadStage, type Prisma } from "@prisma/client";
 import type { JwtPayload } from "@growvisi/shared";
-import { DOMAIN_EVENTS, hasCapability } from "@growvisi/shared";
+import { DOMAIN_EVENTS, hasCapability, resolveContextMessageLimit } from "@growvisi/shared";
 import { requireConversationAssignment } from "../../common/auth/authorization";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 import {
@@ -17,6 +17,11 @@ import { SuggestReplyService } from "../intelligence/suggest-reply.service";
 import { BusinessEventService } from "../events/business-event.service";
 import { AiClassifyService, type HumanAiCorrectionInput } from "../ai/ai-classify.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ServerCacheService } from "../server-cache/server-cache.service";
+import {
+  SERVER_CACHE_TTL,
+  queueStatsCacheKey,
+} from "../server-cache/server-cache.keys";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import {
@@ -39,6 +44,7 @@ export class ConversationsService {
     private readonly learningSignals: LearningSignalService,
     private readonly businessEvents: BusinessEventService,
     private readonly aiClassify: AiClassifyService,
+    private readonly serverCache: ServerCacheService,
   ) {}
 
   getCapabilities() {
@@ -195,6 +201,18 @@ export class ConversationsService {
 
   /** Lightweight counters for sidebar badge + inbox queue tabs (no period aggregates). */
   async getQueueStats(user: JwtPayload) {
+    const cacheKey = queueStatsCacheKey(user.organizationId, user.sub);
+    const cached = await this.serverCache.get<Awaited<ReturnType<ConversationsService["loadQueueStats"]>>>(
+      cacheKey,
+    );
+    if (cached) return cached;
+
+    const stats = await this.loadQueueStats(user);
+    await this.serverCache.set(cacheKey, stats, SERVER_CACHE_TTL.queueStatsSec);
+    return stats;
+  }
+
+  private async loadQueueStats(user: JwtPayload) {
     const orgId = user.organizationId;
     const closedStages: LeadStage[] = [LeadStage.WON, LeadStage.LOST];
     const activeQueueWhere: Prisma.ConversationWhereInput = {
@@ -403,11 +421,6 @@ export class ConversationsService {
       orderBy: { createdAt: "desc" },
       take: 51,
     });
-    const hasOlderMessages = recentMessages.length > 50;
-    const messages = recentMessages.slice(0, 50).reverse();
-
-    const meta = (conversation.metadata ?? {}) as Record<string, unknown>;
-    const profile = (conversation.lead?.profile ?? {}) as Record<string, unknown>;
 
     const lastAiRun = await this.prisma.aiRun.findFirst({
       where: {
@@ -424,6 +437,32 @@ export class ConversationsService {
         latencyMs: true,
       },
     });
+
+    return this.buildConversationDetail(user, conversation, recentMessages, lastAiRun);
+  }
+
+  private async buildConversationDetail(
+    user: JwtPayload,
+    conversation: Prisma.ConversationGetPayload<{
+      include: {
+        lead: true;
+        assignedTo: { select: { id: true; name: true; email: true } };
+        whatsappAccount: { select: { displayPhoneNumber: true; isActive: true } };
+      };
+    }>,
+    recentMessagesDesc: Array<{ id: string; direction: string; content: string | null; sentByAi: boolean; createdAt: Date; [key: string]: unknown }>,
+    lastAiRun: {
+      id: string;
+      output: unknown;
+      createdAt: Date;
+      latencyMs: number | null;
+    } | null,
+  ) {
+    const hasOlderMessages = recentMessagesDesc.length > 50;
+    const messages = recentMessagesDesc.slice(0, 50).reverse();
+
+    const meta = (conversation.metadata ?? {}) as Record<string, unknown>;
+    const profile = (conversation.lead?.profile ?? {}) as Record<string, unknown>;
 
     const runOutput = (lastAiRun?.output ?? {}) as Record<string, unknown>;
 
@@ -728,7 +767,13 @@ export class ConversationsService {
     await this.clearHandoffIfNeeded(conversationId, user.sub);
     await this.recordFirstResponse(conversationId, user.organizationId);
 
-    this.realtime.emitMessageNew(user.organizationId, { conversationId });
+    this.realtime.emitMessageNew(user.organizationId, {
+      conversationId,
+      messageId: message.id,
+      direction: "OUTBOUND",
+      content: message.content,
+      createdAt: message.createdAt.toISOString(),
+    });
     this.realtime.emitInboxUpdated(user.organizationId);
 
     void this.businessEvents.emit({
@@ -767,6 +812,67 @@ export class ConversationsService {
 
   async getIntelligence(user: JwtPayload, conversationId: string) {
     return this.intelligenceQuery.getConversationIntelligence(user, conversationId);
+  }
+
+  /** P0 thread bundle — conversation detail + inbox AI context in one round-trip. */
+  async getThreadBundle(user: JwtPayload, conversationId: string) {
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId: user.organizationId },
+      include: {
+        lead: true,
+        assignedTo: { select: { id: true, name: true, email: true } },
+        whatsappAccount: {
+          select: { displayPhoneNumber: true, isActive: true },
+        },
+      },
+    });
+    if (!conversation) {
+      throw new NotFoundException("Conversation not found");
+    }
+    this.assertInboxThreadAccess(user, conversation);
+
+    const stage = (conversation.lead?.stage ?? "NEW") as LeadStage;
+    const messageTake = Math.max(51, resolveContextMessageLimit(stage));
+
+    const [recentMessages, lastAiRun, memories] = await Promise.all([
+      this.prisma.message.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: "desc" },
+        take: messageTake,
+      }),
+      this.prisma.aiRun.findFirst({
+        where: {
+          organizationId: user.organizationId,
+          conversationId,
+          type: "classify",
+          status: "COMPLETED",
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          output: true,
+          createdAt: true,
+          latencyMs: true,
+        },
+      }),
+      this.prisma.conversationMemory.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+      }),
+    ]);
+
+    const [conversationDetail, inboxContext] = await Promise.all([
+      this.buildConversationDetail(user, conversation, recentMessages, lastAiRun),
+      this.intelligenceQuery.buildInboxContextForBundle(
+        user.organizationId,
+        conversation,
+        recentMessages,
+        memories,
+      ),
+    ]);
+
+    return { conversation: conversationDetail, inboxContext };
   }
 
   async getInboxContext(user: JwtPayload, conversationId: string) {
@@ -1027,7 +1133,13 @@ export class ConversationsService {
 
     await this.recordFirstResponse(conversation.id, user.organizationId);
 
-    this.realtime.emitMessageNew(user.organizationId, { conversationId: conversation.id });
+    this.realtime.emitMessageNew(user.organizationId, {
+      conversationId: conversation.id,
+      messageId: message.id,
+      direction: "OUTBOUND",
+      content: message.content,
+      createdAt: message.createdAt.toISOString(),
+    });
     this.realtime.emitInboxUpdated(user.organizationId);
 
     return { conversation: await this.getById(user, conversation.id), message };

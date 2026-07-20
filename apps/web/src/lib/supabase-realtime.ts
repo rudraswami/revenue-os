@@ -2,7 +2,7 @@
 
 import { createClient, type RealtimeChannel } from "@supabase/supabase-js";
 import type { QueryClient } from "@tanstack/react-query";
-import { handleRealtimeEvent } from "@/lib/realtime-event-handler";
+import { handleRealtimeEvent, type RealtimeRefreshPayload } from "@/lib/realtime-event-handler";
 
 let supabaseClient: ReturnType<typeof createClient> | null = null;
 
@@ -37,7 +37,7 @@ export function subscribeSupabaseOrgChannel(
   channel = client
     .channel(`org:${organizationId}`)
     .on("broadcast", { event: "message.new" }, ({ payload }) => {
-      handleRealtimeEvent(queryClient, "message.new", payload as { conversationId?: string });
+      handleRealtimeEvent(queryClient, "message.new", payload as RealtimeRefreshPayload);
     })
     .on("broadcast", { event: "inbox.updated" }, ({ payload }) => {
       handleRealtimeEvent(queryClient, "inbox.updated", payload as { conversationId?: string });

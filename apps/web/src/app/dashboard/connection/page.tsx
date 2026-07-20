@@ -1,26 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api-client";
-import { useAuthStore } from "@/stores/auth-store";
+import { useShellAgencyStatus } from "@/hooks/use-shell-data";
 
 export default function ConnectionPage() {
-  const token = useAuthStore((s) => s.accessToken);
-
-  const { data: agencyStatus } = useQuery({
-    queryKey: ["agency-status"],
-    queryFn: () =>
-      apiFetch<{ isAgency: boolean; canEnableAgency: boolean }>("/agency/status", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: 60_000,
-  });
+  const { data: agencyStatus } = useShellAgencyStatus<{
+    isAgency: boolean;
+    canEnableAgency: boolean;
+  }>();
 
   const showPartner =
     !!agencyStatus?.isAgency || !!agencyStatus?.canEnableAgency;

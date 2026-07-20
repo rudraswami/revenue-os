@@ -1,0 +1,40 @@
+{
+  "certified_at": "2026-07-20T14:42:07.408Z",
+  "environment": "local-dev",
+  "api_url": "http://localhost:4000/api/v1",
+  "samples": 10,
+  "probes": [
+    {
+      "phase": "P1-shell-bootstrap",
+      "payload_bytes": 6580,
+      "latency_ms": {
+        "cold": {
+          "p50": 2330,
+          "p95": 6047
+        },
+        "warm": {
+          "p50": 2276,
+          "p95": 2496
+        }
+      },
+      "pass_warm_p95_under_400ms": false,
+      "note": "Warm p95 ≤400ms per §4.2; requires Redis for meaningful cache hit."
+    },
+    {
+      "phase": "P1-pipeline-pagination",
+      "payload_bytes": 1500,
+      "latency_ms": {
+        "p50": 1089,
+        "p95": 1162
+      },
+      "pass_shape": true,
+      "pass_p95_under_800ms": false,
+      "note": "Per-stage SQL take(limit+1); p95 budget is local sanity check."
+    }
+  ],
+  "status": "WARN",
+  "blockers": [
+    "Shell bootstrap warm p95 2496ms > 400ms",
+    "Pipeline p95 1162ms > 800ms (waiver ok on remote DB)"
+  ]
+}

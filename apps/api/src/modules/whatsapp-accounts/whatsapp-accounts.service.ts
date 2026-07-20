@@ -18,6 +18,7 @@ import { sanitizeEnvValue } from "../../config/cors-origins";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ServerCacheService } from "../server-cache/server-cache.service";
 import { exchangeForLongLivedToken, normalizeMetaAccessToken } from "./meta-token.util";
 import type { WhatsappWebhookPayload } from "../whatsapp/whatsapp.service";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
@@ -67,6 +68,7 @@ export class WhatsappAccountsService {
     private readonly email: EmailService,
     private readonly entitlements: EntitlementsService,
     private readonly messaging: WhatsappMessagingService,
+    private readonly serverCache: ServerCacheService,
   ) {}
 
   /** Developer / IT only — not shown in main product UI */
@@ -343,6 +345,8 @@ export class WhatsappAccountsService {
 
     await this.syncTemplatesAfterConnect(account.id);
 
+    void this.serverCache.invalidateShellBootstrap(organizationId);
+
     return this.toSafe(account);
   }
 
@@ -377,8 +381,9 @@ export class WhatsappAccountsService {
   }
 
   async remove(user: JwtPayload, id: string) {
-    await this.findOwned(user, id);
+    const account = await this.findOwned(user, id);
     await this.prisma.whatsappAccount.delete({ where: { id } });
+    void this.serverCache.invalidateShellBootstrap(account.organizationId);
     return { deleted: true };
   }
 

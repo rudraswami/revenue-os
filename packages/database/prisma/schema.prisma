@@ -464,6 +464,9 @@ model Lead {
 
   @@unique([organizationId, phone])
   @@index([organizationId, stage])
+  @@index([organizationId, stage, updatedAt])
+  @@index([organizationId, ownerId, stage])
+  @@index([organizationId, score])
   @@index([organizationId, createdAt])
   @@index([ownerId])
   @@map("leads")

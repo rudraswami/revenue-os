@@ -2,26 +2,37 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { SlaMetricsPanel } from "@/components/dashboard/sla-metrics-panel";
 import { AttributionMetricsPanel } from "@/components/dashboard/attribution-metrics-panel";
 import { LostDealsPanel } from "@/components/dashboard/lost-deals-panel";
 import { WonDealsPanel } from "@/components/dashboard/won-deals-panel";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { ChartSkeleton, MetricCardsSkeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
-import { CTA } from "@/lib/brand-copy";
 import { formatInr } from "@/lib/crm";
-import { CHART_ACCENT, chartTooltipStyle } from "@/lib/chart-theme";
 import { METRICS_PERIOD_OPTIONS, type MetricsPeriod } from "@/lib/metrics-period";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
+import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
 import { useAuthStore } from "@/stores/auth-store";
-import { BarChart3, IndianRupee, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
+import { IndianRupee, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { cn } from "@/lib/utils";
+
+const AnalyticsBarCharts = dynamic(
+  () =>
+    import("@/components/dashboard/analytics-bar-charts").then((m) => m.AnalyticsBarCharts),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ChartSkeleton />
+        <ChartSkeleton />
+      </div>
+    ),
+  },
+);
 
 export default function AnalyticsPage() {
   const token = useAuthStore((s) => s.accessToken);
@@ -71,15 +82,7 @@ export default function AnalyticsPage() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: whatsappAccounts } = useQuery({
-    queryKey: QUERY_KEYS.whatsappAccounts,
-    queryFn: () => apiFetch<Array<{ isActive: boolean }>>("/whatsapp-accounts", {
-      token: token ?? undefined,
-    }),
-    enabled: !!token,
-    staleTime: STALE.config,
-    placeholderData: (prev) => prev,
-  });
+  const { data: whatsappAccounts } = useShellWhatsappAccounts();
 
   const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
   const isLoading = funnelLoading || convLoading || revenueLoading;
@@ -171,66 +174,12 @@ export default function AnalyticsPage() {
             <SlaMetricsPanel period={period} />
           </div>
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <DashboardPanel title="Leads by stage" contentClassName="h-72" delay={0.1}>
-              {barData.some((d) => d.count > 0) ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                  <BarChart data={barData}>
-                    <XAxis dataKey="stage" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={chartTooltipStyle} />
-                    <Bar dataKey="count" fill={CHART_ACCENT} radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <EmptyState
-                  compact
-                  className="h-full py-8"
-                  icon={<BarChart3 className="h-6 w-6" />}
-                  title={hasWhatsapp ? "No leads in this period" : "Connect WhatsApp first"}
-                  description={
-                    hasWhatsapp
-                      ? "Try a wider date range or wait for new customer messages."
-                      : "Link WhatsApp to start tracking pipeline metrics."
-                  }
-                  actionHref={hasWhatsapp ? "/dashboard/inbox" : "/onboarding"}
-                  actionLabel={hasWhatsapp ? CTA.openConversations : "Connect WhatsApp"}
-                />
-              )}
-            </DashboardPanel>
-
-            <DashboardPanel title="Pipeline value by stage (₹)" contentClassName="h-72" delay={0.15}>
-              {valueBarData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                  <BarChart data={valueBarData}>
-                    <XAxis dataKey="stage" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={11} tickLine={false} axisLine={false} />
-                    <Tooltip
-                      contentStyle={chartTooltipStyle}
-                      formatter={(v: number) => [
-                        new Intl.NumberFormat("en-IN", {
-                          style: "currency",
-                          currency: "INR",
-                          maximumFractionDigits: 0,
-                        }).format(v),
-                        "Value",
-                      ]}
-                    />
-                    <Bar dataKey="value" fill="#006c49" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <EmptyState
-                  compact
-                  className="h-full py-8"
-                  icon={<IndianRupee className="h-6 w-6" />}
-                  title="No deal values yet"
-                  description="Add ₹ values on Pipeline or Contacts to see revenue by stage."
-                  actionHref="/dashboard/pipeline"
-                  actionLabel="View Pipeline"
-                />
-              )}
-            </DashboardPanel>
+          <div className="mt-8">
+            <AnalyticsBarCharts
+              barData={barData}
+              valueBarData={valueBarData}
+              hasWhatsapp={hasWhatsapp}
+            />
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">

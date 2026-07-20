@@ -1,12 +1,14 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Copy, IndianRupee, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+import { useShellPaymentIntegration } from "@/hooks/use-shell-data";
+import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 
 interface PaymentIntegration {
   autoWinOnPayment: boolean;
@@ -21,13 +23,8 @@ export function PaymentIntegrationCard() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["payment-integration"],
-    queryFn: () =>
-      apiFetch<PaymentIntegration>("/organizations/payment-integration", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
+  const { data, isLoading } = useShellPaymentIntegration<PaymentIntegration>({
+    allowFetchBeforeBootstrap: true,
   });
 
   const saveMut = useMutation({
@@ -39,7 +36,7 @@ export function PaymentIntegrationCard() {
       }),
     onSuccess: () => {
       setError(null);
-      void qc.invalidateQueries({ queryKey: ["payment-integration"] });
+      invalidateWorkspaceShellCache(qc);
     },
     onError: (e) => setError(toUserMessage(e, "Could not save.")),
   });

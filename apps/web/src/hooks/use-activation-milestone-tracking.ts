@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 import { trackActivation } from "@/lib/activation-analytics";
-import { useAuthStore } from "@/stores/auth-store";
+import { useShellOnboardingProgress } from "@/hooks/use-shell-data";
 
 const MILESTONE_TRACKED_KEY = "growvisi-activation-milestones-tracked";
 
@@ -20,16 +19,8 @@ type Progress = {
  * this hook only records truth, no UI).
  */
 export function useActivationMilestoneTracking() {
-  const token = useAuthStore((s) => s.accessToken);
-
-  const { data: progress } = useQuery({
-    queryKey: ["onboarding-progress"],
-    queryFn: () =>
-      apiFetch<Progress>("/organizations/onboarding-progress", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: 30_000,
+  const { data: progress } = useShellOnboardingProgress<Progress>({
+    allowFetchBeforeBootstrap: true,
   });
 
   useEffect(() => {

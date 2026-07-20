@@ -5,6 +5,7 @@ const BUDGETS_MS: Record<string, number> = {
   "inbox.send_message": 1200,
   "pipeline.move_stage": 600,
   "dashboard.shell_bootstrap": 2000,
+  "dashboard.route_transition": 300,
 };
 
 export function measureInteraction(

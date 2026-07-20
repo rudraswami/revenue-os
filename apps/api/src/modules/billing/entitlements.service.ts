@@ -3,12 +3,33 @@ import { PLAN_LIMITS, resolveSubscriptionAccess, type GrowvisiPlanId, type Subsc
 import { isProductionDeploy } from "../../config/production";
 import { metaReviewerEmail } from "../../config/meta-reviewer";
 import { PrismaService } from "../prisma/prisma.service";
+import { ServerCacheService } from "../server-cache/server-cache.service";
+import {
+  entitlementsCacheKey,
+  SERVER_CACHE_TTL,
+} from "../server-cache/server-cache.keys";
+import {
+  isCachedEntitlementsInput,
+  resolveCachedEntitlements,
+  toCachedEntitlementsInput,
+} from "./entitlements-cache.util";
 
 export type LimitReason = "seats" | "whatsapp" | "leads" | "agency_clients" | "campaign_recipients";
 
 @Injectable()
 export class EntitlementsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: ServerCacheService,
+  ) {}
+
+  /** Drop cached subscription access after billing webhooks or plan changes. */
+  async invalidateAccessCache(organizationId: string): Promise<void> {
+    await Promise.all([
+      this.cache.invalidateEntitlements(organizationId),
+      this.cache.invalidateShellBootstrap(organizationId),
+    ]);
+  }
 
   /**
    * Meta App Review workspace — full Pro access when explicitly enabled.
@@ -87,8 +108,27 @@ export class EntitlementsService {
   }
 
   async getAccess(organizationId: string): Promise<SubscriptionAccess> {
+    const cacheKey = entitlementsCacheKey(organizationId);
+    const cached = await this.cache.get<unknown>(cacheKey);
+    if (isCachedEntitlementsInput(cached)) {
+      return resolveCachedEntitlements(cached);
+    }
+
+    const { access, cacheable } = await this.loadAccess(organizationId);
+    if (cacheable) {
+      await this.cache.set(cacheKey, cacheable, SERVER_CACHE_TTL.entitlementsSec);
+    }
+    return access;
+  }
+
+  private async loadAccess(organizationId: string): Promise<{
+    access: SubscriptionAccess;
+    cacheable: ReturnType<typeof toCachedEntitlementsInput> | null;
+  }> {
     const reviewerAccess = await this.metaReviewerAccess(organizationId);
-    if (reviewerAccess) return reviewerAccess;
+    if (reviewerAccess) {
+      return { access: reviewerAccess, cacheable: null };
+    }
 
     const sub = await this.prisma.subscription.findUnique({
       where: { organizationId },
@@ -98,18 +138,26 @@ export class EntitlementsService {
         where: { id: organizationId },
         select: { createdAt: true },
       });
-      return resolveSubscriptionAccess({
+      const input = {
         planId: "trial",
         status: "TRIALING",
         createdAt: org?.createdAt ?? new Date(),
-      });
+      };
+      return {
+        access: resolveSubscriptionAccess(input),
+        cacheable: toCachedEntitlementsInput(input),
+      };
     }
-    return resolveSubscriptionAccess({
+    const input = {
       planId: sub.planId,
       status: sub.status,
       createdAt: sub.createdAt,
       currentPeriodEnd: sub.currentPeriodEnd,
-    });
+    };
+    return {
+      access: resolveSubscriptionAccess(input),
+      cacheable: toCachedEntitlementsInput(input),
+    };
   }
 
   async assertHasAccess(organizationId: string): Promise<SubscriptionAccess> {

@@ -79,6 +79,14 @@ growvisi/
 | Automation | Rules, triggers, workflows |
 | Billing | Plans, usage meters (architecture-ready) |
 
+## Architecture documents
+
+| Doc | Topic |
+|-----|--------|
+| [02-event-and-queue-architecture.md](./02-event-and-queue-architecture.md) | Domain events, BullMQ queues |
+| [03-ai-orchestration.md](./03-ai-orchestration.md) | AI layers, RAG, guardrails |
+| [04-performance-engineering-standards.md](./04-performance-engineering-standards.md) | **Performance playbook — SLOs, caching, request budgets, DoD** |
+
 ## Technology Decisions
 
 | Concern | Choice | Rationale |

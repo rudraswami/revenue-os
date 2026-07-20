@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "./query-config";
+import { syncInboxThreadBundleConversation } from "./inbox-thread-bundle";
 
 export const OPTIMISTIC_MESSAGE_PREFIX = "optimistic-";
 
@@ -63,17 +64,17 @@ export function patchConversationAsRead(
 ): void {
   let clearedUnread = 0;
 
-  const thread = queryClient.getQueryData<InboxThreadCache>(["conversation", conversationId]);
+  const thread = queryClient.getQueryData<InboxThreadCache>(QUERY_KEYS.conversation(conversationId));
   if (thread && thread.unreadCount > 0) {
     clearedUnread = thread.unreadCount;
-    queryClient.setQueryData<InboxThreadCache>(["conversation", conversationId], {
+    syncInboxThreadBundleConversation(queryClient, conversationId, {
       ...thread,
       unreadCount: 0,
     });
   }
 
   const listEntries = queryClient.getQueriesData<{ data: InboxListRow[] }>({
-    queryKey: ["conversations"],
+    queryKey: QUERY_KEYS.conversationsList,
   });
 
   for (const [key, cached] of listEntries) {
@@ -116,14 +117,14 @@ export function appendOptimisticOutboundMessage(
   conversationId: string,
   message: InboxThreadMessage,
 ): InboxThreadCache | undefined {
-  const thread = queryClient.getQueryData<InboxThreadCache>(["conversation", conversationId]);
+  const thread = queryClient.getQueryData<InboxThreadCache>(QUERY_KEYS.conversation(conversationId));
   if (!thread) return undefined;
 
   const next: InboxThreadCache = {
     ...thread,
     messages: [...thread.messages, message],
   };
-  queryClient.setQueryData(["conversation", conversationId], next);
+  syncInboxThreadBundleConversation(queryClient, conversationId, next);
   return next;
 }
 
@@ -133,10 +134,10 @@ export function replaceOptimisticOutboundMessage(
   optimisticId: string,
   serverMessage: InboxThreadMessage,
 ): void {
-  const thread = queryClient.getQueryData<InboxThreadCache>(["conversation", conversationId]);
+  const thread = queryClient.getQueryData<InboxThreadCache>(QUERY_KEYS.conversation(conversationId));
   if (!thread) return;
 
-  queryClient.setQueryData<InboxThreadCache>(["conversation", conversationId], {
+  syncInboxThreadBundleConversation(queryClient, conversationId, {
     ...thread,
     messages: thread.messages.map((m) => (m.id === optimisticId ? serverMessage : m)),
   });
@@ -146,9 +147,9 @@ export function patchConversationHandoffResolved(
   queryClient: QueryClient,
   conversationId: string,
 ): void {
-  const thread = queryClient.getQueryData<InboxThreadCache>(["conversation", conversationId]);
+  const thread = queryClient.getQueryData<InboxThreadCache>(QUERY_KEYS.conversation(conversationId));
   if (thread?.requiresHuman) {
-    queryClient.setQueryData<InboxThreadCache>(["conversation", conversationId], {
+    syncInboxThreadBundleConversation(queryClient, conversationId, {
       ...thread,
       requiresHuman: false,
       handoffReason: null,
@@ -156,7 +157,7 @@ export function patchConversationHandoffResolved(
   }
 
   const listEntries = queryClient.getQueriesData<{ data: InboxListRow[] }>({
-    queryKey: ["conversations"],
+    queryKey: QUERY_KEYS.conversationsList,
   });
 
   for (const [key, cached] of listEntries) {
@@ -191,16 +192,16 @@ export function patchThreadLeadStage(
   conversationId: string,
   stage: string,
 ): void {
-  const thread = queryClient.getQueryData<InboxThreadCache>(["conversation", conversationId]);
+  const thread = queryClient.getQueryData<InboxThreadCache>(QUERY_KEYS.conversation(conversationId));
   if (thread?.lead) {
-    queryClient.setQueryData<InboxThreadCache>(["conversation", conversationId], {
+    syncInboxThreadBundleConversation(queryClient, conversationId, {
       ...thread,
       lead: { ...thread.lead, stage },
     });
   }
 
   const listEntries = queryClient.getQueriesData<{ data: InboxListRow[] }>({
-    queryKey: ["conversations"],
+    queryKey: QUERY_KEYS.conversationsList,
   });
 
   for (const [key, cached] of listEntries) {
@@ -225,7 +226,7 @@ export function patchConversationListsAfterOutbound(
   createdAt: string,
 ): void {
   const listEntries = queryClient.getQueriesData<{ data: InboxListRow[] }>({
-    queryKey: ["conversations"],
+    queryKey: QUERY_KEYS.conversationsList,
   });
 
   for (const [key, cached] of listEntries) {
@@ -253,16 +254,15 @@ export function prependOlderMessages(
   olderMessages: InboxThreadMessage[],
   hasOlderMessages: boolean,
 ): void {
-  const thread = queryClient.getQueryData<InboxThreadCache & { hasOlderMessages?: boolean }>([
-    "conversation",
-    conversationId,
-  ]);
+  const thread = queryClient.getQueryData<InboxThreadCache & { hasOlderMessages?: boolean }>(
+    QUERY_KEYS.conversation(conversationId),
+  );
   if (!thread) return;
 
   const existingIds = new Set(thread.messages.map((m) => m.id));
   const uniqueOlder = olderMessages.filter((m) => !existingIds.has(m.id));
 
-  queryClient.setQueryData(["conversation", conversationId], {
+  syncInboxThreadBundleConversation(queryClient, conversationId, {
     ...thread,
     messages: [...uniqueOlder, ...thread.messages],
     hasOlderMessages,

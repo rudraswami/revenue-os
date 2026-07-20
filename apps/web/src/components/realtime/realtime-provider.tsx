@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import { handleRealtimeEvent } from "@/lib/realtime-event-handler";
+import { handleRealtimeEvent, type RealtimeRefreshPayload } from "@/lib/realtime-event-handler";
 import { organizationIdFromStore, useAuthStore } from "@/stores/auth-store";
 import { subscribeSupabaseOrgChannel, supabaseRealtimeEnabled } from "@/lib/supabase-realtime";
 
@@ -65,7 +65,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     socket.on("disconnect", () => setConnected(false));
     socket.on("connect_error", () => setConnected(false));
 
-    socket.on("message.new", (payload: { conversationId?: string }) => {
+    socket.on("message.new", (payload: RealtimeRefreshPayload) => {
       handleRealtimeEvent(queryClient, "message.new", payload);
     });
 

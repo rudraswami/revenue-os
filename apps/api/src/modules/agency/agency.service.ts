@@ -15,6 +15,7 @@ import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmbeddedSignupService } from "../whatsapp-accounts/embedded-signup.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
+import { ServerCacheService } from "../server-cache/server-cache.service";
 
 export interface AgencyClientRow {
   id: string;
@@ -46,6 +47,7 @@ export class AgencyService {
     private readonly embeddedSignup: EmbeddedSignupService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly serverCache: ServerCacheService,
   ) {}
 
   async getStatus(user: JwtPayload) {
@@ -457,6 +459,12 @@ export class AgencyService {
         },
       });
     });
+
+    await Promise.all(
+      agencyStaff.map((member) =>
+        this.serverCache.invalidateMembership(member.userId, link.client.id),
+      ),
+    );
 
     return {
       id: link.id,

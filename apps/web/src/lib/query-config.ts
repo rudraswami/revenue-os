@@ -36,4 +36,21 @@ export const QUERY_KEYS = {
   whatsappConnectionHealth: ["whatsapp-connection-health"] as const,
   paymentIntegration: ["payment-integration"] as const,
   conversationCapabilities: ["conversation-capabilities"] as const,
+  conversation: (id: string) => ["conversation", id] as const,
+  conversationThread: (id: string) => ["conversation-thread", id] as const,
+  conversationInboxContext: (id: string) => ["conversation-inbox-context", id] as const,
+  conversationKnowledgeGaps: (id: string) => ["conversation-knowledge-gaps", id] as const,
+  leadTimeline: (leadId: string) => ["lead-timeline", leadId] as const,
+  /** Prefix for inbox list queries — use with getQueriesData / invalidateQueries. */
+  conversationsList: ["conversations"] as const,
+  pipeline: (filter: string, perStageLimit: number) =>
+    ["pipeline", filter, perStageLimit] as const,
+  pipelineSummary: ["pipeline-summary"] as const,
+  contacts: (
+    q: string,
+    stage: string | undefined,
+    tagId: string | undefined,
+    ownerId: string | undefined,
+    page: number,
+  ) => ["contacts", q, stage, tagId, ownerId, page] as const,
 } as const;

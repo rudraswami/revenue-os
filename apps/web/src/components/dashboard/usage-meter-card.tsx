@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
-import { apiFetch } from "@/lib/api-client";
-import { useAuthStore } from "@/stores/auth-store";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
 import { cn } from "@/lib/utils";
 import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
 import { trackConversionFriction } from "@/lib/conversion-friction-analytics";
@@ -59,14 +57,7 @@ function MeterBar({ used, limit, label }: { used: number; limit: number; label: 
 }
 
 export function UsageMeterCard({ compact }: { compact?: boolean }) {
-  const token = useAuthStore((s) => s.accessToken);
-
-  const { data } = useQuery({
-    queryKey: ["billing-status"],
-    queryFn: () => apiFetch<BillingUsage>("/billing", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: 120_000,
-  });
+  const { data } = useShellBilling<BillingUsage>();
 
   if (!data) return null;
 

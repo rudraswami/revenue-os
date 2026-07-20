@@ -26,6 +26,7 @@ export function useSettingsBootstrap() {
     },
     enabled: hydrated && !!token,
     staleTime: STALE.config,
+    refetchOnWindowFocus: false,
     placeholderData: () =>
       queryClient.getQueryData<ShellBootstrapResponse>(QUERY_KEYS.shellBootstrap),
   });

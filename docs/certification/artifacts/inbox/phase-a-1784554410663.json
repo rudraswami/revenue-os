@@ -1,0 +1,10 @@
+{
+  "certified_at": "2026-07-20T13:33:30.661Z",
+  "phase": "A",
+  "list_conversation_rows": 0,
+  "list_load_api": {
+    "conversation_legacy": 1,
+    "list": 1
+  },
+  "skipped_thread_open": "no conversations in seed data"
+}

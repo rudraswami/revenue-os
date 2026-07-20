@@ -9,6 +9,9 @@ import type { AuthSession, AuthUser, MeResponse } from "@/lib/auth-types";
 import { isConclusiveAuthDeath } from "@/lib/auth-session-death";
 import { accessTokenIsExpired, accessTokenNeedsRefresh } from "@/lib/session-continuity";
 import { readPersistedRefreshToken } from "@/lib/refresh-token-persist";
+import {
+  invalidateWorkspaceShellCache,
+} from "@/lib/session-query-cache";
 import { useAuthStore } from "@/stores/auth-store";
 
 export async function logout(): Promise<void> {
@@ -31,6 +34,7 @@ export async function logout(): Promise<void> {
 export function applySession(session: AuthSession) {
   useAuthStore.getState().setSession(session);
   syncAuthCookie(true);
+  invalidateWorkspaceShellCache();
 }
 
 export function postAuthPath(onboarding?: { whatsappConnected?: boolean } | null): string {

@@ -78,6 +78,14 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api/v1
 
+      - name: Bundle budget gate (P2 warn)
+        run: pnpm check:bundle-budget --rebuild
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          JWT_SECRET: ci-test-secret-minimum-32-characters-long
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api/v1
+
       - name: Seed E2E user
         run: pnpm --filter @growvisi/database exec tsx prisma/seed.ts
         env:
@@ -85,6 +93,12 @@ jobs:
           DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
           SEED_USER_EMAIL: demo@growvisi.com
           SEED_USER_PASSWORD: demo123456
+
+      - name: Seed inbox certification fixture
+        run: pnpm seed:inbox-cert
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
 
       - name: Install Playwright
         run: pnpm --filter @growvisi/web exec playwright install chromium --with-deps
@@ -99,3 +113,33 @@ jobs:
           REDIS_URL: redis://localhost:6379
           E2E_EMAIL: demo@growvisi.com
           E2E_PASSWORD: demo123456
+
+      - name: Inbox thread bundle certification (Phase A, G, H)
+        run: pnpm --filter @growvisi/web exec playwright test e2e/inbox-thread-bundle-cert.spec.ts
+        env:
+          CI: true
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          JWT_SECRET: ci-test-secret-minimum-32-characters-long
+          REDIS_URL: redis://localhost:6379
+          E2E_EMAIL: demo@growvisi.com
+          E2E_PASSWORD: demo123456
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api/v1
+
+      - name: P0 certification probe (API latency + auth cache)
+        run: |
+          node apps/api/dist/main &
+          API_PID=$!
+          sleep 8
+          pnpm certify:p0-local --skip-webhook || STATUS=$?
+          pnpm certify:p1-performance || true
+          kill $API_PID 2>/dev/null || true
+          exit ${STATUS:-0}
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          JWT_SECRET: ci-test-secret-minimum-32-characters-long
+          REDIS_URL: redis://localhost:6379
+          E2E_EMAIL: demo@growvisi.com
+          E2E_PASSWORD: demo123456
+          API_URL: http://127.0.0.1:4000/api/v1

@@ -9,6 +9,7 @@ import { EmailVerificationBanner } from "@/components/auth/email-verification-ba
 import { PermissionsChangedBanner } from "@/components/auth/permissions-changed-banner";
 import { ShellBootstrapErrorBanner } from "@/components/dashboard/shell-bootstrap-error-banner";
 import { useDashboardShellBootstrap } from "@/hooks/use-dashboard-shell-bootstrap";
+import { useRouteTransitionPerf } from "@/hooks/use-route-transition-perf";
 import { DashboardAssistLayer } from "@/components/dashboard/dashboard-assist-layer";
 import {
   OnboardingBanner,
@@ -24,6 +25,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isInbox = pathname === "/dashboard/inbox" || pathname.startsWith("/dashboard/inbox/");
   const { isError, error, refetch, isFetching } = useDashboardShellBootstrap();
+  useRouteTransitionPerf();
 
   return (
     <div className="flex app-shell">

@@ -29,6 +29,8 @@ import { CTA } from "@/lib/brand-copy";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { timeGreeting } from "@/lib/greeting";
 import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
+import { useShellBilling } from "@/hooks/use-shell-cached-query";
+import { useShellOnboardingProgress } from "@/hooks/use-shell-data";
 import { useAuthStore } from "@/stores/auth-store";
 import { canViewTeamAnalytics } from "@/lib/permissions";
 
@@ -138,27 +140,15 @@ export default function DashboardPage() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: onboardingProgress } = useQuery({
-    queryKey: ["onboarding-progress"],
-    queryFn: () =>
-      apiFetch<{
-        whatsappConnected: boolean;
-        allComplete: boolean;
-      }>("/organizations/onboarding-progress", { token: token ?? undefined }),
-    enabled: !!token,
-    staleTime: STALE.dashboard,
-    placeholderData: (prev) => prev,
-  });
+  const { data: onboardingProgress } = useShellOnboardingProgress<{
+    whatsappConnected: boolean;
+    allComplete: boolean;
+  }>();
 
-  const { data: billing } = useQuery({
-    queryKey: ["billing-status"],
-    queryFn: () =>
-      apiFetch<{ planId: string; entitlements?: { hasAccess: boolean } }>("/billing", {
-        token: token ?? undefined,
-      }),
-    enabled: !!token,
-    staleTime: STALE.config,
-  });
+  const { data: billing } = useShellBilling<{
+    planId: string;
+    entitlements?: { hasAccess: boolean };
+  }>();
 
   const campaignsPlanOk =
     billing?.entitlements?.hasAccess &&

@@ -1,16 +1,17 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { OnboardingGate } from "@/components/auth/onboarding-gate";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { LocaleProvider } from "@/lib/i18n/locale-provider";
+import { cookies } from "next/headers";
+import { DashboardLayoutClient } from "./dashboard-layout-client";
+import { fetchShellBootstrapServer } from "@/lib/shell-bootstrap-server";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
+
+  const initialShell = await fetchShellBootstrapServer(cookieHeader);
+
   return (
-    <AuthGuard>
-      <OnboardingGate>
-        <LocaleProvider>
-          <DashboardShell>{children}</DashboardShell>
-        </LocaleProvider>
-      </OnboardingGate>
-    </AuthGuard>
+    <DashboardLayoutClient initialShell={initialShell}>{children}</DashboardLayoutClient>
   );
 }
