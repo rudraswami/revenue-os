@@ -16,7 +16,7 @@ import {
 } from "@/lib/i18n/conversations-copy";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { FilterChip } from "@/components/ui/filter-chip";
-import { InboxConversationRowItem } from "@/components/dashboard/inbox-conversation-row";
+import { InboxConversationRowItem, INBOX_LIST_ROW_HEIGHT } from "@/components/dashboard/inbox-conversation-row";
 import { cn } from "@/lib/utils";
 
 export interface InboxConversationRow {
@@ -129,8 +129,8 @@ export function InboxConversationList({
   const virtualizer = useVirtualizer({
     count: conversations.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 76,
-    overscan: 8,
+    estimateSize: () => INBOX_LIST_ROW_HEIGHT,
+    overscan: 10,
   });
 
   useEffect(() => {
@@ -299,7 +299,7 @@ export function InboxConversationList({
 
         {conversations.length > 0 && (
           <ul
-            className="relative divide-y divide-border/50"
+            className="relative"
             style={{ height: `${virtualizer.getTotalSize()}px` }}
           >
             {virtualizer.getVirtualItems().map((virtualRow) => {
@@ -308,7 +308,10 @@ export function InboxConversationList({
                 <li
                   key={c.id}
                   className="absolute left-0 top-0 w-full"
-                  style={{ transform: `translateY(${virtualRow.start}px)` }}
+                  style={{
+                    height: `${INBOX_LIST_ROW_HEIGHT}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
                 >
                   <InboxConversationRowItem
                     conversation={c}

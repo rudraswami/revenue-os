@@ -24,21 +24,29 @@ function paletteFor(seed: string) {
 
 export function AvatarInitials({
   name,
+  seed,
   className,
   size = "md",
 }: {
   name: string;
+  /** Stable color when name is a single initial (e.g. phone-based). */
+  seed?: string;
   className?: string;
   size?: "sm" | "md" | "lg";
 }) {
+  const colorKey = seed?.trim() || name;
   const sizeClass =
-    size === "sm" ? "h-8 w-8 text-xs" : size === "lg" ? "h-12 w-12 text-base" : "h-10 w-10 text-xs";
+    size === "sm"
+      ? "h-9 w-9 text-[11px] font-semibold tracking-wide"
+      : size === "lg"
+        ? "h-12 w-12 text-sm font-semibold tracking-wide"
+        : "h-10 w-10 text-xs font-semibold tracking-wide";
 
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full font-semibold",
-        paletteFor(name),
+        "flex shrink-0 items-center justify-center rounded-full",
+        paletteFor(colorKey),
         sizeClass,
         className,
       )}

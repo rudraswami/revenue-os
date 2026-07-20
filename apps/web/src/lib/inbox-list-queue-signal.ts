@@ -13,7 +13,7 @@ export type InboxListQueueBadge =
   | { kind: "hot_score"; score: number }
   | { kind: "stage"; stage: string };
 
-/** Queue-first list metadata — urgency and ₹ before pipeline stage labels. */
+/** Queue-first list metadata — used for sorting; list UI shows signals subtly on the row. */
 export function inboxListQueueBadges(
   lead: InboxListLeadSignal | null | undefined,
   options: {
