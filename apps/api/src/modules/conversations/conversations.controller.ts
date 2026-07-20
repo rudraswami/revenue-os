@@ -210,6 +210,19 @@ export class ConversationsController {
     return this.conversations.startOutbound(user, dto);
   }
 
+  @Get(":id/export")
+  @RequireCapability("inbox.reply")
+  async exportTranscript(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Res() res: Response,
+  ) {
+    const exported = await this.conversations.exportTranscript(user, id);
+    res.setHeader("Content-Type", exported.contentType);
+    res.setHeader("Content-Disposition", `attachment; filename="${exported.filename}"`);
+    res.send(exported.body);
+  }
+
   @Get(":id/messages")
   @RequireCapability("inbox.reply")
   listMessages(

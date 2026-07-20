@@ -325,6 +325,71 @@ export class ConversationsService {
     };
   }
 
+  async exportTranscript(user: JwtPayload, conversationId: string) {
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId: user.organizationId },
+      select: {
+        id: true,
+        assignedToId: true,
+        contactName: true,
+        contactPhone: true,
+      },
+    });
+    if (!conversation) throw new NotFoundException("Conversation not found");
+    this.assertInboxThreadAccess(user, conversation);
+
+    const lines: string[] = [];
+    const headerName = conversation.contactName ?? conversation.contactPhone;
+    lines.push(`Growvisi conversation — ${headerName}`);
+    lines.push(`Phone: ${conversation.contactPhone}`);
+    lines.push(`Exported: ${new Date().toISOString()}`);
+    lines.push("");
+
+    let before: Date | undefined;
+    let total = 0;
+    const maxMessages = 2_000;
+
+    while (total < maxMessages) {
+      const batch = await this.prisma.message.findMany({
+        where: {
+          conversationId,
+          ...(before ? { createdAt: { lt: before } } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+      if (batch.length === 0) break;
+
+      const ordered = [...batch].reverse();
+      for (const msg of ordered) {
+        const who = msg.direction === "INBOUND" ? "Customer" : "Team";
+        const at = msg.createdAt.toISOString();
+        const type = String(msg.type);
+        const body =
+          msg.content?.trim() ||
+          (type !== "TEXT" ? `[${type}]` : "—");
+        lines.push(`[${at}] ${who}: ${body}`);
+        total += 1;
+        if (total >= maxMessages) break;
+      }
+
+      before = batch[batch.length - 1]?.createdAt;
+      if (batch.length < 100) break;
+    }
+
+    if (total >= maxMessages) {
+      lines.push("");
+      lines.push(`(Truncated at ${maxMessages} messages)`);
+    }
+
+    const safeName = headerName.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-") || "chat";
+    return {
+      filename: `growvisi-${safeName.slice(0, 40)}.txt`,
+      contentType: "text/plain; charset=utf-8",
+      body: lines.join("\n"),
+    };
+  }
+
   async list(user: JwtPayload, page = 1, pageSize = 20, q?: string, filter?: string, scope?: string) {
     const skip = (page - 1) * pageSize;
     const query = q?.trim();

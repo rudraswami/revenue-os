@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,10 @@ import { trackCoaching } from "@/lib/coaching-analytics";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
 import { InboxMessageActions } from "@/components/dashboard/inbox-message-actions";
 import { InboxImageLightbox } from "@/components/dashboard/inbox-image-lightbox";
+import { InboxHandoffPackageDialog } from "@/components/dashboard/inbox-handoff-package-dialog";
+import { InboxFollowUpDialog } from "@/components/dashboard/inbox-follow-up-dialog";
+import { InboxPaymentAssistBanner } from "@/components/dashboard/inbox-payment-assist-banner";
+import { InboxSessionStatus } from "@/components/dashboard/inbox-session-status";
 import { InboxComposer } from "@/components/dashboard/inbox-composer";
 import { InboxOwnershipStrip } from "@/components/dashboard/inbox-ownership-strip";
 import { InboxReplyDecision } from "@/components/dashboard/inbox-reply-decision";
@@ -30,7 +34,7 @@ import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
 import { InboxThreadDetailsMobile } from "@/components/dashboard/inbox-thread-details-mobile";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
-import { apiFetch, apiUpload, toUserMessage } from "@/lib/api-client";
+import { apiFetch, apiUpload, apiDownload, toUserMessage } from "@/lib/api-client";
 import { measureInteraction, startInteraction } from "@/lib/performance";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import {
@@ -77,6 +81,12 @@ import { formatQuotedReply, parseQuotedReply } from "@/lib/inbox-composer-helper
 import { downloadInboxMessageMedia } from "@/lib/inbox-media-download";
 import { getCachedInboxMediaUrl } from "@/lib/inbox-media-cache";
 import { getCopyableMessageText, inferInboxMediaFilename, formatPinnedNoteText } from "@/lib/inbox-message-helpers";
+import { isPaymentAssistCandidate } from "@/lib/inbox-payment-assist";
+import {
+  followUpDueAt,
+  formatFollowUpTaskTitle,
+  type FollowUpPreset,
+} from "@/lib/inbox-follow-up-task";
 import { InboxInternalNotes } from "@/components/dashboard/inbox-internal-notes";
 
 interface Message {
@@ -208,6 +218,11 @@ function InboxThreadPaneInner({
   } | null>(null);
   const [lightboxMessageId, setLightboxMessageId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [pendingHandoff, setPendingHandoff] = useState<{ userId: string; name: string } | null>(
+    null,
+  );
+  const [followUpExcerpt, setFollowUpExcerpt] = useState<string | null>(null);
+  const [paymentAssistDismissed, setPaymentAssistDismissed] = useState(false);
   const prevConversationIdRef = useRef(conversationId);
 
   const INBOX_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -298,6 +313,9 @@ function InboxThreadPaneInner({
   useEffect(() => {
     setLightboxMessageId(null);
     setLightboxUrl(null);
+    setPendingHandoff(null);
+    setFollowUpExcerpt(null);
+    setPaymentAssistDismissed(false);
   }, [conversationId]);
 
   useEffect(() => {
@@ -534,6 +552,30 @@ function InboxThreadPaneInner({
       refreshQueueStats(queryClient);
     },
     onError: (e) => showMutationError(e, "Could not assign this conversation."),
+  });
+
+  const followUpMutation = useMutation({
+    mutationFn: ({ preset, excerpt }: { preset: FollowUpPreset; excerpt: string | null }) => {
+      const leadId = thread?.lead?.id;
+      if (!leadId) throw new Error("No lead linked to this conversation.");
+      const contact = thread?.contactName ?? thread?.contactPhone ?? "contact";
+      return apiFetch("/tasks", {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({
+          title: formatFollowUpTaskTitle(contact, excerpt),
+          leadId,
+          assignedToId: myUserId,
+          dueAt: followUpDueAt(preset).toISOString(),
+          priority: "HIGH",
+        }),
+      });
+    },
+    onSuccess: () => {
+      setFollowUpExcerpt(null);
+      toastSuccess(copy.followUpSuccess);
+    },
+    onError: (e) => showMutationError(e, "Could not create follow-up task."),
   });
 
   const stageMutation = useMutation({
@@ -846,6 +888,45 @@ function InboxThreadPaneInner({
     }
   }
 
+  function requestAssign(assignToUserId: string | null) {
+    if (!assignToUserId) {
+      assignMutation.mutate(null);
+      return;
+    }
+    if (assignToUserId === thread?.assignedTo?.id) return;
+    if (canAssignOthers && assignToUserId !== myUserId) {
+      const member = (teamMembers ?? []).find((m) => m.user.id === assignToUserId);
+      setPendingHandoff({
+        userId: assignToUserId,
+        name: member?.user.name ?? member?.user.email ?? "Teammate",
+      });
+      return;
+    }
+    assignMutation.mutate(assignToUserId);
+  }
+
+  async function exportConversation() {
+    if (!thread) return;
+    const contact = thread.contactName ?? thread.contactPhone;
+    const safe =
+      contact.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-") || "chat";
+    try {
+      await apiDownload(
+        `/conversations/${conversationId}/export`,
+        `growvisi-${safe.slice(0, 40)}.txt`,
+        token ?? undefined,
+      );
+      toastSuccess(copy.exportConversationSuccess);
+    } catch (e) {
+      showMutationError(e, "Could not export conversation.");
+    }
+  }
+
+  function openFollowUp(excerpt: string | null) {
+    if (!thread?.lead?.id || !canSend) return;
+    setFollowUpExcerpt(excerpt);
+  }
+
   function pinMessage(content: string | null) {
     const text = getCopyableMessageText(content) ?? content?.trim();
     if (!text || !thread?.lead?.id || !canSend) return;
@@ -886,6 +967,28 @@ function InboxThreadPaneInner({
     ? thread.messages.find((m) => m.id === lightboxMessageId)
     : undefined;
   const lightboxIndex = lightboxMessageId ? imageMessageIds.indexOf(lightboxMessageId) : -1;
+
+  const latestInbound = (() => {
+    for (let i = thread.messages.length - 1; i >= 0; i--) {
+      const m = thread.messages[i];
+      if (m.direction === "INBOUND") return m;
+    }
+    return null;
+  })();
+
+  const showPaymentAssist =
+    !paymentAssistDismissed &&
+    !!latestInbound &&
+    isPaymentAssistCandidate(latestInbound.type ?? "TEXT", latestInbound.content) &&
+    thread.lead?.stage !== "WON";
+
+  const recentCustomerSnippet = (() => {
+    const inbound = thread.messages
+      .filter((m) => m.direction === "INBOUND" && m.content?.trim())
+      .slice(-3);
+    if (!inbound.length) return null;
+    return inbound.map((m) => m.content).join("\n");
+  })();
 
   return (
     <>
@@ -1005,6 +1108,17 @@ function InboxThreadPaneInner({
                       : copy.scoreWarm(thread.lead.score)}
                   </span>
                 )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground"
+                  aria-label={copy.exportConversation}
+                  title={copy.exportConversation}
+                  onClick={() => void exportConversation()}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
                 {thread.lead &&
                   (canSend ? (
                     <select
@@ -1056,7 +1170,7 @@ function InboxThreadPaneInner({
               stagePending={stageMutation.isPending}
               assignPending={assignMutation.isPending}
               onStageChange={(s) => handleStageChange(s)}
-              onAssign={(userId) => assignMutation.mutate(userId)}
+              onAssign={(userId) => requestAssign(userId)}
             />
             <InboxAiPanel
               aiContext={thread.aiContext ?? null}
@@ -1099,7 +1213,7 @@ function InboxThreadPaneInner({
                     disabled={assignMutation.isPending}
                     onChange={(e) => {
                       const v = e.target.value;
-                      assignMutation.mutate(v ? v : null);
+                      requestAssign(v ? v : null);
                     }}
                   >
                     <option value="">{copy.unassigned}</option>
@@ -1160,6 +1274,7 @@ function InboxThreadPaneInner({
                 const canQuote =
                   m.direction === "INBOUND" && canSend && !windowClosed && !!m.content;
                 const canPin = !!thread.lead?.id && canSend && !!pinText && !/^\[[^\]]+\]$/.test(pinText);
+                const canFollowUp = !!thread.lead?.id && canSend && !!pinText;
                 return (
                 <div
                   key={m.id}
@@ -1181,6 +1296,12 @@ function InboxThreadPaneInner({
                       copyableText ? () => void copyMessageText(m.content) : undefined
                     }
                     onPin={canPin ? () => pinMessage(m.content) : undefined}
+                    canFollowUp={canFollowUp}
+                    onFollowUp={
+                      canFollowUp
+                        ? () => openFollowUp(copyableText ?? m.content)
+                        : undefined
+                    }
                   />
                   <InboxMessageBody
                     conversationId={thread.id}
@@ -1216,6 +1337,15 @@ function InboxThreadPaneInner({
 
           <div className="shrink-0 border-t border-border/80 bg-card px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-6">
             <div className="mx-auto w-full max-w-3xl">
+              <InboxSessionStatus lastInboundAt={thread.lastInboundAt} />
+              {showPaymentAssist && (
+                <InboxPaymentAssistBanner
+                  onMarkWon={() => {
+                    if (thread.lead) setWonPrompt(true);
+                  }}
+                  onDismiss={() => setPaymentAssistDismissed(true)}
+                />
+              )}
               {windowClosed && (
                 <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
                   <p className="font-semibold">24-hour reply window closed</p>
@@ -1420,6 +1550,40 @@ function InboxThreadPaneInner({
                   );
                 }
               : undefined
+          }
+        />
+      )}
+      {pendingHandoff && thread && (
+        <InboxHandoffPackageDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setPendingHandoff(null);
+          }}
+          assigneeName={pendingHandoff.name}
+          contactLabel={thread.contactName ?? thread.contactPhone}
+          stageLabel={thread.lead ? copy.stageLabel(thread.lead.stage) : undefined}
+          dealValueCents={thread.lead?.valueCents}
+          aiContext={thread.aiContext ?? null}
+          recentSnippet={recentCustomerSnippet}
+          pending={assignMutation.isPending}
+          onConfirm={() => {
+            assignMutation.mutate(pendingHandoff.userId, {
+              onSuccess: () => setPendingHandoff(null),
+            });
+          }}
+        />
+      )}
+      {followUpExcerpt !== null && thread && (
+        <InboxFollowUpDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setFollowUpExcerpt(null);
+          }}
+          contactLabel={thread.contactName ?? thread.contactPhone}
+          excerpt={followUpExcerpt}
+          pending={followUpMutation.isPending}
+          onConfirm={(preset) =>
+            followUpMutation.mutate({ preset, excerpt: followUpExcerpt })
           }
         />
       )}

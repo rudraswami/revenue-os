@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, MoreHorizontal, Pin, Reply } from "lucide-react";
+import { CalendarClock, Copy, MoreHorizontal, Pin, Reply } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,22 +14,26 @@ export function InboxMessageActions({
   canQuote,
   canCopy,
   canPin,
+  canFollowUp,
   onQuote,
   onCopy,
   onPin,
+  onFollowUp,
   className,
 }: {
   canQuote: boolean;
   canCopy: boolean;
   canPin?: boolean;
+  canFollowUp?: boolean;
   onQuote?: () => void;
   onCopy?: () => void;
   onPin?: () => void;
+  onFollowUp?: () => void;
   className?: string;
 }) {
   const copy = useConversationsCopy();
 
-  if (!canQuote && !canCopy && !canPin) return null;
+  if (!canQuote && !canCopy && !canPin && !canFollowUp) return null;
 
   return (
     <DropdownMenu>
@@ -45,7 +49,7 @@ export function InboxMessageActions({
           <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
+      <DropdownMenuContent align="end" className="w-48">
         {canQuote && onQuote && (
           <DropdownMenuItem onClick={onQuote}>
             <Reply className="mr-2 h-3.5 w-3.5" />
@@ -56,6 +60,12 @@ export function InboxMessageActions({
           <DropdownMenuItem onClick={onCopy}>
             <Copy className="mr-2 h-3.5 w-3.5" />
             {copy.copyMessage}
+          </DropdownMenuItem>
+        )}
+        {canFollowUp && onFollowUp && (
+          <DropdownMenuItem onClick={onFollowUp}>
+            <CalendarClock className="mr-2 h-3.5 w-3.5" />
+            {copy.followUpAction}
           </DropdownMenuItem>
         )}
         {canPin && onPin && (
