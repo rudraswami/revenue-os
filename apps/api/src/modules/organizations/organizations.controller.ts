@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
 import {
   ArrayMaxSize,
   IsArray,
@@ -20,6 +20,8 @@ import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { MembershipRoleGuard } from "../../common/guards/membership-role.guard";
 import { SubscriptionGuard } from "../../common/guards/subscription.guard";
 import type { JwtPayload, LeadStage, MembershipRole, IntelligenceWorkspaceSettings } from "@growvisi/shared";
+import type { Response } from "express";
+import { setRedisCacheStatus } from "../../common/http/cache-headers";
 import { AssignmentService } from "../assignments/assignment.service";
 import { DigestService } from "../digest/digest.service";
 import { OrganizationsService } from "./organizations.service";
@@ -392,8 +394,10 @@ export class OrganizationsController {
 
   @Get("shell-bootstrap")
   @SkipSubscriptionCheck()
-  shellBootstrap(@CurrentUser() user: JwtPayload) {
-    return this.organizations.getShellBootstrap(user);
+  async shellBootstrap(@CurrentUser() user: JwtPayload, @Res({ passthrough: true }) res: Response) {
+    const result = await this.organizations.getShellBootstrapCached(user);
+    setRedisCacheStatus(res, result.redisHit);
+    return result.value;
   }
 
   @Get("onboarding-progress")

@@ -57,9 +57,14 @@ export class ServerCacheService implements OnModuleDestroy {
   }
 
   async get<T>(key: string): Promise<T | null> {
+    const { value } = await this.getWithMeta<T>(key);
+    return value;
+  }
+
+  async getWithMeta<T>(key: string): Promise<{ value: T | null; hit: boolean }> {
     if (!this.client) {
       this.metrics.misses += 1;
-      return null;
+      return { value: null, hit: false };
     }
     try {
       const raw = await withTimeout(
@@ -69,14 +74,14 @@ export class ServerCacheService implements OnModuleDestroy {
       );
       if (!raw) {
         this.metrics.misses += 1;
-        return null;
+        return { value: null, hit: false };
       }
       this.metrics.hits += 1;
-      return JSON.parse(raw) as T;
+      return { value: JSON.parse(raw) as T, hit: true };
     } catch (err) {
       this.recordFailure(err);
       this.metrics.misses += 1;
-      return null;
+      return { value: null, hit: false };
     }
   }
 

@@ -25,6 +25,7 @@ describe("ConversationsService.getThreadBundle", () => {
     {} as never,
     {} as never,
     {} as never,
+    {} as never,
   );
 
   const agent: JwtPayload = {

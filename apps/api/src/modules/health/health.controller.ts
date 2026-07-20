@@ -1,10 +1,12 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, Res } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SkipThrottle } from "@nestjs/throttler";
+import type { Response } from "express";
 import Redis from "ioredis";
+import { setHealthCacheControl } from "../../common/http/cache-headers";
+import { getProcessRole, getQueueMode, useBackgroundWorkers } from "../../config/workers";
 import { PrismaService } from "../prisma/prisma.service";
 import { ServerCacheService } from "../server-cache/server-cache.service";
-import { getProcessRole, getQueueMode, useBackgroundWorkers } from "../../config/workers";
 import { QueueHealthService } from "./queue-health.service";
 
 @SkipThrottle()
@@ -18,7 +20,8 @@ export class HealthController {
   ) {}
 
   @Get()
-  async check() {
+  async check(@Res({ passthrough: true }) res: Response) {
+    setHealthCacheControl(res);
     await this.prisma.$queryRaw`SELECT 1`;
 
     const redisUrl = this.config.get<string>("REDIS_URL")?.trim();
@@ -65,7 +68,8 @@ export class HealthController {
   }
 
   @Get("queues")
-  async queues() {
+  async queues(@Res({ passthrough: true }) res: Response) {
+    setHealthCacheControl(res);
     const counts = await this.queueHealth.getJobCounts();
     return {
       processRole: getProcessRole(),

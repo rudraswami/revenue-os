@@ -1,6 +1,6 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
@@ -35,6 +35,7 @@ import { EventsModule } from "./modules/events/events.module";
 import { ServerCacheModule } from "./modules/server-cache/server-cache.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
+import { PrivateNoStoreInterceptor } from "./common/interceptors/private-no-store.interceptor";
 
 @Module({
   imports: [
@@ -95,6 +96,10 @@ import { QUEUES } from "@growvisi/shared";
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PrivateNoStoreInterceptor,
     },
   ],
 })

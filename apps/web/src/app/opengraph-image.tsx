@@ -29,7 +29,6 @@ export default function OpenGraphImage() {
             marginBottom: 32,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={markUrl} width={64} height={64} alt="" />
           <span style={{ fontSize: 36, fontWeight: 700, color: "#0b1c30" }}>Growvisi</span>
         </div>

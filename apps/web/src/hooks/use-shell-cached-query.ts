@@ -81,22 +81,23 @@ export function useShellBilling<T = Record<string, unknown>>(
   const token = useAuthStore((s) => s.accessToken);
   const bootstrapSettled = useShellBootstrapSettled();
   const enabled = options?.enabled ?? true;
+  const preferFresh = options?.preferFresh ?? false;
 
-  if (options?.preferFresh) {
-    return useQuery<T, Error>({
-      queryKey: QUERY_KEYS.billing,
-      queryFn: () => apiFetch<T>("/billing", { token: token ?? undefined }),
-      enabled: hydrated && !!token && enabled && bootstrapSettled,
-      staleTime: STALE.config,
-      refetchOnWindowFocus: false,
-    });
-  }
-
-  return useShellCachedQuery<T>({
+  const cachedQuery = useShellCachedQuery<T>({
     queryKey: QUERY_KEYS.billing,
     queryFn: () => apiFetch<T>("/billing", { token: token ?? undefined }),
     staleTime: STALE.dashboard,
-    enabled,
+    enabled: enabled && !preferFresh,
     allowFetchBeforeBootstrap: options?.allowFetchBeforeBootstrap,
   });
+
+  const freshQuery = useQuery<T, Error>({
+    queryKey: QUERY_KEYS.billing,
+    queryFn: () => apiFetch<T>("/billing", { token: token ?? undefined }),
+    enabled: hydrated && !!token && enabled && preferFresh && bootstrapSettled,
+    staleTime: STALE.config,
+    refetchOnWindowFocus: false,
+  });
+
+  return preferFresh ? freshQuery : cachedQuery;
 }

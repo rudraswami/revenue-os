@@ -62,7 +62,6 @@ export function trackActivation(
   }
 
   if (process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
     console.debug("[activation]", payload);
   }
 }

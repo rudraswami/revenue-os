@@ -55,6 +55,7 @@
     "certify:p0-local": "node scripts/certify-p0-local.mjs",
     "certify:redis-soak": "node scripts/certify-redis-soak.mjs",
     "certify:p1-performance": "node scripts/certify-p1-performance.mjs",
+    "certify:p2-local": "node scripts/certify-p2-local.mjs",
     "certify:worker-queue": "node scripts/certify-worker-queue.mjs",
     "check:bundle-budget": "node scripts/check-bundle-budget.mjs",
     "seed:inbox-cert": "pnpm --filter @growvisi/database exec tsx prisma/seed-inbox-cert.ts",

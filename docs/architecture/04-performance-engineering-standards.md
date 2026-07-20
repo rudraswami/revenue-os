@@ -256,13 +256,13 @@ React Query cache is **per-tab** — realtime events patch cache; do not assume 
 
 **Implementation status (P1 worker host):** `pnpm --filter @growvisi/api start:worker` with `WORKER_ONLY=1 USE_INLINE_WORKERS=0 REDIS_URL=...`. Vercel API never registers processors. Probe: `pnpm certify:worker-queue`, queue depths at `GET /health/queues`.
 
-**Implementation status (P2 RUM — partial):** `useRouteTransitionPerf` records `dashboard.route_transition` in Sentry when over budget.
+**Implementation status (P2 RUM):** `lib/rum.ts` observes LCP/INP/CLS; `useDashboardInteractivePerf` reports `dashboard.interactive`; `useRouteTransitionPerf` records `dashboard.route_transition`; Sentry browser tracing when `NEXT_PUBLIC_SENTRY_DSN` is set. Probe: `pnpm certify:p2-local`.
 
-**Implementation status (P2 Redis caches):** `queue-stats:{orgId}:{userId}` (15s) and `onboarding:{orgId}` (60s) server caches; invalidated with shell-bootstrap version bump.
+**Implementation status (P2 Redis HTTP cache):** `X-Growvisi-Cache: redis-hit|redis-miss` on shell-bootstrap and queue stats; global `Cache-Control: private, no-store` via `PrivateNoStoreInterceptor`. Server keys: `queue-stats:{orgId}:{userId}` (15s), `onboarding:{orgId}` (60s).
 
-**Implementation status (P2 RSC bootstrap):** Dashboard `layout.tsx` server-fetches shell-bootstrap via refresh cookie and hydrates React Query before client fetch.
+**Implementation status (P2 RSC bootstrap):** Dashboard `layout.tsx` server-fetches shell-bootstrap via refresh cookie; `ShellBootstrapInitialProvider` seeds React Query; settings hook shares `initialData`.
 
-**Implementation status (P2 bundle CI):** `pnpm check:bundle-budget` parses Next First Load JS; CI warns on +10% over route budgets.
+**Implementation status (P2 bundle CI):** `pnpm check:bundle-budget` parses Next First Load JS; CI warns on +10% over route budgets; baseline at `docs/certification/bundle-baseline.json`.
 
 **Implementation status (TB-1):** `getThreadBundle` dedupes conversation + messages fetch (~5 parallel queries vs ~8+ legacy dual-call).
 

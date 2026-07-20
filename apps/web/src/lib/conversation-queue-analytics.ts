@@ -36,7 +36,6 @@ export function trackQueue(
   }
 
   if (process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
     console.debug("[queue]", payload);
   }
 }

@@ -10,8 +10,13 @@ import {
   type MessageNewRealtimePayload,
 } from "@/lib/realtime-inbox-cache";
 
-export interface RealtimeRefreshPayload extends MessageNewRealtimePayload {
+export interface RealtimeRefreshPayload {
+  conversationId?: string;
   leadId?: string;
+  messageId?: string;
+  direction?: "INBOUND" | "OUTBOUND";
+  content?: string | null;
+  createdAt?: string;
 }
 
 /** Targeted cache updates — never blanket-invalidate the full inbox unless unavoidable. */
@@ -25,7 +30,13 @@ export function handleRealtimeEvent(
 
   switch (event) {
     case "message.new":
-      handleMessageNewCacheUpdate(queryClient, payload, { activeConversationId });
+      if (payload.conversationId) {
+        handleMessageNewCacheUpdate(
+          queryClient,
+          payload as MessageNewRealtimePayload,
+          { activeConversationId },
+        );
+      }
       refreshQueueStats(queryClient);
       break;
     case "inbox.updated":

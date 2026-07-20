@@ -13,6 +13,7 @@ export function initSentryClient(): void {
     dsn,
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV ?? "development",
     tracesSampleRate: 0.1,
+    integrations: [Sentry.browserTracingIntegration()],
   });
   initialized = true;
 }

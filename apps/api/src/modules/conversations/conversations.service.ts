@@ -84,9 +84,18 @@ export class ConversationsService {
   }
 
   async getStats(user: JwtPayload, period?: MetricsPeriod, scope?: string) {
+    return (await this.getStatsCached(user, period, scope)).value;
+  }
+
+  async getStatsCached(user: JwtPayload, period?: MetricsPeriod, scope?: string) {
     if (scope === "queue") {
-      return this.getQueueStats(user);
+      return this.getQueueStatsCached(user);
     }
+    const value = await this.loadPeriodStats(user, period);
+    return { value, redisHit: false };
+  }
+
+  private async loadPeriodStats(user: JwtPayload, period?: MetricsPeriod) {
     const orgId = user.organizationId;
     const parsedPeriod = parseMetricsPeriod(period);
     const range = createdAtFilter(parsedPeriod);
@@ -201,15 +210,21 @@ export class ConversationsService {
 
   /** Lightweight counters for sidebar badge + inbox queue tabs (no period aggregates). */
   async getQueueStats(user: JwtPayload) {
+    return (await this.getQueueStatsCached(user)).value;
+  }
+
+  async getQueueStatsCached(user: JwtPayload) {
     const cacheKey = queueStatsCacheKey(user.organizationId, user.sub);
-    const cached = await this.serverCache.get<Awaited<ReturnType<ConversationsService["loadQueueStats"]>>>(
-      cacheKey,
-    );
-    if (cached) return cached;
+    const { value: cached, hit } = await this.serverCache.getWithMeta<
+      Awaited<ReturnType<ConversationsService["loadQueueStats"]>>
+    >(cacheKey);
+    if (cached) {
+      return { value: cached, redisHit: hit };
+    }
 
     const stats = await this.loadQueueStats(user);
     await this.serverCache.set(cacheKey, stats, SERVER_CACHE_TTL.queueStatsSec);
-    return stats;
+    return { value: stats, redisHit: false };
   }
 
   private async loadQueueStats(user: JwtPayload) {

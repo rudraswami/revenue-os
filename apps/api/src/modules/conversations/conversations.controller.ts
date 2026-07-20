@@ -13,6 +13,7 @@ import {
 } from "class-validator";
 import { Type } from "class-transformer";
 import type { Response } from "express";
+import { setRedisCacheStatus } from "../../common/http/cache-headers";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { RequireCapability } from "../../common/decorators/require-capability.decorator";
@@ -153,12 +154,17 @@ export class ConversationsController {
 
   @Get("stats")
   @RequireCapability("inbox.reply")
-  stats(
+  async stats(
     @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: true }) res: Response,
     @Query("period") period?: MetricsPeriod,
     @Query("scope") scope?: string,
   ) {
-    return this.conversations.getStats(user, period, scope);
+    const result = await this.conversations.getStatsCached(user, period, scope);
+    if (scope === "queue") {
+      setRedisCacheStatus(res, result.redisHit);
+    }
+    return result.value;
   }
 
   @Get("capabilities")

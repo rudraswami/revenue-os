@@ -679,14 +679,19 @@ export class OrganizationsService {
 
   /** Single round-trip for dashboard shell: identity, billing, WhatsApp, setup FAB inputs. */
   async getShellBootstrap(user: JwtPayload) {
+    return (await this.getShellBootstrapCached(user)).value;
+  }
+
+  async getShellBootstrapCached(user: JwtPayload) {
     const orgId = user.organizationId;
     const cacheKey = shellBootstrapCacheKey(orgId, user.sub);
     const version = await this.serverCache.getShellBootstrapVersion(orgId);
-    const cached = await this.serverCache.get<{ version: number; payload: Awaited<ReturnType<OrganizationsService["buildShellBootstrapUncached"]>> }>(
-      cacheKey,
-    );
+    const { value: cached } = await this.serverCache.getWithMeta<{
+      version: number;
+      payload: Awaited<ReturnType<OrganizationsService["buildShellBootstrapUncached"]>>;
+    }>(cacheKey);
     if (cached && cached.version === version) {
-      return cached.payload;
+      return { value: cached.payload, redisHit: true };
     }
 
     const payload = await this.buildShellBootstrapUncached(user);
@@ -695,7 +700,7 @@ export class OrganizationsService {
       { version, payload },
       SERVER_CACHE_TTL.shellBootstrapSec,
     );
-    return payload;
+    return { value: payload, redisHit: false };
   }
 
   private async buildShellBootstrapUncached(user: JwtPayload) {
