@@ -11,6 +11,7 @@ import {
 } from "@/lib/i18n/conversations-copy";
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
 import { InboxCommandPalette } from "@/components/dashboard/inbox-command-palette";
+import { InboxKeyboardShortcuts } from "@/components/dashboard/inbox-keyboard-shortcuts";
 import { InboxThreadPane } from "@/components/dashboard/inbox-thread-pane";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
 import { apiFetch } from "@/lib/api-client";
@@ -34,6 +35,7 @@ import { invalidateInboxThreadQueries } from "@/lib/inbox-thread-bundle";
 import { prefetchInboxThread } from "@/lib/inbox-thread-prefetch";
 import { useInboxConversationList } from "@/hooks/use-inbox-conversation-list";
 import { useInboxKeyboard } from "@/hooks/use-inbox-keyboard";
+import { inboxConversationIdFromParams } from "@/lib/inbox-url";
 
 export default function InboxPage() {
   const copy = useConversationsCopy();
@@ -50,6 +52,7 @@ export default function InboxPage() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [showOutbound, setShowOutbound] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [listFilter, setListFilter] = useState<InboxListFilter>("all");
   const [listScope, setListScope] = useState<InboxListScope>("active");
   const [queueDefaultReady, setQueueDefaultReady] = useState(false);
@@ -68,7 +71,7 @@ export default function InboxPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const c = params.get("c");
+    const c = inboxConversationIdFromParams(params);
     if (c) setSelectedId(c);
     const f = params.get("filter");
     if (f === "handoff" || f === "unread" || f === "unassigned" || f === "mine" || f === "all") {
@@ -81,7 +84,7 @@ export default function InboxPage() {
 
     function onPopState() {
       const p = new URLSearchParams(window.location.search);
-      setSelectedId(p.get("c"));
+      setSelectedId(inboxConversationIdFromParams(p));
       const filter = p.get("filter");
       setListFilter(
         filter === "handoff" ||
@@ -190,12 +193,13 @@ export default function InboxPage() {
   }, []);
 
   useInboxKeyboard({
-    enabled: hasWhatsapp,
+    enabled: hasWhatsapp && !commandOpen && !shortcutsOpen,
     conversationIds,
     selectedId,
     onSelect: selectConversation,
     onClearSelection: clearSelection,
     onOpenCommandPalette: () => setCommandOpen(true),
+    onOpenShortcuts: () => setShortcutsOpen(true),
   });
 
   function replaceInboxUrl(params: URLSearchParams) {
@@ -280,7 +284,9 @@ export default function InboxPage() {
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Press <kbd className="rounded border px-1">⌘K</kbd> to jump to a conversation
+                Press <kbd className="rounded border px-1">⌘K</kbd> to jump ·{" "}
+                <kbd className="rounded border px-1">j</kbd>/<kbd className="rounded border px-1">k</kbd>{" "}
+                or arrows to move · <kbd className="rounded border px-1">?</kbd> for shortcuts
               </p>
             </div>
           ) : (
@@ -310,6 +316,8 @@ export default function InboxPage() {
         onSetScope={setInboxScope}
         onNewMessage={canSend && hasWhatsapp ? () => setShowOutbound(true) : undefined}
       />
+
+      <InboxKeyboardShortcuts open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
 
       <OutboundCompose
         open={showOutbound}

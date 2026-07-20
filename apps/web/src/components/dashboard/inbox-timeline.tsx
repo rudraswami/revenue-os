@@ -2,13 +2,14 @@
 
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { formatRelationshipPhase, type WorkingMemory } from "@growvisi/shared";
+import { InboxInternalNotes } from "@/components/dashboard/inbox-internal-notes";
 import { Button } from "@/components/ui/button";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { cn } from "@/lib/utils";
 
 export interface InboxTimelineEvent {
   id: string;
-  type: "stage_change" | "ai_classify" | "automation";
+  type: "stage_change" | "ai_classify" | "automation" | "note";
   at: string;
   title: string;
   detail?: string;
@@ -109,6 +110,9 @@ export function InboxTimeline({
   hasClassification,
   workingMemory,
   customerNeeds,
+  leadId,
+  canEditNotes,
+  canDeleteAnyNotes,
 }: {
   events: InboxTimelineEvent[];
   aiConfidence: number | null | undefined;
@@ -118,6 +122,9 @@ export function InboxTimeline({
   hasClassification?: boolean;
   workingMemory?: WorkingMemory | null;
   customerNeeds?: string[];
+  leadId?: string;
+  canEditNotes?: boolean;
+  canDeleteAnyNotes?: boolean;
 }) {
   const copy = useConversationsCopy();
   const cleaned = dedupeEvents(events);
@@ -140,6 +147,7 @@ export function InboxTimeline({
     }
 
     if (ev.type === "ai_classify") return copy.timelineHeadline.aiReviewed;
+    if (ev.type === "note") return ev.title;
 
     const titles: Record<string, string> = {
       "Hot lead alert emailed": copy.timelineHeadline.hotLeadAlert,
@@ -287,6 +295,14 @@ export function InboxTimeline({
               </section>
             ))}
           </div>
+
+          {leadId && (
+            <InboxInternalNotes
+              leadId={leadId}
+              canEdit={!!canEditNotes}
+              canDeleteAny={!!canDeleteAnyNotes}
+            />
+          )}
         </div>
       )}
     </aside>

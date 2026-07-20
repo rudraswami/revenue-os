@@ -16,6 +16,7 @@ export function useInboxKeyboard({
   onSelect,
   onClearSelection,
   onOpenCommandPalette,
+  onOpenShortcuts,
 }: {
   enabled: boolean;
   conversationIds: string[];
@@ -23,6 +24,7 @@ export function useInboxKeyboard({
   onSelect: (id: string) => void;
   onClearSelection: () => void;
   onOpenCommandPalette: () => void;
+  onOpenShortcuts?: () => void;
 }) {
   useEffect(() => {
     if (!enabled) return;
@@ -37,6 +39,12 @@ export function useInboxKeyboard({
         return;
       }
 
+      if (e.key === "?" && onOpenShortcuts) {
+        e.preventDefault();
+        onOpenShortcuts();
+        return;
+      }
+
       if (conversationIds.length === 0) return;
 
       if (e.key === "Escape" && selectedId) {
@@ -45,12 +53,17 @@ export function useInboxKeyboard({
         return;
       }
 
-      if (e.key === "j" || e.key === "k") {
+      const navKey =
+        e.key === "j" || e.key === "k" || e.key === "ArrowDown" || e.key === "ArrowUp"
+          ? e.key
+          : null;
+      if (navKey) {
         e.preventDefault();
         const currentIndex = selectedId
           ? conversationIds.indexOf(selectedId)
           : -1;
-        const delta = e.key === "j" ? 1 : -1;
+        const delta =
+          navKey === "j" || navKey === "ArrowDown" ? 1 : -1;
         const nextIndex =
           currentIndex < 0
             ? delta > 0
@@ -80,5 +93,6 @@ export function useInboxKeyboard({
     onSelect,
     onClearSelection,
     onOpenCommandPalette,
+    onOpenShortcuts,
   ]);
 }

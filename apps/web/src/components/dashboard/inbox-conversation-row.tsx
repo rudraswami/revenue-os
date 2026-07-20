@@ -47,6 +47,7 @@ export const InboxConversationRowItem = memo(function InboxConversationRowItem({
     <li>
       <button
         type="button"
+        data-testid="inbox-conversation-row"
         onClick={() => onSelect(c.id)}
         onMouseEnter={() => onHover?.(c.id)}
         onFocus={() => onHover?.(c.id)}

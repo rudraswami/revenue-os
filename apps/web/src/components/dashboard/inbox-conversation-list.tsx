@@ -143,6 +143,14 @@ export function InboxConversationList({
     return () => el.removeEventListener("scroll", onScroll);
   }, [hasNextPage, isFetchingNextPage, onLoadMore, conversations.length]);
 
+  useEffect(() => {
+    if (!selectedId) return;
+    const index = conversations.findIndex((c) => c.id === selectedId);
+    if (index >= 0) {
+      virtualizer.scrollToIndex(index, { align: "auto" });
+    }
+  }, [selectedId, conversations, virtualizer]);
+
   const countLabel =
     listTotal != null && listTotal > conversations.length
       ? `${conversations.length} of ${listTotal}`

@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
-import { DEFAULT_PIPELINE_STAGES, HOT_LEAD_SCORE_THRESHOLD, activationNextMilestone } from "@growvisi/shared";
+import { DEFAULT_PIPELINE_STAGES, HOT_LEAD_SCORE_THRESHOLD, activationNextMilestone, hasCapability } from "@growvisi/shared";
 import { requireLeadOwnership } from "../../common/auth/authorization";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -464,6 +464,11 @@ export class LeadsService {
       where: { id, organizationId: user.organizationId },
       include: {
         stageHistory: { orderBy: { createdAt: "desc" }, take: 50 },
+        notes: {
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          include: { author: { select: { name: true, email: true } } },
+        },
         conversation: {
           select: {
             id: true,
@@ -481,7 +486,7 @@ export class LeadsService {
 
     type TimelineEntry = {
       id: string;
-      type: "stage_change" | "ai_classify" | "automation";
+      type: "stage_change" | "ai_classify" | "automation" | "note";
       at: string;
       title: string;
       detail?: string;
@@ -527,6 +532,20 @@ export class LeadsService {
           ? `${output.intent} → ${output.stage ?? "?"} (${Math.round((output.confidence ?? 0) * 100)}%)`
           : undefined,
         metadata: output ?? undefined,
+      });
+    }
+
+    for (const note of lead.notes ?? []) {
+      const author = note.author?.name ?? note.author?.email ?? "Team";
+      const preview =
+        note.body.length > 120 ? `${note.body.slice(0, 119)}…` : note.body;
+      events.push({
+        id: note.id,
+        type: "note",
+        at: note.createdAt.toISOString(),
+        title: `Team note · ${author}`,
+        detail: preview,
+        metadata: { author },
       });
     }
 
@@ -1495,6 +1514,21 @@ export class LeadsService {
     });
   }
 
+  async listNotes(user: JwtPayload, id: string) {
+    const lead = await this.prisma.lead.findFirst({
+      where: { id, organizationId: user.organizationId },
+      select: { id: true },
+    });
+    if (!lead) throw new NotFoundException();
+
+    return this.prisma.leadNote.findMany({
+      where: { leadId: id, organizationId: user.organizationId },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      include: { author: { select: { id: true, name: true, email: true } } },
+    });
+  }
+
   async addNote(user: JwtPayload, id: string, body: string) {
     const lead = await this.prisma.lead.findFirst({
       where: { id, organizationId: user.organizationId },
@@ -1519,9 +1553,14 @@ export class LeadsService {
   async deleteNote(user: JwtPayload, id: string, noteId: string) {
     const note = await this.prisma.leadNote.findFirst({
       where: { id: noteId, leadId: id, organizationId: user.organizationId },
-      select: { id: true },
+      select: { id: true, authorId: true },
     });
     if (!note) throw new NotFoundException();
+    const isAuthor = note.authorId === user.sub;
+    const canManage = hasCapability(user.role, "team.manage");
+    if (!isAuthor && !canManage) {
+      throw new ForbiddenException("You can only delete your own notes.");
+    }
     await this.prisma.leadNote.delete({ where: { id: noteId } });
     return { ok: true };
   }

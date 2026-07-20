@@ -72,6 +72,7 @@ import {
   shouldAutoOpenInboxInsights,
 } from "@/lib/inbox-insights-preference";
 import { formatQuotedReply } from "@/lib/inbox-composer-helpers";
+import { InboxInternalNotes } from "@/components/dashboard/inbox-internal-notes";
 
 interface Message {
   id: string;
@@ -765,21 +766,21 @@ function InboxThreadPaneInner({
   if (threadError) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-        <p className="text-sm text-destructive">Could not load this conversation.</p>
+        <p className="text-sm text-destructive">{copy.threadLoadError}</p>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => void refetchThread()}
             className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90"
           >
-            Retry
+            {copy.threadRetry}
           </button>
           <button
             type="button"
             onClick={onClearSelection}
             className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted"
           >
-            Back to list
+            {copy.threadBackToList}
           </button>
         </div>
       </div>
@@ -1208,18 +1209,27 @@ function InboxThreadPaneInner({
                     </div>
                   )}
                   <ul className="max-h-48 space-y-2 overflow-y-auto text-xs">
-                  {(timeline?.events ?? []).slice(0, 12).map((ev) => (
-                    <li key={ev.id} className="border-b border-border/40 pb-2 last:border-0">
-                      <p className="font-medium text-foreground">{ev.title}</p>
-                      {ev.detail && <p className="mt-0.5 text-muted-foreground">{ev.detail}</p>}
-                    </li>
-                  ))}
-                  {(timeline?.events?.length ?? 0) === 0 && (
-                    <li className="text-muted-foreground">
-                      No activity yet — AI runs when messages arrive.
-                    </li>
-                  )}
+                    {(timeline?.events ?? []).slice(0, 12).map((ev) => (
+                      <li key={ev.id} className="border-b border-border/40 pb-2 last:border-0">
+                        <p className="font-medium text-foreground">{ev.title}</p>
+                        {ev.detail && <p className="mt-0.5 text-muted-foreground">{ev.detail}</p>}
+                      </li>
+                    ))}
+                    {(timeline?.events?.length ?? 0) === 0 && (
+                      <li className="text-muted-foreground">
+                        No activity yet — AI runs when messages arrive.
+                      </li>
+                    )}
                   </ul>
+                  {thread.lead?.id && (
+                    <div className="mt-3">
+                      <InboxInternalNotes
+                        leadId={thread.lead.id}
+                        canEdit={canSend}
+                        canDeleteAny={canManageTeam(role)}
+                      />
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -1234,6 +1244,9 @@ function InboxThreadPaneInner({
             hasClassification={!!thread.aiContext}
             workingMemory={inboxContext?.workingMemory}
             customerNeeds={thread.aiContext?.customerNeeds}
+            leadId={thread.lead.id}
+            canEditNotes={canSend}
+            canDeleteAnyNotes={canManageTeam(role)}
             open={showTimeline}
             onToggle={toggleInsightsPanel}
           />

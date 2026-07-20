@@ -101,7 +101,7 @@ test.describe("Inbox thread bundle certification", () => {
     });
 
     const listCallsBefore = [...allCalls];
-    const listRows = page.locator("ul.divide-y button");
+    const listRows = page.getByTestId("inbox-conversation-row");
     await expect(listRows.first()).toBeVisible({ timeout: 15_000 });
     const rowCount = await listRows.count();
 
@@ -162,7 +162,7 @@ test.describe("Inbox thread bundle certification", () => {
   test("Phase G: rapid thread switch without errors", async ({ page }) => {
     await loginToDashboard(page);
     await page.goto("/dashboard/inbox?filter=unassigned", { waitUntil: "domcontentloaded" });
-    const listRows = page.locator("ul.divide-y button");
+    const listRows = page.getByTestId("inbox-conversation-row");
     await expect(listRows.first()).toBeVisible({ timeout: 15_000 });
     const rowCount = await listRows.count();
     if (rowCount < 2) {
@@ -201,17 +201,23 @@ test.describe("Inbox thread bundle certification", () => {
     await page.goto("/dashboard/inbox?conversation=nonexistent-cert-id-404", {
       waitUntil: "domcontentloaded",
     });
-    await page.waitForTimeout(1_500);
+    await expect(page.getByText(/could not load this conversation/i)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByRole("button", { name: /back to list/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /conversations/i })).toBeVisible();
 
     const report = {
       certified_at: new Date().toISOString(),
       phase: "H",
       url: page.url(),
       list_visible: await page.getByRole("heading", { name: /conversations/i }).isVisible(),
+      error_visible: await page.getByText(/could not load this conversation/i).isVisible(),
       verdict: "PASS",
     };
     writeArtifact(report);
     expect(report.list_visible).toBe(true);
+    expect(report.error_visible).toBe(true);
   });
 });
 

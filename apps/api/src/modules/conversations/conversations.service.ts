@@ -380,10 +380,23 @@ export class ConversationsService {
 
     const where: Prisma.ConversationWhereInput = { AND: and };
 
+    const queuePrioritySort: Prisma.ConversationOrderByWithRelationInput[] = [
+      { lead: { valueCents: { sort: "desc", nulls: "last" } } },
+      { lead: { score: "desc" } },
+      { lastMessageAt: "desc" },
+    ];
+
+    const orderBy: Prisma.ConversationOrderByWithRelationInput[] =
+      filter === "handoff" || filter === "mine" || filter === "unassigned"
+        ? queuePrioritySort
+        : filter === "unread"
+          ? [{ unreadCount: "desc" }, { lastMessageAt: "desc" }]
+          : [{ lastMessageAt: "desc" }];
+
     const [data, total] = await Promise.all([
       this.prisma.conversation.findMany({
         where,
-        orderBy: { lastMessageAt: "desc" },
+        orderBy,
         skip,
         take: pageSize,
         include: {

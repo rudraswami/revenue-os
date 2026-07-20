@@ -301,6 +301,11 @@ export class LeadsController {
     return this.leads.addNote(user, id, dto.body);
   }
 
+  @Get(":id/notes")
+  listNotes(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.leads.listNotes(user, id);
+  }
+
   @Delete(":id/notes/:noteId")
   @Roles(...WRITE_ROLES)
   deleteNote(

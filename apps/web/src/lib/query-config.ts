@@ -41,6 +41,7 @@ export const QUERY_KEYS = {
   conversationInboxContext: (id: string) => ["conversation-inbox-context", id] as const,
   conversationKnowledgeGaps: (id: string) => ["conversation-knowledge-gaps", id] as const,
   leadTimeline: (leadId: string) => ["lead-timeline", leadId] as const,
+  leadNotes: (leadId: string) => ["lead-notes", leadId] as const,
   /** Prefix for inbox list queries — use with getQueriesData / invalidateQueries. */
   conversationsList: ["conversations"] as const,
   pipeline: (filter: string, perStageLimit: number) =>
