@@ -20,6 +20,7 @@ import {
   persistRefreshToken,
   readPersistedRefreshToken,
 } from "@/lib/refresh-token-persist";
+import { planRefreshRequest } from "@/lib/auth-refresh-plan";
 
 export type { RefreshResult };
 
@@ -65,8 +66,8 @@ async function postRefresh(
     const session = await rawFetchForAuth<AuthSession>("/auth/refresh", {
       method: "POST",
       body,
-      // Body fallback must not send a stale HttpOnly cookie — server would prefer it
-      // over the valid refreshToken in JSON (cookie ?? body). See auth.controller.ts.
+      // Body-only must omit credentials so a stale HttpOnly cookie cannot win.
+      // Cookie + body sends include — server tries cookie then falls through to body.
       credentials: transport === "cookie" ? "include" : "omit",
     });
     useAuthStore.getState().setSession(session);
@@ -96,24 +97,24 @@ function refreshTokenFallback(): string | null {
 }
 
 async function performRefreshRequest(retryCount: number): Promise<RefreshResult> {
-  const cookieFirst = await postRefresh(retryCount, "cookie");
-  if (cookieFirst.kind === "SUCCESS") return cookieFirst;
-  if (!isConclusiveAuthDeath(cookieFirst.kind)) return cookieFirst;
+  const plan = planRefreshRequest(refreshTokenFallback(), hasSessionHint());
 
-  const fallback = refreshTokenFallback();
-  if (!fallback) return cookieFirst;
-
-  const bodyResult = await postRefresh(
-    retryCount + 1,
-    "body",
-    JSON.stringify({ refreshToken: fallback }),
-  );
-  if (bodyResult.kind === "SUCCESS") return bodyResult;
-
-  if (isConclusiveAuthDeath(bodyResult.kind)) {
+  if (plan.mode === "cookie_and_body") {
+    const combined = await postRefresh(retryCount, "cookie", plan.body);
+    if (combined.kind === "SUCCESS") return combined;
+    if (!isConclusiveAuthDeath(combined.kind)) return combined;
     clearPersistedRefreshToken();
+    return combined;
   }
-  return bodyResult;
+
+  if (plan.mode === "body_only") {
+    const bodyOnly = await postRefresh(retryCount, "body", plan.body);
+    if (bodyOnly.kind === "SUCCESS") return bodyOnly;
+    if (isConclusiveAuthDeath(bodyOnly.kind)) clearPersistedRefreshToken();
+    return bodyOnly;
+  }
+
+  return postRefresh(retryCount, "cookie");
 }
 
 /**
