@@ -27,7 +27,7 @@ export interface InboxConversationRow {
   lastMessageAt: string | null;
   requiresHuman?: boolean;
   postCloseAttention?: boolean;
-  lead: { id: string; stage: string } | null;
+  lead: { id: string; stage: string; score?: number; valueCents?: number | null } | null;
   messages: Array<{ content: string | null }>;
 }
 

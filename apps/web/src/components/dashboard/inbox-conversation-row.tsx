@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
+import { inboxListQueueBadges } from "@/lib/inbox-list-queue-signal";
 import { cn } from "@/lib/utils";
 import type { InboxConversationRow } from "@/components/dashboard/inbox-conversation-list";
 
@@ -36,6 +37,11 @@ export const InboxConversationRowItem = memo(function InboxConversationRowItem({
   const copy = useConversationsCopy();
   const displayName = c.contactName ?? c.contactPhone;
   const yourTurn = c.requiresHuman && !closed;
+  const queueBadges = inboxListQueueBadges(c.lead, {
+    yourTurn,
+    closed,
+    stageLabel: copy.stageLabel,
+  });
 
   return (
     <li>
@@ -50,6 +56,7 @@ export const InboxConversationRowItem = memo(function InboxConversationRowItem({
             ? "border-l-[3px] border-l-accent bg-card"
             : "border-l-[3px] border-l-transparent hover:bg-card/70",
           closed && !active && "opacity-80",
+          yourTurn && !active && "bg-amber-50/40",
         )}
       >
         <div className="relative shrink-0">
@@ -66,7 +73,7 @@ export const InboxConversationRowItem = memo(function InboxConversationRowItem({
             <p
               className={cn(
                 "truncate text-sm",
-                c.unreadCount > 0 ? "font-bold text-foreground" : "font-semibold",
+                c.unreadCount > 0 || yourTurn ? "font-bold text-foreground" : "font-semibold",
                 active && "text-accent",
               )}
             >
@@ -79,27 +86,59 @@ export const InboxConversationRowItem = memo(function InboxConversationRowItem({
           <p
             className={cn(
               "mt-0.5 line-clamp-2 text-xs leading-snug",
-              c.unreadCount > 0 ? "font-medium text-foreground/80" : "text-muted-foreground",
+              c.unreadCount > 0 || yourTurn
+                ? "font-medium text-foreground/80"
+                : "text-muted-foreground",
             )}
           >
             {c.messages[0]?.content ?? "—"}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {yourTurn && (
-              <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">
-                {copy.yourTurn}
-              </span>
-            )}
             {c.postCloseAttention && !closed && (
               <span className="rounded-md bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-900">
                 Post-close
               </span>
             )}
-            {c.lead && (
-              <span className="text-[10px] font-medium text-muted-foreground">
-                {copy.stageLabel(c.lead.stage)}
-              </span>
-            )}
+            {queueBadges.map((badge) => {
+              if (badge.kind === "your_turn") {
+                return (
+                  <span
+                    key="your_turn"
+                    className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900"
+                  >
+                    {copy.yourTurn}
+                  </span>
+                );
+              }
+              if (badge.kind === "deal_value") {
+                return (
+                  <span
+                    key="deal"
+                    className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-900"
+                  >
+                    {badge.label}
+                  </span>
+                );
+              }
+              if (badge.kind === "hot_score") {
+                return (
+                  <span
+                    key="hot"
+                    className="rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white"
+                  >
+                    {copy.scoreHot(badge.score)}
+                  </span>
+                );
+              }
+              return (
+                <span
+                  key={`stage-${badge.stage}`}
+                  className="text-[10px] font-medium text-muted-foreground"
+                >
+                  {copy.stageLabel(badge.stage)}
+                </span>
+              );
+            })}
             {c.unreadCount > 0 && (
               <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white">
                 {c.unreadCount}

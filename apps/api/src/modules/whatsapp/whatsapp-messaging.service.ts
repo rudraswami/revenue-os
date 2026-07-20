@@ -218,4 +218,114 @@ export class WhatsappMessagingService {
       contentType: metaBody.mime_type ?? fileRes.headers.get("content-type") ?? "application/octet-stream",
     };
   }
+
+  async uploadMedia(
+    account: WhatsappAccountRow,
+    file: Buffer,
+    mimeType: string,
+    filename?: string,
+  ): Promise<string> {
+    if (!account.isActive) {
+      throw new BadRequestException("WhatsApp number is not active.");
+    }
+
+    const token = decryptSecret(account.accessTokenEnc);
+    const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+    const form = new FormData();
+    form.append("messaging_product", "whatsapp");
+    form.append("type", mimeType);
+    form.append("file", new Blob([new Uint8Array(file)], { type: mimeType }), filename ?? "file");
+
+    const res = await fetchWithTimeout(
+      `https://graph.facebook.com/${version}/${account.phoneNumberId}/media`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      },
+      60_000,
+    );
+
+    const data = (await res.json()) as { id?: string; error?: { message?: string } };
+    if (!res.ok || !data.id) {
+      this.logger.warn(`Meta media upload failed: ${data.error?.message ?? res.status}`);
+      throw new BadRequestException(
+        data.error?.message ?? "Could not upload file to WhatsApp.",
+      );
+    }
+    return data.id;
+  }
+
+  async sendImage(
+    account: WhatsappAccountRow,
+    toPhone: string,
+    mediaId: string,
+    caption?: string,
+  ): Promise<string> {
+    return this.sendMediaMessage(account, toPhone, "image", { id: mediaId }, caption);
+  }
+
+  async sendDocument(
+    account: WhatsappAccountRow,
+    toPhone: string,
+    mediaId: string,
+    filename: string,
+    caption?: string,
+  ): Promise<string> {
+    return this.sendMediaMessage(account, toPhone, "document", { id: mediaId, filename }, caption);
+  }
+
+  private async sendMediaMessage(
+    account: WhatsappAccountRow,
+    toPhone: string,
+    type: "image" | "document",
+    media: { id: string; filename?: string },
+    caption?: string,
+  ): Promise<string> {
+    if (!account.isActive) {
+      throw new BadRequestException("WhatsApp number is not active.");
+    }
+
+    const token = decryptSecret(account.accessTokenEnc);
+    const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+    const to = toPhone.replace(/\D/g, "");
+    const trimmedCaption = caption?.trim();
+
+    const block: Record<string, string> = { id: media.id };
+    if (type === "document" && media.filename) block.filename = media.filename;
+    if (trimmedCaption) block.caption = trimmedCaption.slice(0, 1024);
+
+    const res = await fetchWithTimeout(`https://graph.facebook.com/${version}/${account.phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type,
+        [type]: block,
+      }),
+    });
+
+    const data = (await res.json()) as {
+      messages?: Array<{ id: string }>;
+      error?: { message?: string };
+    };
+
+    if (!res.ok) {
+      this.logger.warn(`Meta ${type} send failed: ${data.error?.message ?? res.status}`);
+      throw new BadRequestException(
+        data.error?.message ?? "Could not send attachment. Check your WhatsApp connection.",
+      );
+    }
+
+    const waMessageId = data.messages?.[0]?.id;
+    if (!waMessageId) {
+      throw new BadRequestException("Attachment sent but no confirmation from WhatsApp.");
+    }
+
+    return waMessageId;
+  }
 }

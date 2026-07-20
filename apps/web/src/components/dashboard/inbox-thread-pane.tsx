@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Reply } from "lucide-react";
 import Link from "next/link";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
 import { InboxThreadDetailsMobile } from "@/components/dashboard/inbox-thread-details-mobile";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
-import { apiFetch, toUserMessage } from "@/lib/api-client";
+import { apiFetch, apiUpload, toUserMessage } from "@/lib/api-client";
 import { measureInteraction, startInteraction } from "@/lib/performance";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import {
@@ -71,6 +71,7 @@ import {
   saveInboxInsightsOpen,
   shouldAutoOpenInboxInsights,
 } from "@/lib/inbox-insights-preference";
+import { formatQuotedReply } from "@/lib/inbox-composer-helpers";
 
 interface Message {
   id: string;
@@ -194,7 +195,50 @@ function InboxThreadPaneInner({
   const threadOpenStartedRef = useRef<Record<string, number>>({});
   const scrollSmoothRef = useRef(false);
   const insightsAutoOpenedRef = useRef<string | null>(null);
+  const attachInputRef = useRef<HTMLInputElement>(null);
+  const [attachment, setAttachment] = useState<{
+    file: File;
+    previewUrl?: string;
+  } | null>(null);
   const prevConversationIdRef = useRef(conversationId);
+
+  const INBOX_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+  useEffect(() => {
+    return () => {
+      if (attachment?.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+    };
+  }, [attachment?.previewUrl]);
+
+  function clearAttachment() {
+    if (attachment?.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+    setAttachment(null);
+  }
+
+  function handleAttachFile(file: File) {
+    const isImage = INBOX_IMAGE_MIMES.has(file.type);
+    const isPdf = file.type === "application/pdf";
+    if (!isImage && !isPdf) {
+      showMutationError(
+        new Error("unsupported"),
+        "Only JPEG, PNG, WebP images and PDF documents are supported.",
+      );
+      return;
+    }
+    if (isImage && file.size > 5 * 1024 * 1024) {
+      showMutationError(new Error("too large"), "Images must be 5 MB or smaller.");
+      return;
+    }
+    if (isPdf && file.size > 16 * 1024 * 1024) {
+      showMutationError(new Error("too large"), "PDFs must be 16 MB or smaller.");
+      return;
+    }
+    clearAttachment();
+    setAttachment({
+      file,
+      previewUrl: isImage ? URL.createObjectURL(file) : undefined,
+    });
+  }
 
   useEffect(() => {
     if (prevConversationIdRef.current === conversationId) return;
@@ -205,6 +249,7 @@ function InboxThreadPaneInner({
     setSendError(null);
     setHasOlderOverride(null);
     insightsAutoOpenedRef.current = null;
+    clearAttachment();
   }, [conversationId]);
 
   const {
@@ -616,10 +661,52 @@ function InboxThreadPaneInner({
     },
   });
 
+  const sendMediaMutation = useMutation({
+    mutationFn: (form: FormData) =>
+      apiUpload<InboxThreadMessage>(`/conversations/${conversationId}/messages/media`, form, {
+        token: token ?? undefined,
+      }),
+    onSuccess: (serverMessage) => {
+      scrollSmoothRef.current = true;
+      invalidateInboxThreadQueries(queryClient, conversationId);
+      patchConversationListsAfterOutbound(
+        queryClient,
+        conversationId,
+        serverMessage.content ?? "",
+        serverMessage.createdAt,
+      );
+      setDraft("");
+      setDraftMeta(null);
+      clearInboxDraft(conversationId);
+      clearAttachment();
+      setSendError(null);
+    },
+    onError: (e) => {
+      setSendError(toUserMessage(e, "Attachment could not be sent."));
+    },
+    onSettled: () => {
+      refreshQueueStats(queryClient);
+    },
+  });
+
+  const sendPending = sendMutation.isPending || sendMediaMutation.isPending;
+
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
+    if (sendPending) return;
+
+    if (attachment) {
+      const form = new FormData();
+      form.append("file", attachment.file);
+      const caption = draft.trim();
+      if (caption) form.append("caption", caption);
+      scrollSmoothRef.current = true;
+      sendMediaMutation.mutate(form);
+      return;
+    }
+
     const text = draft.trim();
-    if (!text || sendMutation.isPending) return;
+    if (!text) return;
     scrollSmoothRef.current = true;
     sendMutation.mutate({
       content: text,
@@ -662,6 +749,13 @@ function InboxThreadPaneInner({
       saveInboxInsightsOpen(next);
       return next;
     });
+  }
+
+  function quoteInboundMessage(content: string | null) {
+    const quote = formatQuotedReply(content ?? "");
+    if (!quote) return;
+    setDraft((prev) => quote + prev);
+    composeRef.current?.focus();
   }
 
   if (threadLoading && !thread) {
@@ -965,12 +1059,22 @@ function InboxThreadPaneInner({
                 <div
                   key={m.id}
                   className={cn(
-                    "max-w-[88%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm",
+                    "group relative max-w-[88%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm",
                     m.direction === "OUTBOUND"
                       ? "ml-auto rounded-br-md border border-emerald-200/60 bg-whatsapp-green text-foreground"
                       : "mr-auto rounded-bl-md border border-white/80 bg-card text-foreground",
                   )}
                 >
+                  {m.direction === "INBOUND" && canSend && !windowClosed && m.content && (
+                    <button
+                      type="button"
+                      className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-border/80 bg-card text-muted-foreground opacity-0 shadow-sm transition hover:text-accent group-hover:opacity-100"
+                      aria-label="Quote reply"
+                      onClick={() => quoteInboundMessage(m.content)}
+                    >
+                      <Reply className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <InboxMessageBody
                     conversationId={thread.id}
                     messageId={m.id}
@@ -1037,11 +1141,14 @@ function InboxThreadPaneInner({
                 draft={draft}
                 onDraftChange={setDraft}
                 onSend={handleSend}
-                sendPending={sendMutation.isPending}
+                sendPending={sendPending}
                 sendDisabled={!thread.whatsappAccount.isActive || windowClosed || !canSend}
                 sendError={sendError}
                 showAiSuggest={
-                  !!capabilities?.aiSuggestReply && !thread.aiEnabled && !windowClosed
+                  !!capabilities?.aiSuggestReply &&
+                  !thread.aiEnabled &&
+                  !windowClosed &&
+                  !attachment
                 }
                 suggestPending={suggestMutation.isPending}
                 onSuggest={() => suggestMutation.mutate()}
@@ -1054,6 +1161,20 @@ function InboxThreadPaneInner({
                     ? copy.aiDraftReady
                     : undefined
                 }
+                attachment={
+                  attachment
+                    ? {
+                        name: attachment.file.name,
+                        previewUrl: attachment.previewUrl,
+                        kind: INBOX_IMAGE_MIMES.has(attachment.file.type)
+                          ? "image"
+                          : "document",
+                      }
+                    : null
+                }
+                onAttachFile={handleAttachFile}
+                onClearAttachment={clearAttachment}
+                attachInputRef={attachInputRef}
               />
             </div>
           </div>
@@ -1068,7 +1189,25 @@ function InboxThreadPaneInner({
                 {showTimeline ? "Hide activity" : "Show activity & stage history"}
               </button>
               {showTimeline && (
-                <ul className="max-h-48 space-y-2 overflow-y-auto text-xs">
+                <>
+                  {(thread.aiContext?.customerNeeds?.length ?? 0) > 0 && (
+                    <div className="mb-3">
+                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {copy.timelineCustomerNeeds}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {thread.aiContext!.customerNeeds!.map((need) => (
+                          <span
+                            key={need}
+                            className="rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[11px] font-medium"
+                          >
+                            {need}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <ul className="max-h-48 space-y-2 overflow-y-auto text-xs">
                   {(timeline?.events ?? []).slice(0, 12).map((ev) => (
                     <li key={ev.id} className="border-b border-border/40 pb-2 last:border-0">
                       <p className="font-medium text-foreground">{ev.title}</p>
@@ -1080,7 +1219,8 @@ function InboxThreadPaneInner({
                       No activity yet — AI runs when messages arrive.
                     </li>
                   )}
-                </ul>
+                  </ul>
+                </>
               )}
             </div>
           )}
@@ -1093,6 +1233,7 @@ function InboxThreadPaneInner({
             aiConfidence={timeline?.lead.aiConfidence}
             hasClassification={!!thread.aiContext}
             workingMemory={inboxContext?.workingMemory}
+            customerNeeds={thread.aiContext?.customerNeeds}
             open={showTimeline}
             onToggle={toggleInsightsPanel}
           />

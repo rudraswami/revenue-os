@@ -108,6 +108,7 @@ export function InboxTimeline({
   className,
   hasClassification,
   workingMemory,
+  customerNeeds,
 }: {
   events: InboxTimelineEvent[];
   aiConfidence: number | null | undefined;
@@ -116,6 +117,7 @@ export function InboxTimeline({
   className?: string;
   hasClassification?: boolean;
   workingMemory?: WorkingMemory | null;
+  customerNeeds?: string[];
 }) {
   const copy = useConversationsCopy();
   const cleaned = dedupeEvents(events);
@@ -235,6 +237,24 @@ export function InboxTimeline({
                   className="h-full rounded-full bg-foreground/30"
                   style={{ width: `${confidencePct}%` }}
                 />
+              </div>
+            </div>
+          )}
+
+          {(customerNeeds?.length ?? 0) > 0 && (
+            <div className="mb-3 border-b border-border/50 pb-3">
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                {copy.timelineCustomerNeeds}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {customerNeeds!.map((need) => (
+                  <span
+                    key={need}
+                    className="rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-foreground"
+                  >
+                    {need}
+                  </span>
+                ))}
               </div>
             </div>
           )}

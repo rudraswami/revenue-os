@@ -1,9 +1,11 @@
 "use client";
 
-import { ChevronDown, Send } from "lucide-react";
+import { useMemo } from "react";
+import { ChevronDown, Paperclip, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
+import { filterSlashTemplates } from "@/lib/inbox-composer-helpers";
 import { cn } from "@/lib/utils";
 
 export function InboxComposer({
@@ -21,6 +23,10 @@ export function InboxComposer({
   composeRef,
   onMinimize,
   draftNote,
+  attachment,
+  onAttachFile,
+  onClearAttachment,
+  attachInputRef,
 }: {
   draft: string;
   onDraftChange: (v: string) => void;
@@ -36,13 +42,29 @@ export function InboxComposer({
   composeRef?: React.RefObject<HTMLTextAreaElement | null>;
   onMinimize?: () => void;
   draftNote?: string | null;
+  attachment?: { name: string; previewUrl?: string; kind: "image" | "document" } | null;
+  onAttachFile?: (file: File) => void;
+  onClearAttachment?: () => void;
+  attachInputRef?: React.RefObject<HTMLInputElement | null>;
 }) {
   const copy = useConversationsCopy();
+  const slashMatches = useMemo(
+    () => filterSlashTemplates(draft, templates ?? []),
+    [draft, templates],
+  );
+  const showSlashMenu = draft.startsWith("/") && slashMatches.length > 0;
+  const showTemplateChips =
+    (templates?.length ?? 0) > 0 && !draft.startsWith("/") && !attachment;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (showSlashMenu && e.key === "Escape") {
+      e.preventDefault();
+      onDraftChange("");
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (draft.trim() && !sendPending && !sendDisabled) {
+      if ((draft.trim() || attachment) && !sendPending && !sendDisabled) {
         onSend(e as unknown as React.FormEvent);
       }
     }
@@ -71,7 +93,7 @@ export function InboxComposer({
         </div>
       )}
 
-      {(templates?.length ?? 0) > 0 && (
+      {(templates?.length ?? 0) > 0 && showTemplateChips && (
         <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 custom-scrollbar">
           {templates!.map((t) => (
             <button
@@ -90,6 +112,51 @@ export function InboxComposer({
         <p className="mb-1.5 text-xs text-muted-foreground">{draftNote}</p>
       )}
 
+      {attachment && (
+        <div className="mb-2 flex items-center gap-2 rounded-xl border border-border/70 bg-card px-3 py-2">
+          {attachment.previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={attachment.previewUrl}
+              alt=""
+              className="h-10 w-10 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-[10px] font-bold text-muted-foreground">
+              PDF
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-foreground">{attachment.name}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {attachment.kind === "image" ? copy.attachImageHint : copy.attachDocumentHint}
+            </p>
+          </div>
+          {onClearAttachment && (
+            <button
+              type="button"
+              className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={onClearAttachment}
+              aria-label={copy.attachRemove}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      <input
+        ref={attachInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onAttachFile?.(file);
+          e.target.value = "";
+        }}
+      />
+
       {(draftSources?.length ?? 0) > 0 && (
         <p className="mb-2 text-xs text-muted-foreground">
           <span className="font-semibold text-accent">Sources:</span>{" "}
@@ -97,7 +164,24 @@ export function InboxComposer({
         </p>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_1px_8px_rgb(11_28_48/0.05)]">
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_1px_8px_rgb(11_28_48/0.05)]">
+        {showSlashMenu && (
+          <ul className="absolute bottom-full left-0 right-0 z-10 mb-1 max-h-40 overflow-y-auto rounded-xl border border-border/80 bg-card py-1 shadow-lg">
+            {slashMatches.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-muted/80"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => onDraftChange(t.body)}
+                >
+                  <span className="text-xs font-semibold text-foreground">/{t.title}</span>
+                  <span className="line-clamp-1 text-[11px] text-muted-foreground">{t.body}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         <textarea
           ref={composeRef}
           rows={2}
@@ -125,7 +209,7 @@ export function InboxComposer({
                 {suggestPending ? copy.drafting : copy.draftWithAi}
               </button>
             )}
-            {!draftNote && (
+            {!draftNote && !draft.startsWith("/") && (
               <p className="hidden truncate text-xs text-muted-foreground sm:block">
                 {copy.composeFooter}
               </p>
@@ -133,6 +217,17 @@ export function InboxComposer({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            {onAttachFile && attachInputRef && !sendDisabled && (
+              <button
+                type="button"
+                className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+                disabled={sendPending}
+                onClick={() => attachInputRef.current?.click()}
+                aria-label={copy.attachFile}
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+            )}
             {onMinimize && (
               <button
                 type="button"
@@ -147,7 +242,7 @@ export function InboxComposer({
               type="submit"
               size="sm"
               className="h-9 min-w-[4.5rem] rounded-lg bg-accent px-4 font-semibold hover:bg-accent-hover"
-              disabled={!draft.trim() || sendPending || sendDisabled}
+              disabled={(!draft.trim() && !attachment) || sendPending || sendDisabled}
             >
               {sendPending ? (
                 <GrowvisiSpinner size="xs" />

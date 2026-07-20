@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   IsArray,
   IsBoolean,
@@ -80,6 +81,15 @@ class SendMessageDto {
   @IsString()
   aiRunId?: string;
 }
+
+class SendMediaMessageDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  caption?: string;
+}
+
+const INBOX_MEDIA_MAX_BYTES = 16 * 1024 * 1024;
 
 class TakeoverDto {
   @IsOptional()
@@ -238,6 +248,25 @@ export class ConversationsController {
       draftText: dto.draftText,
       aiRunId: dto.aiRunId,
     });
+  }
+
+  @Post(":id/messages/media")
+  @Roles(...WRITE_ROLES)
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: { fileSize: INBOX_MEDIA_MAX_BYTES },
+    }),
+  )
+  sendMediaMessage(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: SendMediaMessageDto,
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file uploaded.");
+    }
+    return this.conversations.sendMediaMessage(user, id, file, dto.caption);
   }
 
   @Get(":id/inbox-context")

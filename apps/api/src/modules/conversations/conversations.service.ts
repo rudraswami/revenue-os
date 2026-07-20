@@ -31,6 +31,11 @@ import {
 } from "./assignment-metadata";
 import { parseCampaignAttributionMeta } from "../campaigns/campaign-reply-attribution";
 
+const INBOX_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const INBOX_DOCUMENT_MIMES = new Set(["application/pdf"]);
+const INBOX_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const INBOX_DOCUMENT_MAX_BYTES = 16 * 1024 * 1024;
+
 @Injectable()
 export class ConversationsService {
   constructor(
@@ -382,7 +387,7 @@ export class ConversationsService {
         skip,
         take: pageSize,
         include: {
-          lead: { select: { id: true, stage: true, score: true } },
+          lead: { select: { id: true, stage: true, score: true, valueCents: true } },
           assignedTo: { select: { id: true, name: true, email: true } },
           messages: {
             take: 1,
@@ -808,6 +813,129 @@ export class ConversationsService {
         final: text,
       });
     }
+
+    await this.suggestReplyService.clearPendingDraft(conversationId, user.organizationId);
+
+    return message;
+  }
+
+  async sendMediaMessage(
+    user: JwtPayload,
+    conversationId: string,
+    file: Express.Multer.File,
+    caption?: string,
+  ) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+
+    const mime = file.mimetype;
+    const isImage = INBOX_IMAGE_MIMES.has(mime);
+    const isDocument = INBOX_DOCUMENT_MIMES.has(mime);
+    if (!isImage && !isDocument) {
+      throw new BadRequestException("Only JPEG, PNG, WebP images and PDF documents are supported.");
+    }
+    if (isImage && file.size > INBOX_IMAGE_MAX_BYTES) {
+      throw new BadRequestException("Images must be 5 MB or smaller.");
+    }
+    if (isDocument && file.size > INBOX_DOCUMENT_MAX_BYTES) {
+      throw new BadRequestException("Documents must be 16 MB or smaller.");
+    }
+
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId: user.organizationId },
+      include: { whatsappAccount: true },
+    });
+    if (!conversation) throw new NotFoundException("Conversation not found");
+
+    if (!conversation.whatsappAccount.isActive) {
+      throw new BadRequestException("This WhatsApp number is disconnected. Reconnect it in Settings.");
+    }
+
+    const withinWindow =
+      !!conversation.lastInboundAt &&
+      Date.now() - conversation.lastInboundAt.getTime() < 24 * 60 * 60 * 1000;
+
+    if (!withinWindow) {
+      throw new BadRequestException(
+        conversation.lastInboundAt
+          ? "The 24-hour WhatsApp reply window has expired. Start a new outbound message with an approved template."
+          : "Customers must message you first before free-text replies. Use New message with an approved template to reach them.",
+      );
+    }
+
+    const mediaId = await this.whatsapp.uploadMedia(
+      conversation.whatsappAccount,
+      file.buffer,
+      mime,
+      file.originalname,
+    );
+
+    const trimmedCaption = caption?.trim() || undefined;
+    const waMessageId = isImage
+      ? await this.whatsapp.sendImage(
+          conversation.whatsappAccount,
+          conversation.contactPhone,
+          mediaId,
+          trimmedCaption,
+        )
+      : await this.whatsapp.sendDocument(
+          conversation.whatsappAccount,
+          conversation.contactPhone,
+          mediaId,
+          file.originalname || "document.pdf",
+          trimmedCaption,
+        );
+
+    const messageType = isImage ? "IMAGE" : "DOCUMENT";
+    const typeKey = messageType.toLowerCase();
+    const previewContent =
+      trimmedCaption ||
+      (isImage ? "Image" : file.originalname || "Document");
+    const payload: Record<string, unknown> = {
+      [typeKey]: {
+        id: mediaId,
+        ...(isDocument ? { filename: file.originalname || "document.pdf" } : {}),
+        ...(trimmedCaption ? { caption: trimmedCaption } : {}),
+      },
+    };
+
+    const message = await this.prisma.message.create({
+      data: {
+        organizationId: user.organizationId,
+        conversationId,
+        waMessageId,
+        direction: "OUTBOUND",
+        type: messageType as never,
+        status: "SENT",
+        content: previewContent,
+        payload: payload as object,
+        sentByUserId: user.sub,
+      },
+    });
+
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: new Date() },
+    });
+
+    await this.clearHandoffIfNeeded(conversationId, user.sub);
+    await this.recordFirstResponse(conversationId, user.organizationId);
+
+    this.realtime.emitMessageNew(user.organizationId, {
+      conversationId,
+      messageId: message.id,
+      direction: "OUTBOUND",
+      content: message.content,
+      createdAt: message.createdAt.toISOString(),
+    });
+    this.realtime.emitInboxUpdated(user.organizationId);
+
+    void this.businessEvents.emit({
+      organizationId: user.organizationId,
+      type: DOMAIN_EVENTS.MESSAGE_SENT,
+      entityType: "message",
+      entityId: message.id,
+      payload: { conversationId, content: previewContent, type: messageType },
+    });
 
     await this.suggestReplyService.clearPendingDraft(conversationId, user.organizationId);
 

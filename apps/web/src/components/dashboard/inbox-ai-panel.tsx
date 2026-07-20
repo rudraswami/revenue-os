@@ -67,7 +67,6 @@ export function InboxAiPanel({
   if (
     !requiresHuman &&
     knowledgeGaps.length === 0 &&
-    !(aiContext?.customerNeeds?.length ?? 0) &&
     !(kbHealth && kbHealth.chunkCount === 0)
   ) {
     return null;
@@ -92,19 +91,6 @@ export function InboxAiPanel({
             No docs matched for {knowledgeGaps.join(", ")}. Add them in <KnowledgeSettingsLink /> for
             grounded replies.
           </p>
-        </div>
-      )}
-
-      {(aiContext?.customerNeeds?.length ?? 0) > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5">
-          {aiContext!.customerNeeds!.map((need) => (
-            <span
-              key={need}
-              className="rounded-full border border-accent/25 bg-bento-mint/50 px-2 py-0.5 text-[11px] font-medium text-foreground"
-            >
-              {need}
-            </span>
-          ))}
         </div>
       )}
 
