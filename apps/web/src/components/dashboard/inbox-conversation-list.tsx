@@ -45,6 +45,7 @@ export function InboxConversationList({
   search,
   onSearchChange,
   hasWhatsapp,
+  showWhatsappDisconnected = false,
   live,
   listLoading,
   listError,
@@ -67,6 +68,8 @@ export function InboxConversationList({
   search: string;
   onSearchChange: (v: string) => void;
   hasWhatsapp: boolean;
+  /** Only true when API confirms no active WA — not while shell cache is loading. */
+  showWhatsappDisconnected?: boolean;
   live: boolean;
   listLoading: boolean;
   listError: boolean;
@@ -257,7 +260,7 @@ export function InboxConversationList({
           </div>
         )}
 
-        {!listLoading && !listError && !hasWhatsapp && (
+        {!listLoading && !listError && showWhatsappDisconnected && (
           <div className="p-3">
             <EmptyState
               compact

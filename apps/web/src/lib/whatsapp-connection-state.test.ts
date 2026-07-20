@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { shouldShowWhatsappConnectBanner } from "./whatsapp-connection-state";
+import { shouldShowWhatsappConnectBanner, resolveWhatsappConnectionState } from "./whatsapp-connection-state";
 
 describe("shouldShowWhatsappConnectBanner", () => {
   it("hides when no token", () => {
@@ -72,6 +72,49 @@ describe("shouldShowWhatsappConnectBanner", () => {
         persistedWhatsappConnected: false,
       }),
       false,
+    );
+  });
+});
+
+describe("resolveWhatsappConnectionState", () => {
+  it("connected when conversations exist", () => {
+    assert.equal(
+      resolveWhatsappConnectionState({
+        accounts: undefined,
+        persistedWhatsappConnected: false,
+        hasConversations: true,
+      }),
+      "connected",
+    );
+  });
+
+  it("unknown while accounts loading without session hint", () => {
+    assert.equal(
+      resolveWhatsappConnectionState({
+        accounts: undefined,
+        persistedWhatsappConnected: undefined,
+      }),
+      "unknown",
+    );
+  });
+
+  it("connected from persisted onboarding when accounts not loaded", () => {
+    assert.equal(
+      resolveWhatsappConnectionState({
+        accounts: undefined,
+        persistedWhatsappConnected: true,
+      }),
+      "connected",
+    );
+  });
+
+  it("disconnected only when API confirms no active account", () => {
+    assert.equal(
+      resolveWhatsappConnectionState({
+        accounts: [{ isActive: false }],
+        persistedWhatsappConnected: true,
+      }),
+      "disconnected",
     );
   });
 });

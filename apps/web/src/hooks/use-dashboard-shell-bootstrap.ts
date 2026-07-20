@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 import { measureInteraction, startInteraction } from "@/lib/performance";
@@ -18,7 +19,7 @@ export function useDashboardShellBootstrap() {
   const token = useAuthStore((s) => s.accessToken);
   const initialShell = useShellBootstrapInitial();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: QUERY_KEYS.shellBootstrap,
     queryFn: async () => {
       const started = startInteraction();
@@ -34,5 +35,21 @@ export function useDashboardShellBootstrap() {
     staleTime: STALE.config,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const status = (error as { status?: number })?.status;
+      return status === 401 || status === 0 || (status != null && status >= 500);
+    },
   });
+
+  // After proactive refresh replaces an expired JWT, recover from a failed bootstrap refetch.
+  const lastRecoveryTokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!token || !query.isError) return;
+    if (lastRecoveryTokenRef.current === token) return;
+    lastRecoveryTokenRef.current = token;
+    void query.refetch();
+  }, [token, query.isError, query.refetch]);
+
+  return query;
 }

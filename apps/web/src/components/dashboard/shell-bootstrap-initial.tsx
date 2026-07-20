@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useContext, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/query-config";
 import {
@@ -18,12 +18,17 @@ export function ShellBootstrapInitialProvider({
   children: React.ReactNode;
 }) {
   const queryClient = useQueryClient();
+  const seededKeyRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!initial) return;
-    seedDashboardShellCache(queryClient, initial);
-    queryClient.setQueryData(QUERY_KEYS.shellBootstrap, initial);
-  }, [initial, queryClient]);
+  // Seed before child queries read cache — useEffect was too late (false "not connected" flash).
+  if (initial) {
+    const key = initial.me.user.id;
+    if (seededKeyRef.current !== key) {
+      seedDashboardShellCache(queryClient, initial);
+      queryClient.setQueryData(QUERY_KEYS.shellBootstrap, initial);
+      seededKeyRef.current = key;
+    }
+  }
 
   return (
     <ShellBootstrapInitialContext.Provider value={initial}>

@@ -20,6 +20,11 @@ import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
 import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
 import { useAuthStore } from "@/stores/auth-store";
 import { canWrite } from "@/lib/permissions";
+import {
+  isWhatsappConnected,
+  resolveWhatsappConnectionState,
+  showWhatsappDisconnected,
+} from "@/lib/whatsapp-connection-state";
 import { cn } from "@/lib/utils";
 import {
   pickDailyQueueFilter,
@@ -148,8 +153,22 @@ export default function InboxPage() {
     [convStats],
   );
 
-  const { data: whatsappAccounts } = useShellWhatsappAccounts();
-  const hasWhatsapp = whatsappAccounts?.some((a) => a.isActive) ?? false;
+  const onboarding = useAuthStore((s) => s.onboarding);
+  const { data: whatsappAccounts } = useShellWhatsappAccounts({
+    allowFetchBeforeBootstrap: true,
+  });
+
+  const whatsappState = useMemo(
+    () =>
+      resolveWhatsappConnectionState({
+        accounts: whatsappAccounts,
+        persistedWhatsappConnected: onboarding?.whatsappConnected,
+        hasConversations: conversations.length > 0,
+      }),
+    [whatsappAccounts, onboarding?.whatsappConnected, conversations.length],
+  );
+  const hasWhatsapp = isWhatsappConnected(whatsappState);
+  const showWhatsappDisconnectedBanner = showWhatsappDisconnected(whatsappState);
 
   useEffect(() => {
     if (!queueDefaultReady || !hasWhatsapp || queueDefaultedRef.current) return;
@@ -240,6 +259,7 @@ export default function InboxPage() {
             search={search}
             onSearchChange={setSearch}
             hasWhatsapp={hasWhatsapp}
+            showWhatsappDisconnected={showWhatsappDisconnectedBanner}
             live={live}
             listLoading={listLoading}
             listError={listError}

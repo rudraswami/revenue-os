@@ -25,7 +25,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const isInbox = pathname === "/dashboard/inbox" || pathname.startsWith("/dashboard/inbox/");
-  const { isError, error, refetch, isFetching } = useDashboardShellBootstrap();
+  const { isError, error, refetch, isFetching, data: shellBootstrap } = useDashboardShellBootstrap();
   useRouteTransitionPerf();
   useDashboardInteractivePerf();
 
@@ -80,7 +80,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <WhatsappTokenExpiryBanner />
-          {isError ? (
+          {isError && !shellBootstrap ? (
             <ShellBootstrapErrorBanner
               error={error}
               isRetrying={isFetching}
