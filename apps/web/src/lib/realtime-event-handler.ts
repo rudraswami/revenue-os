@@ -30,6 +30,9 @@ export function handleRealtimeEvent(
 
   switch (event) {
     case "message.new":
+      // Targeted cache patch already updates list + unread stats (see
+      // handleMessageNewCacheUpdate). Avoid a blanket stats invalidation on
+      // every message — queue re-categorization arrives via lead.* events.
       if (payload.conversationId) {
         handleMessageNewCacheUpdate(
           queryClient,
@@ -37,7 +40,6 @@ export function handleRealtimeEvent(
           { activeConversationId },
         );
       }
-      refreshQueueStats(queryClient);
       break;
     case "inbox.updated":
       refreshQueueStats(queryClient);

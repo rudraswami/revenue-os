@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { handleRealtimeEvent, type RealtimeRefreshPayload } from "@/lib/realtime-event-handler";
 import { organizationIdFromStore, useAuthStore } from "@/stores/auth-store";
@@ -95,7 +95,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [accessToken, organizationId, queryClient]);
 
-  return (
-    <RealtimeContext.Provider value={{ connected }}>{children}</RealtimeContext.Provider>
-  );
+  const value = useMemo(() => ({ connected }), [connected]);
+
+  return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }

@@ -547,11 +547,35 @@ function InboxThreadPaneInner({
         token: token ?? undefined,
         body: JSON.stringify({ assignToUserId }),
       }),
+    onMutate: async (assignToUserId) => {
+      await cancelInboxThreadQueries(queryClient, conversationId);
+      const previousThread = queryClient.getQueryData<ConversationDetail>(
+        QUERY_KEYS.conversation(conversationId),
+      );
+      if (previousThread) {
+        const member = assignToUserId
+          ? teamMembers?.find((m) => m.user.id === assignToUserId)?.user
+          : null;
+        const assignedTo = assignToUserId
+          ? { id: assignToUserId, name: member?.name ?? null, email: member?.email ?? "" }
+          : null;
+        syncInboxThreadBundleConversation(queryClient, conversationId, {
+          ...previousThread,
+          assignedTo,
+        });
+      }
+      return { previousThread };
+    },
     onSuccess: (updated) => {
       syncInboxThreadBundleConversation(queryClient, conversationId, updated);
       refreshQueueStats(queryClient);
     },
-    onError: (e) => showMutationError(e, "Could not assign this conversation."),
+    onError: (e, _vars, context) => {
+      if (context?.previousThread) {
+        syncInboxThreadBundleConversation(queryClient, conversationId, context.previousThread);
+      }
+      showMutationError(e, "Could not assign this conversation.");
+    },
   });
 
   const followUpMutation = useMutation({
@@ -782,8 +806,35 @@ function InboxThreadPaneInner({
       apiUpload<InboxThreadMessage>(`/conversations/${conversationId}/messages/media`, form, {
         token: token ?? undefined,
       }),
+    onMutate: async (form) => {
+      await cancelInboxThreadQueries(queryClient, conversationId);
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.conversationsList });
+      const previousThread = queryClient.getQueryData<ConversationDetail>(
+        QUERY_KEYS.conversation(conversationId),
+      );
+      const previousLists = queryClient.getQueriesData({ queryKey: QUERY_KEYS.conversationsList });
+      const caption = (form.get("caption") as string | null)?.trim() || "";
+      const preview = caption || "\uD83D\uDCCE Attachment";
+      const optimisticId = `${OPTIMISTIC_MESSAGE_PREFIX}${Date.now()}`;
+
+      if (previousThread) {
+        appendOptimisticOutboundMessage(
+          queryClient,
+          conversationId,
+          createOptimisticOutboundMessage(preview, optimisticId),
+        );
+        patchConversationListsAfterOutbound(
+          queryClient,
+          conversationId,
+          preview,
+          new Date().toISOString(),
+        );
+      }
+      return { previousThread, previousLists };
+    },
     onSuccess: (serverMessage) => {
       scrollSmoothRef.current = true;
+      // Refetch to render the real attachment (signed media URL), replacing the optimistic bubble.
       invalidateInboxThreadQueries(queryClient, conversationId);
       patchConversationListsAfterOutbound(
         queryClient,
@@ -797,7 +848,13 @@ function InboxThreadPaneInner({
       clearAttachment();
       setSendError(null);
     },
-    onError: (e) => {
+    onError: (e, _vars, context) => {
+      if (context?.previousThread) {
+        syncInboxThreadBundleConversation(queryClient, conversationId, context.previousThread);
+      }
+      context?.previousLists?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
       setSendError(toUserMessage(e, "Attachment could not be sent."));
     },
     onSettled: () => {
@@ -1229,7 +1286,7 @@ function InboxThreadPaneInner({
                     size="xs"
                     variant="outline"
                     className="h-7 rounded-lg text-xs"
-                    disabled={assignMutation.isPending}
+                    isLoading={assignMutation.isPending}
                     onClick={() => myUserId && assignMutation.mutate(myUserId)}
                   >
                     {copy.assignedTo} me

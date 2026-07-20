@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import {
   Check,
   Megaphone,
@@ -140,6 +141,23 @@ export function ContactDetailDrawer({
     void qc.invalidateQueries({ queryKey: ["pipeline"] });
   }
 
+  async function patchContact(
+    update: Partial<ContactDetail> | ((prev: ContactDetail) => ContactDetail),
+  ): Promise<{ previous: ContactDetail | undefined }> {
+    await qc.cancelQueries({ queryKey: ["contact", leadId] });
+    const previous = qc.getQueryData<ContactDetail>(["contact", leadId]);
+    if (previous) {
+      const next =
+        typeof update === "function" ? update(previous) : { ...previous, ...update };
+      qc.setQueryData<ContactDetail>(["contact", leadId], next);
+    }
+    return { previous };
+  }
+
+  function rollbackContact(context: { previous: ContactDetail | undefined } | undefined) {
+    if (context?.previous) qc.setQueryData(["contact", leadId], context.previous);
+  }
+
   const saveProfile = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       apiFetch(`/leads/${leadId}/contact`, {
@@ -150,24 +168,34 @@ export function ContactDetailDrawer({
     onSuccess: invalidate,
   });
 
-  const setStage = useMutation({
+  const setStage = useOptimisticMutation({
     mutationFn: ({ stage, reason }: { stage: LeadStage; reason?: string }) =>
       apiFetch(`/leads/${leadId}/stage`, {
         method: "PATCH",
         token: token ?? undefined,
         body: JSON.stringify({ stage, reason }),
       }),
-    onSuccess: invalidate,
+    optimisticUpdate: (_qc, { stage, reason }) =>
+      patchContact((prev) => ({
+        ...prev,
+        stage,
+        lostReason: stage === "LOST" ? (reason ?? prev.lostReason) : prev.lostReason,
+        wonReason: stage === "WON" ? (reason ?? prev.wonReason) : prev.wonReason,
+      })),
+    rollback: (_qc, context) => rollbackContact(context),
+    reconcile: () => invalidate(),
   });
 
-  const campaignOptOutMut = useMutation({
+  const campaignOptOutMut = useOptimisticMutation({
     mutationFn: (optedOut: boolean) =>
       apiFetch(`/leads/${leadId}/campaign-opt-out`, {
         method: "PATCH",
         token: token ?? undefined,
         body: JSON.stringify({ optedOut }),
       }),
-    onSuccess: invalidate,
+    optimisticUpdate: (_qc, optedOut) => patchContact({ campaignOptOut: optedOut }),
+    rollback: (_qc, context) => rollbackContact(context),
+    reconcile: () => invalidate(),
   });
 
   const addNote = useMutation({
@@ -203,42 +231,60 @@ export function ContactDetailDrawer({
     },
   });
 
-  const toggleTask = useMutation({
+  const toggleTask = useOptimisticMutation({
     mutationFn: ({ id, status }: { id: string; status: ContactTask["status"] }) =>
       apiFetch(`/tasks/${id}`, {
         method: "PATCH",
         token: token ?? undefined,
         body: JSON.stringify({ status }),
       }),
-    onSuccess: () => {
+    optimisticUpdate: (_qc, { id, status }) =>
+      patchContact((prev) => ({
+        ...prev,
+        tasks: prev.tasks.map((task) => (task.id === id ? { ...task, status } : task)),
+      })),
+    rollback: (_qc, context) => rollbackContact(context),
+    reconcile: () => {
       invalidate();
       void qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 
-  const assignTag = useMutation({
+  const assignTag = useOptimisticMutation({
     mutationFn: (tagId: string) =>
       apiFetch(`/tags/leads/${leadId}/${tagId}`, { method: "POST", token: token ?? undefined }),
-    onSuccess: () => {
+    optimisticUpdate: (_qc, tagId) => {
+      const tag = (tags ?? []).find((t) => t.id === tagId);
       setTagOpen(false);
-      invalidate();
+      return patchContact((prev) =>
+        tag && !prev.tags.some((ct) => ct.id === tagId)
+          ? { ...prev, tags: [...prev.tags, tag] }
+          : prev,
+      );
     },
+    rollback: (_qc, context) => rollbackContact(context),
+    reconcile: () => invalidate(),
   });
 
-  const removeTag = useMutation({
+  const removeTag = useOptimisticMutation({
     mutationFn: (tagId: string) =>
       apiFetch(`/tags/leads/${leadId}/${tagId}`, { method: "DELETE", token: token ?? undefined }),
-    onSuccess: invalidate,
+    optimisticUpdate: (_qc, tagId) =>
+      patchContact((prev) => ({ ...prev, tags: prev.tags.filter((t) => t.id !== tagId) })),
+    rollback: (_qc, context) => rollbackContact(context),
+    reconcile: () => invalidate(),
   });
 
-  const setOwner = useMutation({
+  const setOwner = useOptimisticMutation({
     mutationFn: (ownerId: string) =>
       apiFetch(`/leads/${leadId}/contact`, {
         method: "PATCH",
         token: token ?? undefined,
         body: JSON.stringify({ ownerId }),
       }),
-    onSuccess: invalidate,
+    optimisticUpdate: (_qc, ownerId) => patchContact({ ownerId: ownerId || null }),
+    rollback: (_qc, context) => rollbackContact(context),
+    reconcile: () => invalidate(),
   });
 
   const displayName = contact?.displayName || contact?.phone || "Contact";
@@ -380,7 +426,7 @@ export function ContactDetailDrawer({
                         size="sm"
                         variant={contact.campaignOptOut ? "default" : "outline"}
                         className="shrink-0 text-xs"
-                        disabled={campaignOptOutMut.isPending}
+                        isLoading={campaignOptOutMut.isPending}
                         onClick={() =>
                           campaignOptOutMut.mutate(!contact.campaignOptOut)
                         }
@@ -552,7 +598,7 @@ export function ContactDetailDrawer({
                       placeholder="Add a follow-up task…"
                       className="h-9 text-sm"
                     />
-                    <Button type="submit" size="sm" disabled={!newTask.trim() || addTask.isPending}>
+                    <Button type="submit" size="sm" disabled={!newTask.trim()} isLoading={addTask.isPending}>
                       <Plus className="h-4 w-4" />
                     </Button>
                   </form>
@@ -578,7 +624,7 @@ export function ContactDetailDrawer({
                       className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
                     />
                     <div className="flex justify-end">
-                      <Button type="submit" size="sm" disabled={!noteBody.trim() || addNote.isPending}>
+                      <Button type="submit" size="sm" disabled={!noteBody.trim()} isLoading={addNote.isPending}>
                         Add note
                       </Button>
                     </div>

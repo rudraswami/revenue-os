@@ -211,6 +211,14 @@ export default function InboxPage() {
     window.history.replaceState(null, "", "/dashboard/inbox");
   }, []);
 
+  // Stable so the memoized conversation rows don't rerender on every parent update.
+  const handleConversationHover = useCallback(
+    (id: string) => prefetchInboxThread(queryClient, id, token),
+    [queryClient, token],
+  );
+
+  const handleLoadMore = useCallback(() => void fetchNextPage(), [fetchNextPage]);
+
   useInboxKeyboard({
     enabled: hasWhatsapp && !commandOpen && !shortcutsOpen,
     conversationIds,
@@ -265,7 +273,7 @@ export default function InboxPage() {
             listError={listError}
             onRetry={() => void refetchList()}
             onSelect={selectConversation}
-            onConversationHover={(id) => prefetchInboxThread(queryClient, id, token)}
+            onConversationHover={handleConversationHover}
             onNewMessage={canSend && hasWhatsapp ? () => setShowOutbound(true) : undefined}
             listFilter={listFilter}
             listScope={listScope}
@@ -274,7 +282,7 @@ export default function InboxPage() {
             queueCounts={queueCounts}
             hasNextPage={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
-            onLoadMore={() => void fetchNextPage()}
+            onLoadMore={handleLoadMore}
             listTotal={listTotal}
           />
         </div>

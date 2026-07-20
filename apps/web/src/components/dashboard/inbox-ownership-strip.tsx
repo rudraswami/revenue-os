@@ -52,7 +52,7 @@ export function InboxOwnershipStrip({
               variant="outline"
               size="sm"
               className="h-8 rounded-lg px-3 text-xs font-semibold"
-              disabled={togglePending}
+              isLoading={togglePending}
               onClick={onLetAiAssist}
             >
               {copy.letGrowvisiHelp}
@@ -62,7 +62,7 @@ export function InboxOwnershipStrip({
               type="button"
               size="sm"
               className="h-8 rounded-lg bg-amber-600 px-3 text-xs font-semibold text-white hover:bg-amber-700"
-              disabled={togglePending}
+              isLoading={togglePending}
               onClick={onTakeOver}
             >
               Take over

@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, ImageIcon, Loader2, Mic, Video, ZoomIn } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { InboxDocumentCard } from "@/components/dashboard/inbox-document-card";
 import { InboxImageLightbox } from "@/components/dashboard/inbox-image-lightbox";
 import { getCachedInboxMediaUrl } from "@/lib/inbox-media-cache";
@@ -106,7 +106,7 @@ function mediaCaption(content: string | null): string | null {
   return content;
 }
 
-export function InboxMessageBody({
+export const InboxMessageBody = memo(function InboxMessageBody({
   conversationId,
   messageId,
   type,
@@ -228,4 +228,4 @@ export function InboxMessageBody({
       )}
     </p>
   );
-}
+});

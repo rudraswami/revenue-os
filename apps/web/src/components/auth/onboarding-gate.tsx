@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useEmailVerified } from "@/hooks/use-email-verified";
-import { GrowvisiLogoLoader } from "@/components/ui/loading";
+import { DashboardContentLoader } from "@/components/dashboard/dashboard-content-loader";
 import { useAuthStore } from "@/stores/auth-store";
 
 const SKIP_PREFIXES = [
@@ -52,12 +52,9 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
   const pending = shouldRedirectToVerify || (shouldRedirectToOnboarding && !checked);
 
+  // Keep the persistent shell mounted — only the content area shows the loader.
   if (!hydrated || pending) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background" aria-busy="true">
-        <GrowvisiLogoLoader size="md" />
-      </div>
-    );
+    return <DashboardContentLoader />;
   }
 
   return <>{children}</>;

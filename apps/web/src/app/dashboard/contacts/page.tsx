@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { memo, useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Tag as TagIcon, Users, MoreVertical, Download } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
-import { ContactDetailDrawer } from "@/components/dashboard/contact-detail";
+import dynamic from "next/dynamic";
+
+// Heavy, interactive, opened on demand — keep it out of the initial contacts bundle.
+const ContactDetailDrawer = dynamic(
+  () => import("@/components/dashboard/contact-detail").then((m) => m.ContactDetailDrawer),
+  { ssr: false },
+);
 import { TagChip } from "@/components/dashboard/tag-chip";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { Button } from "@/components/ui/button";
@@ -115,6 +121,7 @@ export default function ContactsPage() {
         { token: token ?? undefined },
       ),
     enabled: !!token,
+    placeholderData: (prev) => prev,
   });
 
   const contacts = contactPage?.data ?? [];
@@ -479,64 +486,7 @@ export default function ContactsPage() {
               </thead>
               <tbody>
                 {contacts.map((c) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => setSelected(c.id)}
-                    className="cursor-pointer border-b border-border/60 transition hover:bg-muted/40"
-                  >
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <AvatarInitials name={c.displayName || c.phone} size="sm" />
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-foreground">
-                            {c.displayName || c.phone}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {c.company ? `${c.company} · ` : ""}
-                            {c.phone}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
-                          STAGE_BADGE[c.stage],
-                        )}
-                      >
-                        {STAGE_LABELS[c.stage]}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={cn(
-                          "font-semibold",
-                          c.score >= HOT_LEAD_SCORE_THRESHOLD ? "text-success" : "text-muted-foreground",
-                        )}
-                      >
-                        {c.score}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 font-medium text-foreground">
-                      {formatInr(c.valueCents)}
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {c.tags.slice(0, 3).map((t) => (
-                          <TagChip key={t.id} tag={t} />
-                        ))}
-                        {c.tags.length > 3 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{c.tags.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-muted-foreground">
-                      {formatRelative(c.updatedAt)}
-                    </td>
-                  </tr>
+                  <ContactTableRow key={c.id} contact={c} onSelect={setSelected} />
                 ))}
               </tbody>
             </table>
@@ -637,3 +587,63 @@ function StatCard({ label, value, accent }: { label: string; value: number; acce
     </div>
   );
 }
+
+const ContactTableRow = memo(function ContactTableRow({
+  contact: c,
+  onSelect,
+}: {
+  contact: ContactRow;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <tr
+      onClick={() => onSelect(c.id)}
+      className="cursor-pointer border-b border-border/60 transition hover:bg-muted/40"
+    >
+      <td className="px-5 py-3">
+        <div className="flex items-center gap-3">
+          <AvatarInitials name={c.displayName || c.phone} size="sm" />
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{c.displayName || c.phone}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {c.company ? `${c.company} · ` : ""}
+              {c.phone}
+            </p>
+          </div>
+        </div>
+      </td>
+      <td className="px-3 py-3">
+        <span
+          className={cn(
+            "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
+            STAGE_BADGE[c.stage],
+          )}
+        >
+          {STAGE_LABELS[c.stage]}
+        </span>
+      </td>
+      <td className="px-3 py-3">
+        <span
+          className={cn(
+            "font-semibold",
+            c.score >= HOT_LEAD_SCORE_THRESHOLD ? "text-success" : "text-muted-foreground",
+          )}
+        >
+          {c.score}
+        </span>
+      </td>
+      <td className="px-3 py-3 font-medium text-foreground">{formatInr(c.valueCents)}</td>
+      <td className="px-3 py-3">
+        <div className="flex flex-wrap gap-1">
+          {c.tags.slice(0, 3).map((t) => (
+            <TagChip key={t.id} tag={t} />
+          ))}
+          {c.tags.length > 3 && (
+            <span className="text-xs text-muted-foreground">+{c.tags.length - 3}</span>
+          )}
+        </div>
+      </td>
+      <td className="px-3 py-3 text-xs text-muted-foreground">{formatRelative(c.updatedAt)}</td>
+    </tr>
+  );
+});

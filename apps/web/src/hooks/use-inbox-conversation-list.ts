@@ -45,6 +45,7 @@ export function useInboxConversationList({
     getNextPageParam: inboxListNextPageParam,
     enabled: !!token,
     refetchInterval,
+    placeholderData: (prev) => prev,
   });
 
   const conversations = useMemo(

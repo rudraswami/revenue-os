@@ -16,13 +16,13 @@ export function DashboardLayoutClient({
 }) {
   return (
     <AuthGuard>
-      <OnboardingGate>
-        <LocaleProvider>
-          <ShellBootstrapInitialProvider initial={initialShell}>
-            <DashboardShell>{children}</DashboardShell>
-          </ShellBootstrapInitialProvider>
-        </LocaleProvider>
-      </OnboardingGate>
+      <LocaleProvider>
+        <ShellBootstrapInitialProvider initial={initialShell}>
+          <DashboardShell>
+            <OnboardingGate>{children}</OnboardingGate>
+          </DashboardShell>
+        </ShellBootstrapInitialProvider>
+      </LocaleProvider>
     </AuthGuard>
   );
 }

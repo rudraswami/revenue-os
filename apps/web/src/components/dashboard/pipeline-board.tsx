@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { GripVertical } from "lucide-react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { cn } from "@/lib/utils";
@@ -51,12 +51,12 @@ function columnValueCents(leads: PipelineLead[]) {
   return leads.reduce((sum, l) => sum + (l.valueCents ?? 0), 0);
 }
 
-function LeadCard({
+const LeadCard = memo(function LeadCard({
   lead,
   stages,
   stageLabels,
   isPending,
-  draggingId,
+  dragging,
   movable,
   onDragStart,
   onDragEnd,
@@ -67,7 +67,7 @@ function LeadCard({
   stages: LeadStage[];
   stageLabels: Record<LeadStage, string>;
   isPending: boolean;
-  draggingId: string | null;
+  dragging: boolean;
   movable: boolean;
   onDragStart: (e: React.DragEvent, leadId: string) => void;
   onDragEnd: () => void;
@@ -85,7 +85,7 @@ function LeadCard({
         lead.isStale && !lead.isHot && "border-amber-200/80 ring-1 ring-amber-100",
         !lead.isHot && !lead.isStale && "border-border",
         !movable && "opacity-90",
-        draggingId === lead.id && "scale-[1.02] opacity-60 shadow-lg ring-2 ring-accent/30",
+        dragging && "scale-[1.02] opacity-60 shadow-lg ring-2 ring-accent/30",
       )}
     >
       <div className="flex items-start gap-2">
@@ -230,7 +230,7 @@ function LeadCard({
       </div>
     </div>
   );
-}
+});
 
 export function PipelineBoard({
   stages,
@@ -249,16 +249,16 @@ export function PipelineBoard({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<LeadStage | null>(null);
 
-  function handleDragStart(e: React.DragEvent, leadId: string) {
+  const handleDragStart = useCallback((e: React.DragEvent, leadId: string) => {
     setDraggingId(leadId);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", leadId);
-  }
+  }, []);
 
-  function handleDragEnd() {
+  const handleDragEnd = useCallback(() => {
     setDraggingId(null);
     setDropTarget(null);
-  }
+  }, []);
 
   function handleDragOver(e: React.DragEvent, stage: LeadStage) {
     e.preventDefault();
@@ -328,7 +328,7 @@ export function PipelineBoard({
                     stages={stages}
                     stageLabels={stageLabels}
                     isPending={isPending}
-                    draggingId={draggingId}
+                    dragging={draggingId === lead.id}
                     movable={canMove(lead)}
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}

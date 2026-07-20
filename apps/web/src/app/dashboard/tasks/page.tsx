@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { Check, CheckSquare, Plus, Trash2 } from "lucide-react";
+import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
@@ -91,6 +92,24 @@ export default function TasksPage() {
     void qc.invalidateQueries({ queryKey: ["tasks-summary"] });
   }
 
+  type TaskListSnapshot = Array<[QueryKey, TaskRow[] | undefined]>;
+
+  async function patchTaskLists(
+    updater: (list: TaskRow[]) => TaskRow[],
+  ): Promise<{ snapshot: TaskListSnapshot }> {
+    await qc.cancelQueries({ queryKey: ["tasks"] });
+    const snapshot = qc.getQueriesData<TaskRow[]>({ queryKey: ["tasks"] });
+    for (const [key, list] of snapshot) {
+      if (!list) continue;
+      qc.setQueryData<TaskRow[]>(key, updater(list));
+    }
+    return { snapshot };
+  }
+
+  function rollbackTaskLists(context: { snapshot: TaskListSnapshot } | undefined) {
+    context?.snapshot.forEach(([key, val]) => qc.setQueryData(key, val));
+  }
+
   const createTask = useMutation({
     mutationFn: () =>
       apiFetch("/tasks", {
@@ -114,30 +133,49 @@ export default function TasksPage() {
     onError: () => toastError(t("toast.actionFailed")),
   });
 
-  const toggle = useMutation({
+  const toggle = useOptimisticMutation({
     mutationFn: ({ id, status }: { id: string; status: TaskStatus }) =>
       apiFetch(`/tasks/${id}`, {
         method: "PATCH",
         token: token ?? undefined,
         body: JSON.stringify({ status }),
       }),
-    onSuccess: invalidate,
+    optimisticUpdate: (_qc, { id, status }) =>
+      patchTaskLists((list) => list.map((task) => (task.id === id ? { ...task, status } : task))),
+    rollback: (_qc, context) => rollbackTaskLists(context),
+    reconcile: () => invalidate(),
+    errorMessage: t("toast.actionFailed"),
   });
 
-  const reassign = useMutation({
+  const reassign = useOptimisticMutation({
     mutationFn: ({ id, assignedToId }: { id: string; assignedToId: string }) =>
       apiFetch(`/tasks/${id}`, {
         method: "PATCH",
         token: token ?? undefined,
         body: JSON.stringify({ assignedToId: assignedToId || null }),
       }),
-    onSuccess: invalidate,
+    optimisticUpdate: (_qc, { id, assignedToId }) => {
+      const member = members?.find((m) => m.user.id === assignedToId)?.user;
+      const assignedTo = assignedToId
+        ? { id: assignedToId, name: member?.name ?? null, email: member?.email ?? "" }
+        : null;
+      return patchTaskLists((list) =>
+        list.map((task) => (task.id === id ? { ...task, assignedTo } : task)),
+      );
+    },
+    rollback: (_qc, context) => rollbackTaskLists(context),
+    reconcile: () => invalidate(),
+    errorMessage: t("toast.actionFailed"),
   });
 
-  const removeTask = useMutation({
+  const removeTask = useOptimisticMutation({
     mutationFn: (id: string) =>
       apiFetch(`/tasks/${id}`, { method: "DELETE", token: token ?? undefined }),
-    onSuccess: invalidate,
+    optimisticUpdate: (_qc, id) =>
+      patchTaskLists((list) => list.filter((task) => task.id !== id)),
+    rollback: (_qc, context) => rollbackTaskLists(context),
+    reconcile: () => invalidate(),
+    errorMessage: t("toast.actionFailed"),
   });
 
   const total = tasks?.length ?? 0;
@@ -214,7 +252,7 @@ export default function TasksPage() {
               className="h-9 text-sm"
             />
           </Field>
-          <Button type="submit" size="sm" disabled={!title.trim() || createTask.isPending}>
+          <Button type="submit" size="sm" disabled={!title.trim()} isLoading={createTask.isPending}>
             <Plus className="h-4 w-4" /> Add
           </Button>
         </form>

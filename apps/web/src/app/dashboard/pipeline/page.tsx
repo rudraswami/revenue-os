@@ -131,6 +131,7 @@ export default function PipelinePage() {
       });
     },
     enabled: !!token,
+    placeholderData: (prev) => prev,
   });
 
   const { data: summary } = useQuery({
@@ -140,6 +141,7 @@ export default function PipelinePage() {
         token: token ?? undefined,
       }),
     enabled: !!token,
+    placeholderData: (prev) => prev,
   });
 
   const { data: whatsappAccounts } = useShellWhatsappAccounts();

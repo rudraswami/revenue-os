@@ -271,6 +271,11 @@ function UserAccountMenu({
     router.push(href);
   }
 
+  function prefetch(href: string) {
+    const path = href.split("#")[0];
+    if (path) router.prefetch(path);
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -291,7 +296,11 @@ function UserAccountMenu({
         align="start"
         className="w-[var(--radix-dropdown-menu-trigger-width)]"
       >
-        <DropdownMenuItem onSelect={() => go("/dashboard/settings")}>
+        <DropdownMenuItem
+          onSelect={() => go("/dashboard/settings")}
+          onMouseEnter={() => prefetch("/dashboard/settings")}
+          onFocus={() => prefetch("/dashboard/settings")}
+        >
           <Settings className="h-4 w-4 text-muted-foreground" />
           {t("userMenu.settings")}
         </DropdownMenuItem>
@@ -299,12 +308,18 @@ function UserAccountMenu({
           onSelect={() =>
             go(whatsappConnected ? "/dashboard/connection" : "/onboarding")
           }
+          onMouseEnter={() => prefetch(whatsappConnected ? "/dashboard/connection" : "/onboarding")}
+          onFocus={() => prefetch(whatsappConnected ? "/dashboard/connection" : "/onboarding")}
         >
           <MessageCircle className="h-4 w-4 text-muted-foreground" />
           {whatsappConnected ? t("userMenu.connection") : t("conversations.connectWhatsapp")}
         </DropdownMenuItem>
         {showPricing && (
-          <DropdownMenuItem onSelect={() => go("/dashboard/pricing")}>
+          <DropdownMenuItem
+            onSelect={() => go("/dashboard/pricing")}
+            onMouseEnter={() => prefetch("/dashboard/pricing")}
+            onFocus={() => prefetch("/dashboard/pricing")}
+          >
             <CreditCard className="h-4 w-4 text-muted-foreground" />
             {t("userMenu.pricing")}
           </DropdownMenuItem>

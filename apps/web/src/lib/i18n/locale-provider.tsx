@@ -13,8 +13,10 @@ type I18nContextValue = {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const user = useAuthStore((s) => s.user);
-  const locale = resolveLocale(user?.locale);
+  // Subscribe only to the locale field — avoids rerendering the whole dashboard
+  // subtree on unrelated profile patches (name, avatar, onboarding, etc.).
+  const userLocale = useAuthStore((s) => s.user?.locale);
+  const locale = resolveLocale(userLocale);
 
   const setLocale = useCallback((_locale: Locale) => {
     // Profile PATCH handles persistence; optimistic update via auth store patch happens in settings UI.

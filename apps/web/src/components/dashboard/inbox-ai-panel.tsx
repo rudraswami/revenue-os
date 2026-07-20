@@ -106,7 +106,7 @@ export function InboxAiPanel({
                   type="button"
                   size="sm"
                   className="h-8 gap-1.5 rounded-lg bg-accent text-xs hover:bg-accent-hover"
-                  disabled={takeoverPending}
+                  isLoading={takeoverPending}
                   onClick={() => onTakeover(suggestedTitle)}
                 >
                   <UserRound className="h-3.5 w-3.5" />
@@ -117,7 +117,7 @@ export function InboxAiPanel({
                   size="sm"
                   variant="ghost"
                   className="h-8 text-xs text-amber-900 hover:bg-amber-100/60"
-                  disabled={resolvePending}
+                  isLoading={resolvePending}
                   onClick={onResolveHandoff}
                 >
                   {copy.alreadyHandled}

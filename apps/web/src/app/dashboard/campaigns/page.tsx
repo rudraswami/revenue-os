@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
 import {
   CalendarClock,
   Download,
@@ -252,6 +253,7 @@ export default function CampaignsPage() {
       ),
     enabled: !!token && campaignsPlanOk === true,
     staleTime: 60_000,
+    placeholderData: (prev) => prev,
   });
 
   const { data: campaigns, isLoading, isError, refetch } = useQuery({
@@ -259,6 +261,7 @@ export default function CampaignsPage() {
     queryFn: () => apiFetch<CampaignRow[]>("/campaigns", { token: token ?? undefined }),
     enabled: !!token && campaignsPlanOk === true,
     retry: false,
+    placeholderData: (prev) => prev,
     refetchInterval: (query) => {
       const rows = query.state.data;
       return rows?.some((c) => c.status === "RUNNING") ? 3_000 : false;
@@ -437,14 +440,25 @@ export default function CampaignsPage() {
       setError(toUserMessage(err, "Could not retry failed recipients")),
   });
 
-  const deleteMut = useMutation({
+  const deleteMut = useOptimisticMutation({
     mutationFn: (id: string) =>
       apiFetch(`/campaigns/${id}`, { method: "DELETE", token: token ?? undefined }),
-    onSuccess: () => {
+    optimisticUpdate: async (queryClient, id) => {
       setConfirmDeleteId(null);
       setDetailId(null);
-      void qc.invalidateQueries({ queryKey: ["campaigns"] });
+      await queryClient.cancelQueries({ queryKey: ["campaigns"] });
+      const previous = queryClient.getQueriesData<CampaignRow[]>({ queryKey: ["campaigns"] });
+      for (const [key, list] of previous) {
+        if (list) queryClient.setQueryData(key, list.filter((c) => c.id !== id));
+      }
+      return { previous };
     },
+    rollback: (queryClient, context) =>
+      context?.previous.forEach(([key, val]) => queryClient.setQueryData(key, val)),
+    reconcile: (queryClient) => {
+      void queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    },
+    errorMessage: (err) => toUserMessage(err, "Could not delete campaign."),
   });
 
   const scheduleMut = useMutation({

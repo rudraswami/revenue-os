@@ -60,6 +60,18 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@growvisi/shared"],
   reactStrictMode: true,
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  /**
+   * Client Router Cache reuse — returning to a recently-visited route serves
+   * the cached segment instantly (no RSC round-trip, no loading.tsx re-flash).
+   * Safe here: every dashboard page is a client component that fetches fresh
+   * data via React Query, so the cached RSC payload is inert.
+   */
+  experimental: {
+    staleTimes: {
+      dynamic: 180,
+      static: 300,
+    },
+  },
   images: {
     remotePatterns: [
       {
