@@ -1,6 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "./query-config";
 import { syncInboxThreadBundleConversation } from "./inbox-thread-bundle";
+import {
+  bumpConversationListRow,
+  patchConversationListRow,
+  updateConversationListCaches,
+} from "./inbox-list-cache";
 
 export const OPTIMISTIC_MESSAGE_PREFIX = "optimistic-";
 
@@ -73,22 +78,23 @@ export function patchConversationAsRead(
     });
   }
 
-  const listEntries = queryClient.getQueriesData<{ data: InboxListRow[] }>({
-    queryKey: QUERY_KEYS.conversationsList,
-  });
-
-  for (const [key, cached] of listEntries) {
-    if (!cached?.data) continue;
-    const row = cached.data.find((c) => c.id === conversationId);
-    if (!row || row.unreadCount === 0) continue;
+  updateConversationListCaches(queryClient, (cached) => {
+    let row: InboxListRow | undefined;
+    if ("pages" in cached) {
+      for (const page of cached.pages) {
+        row = page.data.find((c) => c.id === conversationId);
+        if (row) break;
+      }
+    } else {
+      row = cached.data.find((c) => c.id === conversationId);
+    }
+    if (!row || row.unreadCount === 0) return null;
     if (!clearedUnread) clearedUnread = row.unreadCount;
-    queryClient.setQueryData(key, {
-      ...cached,
-      data: cached.data.map((c) =>
-        c.id === conversationId ? { ...c, unreadCount: 0 } : c,
-      ),
-    });
-  }
+    return patchConversationListRow(cached, conversationId, (r) => ({
+      ...r,
+      unreadCount: 0,
+    }));
+  });
 
   if (clearedUnread <= 0) return;
 
@@ -156,21 +162,22 @@ export function patchConversationHandoffResolved(
     });
   }
 
-  const listEntries = queryClient.getQueriesData<{ data: InboxListRow[] }>({
-    queryKey: QUERY_KEYS.conversationsList,
+  updateConversationListCaches(queryClient, (cached) => {
+    let row: InboxListRow | undefined;
+    if ("pages" in cached) {
+      for (const page of cached.pages) {
+        row = page.data.find((c) => c.id === conversationId);
+        if (row) break;
+      }
+    } else {
+      row = cached.data.find((c) => c.id === conversationId);
+    }
+    if (!row?.requiresHuman) return null;
+    return patchConversationListRow(cached, conversationId, (r) => ({
+      ...r,
+      requiresHuman: false,
+    }));
   });
-
-  for (const [key, cached] of listEntries) {
-    if (!cached?.data) continue;
-    const row = cached.data.find((c) => c.id === conversationId);
-    if (!row?.requiresHuman) continue;
-    queryClient.setQueryData(key, {
-      ...cached,
-      data: cached.data.map((c) =>
-        c.id === conversationId ? { ...c, requiresHuman: false } : c,
-      ),
-    });
-  }
 
   patchConversationStatsCaches(queryClient, (old) => {
     if (!old) return old;
@@ -200,23 +207,11 @@ export function patchThreadLeadStage(
     });
   }
 
-  const listEntries = queryClient.getQueriesData<{ data: InboxListRow[] }>({
-    queryKey: QUERY_KEYS.conversationsList,
-  });
-
-  for (const [key, cached] of listEntries) {
-    if (!cached?.data) continue;
-    const row = cached.data.find((c) => c.id === conversationId);
-    if (!row?.lead) continue;
-    queryClient.setQueryData(key, {
-      ...cached,
-      data: cached.data.map((c) =>
-        c.id === conversationId && c.lead
-          ? { ...c, lead: { ...c.lead, stage } }
-          : c,
-      ),
-    });
-  }
+  updateConversationListCaches(queryClient, (cached) =>
+    patchConversationListRow(cached, conversationId, (row) =>
+      row.lead ? { ...row, lead: { ...row.lead, stage } } : row,
+    ),
+  );
 }
 
 export function patchConversationListsAfterOutbound(
@@ -225,27 +220,26 @@ export function patchConversationListsAfterOutbound(
   content: string,
   createdAt: string,
 ): void {
-  const listEntries = queryClient.getQueriesData<{ data: InboxListRow[] }>({
-    queryKey: QUERY_KEYS.conversationsList,
-  });
-
-  for (const [key, cached] of listEntries) {
-    if (!cached?.data) continue;
-    const idx = cached.data.findIndex((c) => c.id === conversationId);
-    if (idx < 0) continue;
+  updateConversationListCaches(queryClient, (cached) => {
+    let row: InboxListRow | undefined;
+    if ("pages" in cached) {
+      for (const page of cached.pages) {
+        row = page.data.find((c) => c.id === conversationId);
+        if (row) break;
+      }
+    } else {
+      row = cached.data.find((c) => c.id === conversationId);
+    }
+    if (!row) return null;
 
     const updated: InboxListRow = {
-      ...cached.data[idx],
+      ...row,
       lastMessageAt: createdAt,
       messages: [{ content }],
       unreadCount: 0,
     };
-    const nextData = [...cached.data];
-    nextData.splice(idx, 1);
-    nextData.unshift(updated);
-
-    queryClient.setQueryData(key, { ...cached, data: nextData });
-  }
+    return bumpConversationListRow(cached, conversationId, updated);
+  });
 }
 
 export function prependOlderMessages(

@@ -1,6 +1,8 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Inbox, MessageSquare, Plus, Search } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,6 +16,7 @@ import {
 } from "@/lib/i18n/conversations-copy";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { FilterChip } from "@/components/ui/filter-chip";
+import { InboxConversationRowItem } from "@/components/dashboard/inbox-conversation-row";
 import { cn } from "@/lib/utils";
 
 export interface InboxConversationRow {
@@ -36,20 +39,6 @@ const QUEUE_FILTERS: InboxListFilter[] = [
   "mine",
 ];
 
-function formatListTime(iso: string | null) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const now = new Date();
-  const sameDay =
-    d.getDate() === now.getDate() &&
-    d.getMonth() === now.getMonth() &&
-    d.getFullYear() === now.getFullYear();
-  if (sameDay) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
-}
-
 export function InboxConversationList({
   conversations,
   selectedId,
@@ -61,12 +50,17 @@ export function InboxConversationList({
   listError,
   onRetry,
   onSelect,
+  onConversationHover,
   onNewMessage,
   listFilter = "all",
   listScope = "active",
   onListFilterChange,
   onListScopeChange,
   queueCounts,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+  listTotal,
 }: {
   conversations: InboxConversationRow[];
   selectedId: string | null;
@@ -78,18 +72,22 @@ export function InboxConversationList({
   listError: boolean;
   onRetry: () => void;
   onSelect: (id: string) => void;
+  onConversationHover?: (id: string) => void;
   onNewMessage?: () => void;
   listFilter?: InboxListFilter;
   listScope?: InboxListScope;
   onListFilterChange?: (f: InboxListFilter) => void;
   onListScopeChange?: (s: InboxListScope) => void;
-  /** Counts for Your turn / Mine / Unassigned — shown on the single filter chip row only. */
   queueCounts?: {
     yourTurn: number;
     mine: number;
     unassigned: number;
     postCloseUnread?: number;
   };
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadMore?: () => void;
+  listTotal?: number;
 }) {
   const { t } = useI18n();
   const copy = useConversationsCopy();
@@ -122,6 +120,33 @@ export function InboxConversationList({
   }
 
   const empty = emptyState();
+  const showListSkeleton = listLoading && conversations.length === 0;
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: conversations.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 76,
+    overscan: 8,
+  });
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !hasNextPage || !onLoadMore || isFetchingNextPage) return;
+
+    function onScroll() {
+      const { scrollTop, scrollHeight, clientHeight } = el!;
+      if (scrollHeight - scrollTop - clientHeight < 200) onLoadMore!();
+    }
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [hasNextPage, isFetchingNextPage, onLoadMore, conversations.length]);
+
+  const countLabel =
+    listTotal != null && listTotal > conversations.length
+      ? `${conversations.length} of ${listTotal}`
+      : copy.conversationCount(conversations.length);
 
   return (
     <aside className="relative flex h-full w-full shrink-0 flex-col border-r border-border/80 bg-background md:w-[min(100%,320px)] lg:w-[360px]">
@@ -133,19 +158,19 @@ export function InboxConversationList({
             </p>
             <h1 className="text-xl font-bold tracking-tight md:text-2xl">{t("nav.conversations")}</h1>
           </div>
-          <div className="flex items-center gap-1.5">
-            {hasWhatsapp && (
-              <span className="rounded-full bg-bento-mint px-2 py-0.5 text-xs font-bold uppercase text-accent">
-                {copy.live}
-              </span>
-            )}
-            {live && (
-              <span className="h-2 w-2 animate-pulse rounded-full bg-accent" title="Realtime sync" />
-            )}
-          </div>
+          {hasWhatsapp && live && (
+            <span
+              className="h-2 w-2 shrink-0 rounded-full bg-accent animate-pulse"
+              title="Realtime updates on"
+              aria-label="Realtime updates on"
+            />
+          )}
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          {copy.conversationCount(conversations.length)}
+          {countLabel}
+          {hasWhatsapp && !live && (
+            <span className="text-muted-foreground/80"> · checking for updates</span>
+          )}
         </p>
 
         {hasWhatsapp && onListScopeChange && (
@@ -211,8 +236,8 @@ export function InboxConversationList({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
-        {listLoading && (
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
+        {showListSkeleton && (
           <div className="p-2">
             <InboxListSkeleton />
           </div>
@@ -261,65 +286,35 @@ export function InboxConversationList({
           </div>
         )}
 
-        <ul className="divide-y divide-border/50">
-          {conversations.map((c) => {
-            const displayName = c.contactName ?? c.contactPhone;
-            const active = selectedId === c.id;
-            const closed = listScope === "closed";
-            return (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(c.id)}
-                  className={cn(
-                    "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors",
-                    active
-                      ? "border-l-[3px] border-l-accent bg-card"
-                      : "border-l-[3px] border-l-transparent hover:bg-card/70",
-                    closed && !active && "opacity-80",
-                  )}
+        {conversations.length > 0 && (
+          <ul
+            className="relative divide-y divide-border/50"
+            style={{ height: `${virtualizer.getTotalSize()}px` }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const c = conversations[virtualRow.index];
+              return (
+                <li
+                  key={c.id}
+                  className="absolute left-0 top-0 w-full"
+                  style={{ transform: `translateY(${virtualRow.start}px)` }}
                 >
-                  <AvatarInitials name={displayName} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className={cn("truncate text-sm font-semibold", active && "text-accent")}>
-                        {displayName}
-                      </p>
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {formatListTime(c.lastMessageAt)}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
-                      {c.messages[0]?.content ?? "—"}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      {c.postCloseAttention && listScope === "active" && (
-                        <span className="rounded-md bg-violet-100 px-1.5 py-0.5 text-xs font-semibold text-violet-900">
-                          Post-close
-                        </span>
-                      )}
-                      {c.requiresHuman && listScope === "active" && (
-                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900">
-                          {copy.waitingOnYou}
-                        </span>
-                      )}
-                      {c.lead && (
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {copy.stageLabel(c.lead.stage)}
-                        </span>
-                      )}
-                      {c.unreadCount > 0 && (
-                        <span className="rounded-full bg-accent px-1.5 py-0.5 text-xs font-bold text-white">
-                          {c.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                  <InboxConversationRowItem
+                    conversation={c}
+                    active={selectedId === c.id}
+                    closed={listScope === "closed"}
+                    onSelect={onSelect}
+                    onHover={onConversationHover}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {isFetchingNextPage && (
+          <p className="py-3 text-center text-xs text-muted-foreground">Loading more…</p>
+        )}
       </div>
 
       {onNewMessage && hasWhatsapp && listScope === "active" && (

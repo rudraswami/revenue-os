@@ -34,7 +34,7 @@ export function InboxComposer({
   draftSources?: Array<{ title: string; citation?: string }>;
   templates?: Array<{ id: string; title: string; body: string }>;
   composeRef?: React.RefObject<HTMLTextAreaElement | null>;
-  onMinimize: () => void;
+  onMinimize?: () => void;
   draftNote?: string | null;
 }) {
   const copy = useConversationsCopy();
@@ -133,14 +133,16 @@ export function InboxComposer({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={onMinimize}
-              className="flex items-center gap-0.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{copy.minimizeComposer}</span>
-            </button>
+            {onMinimize && (
+              <button
+                type="button"
+                onClick={onMinimize}
+                className="flex items-center gap-0.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{copy.minimizeComposer}</span>
+              </button>
+            )}
             <Button
               type="submit"
               size="sm"

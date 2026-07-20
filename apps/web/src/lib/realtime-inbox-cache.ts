@@ -5,6 +5,7 @@ import {
   type InboxListRow,
   type InboxThreadMessage,
 } from "./inbox-query-cache";
+import { bumpConversationListRow, updateConversationListCaches } from "./inbox-list-cache";
 import { syncInboxThreadBundleConversation } from "./inbox-thread-bundle";
 
 export interface MessageNewRealtimePayload {
@@ -29,17 +30,6 @@ function patchConversationStatsCaches(
   }
 }
 
-function forEachConversationList<T extends { data: InboxListRow[] }>(
-  queryClient: QueryClient,
-  fn: (key: readonly unknown[], cached: T) => void,
-): void {
-  const entries = queryClient.getQueriesData<T>({ queryKey: QUERY_KEYS.conversationsList });
-  for (const [key, cached] of entries) {
-    if (!cached?.data) continue;
-    fn(key, cached);
-  }
-}
-
 /** Bump list row on new activity — no blanket list invalidation. */
 export function patchConversationListOnMessageActivity(
   queryClient: QueryClient,
@@ -47,23 +37,25 @@ export function patchConversationListOnMessageActivity(
   preview: { content: string | null; createdAt: string },
   options: { incrementUnread?: boolean } = {},
 ): void {
-  forEachConversationList(queryClient, (key, cached) => {
-    const idx = cached.data.findIndex((c) => c.id === conversationId);
-    if (idx < 0) return;
+  updateConversationListCaches(queryClient, (cached) => {
+    let row: InboxListRow | undefined;
+    if ("pages" in cached) {
+      for (const page of cached.pages) {
+        row = page.data.find((c) => c.id === conversationId);
+        if (row) break;
+      }
+    } else {
+      row = cached.data.find((c) => c.id === conversationId);
+    }
+    if (!row) return null;
 
-    const row = cached.data[idx];
     const updated: InboxListRow = {
       ...row,
       lastMessageAt: preview.createdAt,
       messages: [{ content: preview.content }],
-      unreadCount: options.incrementUnread
-        ? row.unreadCount + 1
-        : row.unreadCount,
+      unreadCount: options.incrementUnread ? row.unreadCount + 1 : row.unreadCount,
     };
-    const nextData = [...cached.data];
-    nextData.splice(idx, 1);
-    nextData.unshift(updated);
-    queryClient.setQueryData(key, { ...cached, data: nextData });
+    return bumpConversationListRow(cached, conversationId, updated);
   });
 }
 

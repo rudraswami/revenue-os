@@ -1,8 +1,9 @@
 "use client";
 
-import { FileText, ImageIcon, Loader2, Mic, Video } from "lucide-react";
+import { FileText, ImageIcon, Loader2, Mic, Video, ZoomIn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { apiObjectUrl } from "@/lib/api-client";
+import { InboxImageLightbox } from "@/components/dashboard/inbox-image-lightbox";
+import { getCachedInboxMediaUrl } from "@/lib/inbox-media-cache";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -55,42 +56,42 @@ function useAuthenticatedMediaUrl(
   conversationId: string,
   messageId: string,
   enabled: boolean,
-): string | null {
+): { url: string | null; loading: boolean } {
   const token = useAuthStore((s) => s.accessToken);
   const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!enabled || !token) {
       setUrl(null);
+      setLoading(false);
       return;
     }
 
     let cancelled = false;
-    let objectUrl: string | null = null;
+    setLoading(true);
 
     void (async () => {
       try {
-        const created = await apiObjectUrl(
-          `/conversations/${conversationId}/messages/${messageId}/media`,
-        );
-        if (cancelled) {
-          URL.revokeObjectURL(created);
-          return;
+        const cached = await getCachedInboxMediaUrl(conversationId, messageId);
+        if (!cancelled) {
+          setUrl(cached);
+          setLoading(false);
         }
-        objectUrl = created;
-        setUrl(created);
       } catch {
-        if (!cancelled) setUrl(null);
+        if (!cancelled) {
+          setUrl(null);
+          setLoading(false);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [conversationId, messageId, enabled, token]);
 
-  return url;
+  return { url, loading };
 }
 
 export function InboxMessageBody({
@@ -106,11 +107,12 @@ export function InboxMessageBody({
   const isAudio = type === "AUDIO";
   const needsMedia = isImage || isVideo || isAudio;
   const { ref, inView } = useInView();
-  const mediaUrl = useAuthenticatedMediaUrl(
+  const { url: mediaUrl, loading: mediaLoading } = useAuthenticatedMediaUrl(
     conversationId,
     messageId,
     needsMedia && inView,
   );
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   if (needsMedia && !inView) {
     return (
@@ -121,7 +123,7 @@ export function InboxMessageBody({
     );
   }
 
-  if (needsMedia && !mediaUrl) {
+  if (needsMedia && (mediaLoading || !mediaUrl)) {
     return (
       <div className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -133,15 +135,31 @@ export function InboxMessageBody({
   if (isImage && mediaUrl) {
     return (
       <div className={cn("space-y-2", className)}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={mediaUrl}
-          alt={content ?? "WhatsApp attachment"}
-          className="max-h-64 rounded-lg object-cover"
-          loading="lazy"
-        />
+        <button
+          type="button"
+          className="group relative block max-w-full overflow-hidden rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          onClick={() => setLightboxOpen(true)}
+          aria-label="Open image preview"
+        >
+          <img
+            src={mediaUrl}
+            alt={content ?? "WhatsApp attachment"}
+            className="max-h-64 rounded-lg object-cover transition group-hover:opacity-95"
+            loading="lazy"
+          />
+          <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition group-hover:opacity-100">
+            <ZoomIn className="h-3.5 w-3.5" />
+          </span>
+        </button>
         {content && !content.startsWith("[") && (
           <p className="whitespace-pre-wrap text-sm">{content}</p>
+        )}
+        {lightboxOpen && (
+          <InboxImageLightbox
+            src={mediaUrl}
+            alt={content ?? "WhatsApp attachment"}
+            onClose={() => setLightboxOpen(false)}
+          />
         )}
       </div>
     );
@@ -150,11 +168,7 @@ export function InboxMessageBody({
   if (isVideo && mediaUrl) {
     return (
       <div className={cn("space-y-2", className)}>
-        <video
-          controls
-          className="max-h-64 rounded-lg"
-          preload="metadata"
-        >
+        <video controls className="max-h-64 rounded-lg" preload="metadata">
           <source src={mediaUrl} />
         </video>
         {content && !content.startsWith("[") && (
