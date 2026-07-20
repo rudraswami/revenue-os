@@ -103,19 +103,8 @@ jobs:
       - name: Install Playwright
         run: pnpm --filter @growvisi/web exec playwright install chromium --with-deps
 
-      - name: E2E smoke tests
-        run: pnpm --filter @growvisi/web test:e2e
-        env:
-          CI: true
-          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
-          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
-          JWT_SECRET: ci-test-secret-minimum-32-characters-long
-          REDIS_URL: redis://localhost:6379
-          E2E_EMAIL: demo@growvisi.com
-          E2E_PASSWORD: demo123456
-
-      - name: Inbox thread bundle certification (Phase A, G, H)
-        run: pnpm --filter @growvisi/web exec playwright test e2e/inbox-thread-bundle-cert.spec.ts
+      - name: Full E2E certification (dashboard + inbox Phases A,G,H + P1 UX)
+        run: pnpm certify:e2e
         env:
           CI: true
           DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os

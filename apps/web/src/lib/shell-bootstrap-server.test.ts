@@ -28,7 +28,7 @@ describe("fetchShellBootstrapServer", () => {
 
   it("returns null when refresh fails", async () => {
     globalThis.fetch = (async () =>
-      ({ ok: false, status: 401, json: async () => null })) as typeof fetch;
+      ({ ok: false, status: 401, json: async () => null } as Response)) as typeof fetch;
 
     const result = await fetchShellBootstrapServer(`${SESSION}; ${REFRESH}`);
     assert.equal(result, null);

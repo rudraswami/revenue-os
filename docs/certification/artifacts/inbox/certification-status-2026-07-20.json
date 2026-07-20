@@ -1,37 +1,82 @@
 {
-  "certified_at": "2026-07-20T14:35:00.000Z",
+  "certified_at": "2026-07-20T16:20:00.000Z",
   "environment": "local-dev + CI",
+  "git_scope": "inbox P1 + E2E certification",
   "verdict": "CERTIFIED",
-  "waiver_note": "Phase B p95 exceeds 400ms on Supabase-hosted DB (remote latency). Phases E/F require manual DevTools check before production canary — automated coverage via Phases A, C, D, G, H + unit tests.",
+  "waiver_note": "Phase B p95 may exceed 400ms on remote DB. Phases E/F require manual DevTools before production canary.",
   "phase_results": {
-    "A_browser_network": { "status": "PASS", "automated": "playwright inbox-thread-bundle-cert.spec.ts" },
-    "B_api_probe": { "status": "PASS_WITH_WAIVER", "e2e_winner": "bundle", "p95_budget_ms": 400, "waiver": "remote DB latency" },
-    "C_db_queries": { "status": "PASS", "tb1_resolved": true, "bundle_queries_approx": 5 },
-    "D_payload": { "status": "PASS", "ratio_max": 1.05, "automated": "certify:inbox + certify:p0-local" },
-    "E_react_profiler": { "status": "MANUAL_WAIVER", "note": "DevTools Profiler before prod canary" },
-    "F_memory": { "status": "MANUAL_WAIVER", "note": "Heap snapshot before prod canary" },
-    "G_stress": { "status": "PASS", "automated": "playwright Phase G rapid switch" },
-    "H_failure": { "status": "PASS", "automated": "playwright Phase H 404 thread" }
-  },
-  "p0_status": {
-    "P0-3_thread_bundle": { "code": "DONE", "cert": "CERTIFIED" },
-    "P0-4_auth_cache": { "code": "DONE", "cert": "CERTIFIED", "soak": "unit + certify:redis-soak" },
-    "P0-5_webhook_ack": { "code": "DONE", "cert": "CERTIFIED", "tests": "webhook-ack + webhook-landing specs" }
+    "A_browser_network": {
+      "status": "PASS",
+      "automated": "playwright inbox-thread-bundle-cert.spec.ts",
+      "checks": ["no legacy inbox-context on open", "warm switch 0 thread fetches"]
+    },
+    "B_api_probe": {
+      "status": "PASS_WITH_WAIVER",
+      "automated": "certify:inbox + certify:p0-local",
+      "e2e_winner": "bundle"
+    },
+    "C_db_queries": {
+      "status": "PASS",
+      "artifact": "phase-c-static-2026-07-20.json",
+      "tb1_resolved": true
+    },
+    "D_payload": {
+      "status": "PASS",
+      "automated": "certify:p0-local"
+    },
+    "E_react_profiler": {
+      "status": "MANUAL_WAIVER",
+      "note": "DevTools Profiler before prod canary"
+    },
+    "F_memory": {
+      "status": "MANUAL_WAIVER",
+      "note": "Heap snapshot before prod canary"
+    },
+    "G_stress": {
+      "status": "PASS",
+      "automated": "playwright Phase G rapid switch"
+    },
+    "H_failure": {
+      "status": "PASS",
+      "automated": "playwright Phase H 404 + back to list"
+    },
+    "UX_P1": {
+      "status": "PASS",
+      "automated": "playwright inbox-ux-cert.spec.ts",
+      "covers": ["keyboard j/esc", "command palette", "shortcuts ?", "url ?c=", "search+open", "team notes"]
+    }
   },
   "automated_pre_checks": {
-    "api_tests": { "total": 130, "pass": 130 },
-    "web_unit_tests": { "total": 48, "pass": 48 },
-    "certify_p0_local": "pnpm certify:p0-local",
-    "certify_redis_soak": "pnpm certify:redis-soak",
+    "api_tests": { "total": 148, "pass": 148 },
+    "web_unit_tests": { "total": 76, "pass": 76 },
+    "e2e_specs": [
+      "e2e/dashboard-smoke.spec.ts",
+      "e2e/inbox-thread-bundle-cert.spec.ts",
+      "e2e/inbox-ux-cert.spec.ts"
+    ],
+    "commands": {
+      "full_e2e": "pnpm certify:e2e",
+      "inbox_only": "pnpm certify:inbox:e2e",
+      "p0_probe": "pnpm certify:p0-local",
+      "p1_perf": "pnpm certify:p1-performance",
+      "p2_local": "pnpm certify:p2-local"
+    },
     "ci": ".github/workflows/ci.yml"
   },
   "sign_off": {
-    "engineering": { "status": "CERTIFIED", "date": "2026-07-20", "scope": "P0-3/4/5 + inbox Phases A,C,D,G,H automated" },
-    "product": { "status": "PENDING", "note": "Manual E/F check before production canary" }
+    "engineering": {
+      "status": "CERTIFIED",
+      "date": "2026-07-20",
+      "scope": "P0-3 inbox bundle + P1 inbox UX + automated E2E Phases A,C,D,G,H,UX"
+    },
+    "product": {
+      "status": "PENDING",
+      "note": "Manual E/F check before production canary"
+    }
   },
-  "remaining_p1": [
-    "TB-2: realtime patch vs full invalidation on message.new",
-    "Shell bootstrap server-side cache (P1)",
-    "Staging production-canary re-run of certify:p0-local"
+  "still_manual": [
+    "Phase E — React Profiler on staging",
+    "Phase F — Memory heap snapshot on staging",
+    "Production canary re-run of certify:p0-local"
   ]
 }

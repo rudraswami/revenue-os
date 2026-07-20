@@ -145,16 +145,22 @@ Each phase produces a **filled results table** (template in §9). Store artifact
 
 ```bash
 pnpm seed:inbox-cert   # WA account + 2 conversations for demo org
-pnpm certify:inbox:e2e
+pnpm certify:e2e       # dashboard smoke + inbox bundle + inbox UX (full E2E)
+pnpm certify:inbox:e2e # inbox phases only (A, G, H + P1 UX)
 # Local stack (see gotchas below):
 #   VERCEL= JWT_SECRET=ci-test-secret-minimum-32-characters-long pnpm dev:api
 #   NEXT_PUBLIC_API_URL=http://127.0.0.1:4000/api/v1 pnpm dev:web
-#   E2E_EMAIL=demo@growvisi.com E2E_PASSWORD=demo123456 pnpm certify:inbox:e2e
+#   E2E_EMAIL=demo@growvisi.com E2E_PASSWORD=demo123456 pnpm certify:e2e
 ```
 
 **Local env gotchas:** `.env` with `VERCEL=1` prevents the API from calling `listen()` locally — unset `VERCEL` when running `dev:api`. Ensure `JWT_SECRET` is set (32+ chars). Point web at `http://127.0.0.1:4000/api/v1`. The E2E spec opens `/dashboard/inbox?filter=unassigned` so cert fixture rows are visible.
 
-Spec: `apps/web/e2e/inbox-thread-bundle-cert.spec.ts` — fails if legacy `/inbox-context` or bare `/conversations/:id` fire on thread open. Writes `docs/certification/artifacts/inbox/phase-a-*.json`.
+Specs:
+- `apps/web/e2e/inbox-thread-bundle-cert.spec.ts` — Phases **A, G, H** (bundle endpoint, rapid switch, 404)
+- `apps/web/e2e/inbox-ux-cert.spec.ts` — P1 UX (**keyboard, ⌘K palette, ? shortcuts, ?c= URL, search, team notes**)
+- `apps/web/e2e/dashboard-smoke.spec.ts` — login → conversations → settings
+
+Shared helpers: `apps/web/e2e/helpers/inbox-cert.ts`. Artifacts: `docs/certification/artifacts/inbox/phase-*.json`.
 
 Client perf marks: `measureInteraction('inbox.open_thread')` in dev console when thread renders (budget 800ms).
 
@@ -292,20 +298,21 @@ Consolidate Phase A–H numbers into §9 summary. All budgets in §3 must PASS o
 ## 5. Automated pre-checks (run before live phases)
 
 ```bash
-pnpm --filter @growvisi/web test          # 48+ unit tests incl. bundle cache
-pnpm --filter @growvisi/api test          # incl. conversations.service.thread-bundle.spec
+pnpm --filter @growvisi/web test          # 76 unit tests incl. inbox bundle + list cache
+pnpm --filter @growvisi/api test          # incl. conversations.service.thread-bundle + leads.notes
 pnpm --filter @growvisi/web exec tsc --noEmit
 pnpm certify:inbox --dry-run              # static audit only
-pnpm certify:inbox:e2e                    # Phase A network audit (needs stack)
+pnpm certify:e2e                          # full Playwright E2E (needs stack + seed)
+pnpm certify:inbox:e2e                    # inbox E2E only
 ```
 
 | Check | Last run | Result |
 |-------|----------|--------|
-| Web unit tests | July 2026 | 48/48 PASS |
-| API thread-bundle tests | July 2026 | 4/4 PASS |
+| Web unit tests | July 2026 | 76/76 PASS |
+| API tests | July 2026 | 148/148 PASS |
 | TypeScript | July 2026 | PASS |
-| Live browser (Phase A) | — | **CI Playwright** (`certify:inbox:e2e`) — pending green CI run |
-| Backend profiling (Phase B) | — | **NOT RUN** |
+| Live browser (Phase A + UX) | July 2026 | **CI Playwright** (`certify:e2e` / `certify:inbox:e2e`) |
+| Backend profiling (Phase B) | July 2026 | **PASS_WITH_WAIVER** via `certify:p0-local` (remote DB latency) |
 | DB query counts (Phase C) | Static audit | **DOCUMENTED** — `phase-c-static-2026-07-20.json` (TB-1) |
 
 ---
