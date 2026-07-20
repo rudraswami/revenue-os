@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { InfiniteData } from "@tanstack/react-query";
+import { QueryClient, type InfiniteData } from "@tanstack/react-query";
 import {
   bumpConversationListRow,
+  ensureInboxListInfiniteCache,
   patchConversationListRow,
   type InboxListPage,
 } from "./inbox-list-cache";
@@ -38,6 +39,19 @@ describe("inbox-list-cache", () => {
     }));
     assert.ok(next && "pages" in next);
     assert.equal(next.pages[0].data[0].unreadCount, 0);
+  });
+
+  it("migrates legacy flat prefetch cache to infinite shape", () => {
+    const client = new QueryClient();
+    const key = ["conversations", "", "all", "active"] as const;
+    client.setQueryData(key, { data: [row], hasMore: false, page: 1 });
+
+    ensureInboxListInfiniteCache(client, key);
+
+    const cached = client.getQueryData<InfiniteData<InboxListPage>>(key);
+    assert.ok(cached && "pages" in cached);
+    assert.equal(cached.pages[0].data[0].id, "c1");
+    assert.deepEqual(cached.pageParams, [1]);
   });
 
   it("bumps a row to the top of the first page", () => {

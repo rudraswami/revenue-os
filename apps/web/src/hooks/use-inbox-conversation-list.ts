@@ -1,14 +1,16 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { apiFetch } from "@/lib/api-client";
-import type { InboxListPage } from "@/lib/inbox-list-cache";
 import type { InboxConversationRow } from "@/components/dashboard/inbox-conversation-list";
-import { QUERY_KEYS } from "@/lib/query-config";
+import { ensureInboxListInfiniteCache } from "@/lib/inbox-list-cache";
+import {
+  fetchInboxListPage,
+  inboxListNextPageParam,
+  inboxListQueryKey,
+  INBOX_LIST_INITIAL_PAGE,
+} from "@/lib/inbox-list-query";
 import type { InboxListFilter, InboxListScope } from "@/lib/i18n/conversations-copy";
-
-const INBOX_PAGE_SIZE = 50;
 
 export function useInboxConversationList({
   token,
@@ -23,23 +25,24 @@ export function useInboxConversationList({
   listScope: InboxListScope;
   refetchInterval: number | false;
 }) {
+  const queryClient = useQueryClient();
+  const queryKey = inboxListQueryKey(searchDebounced, listFilter, listScope);
+
+  // Legacy sidebar prefetch used prefetchQuery (flat shape) — migrate before infinite query reads cache.
+  ensureInboxListInfiniteCache(queryClient, queryKey);
+
   const query = useInfiniteQuery({
-    queryKey: [...QUERY_KEYS.conversationsList, searchDebounced, listFilter, listScope],
-    queryFn: ({ pageParam }) => {
-      const params = new URLSearchParams({
-        pageSize: String(INBOX_PAGE_SIZE),
-        page: String(pageParam),
-      });
-      if (searchDebounced) params.set("q", searchDebounced);
-      if (listFilter !== "all") params.set("filter", listFilter);
-      if (listScope === "closed") params.set("scope", "closed");
-      return apiFetch<InboxListPage>(`/conversations?${params}`, {
+    queryKey,
+    queryFn: ({ pageParam }) =>
+      fetchInboxListPage({
+        pageParam,
         token: token ?? undefined,
-      });
-    },
-    initialPageParam: 1,
-    getNextPageParam: (lastPage, _pages, lastPageParam) =>
-      lastPage.hasMore ? lastPageParam + 1 : undefined,
+        searchDebounced,
+        listFilter,
+        listScope,
+      }),
+    initialPageParam: INBOX_LIST_INITIAL_PAGE,
+    getNextPageParam: inboxListNextPageParam,
     enabled: !!token,
     refetchInterval,
   });

@@ -14,7 +14,26 @@ export interface InboxListPage {
 function isInfiniteListCache(
   cached: InboxListPage | InfiniteData<InboxListPage>,
 ): cached is InfiniteData<InboxListPage> {
-  return "pages" in cached;
+  return "pages" in cached && Array.isArray(cached.pages);
+}
+
+/** Flat list cache from legacy prefetchQuery must become infinite shape for useInfiniteQuery. */
+export function ensureInboxListInfiniteCache(
+  queryClient: QueryClient,
+  queryKey: readonly unknown[],
+): void {
+  const cached = queryClient.getQueryData<InboxListPage | InfiniteData<InboxListPage>>(queryKey);
+  if (!cached || isInfiniteListCache(cached)) return;
+
+  if (Array.isArray(cached.data)) {
+    queryClient.setQueryData<InfiniteData<InboxListPage>>(queryKey, {
+      pages: [cached],
+      pageParams: [cached.page ?? 1],
+    });
+    return;
+  }
+
+  queryClient.removeQueries({ queryKey, exact: true });
 }
 
 function findRowIndex(pages: InboxListPage[], conversationId: string): {

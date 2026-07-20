@@ -1,5 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import {
+  fetchInboxListPage,
+  inboxListNextPageParam,
+  inboxListQueryKey,
+  INBOX_LIST_INITIAL_PAGE,
+} from "@/lib/inbox-list-query";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 
 const prefetchedRoutes = new Set<string>();
@@ -20,10 +26,18 @@ export function prefetchDashboardRoute(
 
   if (path === "/dashboard/inbox") {
     void Promise.all([
-      queryClient.prefetchQuery({
-        queryKey: [...QUERY_KEYS.conversationsList, "", "all", "active"],
-        queryFn: () =>
-          apiFetch<{ data: unknown[] }>("/conversations?pageSize=50", opts),
+      queryClient.prefetchInfiniteQuery({
+        queryKey: inboxListQueryKey("", "all", "active"),
+        queryFn: ({ pageParam }) =>
+          fetchInboxListPage({
+            pageParam,
+            token,
+            searchDebounced: "",
+            listFilter: "all",
+            listScope: "active",
+          }),
+        initialPageParam: INBOX_LIST_INITIAL_PAGE,
+        getNextPageParam: inboxListNextPageParam,
         staleTime: STALE.live,
       }),
       queryClient.prefetchQuery({
