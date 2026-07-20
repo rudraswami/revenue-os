@@ -17,7 +17,7 @@ import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
 import { useAuthStore } from "@/stores/auth-store";
 import { IndianRupee, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const AnalyticsBarCharts = dynamic(
@@ -88,19 +88,25 @@ export default function AnalyticsPage() {
   const isLoading = funnelLoading || convLoading || revenueLoading;
   const hasError = funnelError || convError;
 
-  const barData =
-    funnel?.byStage.map((s) => ({
-      stage: s.stage.replace("_", " "),
-      count: s.count,
-    })) ?? [];
-
-  const valueBarData =
-    revenue?.byStage
-      .filter((s) => s.valueCents > 0)
-      .map((s) => ({
+  const barData = useMemo(
+    () =>
+      funnel?.byStage.map((s) => ({
         stage: s.stage.replace("_", " "),
-        value: s.valueCents / 100,
-      })) ?? [];
+        count: s.count,
+      })) ?? [],
+    [funnel?.byStage],
+  );
+
+  const valueBarData = useMemo(
+    () =>
+      revenue?.byStage
+        .filter((s) => s.valueCents > 0)
+        .map((s) => ({
+          stage: s.stage.replace("_", " "),
+          value: s.valueCents / 100,
+        })) ?? [],
+    [revenue?.byStage],
+  );
 
   return (
     <div className="dashboard-page">
@@ -139,6 +145,7 @@ export default function AnalyticsPage() {
         </div>
       )}
 
+      {/* Top metrics + charts gate only on their own 3 queries. */}
       {isLoading ? (
         <>
           <MetricCardsSkeleton />
@@ -171,15 +178,21 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="mt-8">
-            <SlaMetricsPanel period={period} />
-          </div>
-
-          <div className="mt-8">
             <AnalyticsBarCharts
               barData={barData}
               valueBarData={valueBarData}
               hasWhatsapp={hasWhatsapp}
             />
+          </div>
+        </>
+      ) : null}
+
+      {/* Independent panels render immediately and load in parallel with their
+          own skeletons — never blocked by the top metrics. */}
+      {!hasError && (
+        <>
+          <div className="mt-8">
+            <SlaMetricsPanel period={period} />
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -191,16 +204,18 @@ export default function AnalyticsPage() {
             <AttributionMetricsPanel />
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <MetricCard
-              title="Conversations"
-              value={convStats?.totalConversations ?? 0}
-              delta={`${convStats?.inboundMessages ?? 0} inbound in period`}
-              icon={<MessageSquare className="h-4 w-4" />}
-            />
-          </div>
+          {!isLoading && (
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <MetricCard
+                title="Conversations"
+                value={convStats?.totalConversations ?? 0}
+                delta={`${convStats?.inboundMessages ?? 0} inbound in period`}
+                icon={<MessageSquare className="h-4 w-4" />}
+              />
+            </div>
+          )}
         </>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { CalendarClock, ChevronRight, MessageCircleReply, Megaphone } from "lucide-react";
 import {
   CAMPAIGN_STATUS_BADGE,
@@ -78,12 +79,12 @@ function MiniFunnel({
   );
 }
 
-export function CampaignCard({
+export const CampaignCard = memo(function CampaignCard({
   campaign,
-  onClick,
+  onSelect,
 }: {
   campaign: CampaignCardData;
-  onClick: () => void;
+  onSelect: (id: string) => void;
 }) {
   const c = campaign;
   const sent = c.sentCount > 0;
@@ -99,7 +100,7 @@ export function CampaignCard({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => onSelect(c.id)}
       className={cn(
         "group relative flex w-full flex-col rounded-2xl border border-border/80 bg-card p-5 text-left elev-1 transition-all",
         "hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-lg",
@@ -182,4 +183,4 @@ export function CampaignCard({
       </div>
     </button>
   );
-}
+});

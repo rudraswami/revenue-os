@@ -89,6 +89,7 @@ export default function ContactsPage() {
   const { success, error: toastError } = useToast();
   const { t } = useI18n();
   const [q, setQ] = useState("");
+  const [qDebounced, setQDebounced] = useState("");
   const [stage, setStage] = useState<LeadStage | "">("");
   const [tagId, setTagId] = useState("");
   const [ownerId, setOwnerId] = useState("");
@@ -107,14 +108,14 @@ export default function ContactsPage() {
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("pageSize", "50");
-  if (q.trim()) params.set("q", q.trim());
+  if (qDebounced) params.set("q", qDebounced);
   if (stage) params.set("stage", stage);
   if (tagId) params.set("tagId", tagId);
   if (ownerId) params.set("ownerId", ownerId);
   const query = params.toString();
 
   const { data: contactPage, isLoading, isError, refetch } = useQuery({
-    queryKey: ["contacts", q, stage, tagId, ownerId, page],
+    queryKey: ["contacts", qDebounced, stage, tagId, ownerId, page],
     queryFn: () =>
       apiFetch<{ data: ContactRow[]; total: number; page: number; hasMore: boolean }>(
         `/leads/contacts?${query}`,
@@ -127,8 +128,13 @@ export default function ContactsPage() {
   const contacts = contactPage?.data ?? [];
 
   useEffect(() => {
+    const timer = setTimeout(() => setQDebounced(q.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [q]);
+
+  useEffect(() => {
     setPage(1);
-  }, [q, stage]);
+  }, [qDebounced, stage]);
 
   const { data: members } = useQuery({
     queryKey: ["organization-members"],

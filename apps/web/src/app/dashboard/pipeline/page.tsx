@@ -19,7 +19,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { canExportContacts, canMoveLead } from "@/lib/permissions";
 import type { LeadStage } from "@growvisi/shared";
 import { Activity, Download, Zap } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
 import { WonReasonDialog } from "@/components/dashboard/won-reason-dialog";
@@ -218,10 +218,34 @@ export default function PipelinePage() {
         token: token ?? undefined,
         body: JSON.stringify({ valueCents }),
       }),
-    onSuccess: () => {
+    onMutate: async ({ leadId, valueCents }) => {
+      await queryClient.cancelQueries({ queryKey: ["pipeline"] });
+      const previous = queryClient.getQueriesData<PipelineResponse>({ queryKey: ["pipeline"] });
+      for (const [key, cached] of previous) {
+        if (!cached?.grouped) continue;
+        const next = { ...cached, grouped: { ...cached.grouped } };
+        for (const s of STAGES) {
+          const col = next.grouped[s];
+          if (!col) continue;
+          const idx = col.findIndex((l) => l.id === leadId);
+          if (idx >= 0) {
+            const updated = [...col];
+            updated[idx] = { ...updated[idx], valueCents };
+            next.grouped[s] = updated;
+          }
+        }
+        queryClient.setQueryData(key, next);
+      }
+      setValuePrompt(null);
+      return { previous };
+    },
+    onError: (err, _vars, context) => {
+      context?.previous?.forEach(([key, val]) => queryClient.setQueryData(key, val));
+      toastError(err instanceof ApiError ? toUserMessage(err) : "Could not update deal value.");
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       void queryClient.invalidateQueries({ queryKey: ["pipeline-summary"] });
-      setValuePrompt(null);
     },
   });
 
@@ -242,19 +266,27 @@ export default function PipelinePage() {
     }
   }
 
-  function handleMoveLead(leadId: string, stage: LeadStage) {
-    const lead = STAGES.flatMap((s) => grouped?.[s] ?? []).find((l) => l.id === leadId);
-    if (lead && !canMoveLead(role, myUserId, lead)) return;
-    if (stage === "LOST") {
-      setLostPrompt({ leadId, name: lead?.displayName });
-      return;
-    }
-    if (stage === "WON") {
-      setWonPrompt({ leadId, name: lead?.displayName });
-      return;
-    }
-    stageMutation.mutate({ leadId, stage });
-  }
+  const handleMoveLead = useCallback(
+    (leadId: string, stage: LeadStage) => {
+      const lead = STAGES.flatMap((s) => grouped?.[s] ?? []).find((l) => l.id === leadId);
+      if (lead && !canMoveLead(role, myUserId, lead)) return;
+      if (stage === "LOST") {
+        setLostPrompt({ leadId, name: lead?.displayName });
+        return;
+      }
+      if (stage === "WON") {
+        setWonPrompt({ leadId, name: lead?.displayName });
+        return;
+      }
+      stageMutation.mutate({ leadId, stage });
+    },
+    [grouped, role, myUserId, stageMutation],
+  );
+
+  const canMoveLeadFn = useCallback(
+    (lead: PipelineLead) => canMoveLead(role, myUserId, lead),
+    [role, myUserId],
+  );
 
   return (
     <div className="dashboard-page flex h-full min-h-0 flex-col">
@@ -395,7 +427,7 @@ export default function PipelinePage() {
             isPending={stageMutation.isPending || valueMutation.isPending}
             onMoveLead={handleMoveLead}
             onEditValue={setValuePrompt}
-            canMoveLead={(lead) => canMoveLead(role, myUserId, lead)}
+            canMoveLead={canMoveLeadFn}
           />
         </>
       )}

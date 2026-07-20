@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { Megaphone } from "lucide-react";
 import { CampaignCard, type CampaignCardData } from "@/components/dashboard/campaign-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -17,7 +18,7 @@ const LIST_FILTERS: { id: ListFilter; label: string }[] = [
   { id: "sent", label: "Sent" },
 ];
 
-export function CampaignsListSection({
+export const CampaignsListSection = memo(function CampaignsListSection({
   campaigns,
   listFilter,
   onListFilterChange,
@@ -36,12 +37,16 @@ export function CampaignsListSection({
   onRetry: () => void;
   onSelectCampaign: (id: string) => void;
 }) {
-  const filtered = campaigns.filter((c) => {
-    if (listFilter === "all") return true;
-    if (listFilter === "draft") return c.status === "DRAFT" || c.status === "FAILED";
-    if (listFilter === "scheduled") return c.status === "SCHEDULED";
-    return c.status === "COMPLETED" || c.status === "RUNNING";
-  });
+  const filtered = useMemo(
+    () =>
+      campaigns.filter((c) => {
+        if (listFilter === "all") return true;
+        if (listFilter === "draft") return c.status === "DRAFT" || c.status === "FAILED";
+        if (listFilter === "scheduled") return c.status === "SCHEDULED";
+        return c.status === "COMPLETED" || c.status === "RUNNING";
+      }),
+    [campaigns, listFilter],
+  );
 
   return (
     <div className="overflow-hidden rounded-3xl border border-border/80 bg-card elev-1">
@@ -83,13 +88,13 @@ export function CampaignsListSection({
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {filtered.map((c) => (
-              <CampaignCard key={c.id} campaign={c} onClick={() => onSelectCampaign(c.id)} />
+              <CampaignCard key={c.id} campaign={c} onSelect={onSelectCampaign} />
             ))}
           </div>
         )}
       </div>
     </div>
   );
-}
+});
 
 export type { ListFilter };

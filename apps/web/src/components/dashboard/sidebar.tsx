@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthMe } from "@/hooks/use-auth-me";
 import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
@@ -101,7 +101,7 @@ function buildNavGroups(opts: {
   ];
 }
 
-function NavLink({
+const NavLink = memo(function NavLink({
   item,
   label,
   active,
@@ -119,7 +119,7 @@ function NavLink({
   active: boolean;
   unread: number;
   onNavigate?: () => void;
-  onPrefetch?: () => void;
+  onPrefetch?: (href: string) => void;
 }) {
   const showUnread = item.badge === "unread" && unread > 0;
 
@@ -127,8 +127,8 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
-      onMouseEnter={onPrefetch}
-      onFocus={onPrefetch}
+      onMouseEnter={onPrefetch ? () => onPrefetch(item.href) : undefined}
+      onFocus={onPrefetch ? () => onPrefetch(item.href) : undefined}
       prefetch
       className={cn(
         "relative flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
@@ -148,7 +148,7 @@ function NavLink({
       )}
     </Link>
   );
-}
+});
 
 function WorkspaceCard({
   organizationName,
@@ -352,9 +352,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
   const { t } = useI18n();
   const token = useAuthStore((s) => s.accessToken);
-  const user = useAuthStore((s) => s.user);
+  // Narrow field selectors — avoid rerendering the always-mounted sidebar when
+  // unrelated user/organization fields change during profile syncs.
+  const userName = useAuthStore((s) => s.user?.name ?? null);
+  const userEmail = useAuthStore((s) => s.user?.email ?? null);
   const role = useAuthStore((s) => s.role);
-  const organization = useAuthStore((s) => s.organization);
+  const organizationName = useAuthStore((s) => s.organization?.name ?? null);
   const { connected: live } = useRealtime();
   const statsPollInterval = useVisibleRefetchInterval(live ? false : 30_000);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
@@ -376,26 +379,31 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const { data: agencyStatus } = useShellAgencyStatus();
 
-  const navGroups = buildNavGroups({
-    showAgency: !!(agencyStatus?.isAgency || agencyStatus?.canEnableAgency),
-    showAutomate: canManageCampaigns(role),
-    showAnalytics: canViewTeamAnalytics(role),
-  });
+  const showAgency = !!(agencyStatus?.isAgency || agencyStatus?.canEnableAgency);
+  const showAutomate = canManageCampaigns(role);
+  const showAnalytics = canViewTeamAnalytics(role);
+  const navGroups = useMemo(
+    () => buildNavGroups({ showAgency, showAutomate, showAnalytics }),
+    [showAgency, showAutomate, showAnalytics],
+  );
 
   const whatsappConnected = accounts?.some((a) => a.isActive) ?? false;
   const unread = stats?.unreadMessages ?? 0;
-  const displayName = user?.name ?? user?.email ?? "Account";
+  const displayName = userName ?? userEmail ?? "Account";
 
   async function handleLogout() {
     await logout();
     router.replace("/login");
   }
 
-  function handleRoutePrefetch(href: string) {
-    const qc = getQueryClientRef();
-    if (!qc) return;
-    prefetchDashboardRoute(qc, href, token);
-  }
+  const handleRoutePrefetch = useCallback(
+    (href: string) => {
+      const qc = getQueryClientRef();
+      if (!qc) return;
+      prefetchDashboardRoute(qc, href, token);
+    },
+    [token],
+  );
 
   async function switchWorkspace(organizationId: string) {
     if (!token || switchingId) return;
@@ -422,9 +430,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Logo href="/dashboard" />
       </div>
 
-      {organization && (
+      {organizationName && (
         <WorkspaceCard
-          organizationName={organization.name}
+          organizationName={organizationName}
           workspaces={me?.workspaces}
           switchingId={switchingId}
           onSwitch={(id) => void switchWorkspace(id)}
@@ -450,7 +458,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     active={active}
                     unread={unread}
                     onNavigate={onNavigate}
-                    onPrefetch={() => handleRoutePrefetch(item.href)}
+                    onPrefetch={handleRoutePrefetch}
                   />
                 );
               })}
@@ -459,11 +467,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
 
-      {user && (
+      {userEmail && (
         <div className="border-t border-border/80 p-3">
           <UserAccountMenu
             userName={displayName}
-            userEmail={user.email}
+            userEmail={userEmail}
             whatsappConnected={whatsappConnected}
             showPricing={canManageBilling(role)}
             onLogout={() => void handleLogout()}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { Check, CheckSquare, Plus, Trash2 } from "lucide-react";
 import { useOptimisticMutation } from "@/hooks/use-optimistic-mutation";
@@ -111,27 +111,58 @@ export default function TasksPage() {
   }
 
   const createTask = useMutation({
-    mutationFn: () =>
+    mutationFn: (vars: {
+      title: string;
+      priority: TaskPriority;
+      assignedToId?: string;
+      dueAt?: string;
+    }) =>
       apiFetch("/tasks", {
         method: "POST",
         token: token ?? undefined,
-        body: JSON.stringify({
-          title: title.trim(),
-          priority,
-          assignedToId: assignee || undefined,
-          dueAt: due ? new Date(due).toISOString() : undefined,
-        }),
+        body: JSON.stringify(vars),
       }),
-    onSuccess: () => {
+    onMutate: async (vars) => {
+      // Clear the form immediately and show the task optimistically.
       setTitle("");
       setDue("");
       setAssignee("");
       setPriority("MEDIUM");
-      success(t("toast.taskCreated"));
-      invalidate();
+      const member = members?.find((m) => m.user.id === vars.assignedToId)?.user;
+      const optimistic: TaskRow = {
+        id: `temp-${Date.now()}`,
+        title: vars.title,
+        status: "OPEN",
+        priority: vars.priority,
+        dueAt: vars.dueAt ?? null,
+        assignedTo: vars.assignedToId
+          ? { id: vars.assignedToId, name: member?.name ?? null, email: member?.email ?? "" }
+          : null,
+        lead: null,
+      };
+      const { snapshot } = await patchTaskLists((list) => [optimistic, ...list]);
+      return { snapshot };
     },
-    onError: () => toastError(t("toast.actionFailed")),
+    onSuccess: () => {
+      success(t("toast.taskCreated"));
+    },
+    onError: (_e, _vars, context) => {
+      rollbackTaskLists(context as { snapshot: TaskListSnapshot } | undefined);
+      toastError(t("toast.actionFailed"));
+    },
+    onSettled: () => invalidate(),
   });
+
+  function submitNewTask() {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    createTask.mutate({
+      title: trimmed,
+      priority,
+      assignedToId: assignee || undefined,
+      dueAt: due ? new Date(due).toISOString() : undefined,
+    });
+  }
 
   const toggle = useOptimisticMutation({
     mutationFn: ({ id, status }: { id: string; status: TaskStatus }) =>
@@ -204,7 +235,7 @@ export default function TasksPage() {
           className="grid gap-3 sm:grid-cols-2 md:grid-cols-[1fr_auto_auto_auto_auto] md:items-end"
           onSubmit={(e) => {
             e.preventDefault();
-            if (title.trim()) createTask.mutate();
+            submitNewTask();
           }}
         >
           <Field label="Task">
@@ -292,98 +323,126 @@ export default function TasksPage() {
           />
         ) : (
           <ul className="divide-y divide-border/60">
-            {tasks!.map((t) => {
-              const done = t.status === "DONE";
-              const overdue =
-                !done && t.dueAt && new Date(t.dueAt).getTime() < Date.now();
-              return (
-                <li key={t.id} className="flex items-center gap-3 px-5 py-3">
-                  {canEdit ? (
-                  <button
-                    type="button"
-                    onClick={() => toggle.mutate({ id: t.id, status: done ? "OPEN" : "DONE" })}
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition",
-                      done
-                        ? "border-success bg-success text-white"
-                        : "border-border text-transparent hover:border-accent",
-                    )}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                  </button>
-                  ) : (
-                  <div
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
-                      done ? "border-success bg-success text-white" : "border-border",
-                    )}
-                  >
-                    {done && <Check className="h-3.5 w-3.5" />}
-                  </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className={cn("truncate text-sm font-medium", done && "text-muted-foreground line-through")}>
-                      {t.title}
-                    </p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-semibold", PRIORITY_BADGE[t.priority])}>
-                        {t.priority}
-                      </span>
-                      {t.lead && (
-                        <span className="truncate">{t.lead.displayName ?? t.lead.phone}</span>
-                      )}
-                      {t.dueAt && (
-                        <span className={cn(overdue && "font-semibold text-destructive")}>
-                          Due {formatDate(t.dueAt)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {t.assignedTo && (
-                      <AvatarInitials name={t.assignedTo.name ?? t.assignedTo.email} size="sm" />
-                    )}
-                    {canEdit && canEditTaskAssignee(t) ? (
-                    <Select
-                      value={t.assignedTo?.id ?? ""}
-                      onChange={(e) => reassign.mutate({ id: t.id, assignedToId: e.target.value })}
-                      className="h-8 w-32 text-xs"
-                    >
-                      <option value="">Unassigned</option>
-                      {(members ?? []).map((m) => (
-                        <option key={m.user.id} value={m.user.id}>
-                          {m.user.name ?? m.user.email}
-                        </option>
-                      ))}
-                    </Select>
-                    ) : (
-                      t.assignedTo && (
-                        <span className="text-xs text-muted-foreground">
-                          {t.assignedTo.name ?? t.assignedTo.email}
-                        </span>
-                      )
-                    )}
-                    {canDelete && (
-                      <button
-                        type="button"
-                        onClick={() => removeTask.mutate(t.id)}
-                        disabled={removeTask.isPending}
-                        className="rounded-md p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Delete task"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
+            {tasks!.map((task) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                canEditAssignee={canEdit && canEditTaskAssignee(task)}
+                members={members}
+                onToggle={toggle.mutate}
+                onReassign={reassign.mutate}
+                onRemove={removeTask.mutate}
+              />
+            ))}
           </ul>
         )}
       </DashboardPanel>
     </div>
   );
 }
+
+const TaskItem = memo(function TaskItem({
+  task,
+  canEdit,
+  canDelete,
+  canEditAssignee,
+  members,
+  onToggle,
+  onReassign,
+  onRemove,
+}: {
+  task: TaskRow;
+  canEdit: boolean;
+  canDelete: boolean;
+  canEditAssignee: boolean;
+  members?: Array<{ user: TeamMember }>;
+  onToggle: (args: { id: string; status: TaskStatus }) => void;
+  onReassign: (args: { id: string; assignedToId: string }) => void;
+  onRemove: (id: string) => void;
+}) {
+  const done = task.status === "DONE";
+  const overdue = !done && !!task.dueAt && new Date(task.dueAt).getTime() < Date.now();
+  return (
+    <li className="flex items-center gap-3 px-5 py-3">
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={() => onToggle({ id: task.id, status: done ? "OPEN" : "DONE" })}
+          className={cn(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition",
+            done
+              ? "border-success bg-success text-white"
+              : "border-border text-transparent hover:border-accent",
+          )}
+        >
+          <Check className="h-3.5 w-3.5" />
+        </button>
+      ) : (
+        <div
+          className={cn(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
+            done ? "border-success bg-success text-white" : "border-border",
+          )}
+        >
+          {done && <Check className="h-3.5 w-3.5" />}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className={cn("truncate text-sm font-medium", done && "text-muted-foreground line-through")}>
+          {task.title}
+        </p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-semibold", PRIORITY_BADGE[task.priority])}>
+            {task.priority}
+          </span>
+          {task.lead && <span className="truncate">{task.lead.displayName ?? task.lead.phone}</span>}
+          {task.dueAt && (
+            <span className={cn(overdue && "font-semibold text-destructive")}>
+              Due {formatDate(task.dueAt)}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {task.assignedTo && (
+          <AvatarInitials name={task.assignedTo.name ?? task.assignedTo.email} size="sm" />
+        )}
+        {canEditAssignee ? (
+          <Select
+            value={task.assignedTo?.id ?? ""}
+            onChange={(e) => onReassign({ id: task.id, assignedToId: e.target.value })}
+            className="h-8 w-32 text-xs"
+          >
+            <option value="">Unassigned</option>
+            {(members ?? []).map((m) => (
+              <option key={m.user.id} value={m.user.id}>
+                {m.user.name ?? m.user.email}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          task.assignedTo && (
+            <span className="text-xs text-muted-foreground">
+              {task.assignedTo.name ?? task.assignedTo.email}
+            </span>
+          )
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() => onRemove(task.id)}
+            className="rounded-md p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+            aria-label="Delete task"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+    </li>
+  );
+});
 
 function StatCard({
   label,

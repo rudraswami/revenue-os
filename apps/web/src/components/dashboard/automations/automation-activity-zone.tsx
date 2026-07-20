@@ -40,7 +40,8 @@ export function AutomationActivityZone({ defaultOpen = false }: { defaultOpen?: 
           createdAt: string;
         }>
       >("/automations/logs", { token: token ?? undefined }),
-    enabled: !!token,
+    // Only fetch once the section is expanded — no wasted request while collapsed.
+    enabled: !!token && open,
   });
 
   const hasLogs = (logs?.length ?? 0) > 0;

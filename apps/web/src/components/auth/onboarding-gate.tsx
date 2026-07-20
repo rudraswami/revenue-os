@@ -20,7 +20,11 @@ const SKIP_PREFIXES = [
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const onboarding = useAuthStore((s) => s.onboarding);
+  // Narrow to the derived boolean so unrelated onboarding fields changing
+  // don't rerender the whole content area.
+  const onboardingNeedsWhatsapp = useAuthStore(
+    (s) => s.onboarding != null && !s.onboarding.whatsappConnected,
+  );
   const onboardingDismissed = useAuthStore((s) => s.onboardingDismissed);
   const hydrated = useAuthStore((s) => s.hydrated);
   const verified = useEmailVerified();
@@ -32,8 +36,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const shouldRedirectToOnboarding =
     hydrated &&
     verified &&
-    !!onboarding &&
-    !onboarding.whatsappConnected &&
+    onboardingNeedsWhatsapp &&
     !onboardingDismissed &&
     !SKIP_PREFIXES.some((p) => pathname.startsWith(p));
 

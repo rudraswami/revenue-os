@@ -15,7 +15,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
-  const user = useAuthStore((s) => s.user);
+  // Narrow to the only field the render decision needs (user.id) so profile
+  // syncs (/auth/me replacing the whole user object) don't rerender the
+  // entire dashboard tree that AuthGuard wraps.
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   const transient = useAuthStore((s) => s.lastTransientFailure);
   const lastLogoutReason = useAuthStore((s) => s.lastLogoutReason);
   const sessionHint = hasSessionHint();
@@ -57,7 +60,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (
     canRenderDashboardWhileRestoringSession({
       accessToken,
-      user,
+      user: userId ? { id: userId } : null,
       hasSessionHint: sessionHint,
       hasTransientFailure: !!transient,
     })

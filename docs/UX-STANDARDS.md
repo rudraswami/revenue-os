@@ -130,3 +130,41 @@ toast pattern, one brand loader (`GrowvisiLogoLoader`). Reuse them everywhere.
 - [ ] Motion uses `MOTION` tokens and respects reduced motion.
 - [ ] Context values memoized; store selectors narrow; hot rows memoized with stable props.
 - [ ] No blanket invalidation where a targeted `setQueryData` works.
+
+---
+
+## 8. Platform-wide data & rendering baseline (enforced globally)
+
+These are **defaults applied to every query and every screen** — you get them for
+free; do not re-implement per page.
+
+- **Stale-while-revalidate everywhere.** The root `QueryClient`
+  (`apps/web/src/app/providers.tsx`) sets `placeholderData: keepPreviousData`,
+  `staleTime: 60s`, `gcTime: 5m`, `refetchOnWindowFocus: false`. Any query whose
+  key changes (filter, page, period, id) keeps the last data on screen while it
+  refetches — no skeleton flash on filter/nav anywhere. Only override to widen
+  `staleTime` for near-static config (`STALE.config`).
+- **Search inputs are debounced** (300ms) before entering the query key. Never
+  put a raw text input straight into a query key (fires a request per keystroke).
+- **Always-mounted shell subscribes narrowly.** `AuthGuard`, `Sidebar`,
+  `OnboardingGate`, and `useEmailVerified` select single fields / derived booleans
+  from the auth store, never the whole `user`/`organization`/`onboarding` object,
+  so `/auth/me` profile syncs don't rerender the dashboard tree. Nav links are
+  `memo`'d with a stable `onPrefetch(href)` callback — a route change rerenders
+  only the two links whose `active` state flipped.
+- **Progressive loading, never all-or-nothing.** Independent panels render and
+  fetch in parallel with their own skeletons; a page never gates below-the-fold
+  panels behind its top queries (see `analytics/page.tsx`).
+- **Deferred/lazy fetching.** Panels behind a collapsed section or an unopened
+  tab gate their query on visibility (`enabled: !!token && open`), e.g.
+  `AutomationActivityZone`. Heavy drawers/dialogs are `next/dynamic` (contact
+  drawer, analytics charts).
+
+### List scale policy (Indian SMB, 1–20 people)
+
+Virtualization is a **deliberate non-goal** for current data volumes. Lists are
+either server-paginated (contacts 50/page), server-capped (campaign recipients
+~500, audit logs 40, automation logs 20), or naturally small (team, tags,
+pipeline stages). The standard is: **memoized rows + stable callbacks + SWR**,
+and cap/paginate on the API. Add windowing only if a real dataset exceeds a few
+hundred rows in the DOM.

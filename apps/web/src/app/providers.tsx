@@ -1,6 +1,6 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, keepPreviousData } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
 import { ProactiveTokenRefresh } from "@/components/auth/proactive-token-refresh";
@@ -21,6 +21,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
             gcTime: GC.default,
             retry: 1,
             refetchOnWindowFocus: false,
+            // Platform-wide stale-while-revalidate: keep the last successful
+            // data on screen while a query with a changed key (filter, page,
+            // period, id) refetches — no skeleton flash anywhere. Per-query
+            // overrides still win. First loads (no prior data) still show
+            // their skeleton.
+            placeholderData: keepPreviousData,
           },
         },
       }),
