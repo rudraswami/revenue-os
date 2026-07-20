@@ -1,11 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
-import { ChevronDown, Paperclip, Send, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, Languages, Paperclip, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GrowvisiSpinner } from "@/components/ui/loading";
+import { InboxEmojiPicker } from "@/components/dashboard/inbox-emoji-picker";
+import { InboxQuickRepliesDrawer } from "@/components/dashboard/inbox-quick-replies-drawer";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
-import { filterSlashTemplates } from "@/lib/inbox-composer-helpers";
+import {
+  applyTemplateToDraft,
+  filterSlashTemplates,
+  insertAtCursor,
+  parseQuotedReply,
+  stripQuotedReply,
+} from "@/lib/inbox-composer-helpers";
 import { cn } from "@/lib/utils";
 
 export function InboxComposer({
@@ -27,6 +35,9 @@ export function InboxComposer({
   onAttachFile,
   onClearAttachment,
   attachInputRef,
+  onTranslateDraft,
+  translatePending,
+  showTranslate,
 }: {
   draft: string;
   onDraftChange: (v: string) => void;
@@ -46,15 +57,73 @@ export function InboxComposer({
   onAttachFile?: (file: File) => void;
   onClearAttachment?: () => void;
   attachInputRef?: React.RefObject<HTMLInputElement | null>;
+  onTranslateDraft?: (target: "hi" | "en") => void;
+  translatePending?: boolean;
+  showTranslate?: boolean;
 }) {
   const copy = useConversationsCopy();
+  const [dragActive, setDragActive] = useState(false);
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const slashMatches = useMemo(
     () => filterSlashTemplates(draft, templates ?? []),
     [draft, templates],
   );
   const showSlashMenu = draft.startsWith("/") && slashMatches.length > 0;
+  const { body: draftBody } = parseQuotedReply(draft);
   const showTemplateChips =
-    (templates?.length ?? 0) > 0 && !draft.startsWith("/") && !attachment;
+    (templates?.length ?? 0) > 0 && !draft.startsWith("/") && !attachment && !draftBody.trim();
+  const visibleTemplates = templates?.slice(0, 3) ?? [];
+  const hasMoreTemplates = (templates?.length ?? 0) > 3;
+  const { quote } = parseQuotedReply(draft);
+  const canDrop = !!onAttachFile && !sendDisabled && !sendPending;
+  const translateTarget: "hi" | "en" = copy.locale === "hi" ? "en" : "hi";
+  const canTranslate =
+    !!showTranslate && !!onTranslateDraft && !!draftBody.trim() && !sendDisabled && !sendPending;
+
+  function handleEmojiPick(emoji: string) {
+    const el = composeRef?.current;
+    if (!el) {
+      onDraftChange(draft + emoji);
+      return;
+    }
+    const start = el.selectionStart ?? draft.length;
+    const end = el.selectionEnd ?? draft.length;
+    const { next, cursor } = insertAtCursor(draft, emoji, start, end);
+    onDraftChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  function handleTemplateSelect(body: string) {
+    onDraftChange(applyTemplateToDraft(draft, body));
+    composeRef?.current?.focus();
+  }
+
+  function handleClearQuote() {
+    onDraftChange(stripQuotedReply(draft));
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLFormElement>) {
+    if (!canDrop) return;
+    e.preventDefault();
+    setDragActive(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent<HTMLFormElement>) {
+    if (!canDrop) return;
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragActive(false);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLFormElement>) {
+    if (!canDrop) return;
+    e.preventDefault();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) onAttachFile?.(file);
+  }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (showSlashMenu && e.key === "Escape") {
@@ -71,7 +140,20 @@ export function InboxComposer({
   }
 
   return (
-    <form onSubmit={onSend} className="w-full">
+    <form
+      onSubmit={onSend}
+      className={cn("relative w-full", dragActive && "ring-2 ring-accent/40 ring-offset-2 rounded-2xl")}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {dragActive && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-accent/10 backdrop-blur-[1px]">
+          <p className="rounded-full bg-card px-4 py-2 text-xs font-semibold text-accent shadow-sm">
+            {copy.dropToAttach}
+          </p>
+        </div>
+      )}
       {sendError && (
         <div className="mb-2 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
           <p className="font-medium">{sendError}</p>
@@ -95,21 +177,58 @@ export function InboxComposer({
 
       {(templates?.length ?? 0) > 0 && showTemplateChips && (
         <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 custom-scrollbar">
-          {templates!.map((t) => (
+          {visibleTemplates.map((t) => (
             <button
               key={t.id}
               type="button"
               className="shrink-0 rounded-lg border border-border/70 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition hover:border-accent/30 hover:text-foreground"
-              onClick={() => onDraftChange(t.body)}
+              onClick={() => handleTemplateSelect(t.body)}
             >
               {t.title}
             </button>
           ))}
+          {hasMoreTemplates && (
+            <button
+              type="button"
+              className="shrink-0 rounded-lg border border-dashed border-border/70 bg-card px-3 py-1.5 text-xs font-medium text-accent shadow-sm transition hover:border-accent/30"
+              onClick={() => setQuickRepliesOpen(true)}
+            >
+              {copy.quickRepliesMore}
+            </button>
+          )}
         </div>
+      )}
+
+      {templates && templates.length > 0 && (
+        <InboxQuickRepliesDrawer
+          open={quickRepliesOpen}
+          onOpenChange={setQuickRepliesOpen}
+          templates={templates}
+          onSelect={handleTemplateSelect}
+        />
       )}
 
       {draftNote && (
         <p className="mb-1.5 text-xs text-muted-foreground">{draftNote}</p>
+      )}
+
+      {quote && (
+        <div className="mb-2 flex items-start gap-2 rounded-xl border border-accent/20 bg-accent/5 px-3 py-2">
+          <div className="min-w-0 flex-1 border-l-2 border-accent/50 pl-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-accent">
+              {copy.quotePreviewLabel}
+            </p>
+            <p className="line-clamp-2 text-xs text-muted-foreground">{quote}</p>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={handleClearQuote}
+            aria-label={copy.clearQuote}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
       {attachment && (
@@ -173,7 +292,7 @@ export function InboxComposer({
                   type="button"
                   className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-muted/80"
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => onDraftChange(t.body)}
+                  onClick={() => onDraftChange(applyTemplateToDraft(draft, t.body))}
                 >
                   <span className="text-xs font-semibold text-foreground">/{t.title}</span>
                   <span className="line-clamp-1 text-[11px] text-muted-foreground">{t.body}</span>
@@ -216,7 +335,28 @@ export function InboxComposer({
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1">
+            {!sendDisabled && (
+              <InboxEmojiPicker onPick={handleEmojiPick} disabled={sendPending} />
+            )}
+            {canTranslate && (
+              <button
+                type="button"
+                className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+                disabled={translatePending}
+                onClick={() => onTranslateDraft?.(translateTarget)}
+                aria-label={
+                  translateTarget === "hi" ? copy.translateToHindi : copy.translateToEnglish
+                }
+                title={translateTarget === "hi" ? copy.translateToHindi : copy.translateToEnglish}
+              >
+                {translatePending ? (
+                  <GrowvisiSpinner size="xs" />
+                ) : (
+                  <Languages className="h-4 w-4" />
+                )}
+              </button>
+            )}
             {onAttachFile && attachInputRef && !sendDisabled && (
               <button
                 type="button"

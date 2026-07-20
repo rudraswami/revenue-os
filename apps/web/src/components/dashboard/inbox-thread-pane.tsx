@@ -1,8 +1,8 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Reply } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import { InboxAiPanel, type InboxAiContext } from "@/components/dashboard/inbox-
 import type { AssignmentExplain } from "@/lib/assignment-explain";
 import { trackCoaching } from "@/lib/coaching-analytics";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
+import { InboxMessageActions } from "@/components/dashboard/inbox-message-actions";
+import { InboxImageLightbox } from "@/components/dashboard/inbox-image-lightbox";
 import { InboxComposer } from "@/components/dashboard/inbox-composer";
 import { InboxOwnershipStrip } from "@/components/dashboard/inbox-ownership-strip";
 import { InboxReplyDecision } from "@/components/dashboard/inbox-reply-decision";
@@ -71,7 +73,10 @@ import {
   saveInboxInsightsOpen,
   shouldAutoOpenInboxInsights,
 } from "@/lib/inbox-insights-preference";
-import { formatQuotedReply } from "@/lib/inbox-composer-helpers";
+import { formatQuotedReply, parseQuotedReply } from "@/lib/inbox-composer-helpers";
+import { downloadInboxMessageMedia } from "@/lib/inbox-media-download";
+import { getCachedInboxMediaUrl } from "@/lib/inbox-media-cache";
+import { getCopyableMessageText, inferInboxMediaFilename, formatPinnedNoteText } from "@/lib/inbox-message-helpers";
 import { InboxInternalNotes } from "@/components/dashboard/inbox-internal-notes";
 
 interface Message {
@@ -175,7 +180,7 @@ function InboxThreadPaneInner({
   const { connected: live } = useRealtime();
   const threadPollInterval = useVisibleRefetchInterval(live ? false : 4_000);
   const timelinePollInterval = useVisibleRefetchInterval(live ? false : 12_000);
-  const { error: toastError } = useToast();
+  const { error: toastError, success: toastSuccess } = useToast();
   const showMutationError = (e: unknown, fallback: string) => {
     toastError(toUserMessage(e, fallback));
   };
@@ -201,6 +206,8 @@ function InboxThreadPaneInner({
     file: File;
     previewUrl?: string;
   } | null>(null);
+  const [lightboxMessageId, setLightboxMessageId] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const prevConversationIdRef = useRef(conversationId);
 
   const INBOX_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -279,6 +286,33 @@ function InboxThreadPaneInner({
   });
 
   const thread = threadBundle?.conversation as ConversationDetail | undefined;
+
+  const imageMessageIds = useMemo(
+    () =>
+      thread?.messages
+        .filter((m) => m.type === "IMAGE" || m.type === "STICKER")
+        .map((m) => m.id) ?? [],
+    [thread?.messages],
+  );
+
+  useEffect(() => {
+    setLightboxMessageId(null);
+    setLightboxUrl(null);
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!lightboxMessageId) {
+      setLightboxUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void getCachedInboxMediaUrl(conversationId, lightboxMessageId).then((url) => {
+      if (!cancelled) setLightboxUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, lightboxMessageId]);
   const inboxContext = threadBundle?.inboxContext;
 
   useEffect(() => {
@@ -411,6 +445,45 @@ function InboxThreadPaneInner({
     onError: (e) => {
       setSendError(toUserMessage(e, "Could not suggest a reply."));
     },
+  });
+
+  const translateMutation = useMutation({
+    mutationFn: (target: "hi" | "en") => {
+      const { body } = parseQuotedReply(draft);
+      return apiFetch<{ text: string }>(`/conversations/${conversationId}/translate-draft`, {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({ text: body, target }),
+      });
+    },
+    onSuccess: (res) => {
+      const { quote } = parseQuotedReply(draft);
+      const prefix = quote ? formatQuotedReply(quote) : "";
+      setDraft(prefix + res.text);
+      composeRef.current?.focus();
+    },
+    onError: (e) => showMutationError(e, "Could not translate draft."),
+  });
+
+  const pinNoteMutation = useMutation({
+    mutationFn: (text: string) => {
+      const leadId = thread?.lead?.id;
+      if (!leadId) throw new Error("No lead linked to this conversation.");
+      return apiFetch(`/leads/${leadId}/notes`, {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({ body: text }),
+      });
+    },
+    onSuccess: () => {
+      const leadId = thread?.lead?.id;
+      if (leadId) {
+        void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.leadNotes(leadId) });
+        void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.leadTimeline(leadId) });
+      }
+      toastSuccess(copy.pinToNoteSuccess);
+    },
+    onError: (e) => showMutationError(e, "Could not save to team notes."),
   });
 
   const aiToggleMutation = useMutation({
@@ -755,8 +828,28 @@ function InboxThreadPaneInner({
   function quoteInboundMessage(content: string | null) {
     const quote = formatQuotedReply(content ?? "");
     if (!quote) return;
-    setDraft((prev) => quote + prev);
+    setDraft((prev) => {
+      const { body } = parseQuotedReply(prev);
+      return quote + body;
+    });
     composeRef.current?.focus();
+  }
+
+  async function copyMessageText(content: string | null) {
+    const text = getCopyableMessageText(content);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toastSuccess(copy.copyMessageSuccess);
+    } catch (e) {
+      showMutationError(e, "Could not copy message.");
+    }
+  }
+
+  function pinMessage(content: string | null) {
+    const text = getCopyableMessageText(content) ?? content?.trim();
+    if (!text || !thread?.lead?.id || !canSend) return;
+    pinNoteMutation.mutate(formatPinnedNoteText(text));
   }
 
   if (threadLoading && !thread) {
@@ -788,6 +881,11 @@ function InboxThreadPaneInner({
   }
 
   if (!thread) return null;
+
+  const lightboxMessage = lightboxMessageId
+    ? thread.messages.find((m) => m.id === lightboxMessageId)
+    : undefined;
+  const lightboxIndex = lightboxMessageId ? imageMessageIds.indexOf(lightboxMessageId) : -1;
 
   return (
     <>
@@ -1056,7 +1154,13 @@ function InboxThreadPaneInner({
                   </Button>
                 </div>
               )}
-              {thread.messages.map((m) => (
+              {thread.messages.map((m) => {
+                const copyableText = getCopyableMessageText(m.content);
+                const pinText = copyableText ?? m.content?.trim() ?? null;
+                const canQuote =
+                  m.direction === "INBOUND" && canSend && !windowClosed && !!m.content;
+                const canPin = !!thread.lead?.id && canSend && !!pinText && !/^\[[^\]]+\]$/.test(pinText);
+                return (
                 <div
                   key={m.id}
                   className={cn(
@@ -1066,21 +1170,24 @@ function InboxThreadPaneInner({
                       : "mr-auto rounded-bl-md border border-white/80 bg-card text-foreground",
                   )}
                 >
-                  {m.direction === "INBOUND" && canSend && !windowClosed && m.content && (
-                    <button
-                      type="button"
-                      className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-border/80 bg-card text-muted-foreground opacity-0 shadow-sm transition hover:text-accent group-hover:opacity-100"
-                      aria-label="Quote reply"
-                      onClick={() => quoteInboundMessage(m.content)}
-                    >
-                      <Reply className="h-3.5 w-3.5" />
-                    </button>
-                  )}
+                  <InboxMessageActions
+                    canQuote={canQuote}
+                    canCopy={!!copyableText}
+                    canPin={canPin}
+                    onQuote={
+                      canQuote ? () => quoteInboundMessage(m.content) : undefined
+                    }
+                    onCopy={
+                      copyableText ? () => void copyMessageText(m.content) : undefined
+                    }
+                    onPin={canPin ? () => pinMessage(m.content) : undefined}
+                  />
                   <InboxMessageBody
                     conversationId={thread.id}
                     messageId={m.id}
                     type={m.type ?? "TEXT"}
                     content={m.content}
+                    onImageOpen={setLightboxMessageId}
                   />
                   <p
                     className={cn(
@@ -1101,7 +1208,8 @@ function InboxThreadPaneInner({
                     </span>
                   </p>
                 </div>
-              ))}
+              );
+              })}
               <div ref={bottomRef} />
             </div>
           </div>
@@ -1176,6 +1284,9 @@ function InboxThreadPaneInner({
                 onAttachFile={handleAttachFile}
                 onClearAttachment={clearAttachment}
                 attachInputRef={attachInputRef}
+                showTranslate={!!capabilities?.aiSuggestReply}
+                translatePending={translateMutation.isPending}
+                onTranslateDraft={(target) => translateMutation.mutate(target)}
               />
             </div>
           </div>
@@ -1247,6 +1358,15 @@ function InboxThreadPaneInner({
             leadId={thread.lead.id}
             canEditNotes={canSend}
             canDeleteAnyNotes={canManageTeam(role)}
+            aiBrief={
+              thread.aiContext?.summary
+                ? {
+                    summary: thread.aiContext.summary,
+                    nextAction: thread.aiContext.nextAction,
+                    intent: thread.aiContext.intent,
+                  }
+                : null
+            }
             open={showTimeline}
             onToggle={toggleInsightsPanel}
           />
@@ -1271,6 +1391,38 @@ function InboxThreadPaneInner({
           stageMutation.mutate({ stage: "WON", reason }, { onSuccess: () => setWonPrompt(false) });
         }}
       />
+      {lightboxMessageId && lightboxUrl && (
+        <InboxImageLightbox
+          src={lightboxUrl}
+          alt={lightboxMessage?.content ?? "WhatsApp attachment"}
+          onClose={() => setLightboxMessageId(null)}
+          onPrev={
+            lightboxIndex > 0
+              ? () => setLightboxMessageId(imageMessageIds[lightboxIndex - 1]!)
+              : undefined
+          }
+          onNext={
+            lightboxIndex >= 0 && lightboxIndex < imageMessageIds.length - 1
+              ? () => setLightboxMessageId(imageMessageIds[lightboxIndex + 1]!)
+              : undefined
+          }
+          onDownload={
+            lightboxMessage
+              ? async () => {
+                  await downloadInboxMessageMedia(
+                    conversationId,
+                    lightboxMessageId,
+                    inferInboxMediaFilename(
+                      lightboxMessage.content,
+                      lightboxMessage.type ?? "IMAGE",
+                      lightboxMessageId,
+                    ),
+                  );
+                }
+              : undefined
+          }
+        />
+      )}
     </>
   );
 }

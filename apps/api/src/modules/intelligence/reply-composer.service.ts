@@ -457,4 +457,70 @@ export class ReplyComposerService {
       tags: Array.isArray(profile.aiTags) ? profile.aiTags.map(String) : [],
     };
   }
+
+  /** Human-reviewed draft translation for inbox composer (HI ↔ EN). */
+  async translateComposerText(
+    organizationId: string,
+    text: string,
+    target: "hi" | "en",
+  ): Promise<string> {
+    await this.entitlements.assertHasAccess(organizationId);
+
+    const trimmed = text.trim();
+    if (!trimmed) {
+      throw new BadRequestException("Nothing to translate.");
+    }
+
+    const apiKey = this.config.get<string>("OPENAI_API_KEY");
+    if (!apiKey) {
+      throw new BadRequestException("Translation is not available on this workspace.");
+    }
+
+    const model = this.config.get<string>("OPENAI_REPLY_MODEL") ?? "gpt-4o-mini";
+    const targetLabel = target === "hi" ? "Hindi (Devanagari script)" : "English";
+
+    const res = await fetchWithTimeout(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          max_tokens: 400,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Translate WhatsApp business reply drafts. Preserve tone, names, numbers, and ₹ amounts. Output only the translated text — no quotes or commentary.",
+            },
+            {
+              role: "user",
+              content: `Translate to ${targetLabel}:\n\n${trimmed}`,
+            },
+          ],
+        }),
+      },
+      20_000,
+    );
+
+    const body = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+      error?: { message?: string };
+    };
+
+    if (!res.ok) {
+      throw new BadRequestException(body.error?.message ?? "Translation failed.");
+    }
+
+    const translated = body.choices?.[0]?.message?.content?.trim();
+    if (!translated) {
+      throw new BadRequestException("Translation returned empty text.");
+    }
+
+    return translated;
+  }
 }

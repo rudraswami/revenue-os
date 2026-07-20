@@ -113,6 +113,7 @@ export function InboxTimeline({
   leadId,
   canEditNotes,
   canDeleteAnyNotes,
+  aiBrief,
 }: {
   events: InboxTimelineEvent[];
   aiConfidence: number | null | undefined;
@@ -125,6 +126,11 @@ export function InboxTimeline({
   leadId?: string;
   canEditNotes?: boolean;
   canDeleteAnyNotes?: boolean;
+  aiBrief?: {
+    summary: string;
+    nextAction?: string | null;
+    intent?: string | null;
+  } | null;
 }) {
   const copy = useConversationsCopy();
   const cleaned = dedupeEvents(events);
@@ -201,6 +207,24 @@ export function InboxTimeline({
 
       {open && (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 custom-scrollbar">
+          {aiBrief?.summary && (
+            <div className="mb-3 space-y-2 rounded-xl border border-accent/15 bg-accent/5 p-3">
+              <p className="text-xs font-semibold text-accent">{copy.aiBriefTitle}</p>
+              <p className="text-[11px] leading-relaxed text-foreground">{aiBrief.summary}</p>
+              {aiBrief.nextAction && (
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground">{copy.aiBriefNext}:</span>{" "}
+                  {aiBrief.nextAction}
+                </p>
+              )}
+              {aiBrief.intent && (
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {aiBrief.intent}
+                </p>
+              )}
+            </div>
+          )}
+
           {workingMemory && (
             <div className="mb-3 space-y-2 border-b border-border/50 pb-3">
               <p className="text-xs font-semibold text-foreground">What Growvisi knows</p>

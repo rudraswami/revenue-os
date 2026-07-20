@@ -21,6 +21,7 @@ describe("ConversationsService.getThreadBundle", () => {
     {} as never,
     {} as never,
     {} as never,
+    {} as never,
     intelligenceQuery as never,
     {} as never,
     {} as never,

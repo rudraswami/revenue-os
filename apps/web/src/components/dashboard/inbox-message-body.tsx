@@ -2,6 +2,7 @@
 
 import { FileText, ImageIcon, Loader2, Mic, Video, ZoomIn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { InboxDocumentCard } from "@/components/dashboard/inbox-document-card";
 import { InboxImageLightbox } from "@/components/dashboard/inbox-image-lightbox";
 import { getCachedInboxMediaUrl } from "@/lib/inbox-media-cache";
 import { useAuthStore } from "@/stores/auth-store";
@@ -13,6 +14,7 @@ interface MessageMediaProps {
   type: string;
   content: string | null;
   className?: string;
+  onImageOpen?: (messageId: string) => void;
 }
 
 function mediaIcon(type: string) {
@@ -94,18 +96,30 @@ function useAuthenticatedMediaUrl(
   return { url, loading };
 }
 
+function mediaCaption(content: string | null): string | null {
+  if (!content || content.startsWith("[")) return null;
+  const mediaPrefix = /^(Image|Document|Video|Voice message|Sticker): /;
+  if (mediaPrefix.test(content)) {
+    const rest = content.replace(mediaPrefix, "").trim();
+    return rest || null;
+  }
+  return content;
+}
+
 export function InboxMessageBody({
   conversationId,
   messageId,
   type,
   content,
   className,
+  onImageOpen,
 }: MessageMediaProps) {
   const Icon = mediaIcon(type);
   const isImage = type === "IMAGE" || type === "STICKER";
+  const isDocument = type === "DOCUMENT";
   const isVideo = type === "VIDEO";
   const isAudio = type === "AUDIO";
-  const needsMedia = isImage || isVideo || isAudio;
+  const needsMedia = isImage || isDocument || isVideo || isAudio;
   const { ref, inView } = useInView();
   const { url: mediaUrl, loading: mediaLoading } = useAuthenticatedMediaUrl(
     conversationId,
@@ -113,6 +127,7 @@ export function InboxMessageBody({
     needsMedia && inView,
   );
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const caption = mediaCaption(content);
 
   if (needsMedia && !inView) {
     return (
@@ -132,13 +147,29 @@ export function InboxMessageBody({
     );
   }
 
+  if (isDocument && mediaUrl) {
+    return (
+      <div className={cn("space-y-2", className)}>
+        <InboxDocumentCard
+          conversationId={conversationId}
+          messageId={messageId}
+          content={content}
+        />
+        {caption && <p className="whitespace-pre-wrap text-sm">{caption}</p>}
+      </div>
+    );
+  }
+
   if (isImage && mediaUrl) {
     return (
       <div className={cn("space-y-2", className)}>
         <button
           type="button"
           className="group relative block max-w-full overflow-hidden rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          onClick={() => setLightboxOpen(true)}
+          onClick={() => {
+            if (onImageOpen) onImageOpen(messageId);
+            else setLightboxOpen(true);
+          }}
           aria-label="Open image preview"
         >
           <img
@@ -151,10 +182,8 @@ export function InboxMessageBody({
             <ZoomIn className="h-3.5 w-3.5" />
           </span>
         </button>
-        {content && !content.startsWith("[") && (
-          <p className="whitespace-pre-wrap text-sm">{content}</p>
-        )}
-        {lightboxOpen && (
+        {caption && <p className="whitespace-pre-wrap text-sm">{caption}</p>}
+        {lightboxOpen && !onImageOpen && (
           <InboxImageLightbox
             src={mediaUrl}
             alt={content ?? "WhatsApp attachment"}
@@ -171,9 +200,7 @@ export function InboxMessageBody({
         <video controls className="max-h-64 rounded-lg" preload="metadata">
           <source src={mediaUrl} />
         </video>
-        {content && !content.startsWith("[") && (
-          <p className="whitespace-pre-wrap text-sm">{content}</p>
-        )}
+        {caption && <p className="whitespace-pre-wrap text-sm">{caption}</p>}
       </div>
     );
   }

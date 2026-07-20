@@ -14,6 +14,7 @@ import { EntitlementsService } from "../billing/entitlements.service";
 import { IntelligenceQueryService } from "../intelligence/intelligence-query.service";
 import { LearningSignalService } from "../intelligence/learning-signal.service";
 import { SuggestReplyService } from "../intelligence/suggest-reply.service";
+import { ReplyComposerService } from "../intelligence/reply-composer.service";
 import { BusinessEventService } from "../events/business-event.service";
 import { AiClassifyService, type HumanAiCorrectionInput } from "../ai/ai-classify.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -45,6 +46,7 @@ export class ConversationsService {
     private readonly realtime: RealtimeGateway,
     private readonly entitlements: EntitlementsService,
     private readonly suggestReplyService: SuggestReplyService,
+    private readonly replyComposer: ReplyComposerService,
     private readonly intelligenceQuery: IntelligenceQueryService,
     private readonly learningSignals: LearningSignalService,
     private readonly businessEvents: BusinessEventService,
@@ -964,6 +966,21 @@ export class ConversationsService {
       throw new BadRequestException("Could not generate a reply suggestion. Check AI settings.");
     }
     return draft;
+  }
+
+  async translateDraft(
+    user: JwtPayload,
+    conversationId: string,
+    text: string,
+    target: "hi" | "en",
+  ) {
+    await this.getById(user, conversationId);
+    const translated = await this.replyComposer.translateComposerText(
+      user.organizationId,
+      text,
+      target,
+    );
+    return { text: translated, target };
   }
 
   async getIntelligence(user: JwtPayload, conversationId: string) {

@@ -89,6 +89,16 @@ class SendMediaMessageDto {
   caption?: string;
 }
 
+class TranslateDraftDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4096)
+  text!: string;
+
+  @IsIn(["hi", "en"])
+  target!: "hi" | "en";
+}
+
 const INBOX_MEDIA_MAX_BYTES = 16 * 1024 * 1024;
 
 class TakeoverDto {
@@ -297,6 +307,16 @@ export class ConversationsController {
   @Roles(...WRITE_ROLES)
   suggestReply(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.conversations.suggestReply(user, id);
+  }
+
+  @Post(":id/translate-draft")
+  @Roles(...WRITE_ROLES)
+  translateDraft(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: TranslateDraftDto,
+  ) {
+    return this.conversations.translateDraft(user, id, dto.text, dto.target);
   }
 
   @Post(":id/read")
