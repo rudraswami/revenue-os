@@ -104,7 +104,12 @@ export function GrowvisiLogoLoader({
   );
 }
 
-/** Tiny inline spinner — drop-in replacement for Loader2 in buttons and tiles. */
+/**
+ * Standard modern inline spinner — a circular track with a rotating accent arc.
+ * Uses `currentColor`, so it adapts to the surrounding text (white on solid
+ * buttons, accent on tinted surfaces). Drop-in replacement for Loader2 in
+ * buttons and tiles. For page/auth loads use {@link GrowvisiLogoLoader}.
+ */
 export function GrowvisiSpinner({
   size = "xs",
   className,
@@ -112,5 +117,18 @@ export function GrowvisiSpinner({
   size?: GrowvisiLogoLoaderSize;
   className?: string;
 }) {
-  return <GrowvisiLogoLoader size={size} showOrbit={false} className={className} />;
+  const px = SIZES[size];
+  const borderWidth = Math.max(2, Math.round(px * 0.1));
+  return (
+    <span
+      role="status"
+      aria-live="polite"
+      aria-label="Loading"
+      className={cn(
+        "inline-block shrink-0 animate-spin rounded-full border-solid border-current/25 border-t-current align-[-0.125em] motion-reduce:animate-[spin_1.4s_linear_infinite]",
+        className,
+      )}
+      style={{ width: px, height: px, borderWidth }}
+    />
+  );
 }

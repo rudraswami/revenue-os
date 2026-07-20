@@ -75,7 +75,6 @@ import {
 import {
   loadInboxInsightsOpen,
   saveInboxInsightsOpen,
-  shouldAutoOpenInboxInsights,
 } from "@/lib/inbox-insights-preference";
 import { formatQuotedReply, parseQuotedReply } from "@/lib/inbox-composer-helpers";
 import { downloadInboxMessageMedia } from "@/lib/inbox-media-download";
@@ -188,8 +187,13 @@ function InboxThreadPaneInner({
   const canToggleAi = canToggleInboxAi(role);
   const queryClient = useQueryClient();
   const { connected: live } = useRealtime();
-  const threadPollInterval = useVisibleRefetchInterval(live ? false : 4_000);
-  const timelinePollInterval = useVisibleRefetchInterval(live ? false : 12_000);
+  // Realtime "connected" only means the channel subscribed — it does NOT
+  // guarantee every broadcast is delivered. The open thread is the most
+  // important surface, so keep a background reconcile poll even when live
+  // (slower than the offline cadence) so new messages never get stuck until
+  // the pane is remounted. Realtime still patches instantly when it works.
+  const threadPollInterval = useVisibleRefetchInterval(live ? 8_000 : 4_000);
+  const timelinePollInterval = useVisibleRefetchInterval(live ? 30_000 : 12_000);
   const { error: toastError, success: toastSuccess } = useToast();
   const showMutationError = (e: unknown, fallback: string) => {
     toastError(toUserMessage(e, fallback));
@@ -210,7 +214,6 @@ function InboxThreadPaneInner({
   const threadOpenMarkRef = useRef<string | null>(null);
   const threadOpenStartedRef = useRef<Record<string, number>>({});
   const scrollSmoothRef = useRef(false);
-  const insightsAutoOpenedRef = useRef<string | null>(null);
   const attachInputRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<{
     file: File;
@@ -271,7 +274,6 @@ function InboxThreadPaneInner({
     setDraftMeta(saved?.meta ?? null);
     setSendError(null);
     setHasOlderOverride(null);
-    insightsAutoOpenedRef.current = null;
     clearAttachment();
   }, [conversationId]);
 
@@ -396,22 +398,6 @@ function InboxThreadPaneInner({
   }, [conversationId, draft, draftMeta]);
 
   useEffect(() => {
-    if (!thread?.lead) return;
-    if (insightsAutoOpenedRef.current === conversationId) return;
-    if (
-      shouldAutoOpenInboxInsights({
-        requiresHuman: thread.requiresHuman,
-        aiConfidence: thread.lead.aiConfidence,
-        valueCents: thread.lead.valueCents,
-      })
-    ) {
-      insightsAutoOpenedRef.current = conversationId;
-      setShowTimeline(true);
-      saveInboxInsightsOpen(true);
-    }
-  }, [conversationId, thread?.lead, thread?.requiresHuman]);
-
-  useEffect(() => {
     if (thread?.requiresHuman) composeRef.current?.focus();
   }, [thread?.requiresHuman, thread?.id]);
 
@@ -511,10 +497,28 @@ function InboxThreadPaneInner({
         token: token ?? undefined,
         body: JSON.stringify({ aiEnabled }),
       }),
+    onMutate: async (aiEnabled) => {
+      await cancelInboxThreadQueries(queryClient, conversationId);
+      const previousThread = queryClient.getQueryData<ConversationDetail>(
+        QUERY_KEYS.conversation(conversationId),
+      );
+      if (previousThread) {
+        syncInboxThreadBundleConversation(queryClient, conversationId, {
+          ...previousThread,
+          aiEnabled,
+        });
+      }
+      return { previousThread };
+    },
     onSuccess: (updated) => {
       syncInboxThreadBundleConversation(queryClient, conversationId, updated);
     },
-    onError: (e) => showMutationError(e, "Could not update AI settings."),
+    onError: (e, _vars, context) => {
+      if (context?.previousThread) {
+        syncInboxThreadBundleConversation(queryClient, conversationId, context.previousThread);
+      }
+      showMutationError(e, "Could not update AI settings.");
+    },
   });
 
   const lastMessage = thread?.messages[thread.messages.length - 1];
