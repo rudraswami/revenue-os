@@ -21,6 +21,12 @@ describe("WhatsappService webhook ACK (P0-5)", () => {
 
   const inboundQueue = { add: jest.fn() };
 
+  const jobs = {
+    enqueue: jest.fn((_type: string, _payload: unknown, runInline: () => Promise<void>) => {
+      deferBackgroundTask(runInline);
+    }),
+  };
+
   const payload: WhatsappWebhookPayload = {
     object: "whatsapp_business_account",
     entry: [],
@@ -31,6 +37,7 @@ describe("WhatsappService webhook ACK (P0-5)", () => {
       prisma as never,
       { get: jest.fn() } as never,
       inboundQueue as never,
+      jobs as never,
       {} as never,
       {} as never,
       {} as never,

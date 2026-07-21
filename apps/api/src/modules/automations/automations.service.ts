@@ -1,7 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { JwtPayload } from "@growvisi/shared";
-import { GROWVISI_WEB_URL, HOT_LEAD_SCORE_THRESHOLD } from "@growvisi/shared";
+import { GROWVISI_WEB_URL, HOT_LEAD_SCORE_THRESHOLD, JOB_TYPES } from "@growvisi/shared";
+import { JobsService } from "../jobs/jobs.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -21,6 +22,7 @@ export class AutomationsService {
     private readonly config: ConfigService,
     private readonly entitlements: EntitlementsService,
     private readonly audit: AuditService,
+    private readonly jobs: JobsService,
   ) {}
 
   /**
@@ -312,9 +314,149 @@ export class AutomationsService {
     );
   }
 
+  /** Vercel Cron entry — fans out per-org follow-up and stale-deal jobs when QStash is on. */
   async runFollowupReminderJob() {
     const orgs = await this.prisma.organization.findMany({
+      select: { id: true, name: true },
+    });
+
+    if (this.jobs.durable) {
+      this.jobs.enqueueBatch(
+        [
+          ...orgs.map((o) => ({
+            type: JOB_TYPES.CRON_FOLLOWUP_ORG,
+            body: { organizationId: o.id },
+          })),
+          ...orgs.map((o) => ({
+            type: JOB_TYPES.CRON_STALE_DEAL_ORG,
+            body: { organizationId: o.id },
+          })),
+        ],
+        () => this.runFollowupReminderJobInline(),
+      );
+      return { enqueued: orgs.length * 2, mode: "qstash" as const, organizations: orgs.length };
+    }
+
+    return this.runFollowupReminderJobInline();
+  }
+
+  /** QStash callback — follow-up reminder email for one organization. */
+  async runFollowupReminderForOrg(organizationId: string): Promise<{ emailed: boolean }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
       select: { id: true, name: true, settings: true },
+    });
+    if (!org) return { emailed: false };
+
+    try {
+      await this.entitlements.assertHasAccess(org.id);
+    } catch {
+      return { emailed: false };
+    }
+
+    const prefs = normalizeAutomationPreferences(
+      (org.settings as Record<string, unknown>)?.automations,
+    );
+    if (!prefs.followup) return { emailed: false };
+
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const stale = await this.prisma.conversation.findMany({
+      where: {
+        organizationId: org.id,
+        status: "OPEN",
+        lastInboundAt: { lt: cutoff },
+        OR: [{ unreadCount: { gt: 0 } }, { assignedToId: null }],
+      },
+      take: 5,
+      orderBy: { lastInboundAt: "asc" },
+      select: {
+        id: true,
+        contactName: true,
+        contactPhone: true,
+        lastInboundAt: true,
+        metadata: true,
+      },
+    });
+
+    if (stale.length === 0) return { emailed: false };
+
+    const alreadySentToday = stale.every((c) => {
+      const meta = (c.metadata ?? {}) as Record<string, unknown>;
+      const sentAt = meta.followupReminderSentAt
+        ? new Date(String(meta.followupReminderSentAt)).getTime()
+        : 0;
+      return sentAt > Date.now() - 12 * 60 * 60 * 1000;
+    });
+
+    if (alreadySentToday) return { emailed: false };
+
+    const recipients = await this.ownerEmails(org.id);
+    if (recipients.length === 0) return { emailed: false };
+
+    const appUrl = (
+      this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+    ).replace(/\/$/, "");
+
+    await this.safeSendEmail("follow-up reminder", () =>
+      this.email.sendFollowupReminder({
+        to: recipients,
+        organizationName: org.name,
+        count: stale.length,
+        inboxUrl: `${appUrl}/dashboard/inbox`,
+      }),
+    );
+
+    await this.prisma.$transaction(
+      stale.map((conv) => {
+        const meta = (conv.metadata ?? {}) as Record<string, unknown>;
+        return this.prisma.conversation.update({
+          where: { id: conv.id },
+          data: {
+            metadata: {
+              ...meta,
+              followupReminderSentAt: new Date().toISOString(),
+            },
+          },
+        });
+      }),
+    );
+
+    await this.logExecution(
+      org.id,
+      "followup",
+      "daily_cron",
+      `Follow-up reminder sent for ${stale.length} stale conversation(s)`,
+    );
+
+    return { emailed: true };
+  }
+
+  /** QStash callback — stale-deal task sweep for one organization (Growth+). */
+  async runStaleDealSweepForOrg(organizationId: string): Promise<{ tasksCreated: number }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true, name: true, settings: true },
+    });
+    if (!org) return { tasksCreated: 0 };
+
+    const prefs = normalizeAutomationPreferences(
+      (org.settings as Record<string, unknown>)?.automations,
+    );
+    if (!prefs.staleDeal) return { tasksCreated: 0 };
+
+    try {
+      await this.entitlements.assertPlanAtLeast(organizationId, "growth");
+    } catch {
+      return { tasksCreated: 0 };
+    }
+
+    const created = await this.runStaleDealForOrg(org.id, org.name);
+    return { tasksCreated: created };
+  }
+
+  private async runFollowupReminderJobInline() {
+    const orgs = await this.prisma.organization.findMany({
+      select: { id: true, name: true },
     });
 
     let emailed = 0;
@@ -322,97 +464,12 @@ export class AutomationsService {
     let staleTasks = 0;
 
     for (const org of orgs) {
-      try {
-        await this.entitlements.assertHasAccess(org.id);
-      } catch {
-        skipped++;
-        continue;
-      }
+      const followup = await this.runFollowupReminderForOrg(org.id);
+      if (followup.emailed) emailed++;
+      else skipped++;
 
-      const prefs = normalizeAutomationPreferences(
-        (org.settings as Record<string, unknown>)?.automations,
-      );
-      if (!prefs.followup) {
-        skipped++;
-      } else {
-        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const stale = await this.prisma.conversation.findMany({
-          where: {
-            organizationId: org.id,
-            status: "OPEN",
-            lastInboundAt: { lt: cutoff },
-            OR: [{ unreadCount: { gt: 0 } }, { assignedToId: null }],
-          },
-          take: 5,
-          orderBy: { lastInboundAt: "asc" },
-          select: {
-            id: true,
-            contactName: true,
-            contactPhone: true,
-            lastInboundAt: true,
-            metadata: true,
-          },
-        });
-
-        if (stale.length > 0) {
-          const alreadySentToday = stale.every((c) => {
-            const meta = (c.metadata ?? {}) as Record<string, unknown>;
-            const sentAt = meta.followupReminderSentAt
-              ? new Date(String(meta.followupReminderSentAt)).getTime()
-              : 0;
-            return sentAt > Date.now() - 12 * 60 * 60 * 1000;
-          });
-
-          if (!alreadySentToday) {
-            const recipients = await this.ownerEmails(org.id);
-            if (recipients.length > 0) {
-              const appUrl = (
-                this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
-              ).replace(/\/$/, "");
-
-              await this.safeSendEmail("follow-up reminder", () =>
-                this.email.sendFollowupReminder({
-                  to: recipients,
-                  organizationName: org.name,
-                  count: stale.length,
-                  inboxUrl: `${appUrl}/dashboard/inbox`,
-                }),
-              );
-
-              for (const conv of stale) {
-                const meta = (conv.metadata ?? {}) as Record<string, unknown>;
-                await this.prisma.conversation.update({
-                  where: { id: conv.id },
-                  data: {
-                    metadata: {
-                      ...meta,
-                      followupReminderSentAt: new Date().toISOString(),
-                    },
-                  },
-                });
-              }
-
-              await this.logExecution(
-                org.id,
-                "followup",
-                "daily_cron",
-                `Follow-up reminder sent for ${stale.length} stale conversation(s)`,
-              );
-              emailed++;
-            }
-          }
-        }
-      }
-
-      if (prefs.staleDeal) {
-        try {
-          await this.entitlements.assertPlanAtLeast(org.id, "growth");
-          const created = await this.runStaleDealForOrg(org.id, org.name);
-          staleTasks += created;
-        } catch {
-          // Org lacks Growth+ or access — skip stale-deal automation.
-        }
-      }
+      const stale = await this.runStaleDealSweepForOrg(org.id);
+      staleTasks += stale.tasksCreated;
     }
 
     return { emailed, skipped, staleTasks, organizations: orgs.length };

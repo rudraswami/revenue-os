@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { randomUUID } from "crypto";
 import { DOMAIN_EVENTS } from "@growvisi/shared";
+import { getRequestId } from "../../common/context/request-context";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface EmitBusinessEventInput {
@@ -23,7 +24,7 @@ export class BusinessEventService {
   ) {}
 
   createCorrelationId(): string {
-    return randomUUID();
+    return getRequestId() ?? randomUUID();
   }
 
   async emit(input: EmitBusinessEventInput) {

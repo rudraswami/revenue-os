@@ -392,47 +392,115 @@ export class WhatsappService {
     if (existing) return null;
 
     const isReaction = String(msg.type ?? "text") === "reaction";
-
-    const conversation = await this.prisma.conversation.upsert({
-      where: {
-        organizationId_waConversationKey: { organizationId, waConversationKey },
-      },
-      create: {
-        organizationId,
-        whatsappAccountId,
-        waConversationKey,
-        contactPhone: from,
-        contactName,
-        aiEnabled: true,
-        lastMessageAt: new Date(),
-        lastInboundAt: new Date(),
-        unreadCount: isReaction ? 0 : 1,
-      },
-      update: {
-        contactName: contactName ?? undefined,
-        lastMessageAt: new Date(),
-        lastInboundAt: new Date(),
-        ...(isReaction ? {} : { unreadCount: { increment: 1 } }),
-      },
-    });
-
     const type = this.mapMessageType(String(msg.type ?? "text"));
     const content = this.extractContent(msg);
 
-    let message;
+    let conversation: { id: string; leadId: string | null };
+    let message: { id: string; createdAt: Date };
+    let lead: {
+      id: string;
+      phone: string;
+      displayName: string | null;
+      stage: string;
+      profile: unknown;
+    } | null;
+    let isNewLead = false;
+
     try {
-      message = await this.prisma.message.create({
-        data: {
-          organizationId,
-          conversationId: conversation.id,
-          waMessageId,
-          direction: "INBOUND",
-          type,
-          status: "DELIVERED",
-          content,
-          payload: msg as object,
-        },
+      const txResult = await this.prisma.$transaction(async (tx) => {
+        const conv = await tx.conversation.upsert({
+          where: {
+            organizationId_waConversationKey: { organizationId, waConversationKey },
+          },
+          create: {
+            organizationId,
+            whatsappAccountId,
+            waConversationKey,
+            contactPhone: from,
+            contactName,
+            aiEnabled: true,
+            lastMessageAt: new Date(),
+            lastInboundAt: new Date(),
+            unreadCount: isReaction ? 0 : 1,
+          },
+          update: {
+            contactName: contactName ?? undefined,
+            lastMessageAt: new Date(),
+            lastInboundAt: new Date(),
+            ...(isReaction ? {} : { unreadCount: { increment: 1 } }),
+          },
+        });
+
+        const msgRow = await tx.message.create({
+          data: {
+            organizationId,
+            conversationId: conv.id,
+            waMessageId,
+            direction: "INBOUND",
+            type,
+            status: "DELIVERED",
+            content,
+            payload: msg as object,
+          },
+        });
+
+        let leadRow = await tx.lead.findUnique({
+          where: { organizationId_phone: { organizationId, phone: from } },
+        });
+
+        let createdLead = false;
+        let capSkipped = false;
+
+        if (leadRow) {
+          if (contactName && contactName !== leadRow.displayName) {
+            leadRow = await tx.lead.update({
+              where: { id: leadRow.id },
+              data: { displayName: contactName },
+            });
+          }
+        } else if (await this.entitlements.canCreateLead(organizationId)) {
+          leadRow = await tx.lead.create({
+            data: {
+              organizationId,
+              phone: from,
+              displayName: contactName,
+              stage: "NEW",
+            },
+          });
+          createdLead = true;
+        } else {
+          capSkipped = true;
+        }
+
+        if (leadRow && conv.leadId !== leadRow.id) {
+          await tx.conversation.update({
+            where: { id: conv.id },
+            data: { leadId: leadRow.id },
+          });
+        }
+
+        return {
+          conversation: conv,
+          message: msgRow,
+          lead: leadRow,
+          isNewLead: createdLead,
+          capSkipped,
+        };
       });
+
+      conversation = txResult.conversation;
+      message = txResult.message;
+      lead = txResult.lead;
+      isNewLead = txResult.isNewLead;
+
+      if (txResult.capSkipped) {
+        this.logger.warn(
+          `Monthly lead cap reached for org=${organizationId} — message stored without new lead`,
+        );
+        void this.entitlements
+          .recordLeadIngestionSkipped(organizationId)
+          .catch(() => undefined);
+      }
     } catch (err: unknown) {
       if (
         err &&
@@ -443,45 +511,6 @@ export class WhatsappService {
         return null;
       }
       throw err;
-    }
-
-    let lead = await this.prisma.lead.findUnique({
-      where: { organizationId_phone: { organizationId, phone: from } },
-    });
-
-    let isNewLead = false;
-
-    if (lead) {
-      if (contactName && contactName !== lead.displayName) {
-        lead = await this.prisma.lead.update({
-          where: { id: lead.id },
-          data: { displayName: contactName },
-        });
-      }
-    } else if (await this.entitlements.canCreateLead(organizationId)) {
-      lead = await this.prisma.lead.create({
-        data: {
-          organizationId,
-          phone: from,
-          displayName: contactName,
-          stage: "NEW",
-        },
-      });
-      isNewLead = true;
-    } else {
-      // Monthly lead cap reached for this plan: still ingest the message and
-      // conversation, but do not create a new lead until they upgrade.
-      this.logger.warn(`Monthly lead cap reached for org=${organizationId} — message stored without new lead`);
-      void this.entitlements
-        .recordLeadIngestionSkipped(organizationId)
-        .catch(() => undefined);
-    }
-
-    if (lead && conversation.leadId !== lead.id) {
-      await this.prisma.conversation.update({
-        where: { id: conversation.id },
-        data: { leadId: lead.id },
-      });
     }
 
     if (lead && typeof content === "string") {

@@ -32,11 +32,17 @@ function loadEnvFile(filePath) {
 }
 
 function mergeEnv() {
-  return {
+  const base = {
     ...loadEnvFile(path.join(root, ".env")),
     ...loadEnvFile(path.join(root, ".env.local")),
     ...loadEnvFile(path.join(root, ".env.supabase.new")),
   };
+  // Pooler URL from .env must win for Vercel runtime — .env.supabase.new often has direct :5432 only.
+  const poolerDb = loadEnvFile(path.join(root, ".env")).DATABASE_URL;
+  if (poolerDb?.includes("pooler") || poolerDb?.includes(":6543")) {
+    base.DATABASE_URL = poolerDb;
+  }
+  return base;
 }
 
 function run(cmd, input) {
@@ -95,6 +101,7 @@ const API_VARS = {
   NEXT_PUBLIC_APP_URL: DOMAIN.WEB,
   CORS_ORIGINS: DOMAIN.CORS,
   WEBHOOK_PUBLIC_URL: DOMAIN.API,
+  QSTASH_CALLBACK_URL: env.QSTASH_CALLBACK_URL || DOMAIN.API,
   COOKIE_DOMAIN: DOMAIN.COOKIE,
   EMAIL_VERIFICATION_REQUIRED: env.EMAIL_VERIFICATION_REQUIRED || "true",
   EMAIL_FROM: env.EMAIL_FROM || "Growvisi <it@growvisi.in>",
@@ -110,6 +117,9 @@ const API_VARS = {
   DATABASE_URL: env.DATABASE_URL,
   DIRECT_URL: env.DIRECT_URL,
   REDIS_URL: env.REDIS_URL,
+  QSTASH_TOKEN: env.QSTASH_TOKEN,
+  QSTASH_CURRENT_SIGNING_KEY: env.QSTASH_CURRENT_SIGNING_KEY,
+  QSTASH_NEXT_SIGNING_KEY: env.QSTASH_NEXT_SIGNING_KEY,
   JWT_SECRET: env.JWT_SECRET,
   CRON_SECRET: env.CRON_SECRET,
   TOKEN_ENCRYPTION_KEY: env.TOKEN_ENCRYPTION_KEY,
@@ -159,7 +169,16 @@ for (const [key, value] of Object.entries(WEB_VARS)) {
 
 console.log("\n═══ Done ═══");
 
-const INFRA_FROM_LOCAL = ["REDIS_URL", "CRON_SECRET", "JWT_SECRET", "TOKEN_ENCRYPTION_KEY", "OPENAI_API_KEY"];
+const INFRA_FROM_LOCAL = [
+  "REDIS_URL",
+  "CRON_SECRET",
+  "JWT_SECRET",
+  "TOKEN_ENCRYPTION_KEY",
+  "OPENAI_API_KEY",
+  "QSTASH_TOKEN",
+  "QSTASH_CURRENT_SIGNING_KEY",
+  "QSTASH_NEXT_SIGNING_KEY",
+];
 const missingLocal = INFRA_FROM_LOCAL.filter((k) => !String(env[k] ?? "").trim());
 console.log("\n═══ Production infra ═══");
 console.log(`  COOKIE_DOMAIN → always set to ${DOMAIN.COOKIE} on API`);

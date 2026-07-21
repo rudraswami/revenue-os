@@ -111,6 +111,24 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   OPENAI_API_KEY?: string;
+
+  /** Upstash QStash — durable background jobs on Vercel serverless. */
+  @IsString()
+  @IsOptional()
+  QSTASH_TOKEN?: string;
+
+  @IsString()
+  @IsOptional()
+  QSTASH_CURRENT_SIGNING_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  QSTASH_NEXT_SIGNING_KEY?: string;
+
+  /** Public API origin QStash calls back (e.g. https://api.growvisi.in). */
+  @IsString()
+  @IsOptional()
+  QSTASH_CALLBACK_URL?: string;
 }
 
 /** True only for live production — not Vercel preview or local dev. */
@@ -156,14 +174,13 @@ export function validateCookieDomain(value: unknown): string {
   return domain;
 }
 
-/** Validates REDIS_URL for production queue offload (Upstash on Vercel). */
+/** Validates REDIS_URL for server-side cache (Upstash on Vercel). */
 export function validateProductionRedisUrl(value: unknown, onVercel: boolean): string {
   const url = sanitizeEnvString(value);
   if (!url) {
     throw new Error(
-      "[env] REDIS_URL is required in production — BullMQ queues for inbound WhatsApp " +
-        "and AI classify/embed run through Redis (Upstash rediss:// on Vercel). " +
-        "Without it, work runs inline in webhook handlers and can time out.",
+      "[env] REDIS_URL is required in production — powers the server-side cache " +
+        "(entitlements, shell bootstrap, queue stats). Use Upstash rediss:// on Vercel.",
     );
   }
   const lower = url.toLowerCase();
@@ -222,6 +239,15 @@ export function validateEnv(config: Record<string, unknown>) {
     validateCookieDomain(config.COOKIE_DOMAIN);
     validateProductionRedisUrl(config.REDIS_URL, onVercel);
     validateCronSecret(config.CRON_SECRET);
+
+    if (onVercel && !sanitizeEnvString(config.QSTASH_TOKEN)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[env] QSTASH_TOKEN is not set — background jobs (inbound WhatsApp, AI classify, " +
+          "campaign batches, cron fan-out) run inline via waitUntil and may time out on large workloads. " +
+          "Configure QStash + QSTASH_CALLBACK_URL for durable serverless jobs.",
+      );
+    }
 
     const missingRequired: string[] = [];
     requireProdSecret(

@@ -11,7 +11,8 @@ import {
   computeGoLiveProgressPct,
   deriveAgencyConnectionStatus,
 } from "@growvisi/shared";
-import { GROWVISI_API_URL, GROWVISI_WEB_URL } from "@growvisi/shared";
+import { GROWVISI_API_URL, GROWVISI_WEB_URL, JOB_TYPES } from "@growvisi/shared";
+import { JobsService } from "../jobs/jobs.service";
 import { decryptSecret, encryptSecret } from "../../common/crypto/token-cipher";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { sanitizeEnvValue } from "../../config/cors-origins";
@@ -69,6 +70,7 @@ export class WhatsappAccountsService {
     private readonly entitlements: EntitlementsService,
     private readonly messaging: WhatsappMessagingService,
     private readonly serverCache: ServerCacheService,
+    private readonly jobs: JobsService,
   ) {}
 
   /** Developer / IT only — not shown in main product UI */
@@ -1030,11 +1032,42 @@ export class WhatsappAccountsService {
 
   /**
    * Cron: proactively exchange tokens before expiry (Meta fb_exchange_token).
-   * Runs when token expires within 7 days and is still valid.
+   * Fans out one durable job per org with active WhatsApp when QStash is on.
    */
   async runTokenAutoRefreshJob() {
-    const accounts = await this.prisma.whatsappAccount.findMany({
+    const orgRows = await this.prisma.whatsappAccount.findMany({
       where: { isActive: true },
+      distinct: ["organizationId"],
+      select: { organizationId: true },
+    });
+
+    if (this.jobs.durable) {
+      this.jobs.enqueueBatch(
+        orgRows.map((row) => ({
+          type: JOB_TYPES.CRON_TOKEN_REFRESH_ORG,
+          body: { organizationId: row.organizationId },
+        })),
+        () => this.runTokenAutoRefreshJobInline(),
+      );
+      return {
+        enqueued: orgRows.length,
+        mode: "qstash" as const,
+        organizations: orgRows.length,
+      };
+    }
+
+    return this.runTokenAutoRefreshJobInline();
+  }
+
+  /** QStash callback — refresh expiring Meta tokens for one organization's accounts. */
+  async runTokenAutoRefreshForOrg(organizationId: string): Promise<{
+    checked: number;
+    refreshed: number;
+    skipped: number;
+    failed: number;
+  }> {
+    const accounts = await this.prisma.whatsappAccount.findMany({
+      where: { organizationId, isActive: true },
     });
 
     let checked = 0;
@@ -1081,6 +1114,29 @@ export class WhatsappAccountsService {
           `Token auto-refresh failed for ${account.id}: ${err instanceof Error ? err.message : err}`,
         );
       }
+    }
+
+    return { checked, refreshed, skipped, failed };
+  }
+
+  private async runTokenAutoRefreshJobInline() {
+    const orgRows = await this.prisma.whatsappAccount.findMany({
+      where: { isActive: true },
+      distinct: ["organizationId"],
+      select: { organizationId: true },
+    });
+
+    let checked = 0;
+    let refreshed = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const row of orgRows) {
+      const result = await this.runTokenAutoRefreshForOrg(row.organizationId);
+      checked += result.checked;
+      refreshed += result.refreshed;
+      skipped += result.skipped;
+      failed += result.failed;
     }
 
     return { checked, refreshed, skipped, failed };

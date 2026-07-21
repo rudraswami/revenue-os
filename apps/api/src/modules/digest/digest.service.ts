@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { GROWVISI_WEB_URL, HOT_LEAD_SCORE_THRESHOLD } from "@growvisi/shared";
+import { GROWVISI_WEB_URL, HOT_LEAD_SCORE_THRESHOLD, JOB_TYPES } from "@growvisi/shared";
+import { JobsService } from "../jobs/jobs.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../auth/email.service";
 import { EntitlementsService } from "../billing/entitlements.service";
@@ -26,6 +27,7 @@ export class DigestService {
     private readonly knowledge: KnowledgeRetrievalService,
     private readonly learning: LearningSignalService,
     private readonly whatsapp: WhatsappMessagingService,
+    private readonly jobs: JobsService,
   ) {}
 
   async getOpsSettings(organizationId: string): Promise<WorkspaceOpsSettings> {
@@ -73,109 +75,124 @@ export class DigestService {
     return next;
   }
 
+  /**
+   * Vercel Cron entry: fan out one durable job per org when QStash is configured,
+   * otherwise process all orgs inline (local dev).
+   */
   async runDailyDigestJob() {
     const { hour, dateKey } = getIstNow();
-    const orgs = await this.prisma.organization.findMany({
+    const orgs = await this.prisma.organization.findMany({ select: { id: true } });
+
+    if (this.jobs.durable) {
+      this.jobs.enqueueBatch(
+        orgs.map((o) => ({
+          type: JOB_TYPES.CRON_DIGEST_ORG,
+          body: { organizationId: o.id, istHour: hour, dateKey },
+        })),
+        () => this.runDailyDigestJobInline(hour, dateKey),
+      );
+      return { enqueued: orgs.length, mode: "qstash" as const, istHour: hour, dateKey };
+    }
+
+    return this.runDailyDigestJobInline(hour, dateKey);
+  }
+
+  /** QStash callback — digest for a single organization. */
+  async runDailyDigestForOrg(
+    organizationId: string,
+    context: { istHour: number; dateKey: string },
+  ): Promise<{ status: "sent" | "skipped" }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
       select: { id: true, name: true, settings: true },
+    });
+    if (!org) return { status: "skipped" };
+
+    const { istHour: hour, dateKey } = context;
+
+    try {
+      const access = await this.entitlements.getAccess(org.id);
+      if (!access.hasAccess) return { status: "skipped" };
+
+      const settings = (org.settings ?? {}) as Record<string, unknown>;
+      const ops = normalizeWorkspaceOpsSettings(settings.ops);
+
+      if (!ops.digest.enabled) return { status: "skipped" };
+      if (ops.digest.hourIst !== hour) return { status: "skipped" };
+      if (ops.digest.lastSentDate === dateKey) return { status: "skipped" };
+
+      const recipients = await this.ownerEmails(org.id);
+      const channel = ops.digest.channel;
+      const wantsEmail = channel === "email" || channel === "both";
+      const wantsWhatsapp =
+        (channel === "whatsapp" || channel === "both") && !!ops.digest.whatsappPhone;
+
+      if (!wantsEmail && !wantsWhatsapp) return { status: "skipped" };
+      if (wantsEmail && recipients.length === 0 && !wantsWhatsapp) return { status: "skipped" };
+
+      const snapshot = await this.buildSnapshot(org.id);
+      if (!snapshot.hasActivity) return { status: "skipped" };
+
+      const appUrl = (
+        this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
+      ).replace(/\/$/, "");
+
+      const urls = {
+        dashboardUrl: `${appUrl}/dashboard`,
+        inboxUrl: `${appUrl}/dashboard/inbox`,
+        insightsUrl: `${appUrl}/dashboard#recommendations`,
+        knowledgeUrl: `${appUrl}/dashboard/settings?tab=intelligence`,
+      };
+
+      let delivered = false;
+
+      if (wantsEmail && recipients.length > 0) {
+        await this.email.sendDailyDigest({
+          to: recipients,
+          organizationName: org.name,
+          ...urls,
+          ...snapshot,
+        });
+        delivered = true;
+      }
+
+      if (wantsWhatsapp && ops.digest.whatsappPhone) {
+        const ok = await this.sendWhatsappDigest(
+          org.id,
+          ops.digest.whatsappPhone,
+          org.name,
+          snapshot,
+          urls.inboxUrl,
+          ops.digest,
+        );
+        delivered = delivered || ok;
+      }
+
+      if (!delivered) return { status: "skipped" };
+
+      await this.updateOpsSettings(org.id, {
+        digest: { ...ops.digest, lastSentDate: dateKey },
+      });
+
+      return { status: "sent" };
+    } catch (err) {
+      this.logger.warn(`Digest failed for org ${org.id}: ${err}`);
+      return { status: "skipped" };
+    }
+  }
+
+  private async runDailyDigestJobInline(hour: number, dateKey: string) {
+    const orgs = await this.prisma.organization.findMany({
+      select: { id: true },
     });
 
     let sent = 0;
     let skipped = 0;
 
     for (const org of orgs) {
-      try {
-        const access = await this.entitlements.getAccess(org.id);
-        if (!access.hasAccess) {
-          skipped++;
-          continue;
-        }
-
-        const settings = (org.settings ?? {}) as Record<string, unknown>;
-        const ops = normalizeWorkspaceOpsSettings(settings.ops);
-
-        if (!ops.digest.enabled) {
-          skipped++;
-          continue;
-        }
-        if (ops.digest.hourIst !== hour) {
-          skipped++;
-          continue;
-        }
-        if (ops.digest.lastSentDate === dateKey) {
-          skipped++;
-          continue;
-        }
-
-        const recipients = await this.ownerEmails(org.id);
-        const channel = ops.digest.channel;
-        const wantsEmail = channel === "email" || channel === "both";
-        const wantsWhatsapp =
-          (channel === "whatsapp" || channel === "both") && !!ops.digest.whatsappPhone;
-
-        if (!wantsEmail && !wantsWhatsapp) {
-          skipped++;
-          continue;
-        }
-        if (wantsEmail && recipients.length === 0 && !wantsWhatsapp) {
-          skipped++;
-          continue;
-        }
-
-        const snapshot = await this.buildSnapshot(org.id);
-        if (!snapshot.hasActivity) {
-          skipped++;
-          continue;
-        }
-
-        const appUrl = (
-          this.config.get<string>("NEXT_PUBLIC_APP_URL") ?? GROWVISI_WEB_URL
-        ).replace(/\/$/, "");
-
-        const urls = {
-          dashboardUrl: `${appUrl}/dashboard`,
-          inboxUrl: `${appUrl}/dashboard/inbox`,
-          insightsUrl: `${appUrl}/dashboard#recommendations`,
-          knowledgeUrl: `${appUrl}/dashboard/settings?tab=intelligence`,
-        };
-
-        let delivered = false;
-
-        if (wantsEmail && recipients.length > 0) {
-          await this.email.sendDailyDigest({
-            to: recipients,
-            organizationName: org.name,
-            ...urls,
-            ...snapshot,
-          });
-          delivered = true;
-        }
-
-        if (wantsWhatsapp && ops.digest.whatsappPhone) {
-          const ok = await this.sendWhatsappDigest(
-            org.id,
-            ops.digest.whatsappPhone,
-            org.name,
-            snapshot,
-            urls.inboxUrl,
-            ops.digest,
-          );
-          delivered = delivered || ok;
-        }
-
-        if (!delivered) {
-          skipped++;
-          continue;
-        }
-
-        await this.updateOpsSettings(org.id, {
-          digest: { ...ops.digest, lastSentDate: dateKey },
-        });
-
-        sent++;
-      } catch (err) {
-        this.logger.warn(`Digest failed for org ${org.id}: ${err}`);
-        skipped++;
-      }
+      const result = await this.runDailyDigestForOrg(org.id, { istHour: hour, dateKey });
+      if (result.status === "sent") sent++;
+      else skipped++;
     }
 
     return { sent, skipped, organizations: orgs.length, istHour: hour, dateKey };

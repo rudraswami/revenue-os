@@ -1,7 +1,6 @@
 /**
- * BullMQ processor registration — see docs/architecture/04-performance-engineering-standards.md §5.4
- *
- * Vercel API: enqueue only (processors off). Dedicated worker host: WORKER_ONLY=1.
+ * BullMQ processor registration — local/dev worker host only.
+ * Vercel API: QStash durable jobs (JobsModule); Redis powers ServerCache only.
  */
 export type ProcessRole = "api" | "worker";
 

@@ -8,6 +8,7 @@ import cookieParser = require("cookie-parser");
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { GlobalHttpExceptionFilter } from "./common/filters/http-exception.filter";
+import { requestIdMiddleware } from "./common/middleware/request-id.middleware";
 import { isAllowedCorsOrigin } from "./config/cors-origins";
 import { initSentry } from "./config/sentry";
 
@@ -16,6 +17,8 @@ async function configureApp(app: INestApplication): Promise<void> {
     set?: (key: string, value: unknown) => void;
   };
   httpAdapter.set?.("trust proxy", 1);
+
+  app.use(requestIdMiddleware);
 
   app.use(
     helmet({

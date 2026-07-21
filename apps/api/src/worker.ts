@@ -4,7 +4,8 @@ import { initSentry } from "./config/sentry";
 import { getProcessRole } from "./config/workers";
 
 /**
- * Long-lived BullMQ worker process — no HTTP listener.
+ * Long-lived BullMQ worker process — local/dev only; no HTTP listener.
+ * Production on Vercel uses QStash callbacks instead (see JobsModule).
  * Run with WORKER_ONLY=1 USE_INLINE_WORKERS=0 REDIS_URL=...
  */
 async function bootstrap(): Promise<void> {

@@ -40,6 +40,11 @@ interface OrgJob {
   organizationId: string;
 }
 
+interface DigestOrgJob extends OrgJob {
+  istHour: number;
+  dateKey: string;
+}
+
 /**
  * QStash callback endpoint. Each durable job published by `JobsService` is
  * delivered here as `POST /internal/jobs/:type` and dispatched to the same
@@ -87,7 +92,11 @@ export class InternalJobsController {
         break;
       }
       case JOB_TYPES.CRON_DIGEST_ORG: {
-        await this.digest.runDailyDigestForOrg((body as unknown as OrgJob).organizationId);
+        const job = body as unknown as DigestOrgJob;
+        await this.digest.runDailyDigestForOrg(job.organizationId, {
+          istHour: job.istHour,
+          dateKey: job.dateKey,
+        });
         break;
       }
       case JOB_TYPES.CRON_FOLLOWUP_ORG: {
