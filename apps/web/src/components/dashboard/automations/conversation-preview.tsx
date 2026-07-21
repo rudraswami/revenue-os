@@ -16,7 +16,7 @@ import { GitBranch, Loader2, Sparkles } from "lucide-react";
 const ACTION_VARIANTS = {
   neutral: "bg-muted text-muted-foreground",
   success: "bg-bento-mint text-accent",
-  warning: "bg-amber-100 text-amber-900",
+  warning: "bg-warning/15 text-warning",
   accent: "bg-accent/10 text-accent",
 } as const;
 
@@ -123,7 +123,7 @@ export function ConversationPreview({
                   className={cn(
                     "rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm leading-relaxed shadow-sm transition-all duration-150",
                     outcome.reply.state === "sent"
-                      ? "bg-white text-foreground"
+                      ? "bg-card text-foreground"
                       : "border border-dashed border-accent/40 bg-white/90 text-foreground",
                   )}
                 >

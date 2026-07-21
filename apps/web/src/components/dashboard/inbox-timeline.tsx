@@ -251,7 +251,7 @@ export function InboxTimeline({
                 </p>
               ) : null}
               {workingMemory.contradictionFlags.length > 0 ? (
-                <p className="text-[11px] font-medium text-amber-800">
+                <p className="text-[11px] font-medium text-warning">
                   {workingMemory.contradictionFlags.join(", ").replace(/_/g, " ")}
                 </p>
               ) : null}

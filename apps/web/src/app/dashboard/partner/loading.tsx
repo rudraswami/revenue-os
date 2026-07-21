@@ -1,5 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
-import { PanelRowsSkeleton } from "@/components/ui/page-loading";
+import { Skeleton, PanelRowsSkeleton } from "@/components/ui/loading";
 
 export default function PartnerLoading() {
   return (

@@ -61,7 +61,7 @@ export function InboxOwnershipStrip({
             <Button
               type="button"
               size="sm"
-              className="h-8 rounded-lg bg-amber-600 px-3 text-xs font-semibold text-white hover:bg-amber-700"
+              className="h-8 rounded-lg bg-warning px-3 text-xs font-semibold text-white hover:bg-warning"
               isLoading={togglePending}
               onClick={onTakeOver}
             >

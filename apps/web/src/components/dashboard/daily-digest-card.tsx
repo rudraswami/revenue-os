@@ -77,7 +77,7 @@ export function DailyDigestCard() {
     <DashboardPanel noPadding className="overflow-hidden border-border">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-warning/15 text-warning">
             <Sun className="h-5 w-5" />
           </div>
           <div>

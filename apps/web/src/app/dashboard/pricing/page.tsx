@@ -165,7 +165,7 @@ export default function PricingPage() {
             </p>
           )}
           {data.entitlements?.trialEndsAt && !data.entitlements.trialExpired && (
-            <p className="mt-1 text-xs text-amber-800">
+            <p className="mt-1 text-xs text-warning">
               Trial ends {new Date(data.entitlements.trialEndsAt).toLocaleDateString()}
             </p>
           )}
@@ -179,7 +179,7 @@ export default function PricingPage() {
       )}
 
       {!data?.razorpayConfigured && (
-        <p className="mb-6 rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p className="mb-6 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
           Razorpay billing is not available yet — plan upgrades will open once online payments are
           enabled.
         </p>

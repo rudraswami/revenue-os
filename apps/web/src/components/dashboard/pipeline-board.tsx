@@ -82,7 +82,7 @@ const LeadCard = memo(function LeadCard({
       className={cn(
         "rounded-2xl border bg-card p-3.5 shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-all md:cursor-grab md:active:cursor-grabbing",
         lead.isHot && "border-accent/25 ring-1 ring-accent/10",
-        lead.isStale && !lead.isHot && "border-amber-200/80 ring-1 ring-amber-100",
+        lead.isStale && !lead.isHot && "border-warning/30 ring-1 ring-warning/30",
         !lead.isHot && !lead.isStale && "border-border",
         !movable && "opacity-90",
         dragging && "scale-[1.02] opacity-60 shadow-lg ring-2 ring-accent/30",
@@ -120,12 +120,12 @@ const LeadCard = memo(function LeadCard({
               </span>
             )}
             {lead.waitingOnTeam && (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+              <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
                 {CONVERSATIONS.waitingOnYou}
               </span>
             )}
             {lead.isStale && lead.staleLabel && (
-              <span className="rounded-full bg-amber-50/80 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
                 {lead.staleLabel}
               </span>
             )}

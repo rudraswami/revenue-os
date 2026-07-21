@@ -76,7 +76,7 @@ export function SetupHelpChat({ context }: { context: HelpFabContext }) {
                 className={cn(
                   "rounded-xl px-3 py-2 text-xs leading-relaxed",
                   turn.role === "user"
-                    ? "ml-6 bg-[#f1f5f9] text-foreground"
+                    ? "ml-6 bg-muted text-foreground"
                     : "mr-2 border border-border bg-card text-muted-foreground",
                 )}
               >

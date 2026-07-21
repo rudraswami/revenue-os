@@ -53,7 +53,7 @@ export function SegmentedControl<T extends string>({
               size === "md" && "px-3.5 py-2 text-sm",
               active
                 ? opt.attention
-                  ? "bg-card text-amber-900 shadow-sm ring-1 ring-amber-200/70"
+                  ? "bg-card text-warning shadow-sm ring-1 ring-warning/30"
                   : "bg-card text-foreground shadow-sm ring-1 ring-border/80"
                 : "text-muted-foreground hover:text-foreground",
             )}

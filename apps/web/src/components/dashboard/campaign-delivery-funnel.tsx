@@ -43,12 +43,12 @@ export function buildCampaignDeliveryStats(input: {
 }
 
 const SEGMENTS = [
-  { key: "replied", label: "Replied", className: "bg-violet-500" },
+  { key: "replied", label: "Replied", className: "bg-viz-violet" },
   { key: "read", label: "Read", className: "bg-accent" },
   { key: "delivered", label: "Delivered", className: "bg-whatsapp" },
   { key: "sent", label: "Sent", className: "bg-accent/50" },
   { key: "failed", label: "Failed", className: "bg-destructive/80" },
-  { key: "skipped", label: "Skipped", className: "bg-slate-400" },
+  { key: "skipped", label: "Skipped", className: "bg-muted-foreground/40" },
   { key: "pending", label: "Pending", className: "bg-muted-foreground/30" },
 ] as const;
 
@@ -78,9 +78,9 @@ export function CampaignDeliveryFunnel({
   return (
     <div className={cn("space-y-3", className)}>
       {showReplyRate && deliveredOrRead > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-violet-200/70 bg-gradient-to-r from-violet-50/90 to-background px-3.5 py-2.5">
+        <div className="flex items-center justify-between rounded-xl border border-viz-violet/30 bg-gradient-to-r from-viz-violet/10 to-background px-3.5 py-2.5">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700/80">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-viz-violet">
               Reply rate
             </p>
             <p className="text-lg font-bold tabular-nums text-foreground">
@@ -90,7 +90,7 @@ export function CampaignDeliveryFunnel({
               </span>
             </p>
           </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100 text-sm font-bold text-violet-700">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-viz-violet/15 text-sm font-bold text-viz-violet">
             {replied}
           </div>
         </div>

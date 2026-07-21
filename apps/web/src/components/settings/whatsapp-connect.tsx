@@ -235,9 +235,9 @@ export default function WhatsappConnect({
     (accountsErrorObj.status === 402 || accountsErrorObj.status === 403);
 
   const trialUpgradeBanner = trialBlocked ? (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+    <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
       <p className="font-semibold">Upgrade to connect WhatsApp</p>
-      <p className="mt-1 text-amber-900/90">
+      <p className="mt-1 text-warning">
         {toUserMessage(
           accountsErrorObj,
           "Your plan needs an upgrade before you can connect a number.",
@@ -382,9 +382,9 @@ export default function WhatsappConnect({
     return (
       <div className="space-y-6">
         {trialUpgradeBanner}
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+        <div className="rounded-xl border border-warning/30 bg-warning/10 px-5 py-4 text-sm text-warning">
           <p className="font-semibold">WhatsApp connect is temporarily unavailable</p>
-          <p className="mt-1 text-amber-900/90">
+          <p className="mt-1 text-warning">
             One-click Meta connection is not configured for this workspace yet. Please try again
             shortly or contact support.
           </p>
@@ -578,9 +578,9 @@ export default function WhatsappConnect({
             isOnboarding ? (
               facebookConnectCard
             ) : (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+              <div className="rounded-xl border border-warning/30 bg-warning/10 px-5 py-4 text-sm text-warning">
                 <p className="font-semibold">Continue with Meta is not live yet</p>
-                <p className="mt-1 text-amber-900/90">
+                <p className="mt-1 text-warning">
                   Embedded Signup must be enabled for this environment. Contact support if this
                   persists.
                 </p>

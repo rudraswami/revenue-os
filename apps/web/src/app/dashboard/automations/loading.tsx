@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/loading";
 
 export default function AutomationsLoading() {
   return (

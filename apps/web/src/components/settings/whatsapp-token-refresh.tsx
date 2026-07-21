@@ -92,13 +92,13 @@ export function WhatsappTokenRefresh({
       className={cn(
         "rounded-2xl border p-5",
         urgent
-          ? "border-amber-200/80 bg-card elev-1"
+          ? "border-warning/30 bg-card elev-1"
           : "border-border bg-background/50",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium text-amber-800">
+          <p className="text-xs font-medium text-warning">
             {urgent ? "Action required" : "Recommended"}
           </p>
           <p className="mt-1 text-sm font-bold text-foreground">
@@ -114,7 +114,7 @@ export function WhatsappTokenRefresh({
               : "Refresh proactively so customer conversations never miss a beat."}
           </p>
           {expiryLabel && (
-            <p className={cn("mt-2 text-xs font-medium", urgent ? "text-amber-900" : "text-accent")}>
+            <p className={cn("mt-2 text-xs font-medium", urgent ? "text-warning" : "text-accent")}>
               {expiryLabel}
             </p>
           )}

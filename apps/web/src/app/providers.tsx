@@ -8,7 +8,9 @@ import { ProactiveTokenRefresh } from "@/components/auth/proactive-token-refresh
 import { SentryInit } from "@/components/auth/sentry-init";
 import { CookieConsent } from "@/components/marketing/cookie-consent";
 import { RealtimeProvider } from "@/components/realtime/realtime-provider";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { GC, STALE } from "@/lib/query-config";
 import { setQueryClientRef } from "@/lib/query-client-ref";
 import {
@@ -60,16 +62,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }}
     >
-      <AuthBootstrap>
-        <ProactiveTokenRefresh />
-        <SentryInit />
-        <ToastProvider>
-          <RealtimeProvider>
-            {children}
-            <CookieConsent />
-          </RealtimeProvider>
-        </ToastProvider>
-      </AuthBootstrap>
+      <ThemeProvider>
+        <AuthBootstrap>
+          <ProactiveTokenRefresh />
+          <SentryInit />
+          <ToastProvider>
+            <TooltipProvider delayDuration={200} skipDelayDuration={300}>
+              <RealtimeProvider>
+                {children}
+                <CookieConsent />
+              </RealtimeProvider>
+            </TooltipProvider>
+          </ToastProvider>
+        </AuthBootstrap>
+      </ThemeProvider>
     </PersistQueryClientProvider>
   );
 }

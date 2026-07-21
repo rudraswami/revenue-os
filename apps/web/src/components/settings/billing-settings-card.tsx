@@ -125,7 +125,7 @@ export function BillingSettingsCard() {
               </p>
             )}
             {data?.cancelAtPeriodEnd && (
-              <p className="mt-1 text-xs text-amber-800">
+              <p className="mt-1 text-xs text-warning">
                 Cancellation scheduled — you keep full access until the date above.
               </p>
             )}
@@ -138,14 +138,14 @@ export function BillingSettingsCard() {
               </p>
             )}
             {data?.entitlements?.trialEndsAt && !data.entitlements.trialExpired && (
-              <p className="mt-1 text-xs text-amber-800">
+              <p className="mt-1 text-xs text-warning">
                 Trial ends {new Date(data.entitlements.trialEndsAt).toLocaleDateString()}
               </p>
             )}
           </div>
 
           {!data?.razorpayConfigured && (
-            <p className="text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200/80">
+            <p className="text-xs text-warning bg-warning/10 rounded-lg px-3 py-2 border border-warning/30">
               Online payments are not available yet — upgrades will open once Razorpay is connected.
             </p>
           )}

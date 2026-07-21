@@ -32,7 +32,7 @@ const VARIANT_STYLES: Record<
   },
   amber: {
     card: "border-border bg-card",
-    icon: "bg-amber-100 text-amber-800",
+    icon: "bg-warning/15 text-warning",
     value: "text-foreground",
     title: "text-muted-foreground",
   },
@@ -44,7 +44,7 @@ const VARIANT_STYLES: Record<
   },
   violet: {
     card: "border-border bg-card",
-    icon: "bg-violet-100 text-violet-700",
+    icon: "bg-viz-violet/15 text-viz-violet",
     value: "text-foreground",
     title: "text-muted-foreground",
   },

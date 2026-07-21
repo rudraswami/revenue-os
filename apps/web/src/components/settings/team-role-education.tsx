@@ -41,24 +41,24 @@ export function TeamRoleEducationCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-blue-200/70 bg-blue-50/60 px-4 py-3 text-sm text-blue-950",
+        "rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info",
         className,
       )}
     >
       <div className="flex items-start gap-2.5">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" aria-hidden />
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" aria-hidden />
         <div className="min-w-0 space-y-2">
           <p className="font-semibold leading-snug">{t(titleKey)}</p>
-          <p className="text-xs leading-relaxed text-blue-900/90">{t(bodyKey)}</p>
+          <p className="text-xs leading-relaxed text-info">{t(bodyKey)}</p>
           <div className="grid gap-2 text-xs sm:grid-cols-2">
-            <div className="rounded-lg bg-white/70 px-3 py-2">
-              <p className="font-semibold text-blue-950">{t(`${prefix}.canLabel`)}</p>
-              <p className="mt-1 leading-relaxed text-blue-900/85">{t(canKey)}</p>
+            <div className="rounded-lg bg-card/70 px-3 py-2">
+              <p className="font-semibold text-info">{t(`${prefix}.canLabel`)}</p>
+              <p className="mt-1 leading-relaxed text-info">{t(canKey)}</p>
             </div>
             {cannotKey && (
-              <div className="rounded-lg bg-white/70 px-3 py-2">
-                <p className="font-semibold text-blue-950">{t(`${prefix}.cannotLabel`)}</p>
-                <p className="mt-1 leading-relaxed text-blue-900/85">{t(cannotKey)}</p>
+              <div className="rounded-lg bg-card/70 px-3 py-2">
+                <p className="font-semibold text-info">{t(`${prefix}.cannotLabel`)}</p>
+                <p className="mt-1 leading-relaxed text-info">{t(cannotKey)}</p>
               </div>
             )}
           </div>

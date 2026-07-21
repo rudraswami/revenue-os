@@ -267,7 +267,7 @@ export function TeamAlertsZone() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-foreground">{alert.title}</p>
                       {planLocked ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-bold text-warning">
                           <Lock className="h-3 w-3" aria-hidden />
                           Growth
                         </span>
@@ -307,7 +307,7 @@ export function TeamAlertsZone() {
                 <div
                   className={cn(
                     "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                    ops?.digest.enabled ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground",
+                    ops?.digest.enabled ? "bg-warning text-white" : "bg-muted text-muted-foreground",
                   )}
                 >
                   <Sun className="h-4 w-4" aria-hidden />

@@ -36,14 +36,14 @@ export function InboxSessionStatus({
     <p
       className={cn(
         "mb-2 flex items-center gap-2 text-xs",
-        open ? "text-emerald-800" : "text-amber-800",
+        open ? "text-success" : "text-warning",
         className,
       )}
     >
       <span
         className={cn(
           "h-1.5 w-1.5 rounded-full",
-          open ? "bg-emerald-500" : "bg-amber-500",
+          open ? "bg-success" : "bg-warning",
         )}
         aria-hidden
       />

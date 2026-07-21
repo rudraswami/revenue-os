@@ -318,7 +318,7 @@ export function WhatsAppAssistantZone() {
                           </span>
                         ) : null}
                         {needsGrowth && active ? (
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                          <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-bold text-warning">
                             Growth plan
                           </span>
                         ) : null}
@@ -655,7 +655,7 @@ function GreetingBubble({
       className="rounded-xl border border-border/60 bg-[#ece5dd]/30 p-3 text-left transition hover:border-accent/30 hover:bg-bento-mint/20 disabled:opacity-60"
     >
       <p className="mb-2 text-[11px] font-medium text-muted-foreground">{label}</p>
-      <div className="rounded-2xl rounded-tl-sm bg-white px-3 py-2 text-sm leading-relaxed text-foreground shadow-sm">
+      <div className="rounded-2xl rounded-tl-sm bg-card px-3 py-2 text-sm leading-relaxed text-foreground shadow-sm">
         {text || "Tap to add a greeting…"}
       </div>
     </button>

@@ -185,7 +185,7 @@ function HealthCard({
       className={cn(
         "block rounded-2xl border border-border/80 bg-card p-4 transition hover:border-accent/25 hover:shadow-sm",
         tone === "good" && "border-accent/20 bg-accent/5",
-        tone === "warn" && "border-amber-200/80 bg-amber-50/50",
+        tone === "warn" && "border-warning/30 bg-warning/10",
       )}
     >
       <div className="flex items-start justify-between gap-2">

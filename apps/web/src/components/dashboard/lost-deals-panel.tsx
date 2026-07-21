@@ -56,9 +56,9 @@ export function LostDealsPanel({ period }: { period: MetricsPeriod }) {
               <p className="text-xs text-muted-foreground">Deals lost</p>
               <p className="text-xl font-bold">{data.totalLost}</p>
             </div>
-            <div className="rounded-xl border border-border/80 bg-red-50/40 px-4 py-3">
+            <div className="rounded-xl border border-border/80 bg-destructive/10 px-4 py-3">
               <p className="text-xs text-muted-foreground">Lost pipeline value</p>
-              <p className="text-xl font-bold text-red-800">{formatInr(data.lostValueCents)}</p>
+              <p className="text-xl font-bold text-destructive">{formatInr(data.lostValueCents)}</p>
             </div>
           </div>
           <ul className="divide-y divide-border/60 rounded-xl border border-border/80">

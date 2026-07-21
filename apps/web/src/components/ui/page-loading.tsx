@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { GrowvisiLogoLoader } from "@/components/ui/loading";
+import { GrowvisiLogoLoader } from "@/components/ui/loading/growvisi-logo-loader";
 import { cn } from "@/lib/utils";
 
 /** Centered inline loader for buttons and small areas */

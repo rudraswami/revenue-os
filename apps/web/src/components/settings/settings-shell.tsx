@@ -34,6 +34,7 @@ import { SettingsAccessPanel } from "@/components/settings/settings-plan-gate";
 import { SettingsTabSkeleton } from "@/components/settings/settings-tab-skeletons";
 import { ShellBootstrapErrorBanner } from "@/components/dashboard/shell-bootstrap-error-banner";
 import { QueryErrorState } from "@/components/ui/query-state";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { toUserMessage } from "@/lib/api-client";
 import { WorkspaceHome } from "@/components/settings/workspace-home";
 import { TeamMembersCard } from "@/components/settings/team-members-card";
@@ -244,6 +245,12 @@ function SettingsTabContent({
             description={t("settings.account.profileDescription")}
           >
             <ProfileSettingsCard />
+          </SettingsSection>
+          <SettingsSection
+            title="Appearance"
+            description="Choose a light or dark theme, or follow your device setting."
+          >
+            <ThemeToggle />
           </SettingsSection>
           <SettingsSection title={t("settings.account.sessionTitle")} description={t("settings.account.sessionDescription")}>
             <div className="flex flex-wrap gap-3">

@@ -58,17 +58,17 @@ export function UpgradeFrictionBanner({
   return (
     <div
       className={cn(
-        "rounded-xl border border-amber-200/90 bg-card elev-1",
+        "rounded-xl border border-warning/30 bg-card elev-1",
         compact ? "px-3 py-2.5" : "px-4 py-3.5",
         className,
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className={cn("font-semibold text-amber-950", compact ? "text-xs" : "text-sm")}>
+          <p className={cn("font-semibold text-warning", compact ? "text-xs" : "text-sm")}>
             {title}
           </p>
-          <p className={cn("mt-0.5 text-amber-900/85", compact ? "text-xs" : "text-xs")}>
+          <p className={cn("mt-0.5 text-warning", compact ? "text-xs" : "text-xs")}>
             {message}
             {used != null && limit != null ? ` (${used}/${limit})` : ""}
           </p>

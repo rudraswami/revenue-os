@@ -313,8 +313,8 @@ export default function AgencyPage() {
                   c.connectionStatus === "live"
                     ? "bg-[#25D366]"
                     : c.connectionStatus === "token"
-                      ? "bg-red-500"
-                      : "bg-amber-500",
+                      ? "bg-destructive"
+                      : "bg-warning",
                 )}
                 style={{ width: `${c.goLiveProgressPct}%` }}
               />
@@ -323,7 +323,7 @@ export default function AgencyPage() {
         )}
 
         {c.needsReconnect && (
-          <p className="mt-2 text-xs font-medium text-red-700">{t("agency.tokenNeedsRefresh")}</p>
+          <p className="mt-2 text-xs font-medium text-destructive">{t("agency.tokenNeedsRefresh")}</p>
         )}
 
         <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
@@ -335,9 +335,9 @@ export default function AgencyPage() {
             <dt className="text-muted-foreground">{t("agency.metricOpenLeads")}</dt>
             <dd className="font-bold">{c.openLeads}</dd>
           </div>
-          <div className="rounded-lg bg-amber-50/80 px-2.5 py-2">
+          <div className="rounded-lg bg-warning/10 px-2.5 py-2">
             <dt className="text-muted-foreground">{t("agency.metricHandoffs")}</dt>
-            <dd className="font-bold text-amber-900">{c.handoffs}</dd>
+            <dd className="font-bold text-warning">{c.handoffs}</dd>
           </div>
           <div className="rounded-lg bg-background px-2.5 py-2">
             <dt className="text-muted-foreground">{t("agency.metricUnread")}</dt>
@@ -583,23 +583,23 @@ export default function AgencyPage() {
           )}
 
           {attentionClients.length > 0 && (
-            <div className="mb-6 rounded-2xl border border-amber-200/80 bg-amber-50/50 p-4">
+            <div className="mb-6 rounded-2xl border border-warning/30 bg-warning/10 p-4">
               <div className="mb-3 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-700" />
-                <h3 className="text-sm font-bold text-amber-950">{t("agency.attentionTitle")}</h3>
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <h3 className="text-sm font-bold text-warning">{t("agency.attentionTitle")}</h3>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {attentionClients.map((c) => (
                   <div
                     key={`attention-${c.id}`}
-                    className="rounded-xl border border-amber-200/60 bg-card p-3"
+                    className="rounded-xl border border-warning/30 bg-card p-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-semibold">{c.displayName}</p>
                         <AgencyConnectionBadge status={c.connectionStatus} className="mt-1" />
                         {c.needsReconnect && (
-                          <p className="mt-1.5 text-xs text-red-700">{t("agency.tokenNeedsRefresh")}</p>
+                          <p className="mt-1.5 text-xs text-destructive">{t("agency.tokenNeedsRefresh")}</p>
                         )}
                       </div>
                     </div>

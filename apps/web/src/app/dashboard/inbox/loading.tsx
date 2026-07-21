@@ -1,4 +1,4 @@
-import { InboxListSkeleton, InboxThreadSkeleton, Skeleton } from "@/components/ui/skeleton";
+import { InboxListSkeleton, InboxThreadSkeleton, Skeleton } from "@/components/ui/loading";
 
 export default function InboxLoading() {
   return (

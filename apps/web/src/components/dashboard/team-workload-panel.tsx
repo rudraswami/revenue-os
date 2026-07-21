@@ -59,7 +59,7 @@ export function TeamWorkloadPanel({ compact }: { compact?: boolean }) {
         className={cn(
           "flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
           hasAlert
-            ? "border-amber-200/80 bg-amber-50/80"
+            ? "border-warning/30 bg-warning/10"
             : "border-border bg-card",
         )}
       >
@@ -77,7 +77,7 @@ export function TeamWorkloadPanel({ compact }: { compact?: boolean }) {
           </div>
 
           {hasAlert && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/15 px-2.5 py-1 text-xs font-semibold text-warning">
               <AlertCircle className="h-3.5 w-3.5" />
               {data.unassignedConversations} unassigned
             </span>
@@ -122,7 +122,7 @@ export function TeamWorkloadPanel({ compact }: { compact?: boolean }) {
       </div>
 
       {data.unassignedConversations > 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm text-warning">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>
             <strong>{data.unassignedConversations}</strong> open conversation
@@ -162,7 +162,7 @@ export function TeamWorkloadPanel({ compact }: { compact?: boolean }) {
                     {m.handoffConversations} handoff
                   </span>
                 )}
-                {load === 0 && <span className="font-medium text-emerald-600">Free</span>}
+                {load === 0 && <span className="font-medium text-success">Free</span>}
               </div>
             </div>
           );

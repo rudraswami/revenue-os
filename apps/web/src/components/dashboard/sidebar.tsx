@@ -46,6 +46,7 @@ import { useShellAgencyStatus, useShellWhatsappAccounts } from "@/hooks/use-shel
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { getQueryClientRef } from "@/lib/query-client-ref";
 import { prefetchDashboardRoute } from "@/lib/route-prefetch";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
 type NavGroup = {
@@ -468,7 +469,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {userEmail && (
-        <div className="border-t border-border/80 p-3">
+        <div className="space-y-2 border-t border-border/80 p-3">
+          <ThemeToggle className="w-full" />
           <UserAccountMenu
             userName={displayName}
             userEmail={userEmail}

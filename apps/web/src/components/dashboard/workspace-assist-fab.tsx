@@ -79,14 +79,14 @@ function SetupRow({ action }: { action: SetupAction }) {
         }}
         className={cn(
           "group flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-background",
-          action.priority === "critical" && "bg-amber-50/90 hover:bg-amber-50",
+          action.priority === "critical" && "bg-warning/10 hover:bg-warning/10",
         )}
       >
         <div
           className={cn(
             "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
             action.priority === "critical"
-              ? "bg-amber-100 text-amber-800"
+              ? "bg-warning/15 text-warning"
               : "bg-bento-mint text-accent group-hover:bg-accent group-hover:text-white",
           )}
         >
@@ -285,7 +285,7 @@ export function WorkspaceAssistFab() {
           showSetup
             ? "bg-accent hover:bg-accent-hover"
             : "border-2 border-accent/20 bg-card text-accent hover:bg-bento-mint",
-          showSetup && criticalCount > 0 && !expanded && "animate-pulse ring-2 ring-amber-400 ring-offset-2",
+          showSetup && criticalCount > 0 && !expanded && "animate-pulse ring-2 ring-warning/30 ring-offset-2",
           !showSetup && expanded && "ring-2 ring-accent/30 ring-offset-2",
         )}
         aria-expanded={expanded}
@@ -296,7 +296,7 @@ export function WorkspaceAssistFab() {
           <span
             className={cn(
               "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-bold text-white",
-              criticalCount > 0 ? "bg-amber-500" : "bg-accent",
+              criticalCount > 0 ? "bg-warning" : "bg-accent",
             )}
           >
             {totalCount > 99 ? "99+" : totalCount}

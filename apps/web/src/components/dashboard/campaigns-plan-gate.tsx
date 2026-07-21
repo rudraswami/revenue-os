@@ -49,7 +49,7 @@ export function CampaignsPlanGate({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-3xl border border-accent/20 bg-gradient-to-br from-bento-mint via-card to-violet-50/80 elev-1",
+        "overflow-hidden rounded-3xl border border-accent/20 bg-gradient-to-br from-bento-mint via-card to-viz-violet/10 elev-1",
         className,
       )}
     >

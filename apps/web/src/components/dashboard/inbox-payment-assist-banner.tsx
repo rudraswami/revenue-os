@@ -18,20 +18,20 @@ export function InboxPaymentAssistBanner({
   return (
     <div
       className={cn(
-        "mb-3 flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-950 sm:flex-row sm:items-center sm:justify-between",
+        "mb-3 flex flex-col gap-2 rounded-xl border border-success/30 bg-success/10 px-3 py-2.5 text-xs text-success sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
     >
       <div>
         <p className="font-semibold">{copy.paymentAssistTitle}</p>
-        <p className="mt-0.5 text-emerald-900/90">{copy.paymentAssistHint}</p>
+        <p className="mt-0.5 text-success">{copy.paymentAssistHint}</p>
       </div>
       <div className="flex shrink-0 gap-2">
         {onMarkWon && (
           <Button
             type="button"
             size="sm"
-            className="h-8 rounded-lg bg-emerald-700 text-xs hover:bg-emerald-800"
+            className="h-8 rounded-lg bg-success text-xs hover:bg-success"
             onClick={onMarkWon}
           >
             {copy.paymentAssistMarkWon}
@@ -42,7 +42,7 @@ export function InboxPaymentAssistBanner({
             type="button"
             size="sm"
             variant="ghost"
-            className="h-8 text-xs text-emerald-900"
+            className="h-8 text-xs text-success"
             onClick={onDismiss}
           >
             {copy.paymentAssistDismiss}

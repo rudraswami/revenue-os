@@ -249,7 +249,7 @@ export function TeamMembersCard() {
             <p
               className={cn(
                 "mt-3 text-xs font-medium",
-                sent.emailSent ? "text-accent" : "text-amber-800",
+                sent.emailSent ? "text-accent" : "text-warning",
               )}
             >
               {sent.emailSent
@@ -431,7 +431,7 @@ function RoleBadge({ role }: { role: MembershipRole }) {
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
         role === "OWNER"
-          ? "bg-amber-50 text-amber-800"
+          ? "bg-warning/10 text-warning"
           : "bg-muted text-muted-foreground",
       )}
     >

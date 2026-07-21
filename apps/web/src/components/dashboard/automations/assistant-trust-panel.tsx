@@ -37,11 +37,11 @@ export function AssistantTrustPanel() {
           </ul>
         </div>
         <div>
-          <p className="mb-2 text-xs font-medium text-amber-800">Growvisi never</p>
+          <p className="mb-2 text-xs font-medium text-warning">Growvisi never</p>
           <ul className="space-y-1.5">
             {WONT.map((item) => (
               <li key={item} className="flex gap-2 text-sm text-foreground/90">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden />
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-warning" aria-hidden />
                 {item}
               </li>
             ))}

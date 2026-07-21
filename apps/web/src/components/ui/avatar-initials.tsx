@@ -8,10 +8,10 @@ function initialsFrom(name: string) {
 }
 
 const PALETTES = [
-  "bg-violet-100 text-violet-700",
-  "bg-emerald-100 text-emerald-700",
+  "bg-viz-violet/15 text-viz-violet",
+  "bg-success/15 text-success",
   "bg-sky-100 text-sky-700",
-  "bg-amber-100 text-amber-800",
+  "bg-warning/15 text-warning",
   "bg-rose-100 text-rose-700",
   "bg-indigo-100 text-indigo-700",
 ] as const;

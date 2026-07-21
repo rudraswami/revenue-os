@@ -143,7 +143,7 @@ export function WebhooksSettingsCard() {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-viz-violet/15 text-viz-violet">
           <Webhook className="h-5 w-5" />
         </div>
         <div>
@@ -156,8 +156,8 @@ export function WebhooksSettingsCard() {
       </div>
 
       {newSecret && (
-        <div className="rounded-xl border border-violet-200 bg-violet-50/80 p-3 text-xs">
-          <p className="font-semibold text-violet-900">Signing secret — copy now</p>
+        <div className="rounded-xl border border-viz-violet/30 bg-viz-violet/10 p-3 text-xs">
+          <p className="font-semibold text-viz-violet">Signing secret — copy now</p>
           <code className="mt-2 block break-all rounded-lg bg-card px-2 py-1.5 font-mono text-xs">
             {newSecret.secret}
           </code>

@@ -78,16 +78,16 @@ export function InboxAiPanel({
   return (
     <div className="border-t border-border/50 bg-background/80 px-4 py-2 lg:px-5">
       {kbHealth && kbHealth.chunkCount === 0 && (
-        <div className="mb-2 rounded-lg border border-amber-200/70 bg-amber-50/70 px-3 py-2 text-xs text-amber-950">
-          <p className="leading-relaxed text-amber-900/90">
+        <div className="mb-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+          <p className="leading-relaxed text-warning">
             Business knowledge is empty — Growvisi can greet customers but cannot draft grounded
             answers yet. Add docs in <KnowledgeSettingsLink />.
           </p>
         </div>
       )}
       {knowledgeGaps.length > 0 && (
-        <div className="mb-2 rounded-lg border border-amber-200/70 bg-amber-50/70 px-3 py-2 text-xs text-amber-950">
-          <p className="leading-relaxed text-amber-900/90">
+        <div className="mb-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+          <p className="leading-relaxed text-warning">
             No docs matched for {knowledgeGaps.join(", ")}. Add them in <KnowledgeSettingsLink /> for
             grounded replies.
           </p>
@@ -95,9 +95,9 @@ export function InboxAiPanel({
       )}
 
       {requiresHuman && (
-        <div className="rounded-lg border border-amber-200/90 bg-amber-50/50 px-3 py-2.5">
+        <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-amber-950">
+            <p className="text-xs font-semibold text-warning">
               {copy.needsYouTitle(handoffReason)}
             </p>
             {canEdit && (
@@ -116,7 +116,7 @@ export function InboxAiPanel({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="h-8 text-xs text-amber-900 hover:bg-amber-100/60"
+                  className="h-8 text-xs text-warning hover:bg-warning/15"
                   isLoading={resolvePending}
                   onClick={onResolveHandoff}
                 >
@@ -126,7 +126,7 @@ export function InboxAiPanel({
             )}
           </div>
           {canEdit && (
-            <p className="mt-1 text-xs leading-relaxed text-amber-800/85">
+            <p className="mt-1 text-xs leading-relaxed text-warning">
               {coachTakeover ? copy.coachTakeoverHint : copy.replyNowHint}
             </p>
           )}

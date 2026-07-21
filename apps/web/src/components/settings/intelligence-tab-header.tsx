@@ -26,8 +26,8 @@ const FLOW = [
 ] as const;
 
 function kbBadge(chunkCount: number, gapRiskScore: number): { label: string; tone: string } {
-  if (chunkCount === 0) return { label: "Empty", tone: "bg-amber-100 text-amber-900" };
-  if (gapRiskScore >= 50) return { label: "Gaps", tone: "bg-amber-100/90 text-amber-900" };
+  if (chunkCount === 0) return { label: "Empty", tone: "bg-warning/15 text-warning" };
+  if (gapRiskScore >= 50) return { label: "Gaps", tone: "bg-warning/15 text-warning" };
   return { label: "Ready", tone: "bg-bento-mint text-accent" };
 }
 

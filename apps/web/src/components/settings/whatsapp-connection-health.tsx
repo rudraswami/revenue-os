@@ -116,7 +116,7 @@ export function WhatsappConnectionHealth() {
             "flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between",
             summary.tone === "success" && "border-accent-light/40 bg-bento-mint elev-1",
             summary.tone === "pending" && "border-border bg-card elev-1",
-            summary.tone === "warning" && "border-amber-200/80 bg-card elev-1",
+            summary.tone === "warning" && "border-warning/30 bg-card elev-1",
           )}
         >
           <div className="flex items-start gap-4">
@@ -125,7 +125,7 @@ export function WhatsappConnectionHealth() {
                 "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
                 summary.tone === "success" && "bg-[#25D366]/15 text-whatsapp",
                 summary.tone === "pending" && "bg-bento-blue text-foreground",
-                summary.tone === "warning" && "bg-amber-100 text-amber-800",
+                summary.tone === "warning" && "bg-warning/15 text-warning",
               )}
             >
               {summary.tone === "success" ? (
@@ -155,9 +155,9 @@ export function WhatsappConnectionHealth() {
         </div>
 
         {data.tokenHealth?.needsAttention && (
-          <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3.5">
-            <p className="text-sm font-semibold text-amber-950">Action required</p>
-            <p className="mt-1 text-sm text-amber-900/90">
+          <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3.5">
+            <p className="text-sm font-semibold text-warning">Action required</p>
+            <p className="mt-1 text-sm text-warning">
               {data.tokenHealth.needsRefresh
                 ? "Your Meta access token has expired or is about to. Refresh it above to avoid missing customer messages."
                 : (data.tokenHealth.hint ?? "Review your Meta access token in the section above.")}
@@ -170,7 +170,7 @@ export function WhatsappConnectionHealth() {
             className={cn(
               "rounded-xl border px-4 py-3.5",
               data.reliability.needsAttention
-                ? "border-amber-200/80 bg-amber-50/60"
+                ? "border-warning/30 bg-warning/10"
                 : "border-border bg-background/50",
             )}
           >
@@ -194,7 +194,7 @@ export function WhatsappConnectionHealth() {
               </span>
             </div>
             {data.reliability.issues.length > 0 && (
-              <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-amber-900/90">
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-warning">
                 {data.reliability.issues.map((issue) => (
                   <li key={issue}>{issue}</li>
                 ))}
@@ -225,7 +225,7 @@ export function WhatsappConnectionHealth() {
               <p
                 className={cn(
                   "mt-0.5 text-lg font-bold",
-                  stat.highlight ? "text-amber-700" : "text-foreground",
+                  stat.highlight ? "text-warning" : "text-foreground",
                 )}
               >
                 {stat.value}
@@ -250,7 +250,7 @@ export function WhatsappConnectionHealth() {
                       ? "border-accent-light/30 bg-bento-mint/40"
                       : pillar.status === "pending"
                         ? "border-border bg-card"
-                        : "border-amber-200/60 bg-amber-50/40",
+                        : "border-warning/30 bg-warning/10",
                   )}
                 >
                   <span
@@ -260,7 +260,7 @@ export function WhatsappConnectionHealth() {
                         ? "bg-[#25D366]/15 text-whatsapp"
                         : pillar.status === "pending"
                           ? "bg-bento-blue text-foreground"
-                          : "bg-amber-100 text-amber-800",
+                          : "bg-warning/15 text-warning",
                     )}
                   >
                     {pillar.status === "complete" ? (

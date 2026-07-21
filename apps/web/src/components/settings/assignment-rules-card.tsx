@@ -257,7 +257,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
                   }}
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                     rule.conditions.handoffOnly
-                      ? "bg-amber-500 text-white"
+                      ? "bg-warning text-white"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
@@ -320,7 +320,7 @@ export function AssignmentRulesCard({ embedded = false }: { embedded?: boolean }
   return (
     <div className="mt-6 border-t border-border pt-5">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bento-blue text-blue-700">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bento-blue text-info">
           <GitBranch className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">

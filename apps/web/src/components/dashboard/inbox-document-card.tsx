@@ -42,7 +42,7 @@ export function InboxDocumentCard({
         className,
       )}
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-700">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
         <FileText className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">

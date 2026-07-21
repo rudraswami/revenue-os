@@ -51,7 +51,7 @@ const STAGE_COLORS: Record<LeadStage, string> = {
   CONTACTED: "bg-accent/60",
   QUALIFIED: "bg-accent",
   PROPOSAL: "bg-accent-light",
-  NEGOTIATION: "bg-amber-500",
+  NEGOTIATION: "bg-warning",
   WON: "bg-accent",
   LOST: "bg-muted-foreground",
 };

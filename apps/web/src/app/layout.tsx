@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { GROWVISI_WEB_URL } from "@growvisi/shared";
 import "./globals.css";
 import { Providers } from "./providers";
+import { THEME_NO_FLASH_SCRIPT } from "@/lib/theme";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -57,7 +58,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_NO_FLASH_SCRIPT }} />
+      </head>
       <body className={`${jakarta.variable} ${inter.variable} min-h-screen antialiased`}>
         <Providers>{children}</Providers>
       </body>

@@ -32,16 +32,16 @@ const iconMap = {
 
 const sentimentColors: Record<string, string> = {
   positive: "text-accent bg-bento-mint",
-  neutral: "text-blue-600 bg-blue-50",
-  negative: "text-red-600 bg-red-50",
+  neutral: "text-info bg-info/10",
+  negative: "text-destructive bg-destructive/10",
 };
 
 function toneFor(type: string) {
   switch (type) {
     case "Urgent":
-      return { tone: "border-amber-200 bg-amber-50/50", iconBg: "bg-amber-100 text-amber-700" };
+      return { tone: "border-warning/30 bg-warning/10", iconBg: "bg-warning/15 text-warning" };
     case "Action needed":
-      return { tone: "border-red-200/80 bg-red-50/40", iconBg: "bg-red-100 text-red-600" };
+      return { tone: "border-destructive/30 bg-destructive/10", iconBg: "bg-destructive/15 text-destructive" };
     case "Pipeline":
       return { tone: "border-border bg-background", iconBg: "bg-bento-mint text-accent" };
     default:

@@ -1,4 +1,4 @@
-import { DashboardAnalyticsSkeleton } from "@/components/ui/page-loading";
+import { DashboardAnalyticsSkeleton } from "@/components/ui/loading";
 
 export default function AnalyticsLoading() {
   return <DashboardAnalyticsSkeleton />;

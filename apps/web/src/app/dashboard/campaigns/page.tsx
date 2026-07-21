@@ -630,7 +630,7 @@ export default function CampaignsPage() {
 
   return (
     <div className="dashboard-page">
-      <div className="dashboard-hero campaigns-page-hero mb-6 rounded-3xl border border-accent/15 bg-gradient-to-br from-bento-mint/80 via-card to-violet-50/60 p-6 md:p-8 elev-1">
+      <div className="dashboard-hero campaigns-page-hero mb-6 rounded-3xl border border-accent/15 bg-gradient-to-br from-bento-mint/80 via-card to-viz-violet/10 p-6 md:p-8 elev-1">
         <PageHeader
           className="mb-0"
           title="Campaigns"
@@ -655,7 +655,7 @@ export default function CampaignsPage() {
       )}
 
       {canManage && campaignsPlanOk === true && (
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
+        <div className="mb-6 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
           <strong className="font-semibold">Meta policy:</strong> Business-initiated outbound
           messages must use a <strong>pre-approved WhatsApp template</strong> from WhatsApp
           Manager. Contacts who reply <strong>STOP</strong> or opt out in Growvisi are automatically
@@ -665,7 +665,7 @@ export default function CampaignsPage() {
 
       {canManage && campaignsPlanOk === true && (
         <div className="mb-6 overflow-hidden rounded-3xl border border-accent/20 bg-card elev-1">
-          <div className="border-b border-border/70 bg-gradient-to-r from-bento-mint/50 via-card to-violet-50/40 px-5 py-6 md:px-8">
+          <div className="border-b border-border/70 bg-gradient-to-r from-bento-mint/50 via-card to-viz-violet/10 px-5 py-6 md:px-8">
             <h3 className="font-sans text-xl font-bold tracking-tight text-foreground">
               New campaign
             </h3>
@@ -768,7 +768,7 @@ export default function CampaignsPage() {
                         <p className="text-sm font-semibold text-foreground">
                           {preview.sendableCount ?? preview.count} will receive
                           {(preview.optOutCount ?? 0) > 0 && (
-                            <span className="font-medium text-amber-800">
+                            <span className="font-medium text-warning">
                               {" "}
                               · {preview.optOutCount} opted out
                             </span>
@@ -970,7 +970,7 @@ export default function CampaignsPage() {
 
       <Dialog open={!!detailId} onOpenChange={(next) => !next && setDetailId(null)}>
         <DialogContent side="right" showClose={false} className="max-w-lg gap-0 p-0 sm:max-w-[560px]">
-          <div className="relative overflow-hidden border-b border-border bg-gradient-to-br from-accent via-emerald-700 to-emerald-900 px-5 py-5 text-white">
+          <div className="relative overflow-hidden border-b border-border bg-gradient-to-br from-accent via-success to-success px-5 py-5 text-white">
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
             <div className="absolute -bottom-6 right-12 h-20 w-20 rounded-full bg-white/5" />
             <div className="relative flex items-start justify-between gap-3">
@@ -1028,20 +1028,20 @@ export default function CampaignsPage() {
                   </div>
 
                   {detail.status === "RUNNING" && progress && (
-                    <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3">
-                      <div className="mb-2 flex items-center justify-between text-xs font-medium text-amber-950">
+                    <div className="mb-4 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3">
+                      <div className="mb-2 flex items-center justify-between text-xs font-medium text-warning">
                         <span>Sending in progress…</span>
                         <span>
                           {progress.attempted}/{progress.totalRecipients} ({progress.progressPct}%)
                         </span>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-amber-100">
+                      <div className="h-2 overflow-hidden rounded-full bg-warning/15">
                         <div
                           className="h-full rounded-full bg-accent transition-all"
                           style={{ width: `${progress.progressPct}%` }}
                         />
                       </div>
-                      <p className="mt-2 text-xs text-amber-900/80">
+                      <p className="mt-2 text-xs text-warning">
                         Delivered or read: {progress.deliveredOrRead} · Failed: {progress.failed}
                       </p>
                     </div>
@@ -1249,7 +1249,7 @@ export default function CampaignsPage() {
                                     ? `/dashboard/inbox?c=${r.conversationId}`
                                     : "/dashboard/inbox"
                                 }
-                                className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-800 hover:bg-violet-200/80"
+                                className="inline-flex items-center gap-1 rounded-full bg-viz-violet/15 px-2 py-0.5 text-[11px] font-semibold text-viz-violet hover:bg-viz-violet/20"
                               >
                                 <MessageCircleReply className="h-3 w-3" />
                                 Replied
@@ -1265,7 +1265,7 @@ export default function CampaignsPage() {
                                   : r.status === "FAILED"
                                     ? "bg-destructive/10 text-destructive"
                                     : r.status === "SKIPPED"
-                                      ? "bg-slate-100 text-slate-700"
+                                      ? "bg-muted text-foreground"
                                       : "bg-muted text-muted-foreground",
                               )}
                             >
@@ -1409,12 +1409,12 @@ function Stat({
       className={cn(
         "rounded-xl border px-3 py-2.5",
         highlight
-          ? "border-violet-200/80 bg-gradient-to-br from-violet-50/90 to-background"
+          ? "border-viz-violet/30 bg-gradient-to-br from-viz-violet/10 to-background"
           : "border-border/80 bg-background",
       )}
     >
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className={cn("text-lg font-bold tabular-nums", highlight && "text-violet-900")}>
+      <p className={cn("text-lg font-bold tabular-nums", highlight && "text-viz-violet")}>
         {value}
       </p>
     </div>

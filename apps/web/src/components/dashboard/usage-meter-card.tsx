@@ -42,13 +42,13 @@ function MeterBar({ used, limit, label }: { used: number; limit: number; label: 
     <div>
       <div className="mb-1 flex justify-between text-xs">
         <span className="font-medium text-muted-foreground">{label}</span>
-        <span className={cn("font-semibold", hot && "text-amber-800")}>
+        <span className={cn("font-semibold", hot && "text-warning")}>
           {used.toLocaleString("en-IN")} / {limit.toLocaleString("en-IN")}
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-muted">
         <div
-          className={cn("h-full rounded-full transition-all", hot ? "bg-amber-500" : "bg-accent")}
+          className={cn("h-full rounded-full transition-all", hot ? "bg-warning" : "bg-accent")}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -98,7 +98,7 @@ export function UsageMeterCard({ compact }: { compact?: boolean }) {
         <span
           className={cn(
             "font-semibold",
-            friction?.leadsAtLimit || leadPct >= 85 ? "text-amber-800" : "text-accent",
+            friction?.leadsAtLimit || leadPct >= 85 ? "text-warning" : "text-accent",
           )}
         >
           {leadPct}%

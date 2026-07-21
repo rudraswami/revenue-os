@@ -16,6 +16,17 @@ export const MOTION = {
   easeOut: [0.16, 1, 0.3, 1] as [number, number, number, number],
 } as const;
 
+/**
+ * Growvisi DS v1 — single interaction standard (applies app-wide):
+ * - Hover (color/bg/border): 120ms, standard ease. No layout shift on hover.
+ * - Press: active:scale-[0.98] (buttons/tiles); disabled under reduced-motion.
+ * - Overlays (Dialog/Sheet/Toast): 150-180ms enter; see `gv-animate-*` in globals.css.
+ * - Popover/DropdownMenu: 150ms enter / 120ms exit via `gv-animate-pop` (Radix data-state).
+ * - Tooltip: 120ms enter via `gv-animate-tooltip`; 200ms open delay.
+ * - Route/tab crossfade: `MOTION.duration.base` opacity fade (see dashboard/template.tsx).
+ * - Everything must no-op under prefers-reduced-motion.
+ */
+
 /** framer-motion transition presets. */
 export const TRANSITIONS = {
   fade: { duration: MOTION.duration.base, ease: MOTION.ease },

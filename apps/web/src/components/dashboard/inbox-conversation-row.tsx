@@ -60,7 +60,7 @@ export const InboxConversationRowItem = memo(function InboxConversationRowItem({
         active
           ? "border-l-[3px] border-l-accent bg-card pl-[calc(0.75rem-3px)]"
           : "border-l-[3px] border-l-transparent hover:bg-muted/30",
-        yourTurn && !active && "bg-amber-50/30",
+        yourTurn && !active && "bg-warning/10",
         closed && !active && "opacity-85",
       )}
     >
@@ -76,7 +76,7 @@ export const InboxConversationRowItem = memo(function InboxConversationRowItem({
         />
         {yourTurn && (
           <span
-            className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-background"
+            className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-warning ring-2 ring-background"
             title={copy.yourTurn}
             aria-label={copy.yourTurn}
           />

@@ -16,11 +16,11 @@ export function ShellBootstrapErrorBanner({
 }) {
   return (
     <div
-      className="mx-4 mb-3 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-amber-950 lg:mx-8 lg:mt-6"
+      className="mx-4 mb-3 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-warning lg:mx-8 lg:mt-6"
       role="alert"
     >
       <div className="flex min-w-0 items-start gap-2.5">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden />
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
         <div className="min-w-0">
           <p className="text-sm font-semibold">Couldn&apos;t refresh workspace status</p>
           <p className="mt-0.5 text-xs opacity-90">
@@ -32,7 +32,7 @@ export function ShellBootstrapErrorBanner({
         type="button"
         variant="outline"
         size="sm"
-        className="shrink-0 border-amber-300/80 bg-white/80"
+        className="shrink-0 border-warning/30 bg-card/80"
         disabled={isRetrying}
         isLoading={isRetrying}
         onClick={onRetry}

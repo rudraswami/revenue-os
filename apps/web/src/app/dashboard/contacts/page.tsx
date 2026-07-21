@@ -25,7 +25,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InboxListSkeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-state";
@@ -302,17 +311,15 @@ export default function ContactsPage() {
               if (newTagName.trim()) createTag.mutate({ name: newTagName.trim(), color: newTagColor });
             }}
           >
-            <div className="flex-1 min-w-[160px]">
-              <span className="mb-1 block text-xs font-medium text-muted-foreground">
-                Tag name
-              </span>
+            <Field label="Tag name" htmlFor="new-tag-name" className="flex-1 min-w-[160px]">
               <Input
+                id="new-tag-name"
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
                 placeholder="e.g. High intent"
                 className="h-9 text-sm"
               />
-            </div>
+            </Field>
             <div className="flex items-center gap-1.5">
               {TAG_PALETTE.map((c) => (
                 <button
@@ -478,24 +485,24 @@ export default function ContactsPage() {
             actionLabel={filtersActive ? undefined : "Open conversations"}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
-                  <th className="px-5 py-3 font-semibold">Contact</th>
-                  <th className="px-3 py-3 font-semibold">Stage</th>
-                  <th className="px-3 py-3 font-semibold">Score</th>
-                  <th className="px-3 py-3 font-semibold">Value</th>
-                  <th className="px-3 py-3 font-semibold">Tags</th>
-                  <th className="px-3 py-3 font-semibold">Activity</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Stage</TableHead>
+                  <TableHead>Score</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>Tags</TableHead>
+                  <TableHead>Activity</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {contacts.map((c) => (
                   <ContactTableRow key={c.id} contact={c} onSelect={setSelected} />
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
             {contactPage && contactPage.total > contactPage.data.length && (
               <div className="flex items-center justify-between border-t border-border px-5 py-3 text-sm">
                 <span className="text-muted-foreground">
@@ -533,19 +540,25 @@ export default function ContactsPage() {
               Phone with country code (e.g. 919876543210). Use outbound from Inbox to message them.
             </DialogDescription>
           </DialogHeader>
-          <DialogBody className="space-y-3">
-            <Input
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              placeholder="Phone number"
-              className="h-10"
-            />
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Name (optional)"
-              className="h-10"
-            />
+          <DialogBody className="space-y-4">
+            <Field label="Phone number" htmlFor="new-contact-phone" required>
+              <Input
+                id="new-contact-phone"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="919876543210"
+                className="h-10"
+              />
+            </Field>
+            <Field label="Name" htmlFor="new-contact-name" hint="Optional">
+              <Input
+                id="new-contact-name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Contact name"
+                className="h-10"
+              />
+            </Field>
             {createContact.isError &&
               (isUpgradeFrictionError(createContact.error) ? (
                 <UpgradeFrictionBanner
@@ -602,11 +615,19 @@ const ContactTableRow = memo(function ContactTableRow({
   onSelect: (id: string) => void;
 }) {
   return (
-    <tr
+    <TableRow
+      interactive
+      tabIndex={0}
+      role="button"
       onClick={() => onSelect(c.id)}
-      className="cursor-pointer border-b border-border/60 transition hover:bg-muted/40"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(c.id);
+        }
+      }}
     >
-      <td className="px-5 py-3">
+      <TableCell>
         <div className="flex items-center gap-3">
           <AvatarInitials name={c.displayName || c.phone} size="sm" />
           <div className="min-w-0">
@@ -617,8 +638,8 @@ const ContactTableRow = memo(function ContactTableRow({
             </p>
           </div>
         </div>
-      </td>
-      <td className="px-3 py-3">
+      </TableCell>
+      <TableCell>
         <span
           className={cn(
             "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
@@ -627,8 +648,8 @@ const ContactTableRow = memo(function ContactTableRow({
         >
           {STAGE_LABELS[c.stage]}
         </span>
-      </td>
-      <td className="px-3 py-3">
+      </TableCell>
+      <TableCell>
         <span
           className={cn(
             "font-semibold",
@@ -637,9 +658,9 @@ const ContactTableRow = memo(function ContactTableRow({
         >
           {c.score}
         </span>
-      </td>
-      <td className="px-3 py-3 font-medium text-foreground">{formatInr(c.valueCents)}</td>
-      <td className="px-3 py-3">
+      </TableCell>
+      <TableCell className="font-medium text-foreground">{formatInr(c.valueCents)}</TableCell>
+      <TableCell>
         <div className="flex flex-wrap gap-1">
           {c.tags.slice(0, 3).map((t) => (
             <TagChip key={t.id} tag={t} />
@@ -648,8 +669,8 @@ const ContactTableRow = memo(function ContactTableRow({
             <span className="text-xs text-muted-foreground">+{c.tags.length - 3}</span>
           )}
         </div>
-      </td>
-      <td className="px-3 py-3 text-xs text-muted-foreground">{formatRelative(c.updatedAt)}</td>
-    </tr>
+      </TableCell>
+      <TableCell className="text-xs text-muted-foreground">{formatRelative(c.updatedAt)}</TableCell>
+    </TableRow>
   );
 });

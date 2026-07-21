@@ -95,7 +95,7 @@ export function AuditActivityCard() {
               className={cn(
                 "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold uppercase",
                 row.action === "DELETE"
-                  ? "bg-red-50 text-red-700"
+                  ? "bg-destructive/10 text-destructive"
                   : row.action === "CREATE"
                     ? "bg-bento-mint text-whatsapp"
                     : "bg-muted text-muted-foreground",

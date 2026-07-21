@@ -41,11 +41,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
+            className="gv-animate-overlay absolute inset-0 bg-foreground/20 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
             aria-label="Close menu"
           />
-          <div className="relative flex h-full w-[280px] flex-col shadow-xl">
+          <div className="gv-animate-drawer-left relative flex h-full w-[280px] flex-col shadow-xl">
             <Sidebar onNavigate={() => setMobileOpen(false)} />
             <button
               type="button"

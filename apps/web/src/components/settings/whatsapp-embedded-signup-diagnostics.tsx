@@ -100,14 +100,14 @@ export function WhatsappEmbeddedSignupDiagnostics() {
           <ul className="space-y-1">
             {failedChecks.map((c) => (
               <li key={c.id} className="flex gap-2">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
                 <span>{c.detail}</span>
               </li>
             ))}
           </ul>
         )}
 
-        <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 p-3 text-amber-950">
+        <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-warning">
           <p className="font-semibold">If popup says &quot;Feature Unavailable&quot;</p>
           <p className="mt-1 leading-relaxed">
             Growvisi implementation matches Meta docs. Blockers are on Meta&apos;s side: Tech
@@ -119,7 +119,7 @@ export function WhatsappEmbeddedSignupDiagnostics() {
             href="https://developers.facebook.com/apps/1694805491426991/whatsapp-business/wa-embedded-signup/"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1 font-semibold text-amber-900 underline"
+            className="mt-2 inline-flex items-center gap-1 font-semibold text-warning underline"
           >
             Test in Meta Embedded Signup Integration Helper
             <ExternalLink className="h-3 w-3" />

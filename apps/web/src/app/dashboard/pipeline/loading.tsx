@@ -1,5 +1,4 @@
-import { PipelineSkeleton } from "@/components/ui/skeleton";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PipelineSkeleton, Skeleton } from "@/components/ui/loading";
 
 export default function PipelineLoading() {
   return (

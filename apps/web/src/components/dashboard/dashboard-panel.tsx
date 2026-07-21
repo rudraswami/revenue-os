@@ -1,8 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+/**
+ * App panel = a Card with the standard header/body pattern (title, description,
+ * action). Composes the canonical Card surface so there is one source of truth
+ * for radius/border/elevation across the app.
+ */
 export function DashboardPanel({
   title,
   description,
@@ -23,16 +29,11 @@ export function DashboardPanel({
   delay?: number;
 }) {
   return (
-    <div
-      className={cn(
-        "elev-1 overflow-hidden rounded-2xl bg-card",
-        className,
-      )}
-    >
+    <Card className={cn("overflow-hidden", className)}>
       {(title || action) && (
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/80 bg-background/60 px-5 py-4">
           <div>
-            {title && <h3 className="text-sm font-semibold text-foreground md:text-sm">{title}</h3>}
+            {title && <h3 className="text-sm font-semibold text-foreground">{title}</h3>}
             {description && (
               <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">{description}</p>
             )}
@@ -41,6 +42,6 @@ export function DashboardPanel({
         </div>
       )}
       <div className={cn(!noPadding && "p-5", contentClassName)}>{children}</div>
-    </div>
+    </Card>
   );
 }

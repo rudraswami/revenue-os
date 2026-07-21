@@ -60,7 +60,7 @@ export function HomeCampaignRepliesPanel({ enabled }: { enabled: boolean }) {
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-700">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-viz-violet/15 text-viz-violet">
             <MessageCircleReply className="h-5 w-5" />
           </div>
           <div>
@@ -89,7 +89,7 @@ export function HomeCampaignRepliesPanel({ enabled }: { enabled: boolean }) {
                     <Megaphone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <span className="truncate font-medium">{c.name}</span>
                   </span>
-                  <span className="shrink-0 text-xs font-semibold text-violet-700">
+                  <span className="shrink-0 text-xs font-semibold text-viz-violet">
                     {c.replyCount} replies
                   </span>
                 </Link>

@@ -1108,7 +1108,7 @@ function InboxThreadPaneInner({
                               className={cn(
                                 "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium transition hover:underline",
                                 lead.stage === "WON"
-                                  ? "bg-emerald-50 text-emerald-800"
+                                  ? "bg-success/10 text-success"
                                   : "bg-background text-foreground",
                               )}
                               title="Deal ₹ tracked on Pipeline — tap to view or edit"
@@ -1208,7 +1208,7 @@ function InboxThreadPaneInner({
                     </span>
                   ))}
                 {thread.requiresHuman && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">
+                  <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-bold text-warning">
                     {copy.waitingOnYou}
                   </span>
                 )}
@@ -1342,7 +1342,7 @@ function InboxThreadPaneInner({
                   className={cn(
                     "group relative max-w-[88%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm",
                     m.direction === "OUTBOUND"
-                      ? "ml-auto rounded-br-md border border-emerald-200/60 bg-whatsapp-green text-foreground"
+                      ? "ml-auto rounded-br-md border border-success/30 bg-whatsapp-green text-foreground"
                       : "mr-auto rounded-bl-md border border-white/80 bg-card text-foreground",
                   )}
                 >
@@ -1374,7 +1374,7 @@ function InboxThreadPaneInner({
                   <p
                     className={cn(
                       "mt-1 flex items-center gap-1.5 text-xs",
-                      m.direction === "OUTBOUND" ? "text-emerald-800/60" : "text-muted-foreground",
+                      m.direction === "OUTBOUND" ? "text-success" : "text-muted-foreground",
                     )}
                   >
                     {m.sentByAi && m.direction === "OUTBOUND" && (
@@ -1408,9 +1408,9 @@ function InboxThreadPaneInner({
                 />
               )}
               {windowClosed && (
-                <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
+                <div className="mb-3 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs text-warning">
                   <p className="font-semibold">24-hour reply window closed</p>
-                  <p className="mt-0.5 text-amber-900/90">
+                  <p className="mt-0.5 text-warning">
                     Free-text replies need a recent customer message. Use{" "}
                     <button
                       type="button"

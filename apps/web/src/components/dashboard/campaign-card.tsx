@@ -50,7 +50,7 @@ function MiniFunnel({
     <div className="mt-4">
       <div className="flex h-2.5 overflow-hidden rounded-full bg-muted shadow-inner">
         {replyRatePct > 0 && (
-          <div className="h-full bg-violet-500" style={{ width: `${Math.min(replyRatePct, 25)}%` }} />
+          <div className="h-full bg-viz-violet" style={{ width: `${Math.min(replyRatePct, 25)}%` }} />
         )}
         <div className="h-full bg-whatsapp" style={{ width: `${deliveredPct}%` }} />
         {failedPct > 0 && (
@@ -66,7 +66,7 @@ function MiniFunnel({
         </span>
         {replyRatePct > 0 && (
           <span>
-            <strong className="text-violet-700">{replyRatePct}%</strong> replied
+            <strong className="text-viz-violet">{replyRatePct}%</strong> replied
           </span>
         )}
         {failedPct > 0 && (
@@ -104,21 +104,21 @@ export const CampaignCard = memo(function CampaignCard({
       className={cn(
         "group relative flex w-full flex-col rounded-2xl border border-border/80 bg-card p-5 text-left elev-1 transition-all",
         "hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-lg",
-        c.status === "RUNNING" && "ring-2 ring-amber-300/50",
+        c.status === "RUNNING" && "ring-2 ring-warning/30",
       )}
     >
       {c.status === "RUNNING" && (
-        <span className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+        <span className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-bold text-warning">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-600" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
           </span>
           Sending
         </span>
       )}
 
       <div className="flex items-start gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-emerald-700 text-white shadow-sm">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-success text-white shadow-sm">
           <Megaphone className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1 pr-16">
@@ -169,7 +169,7 @@ export const CampaignCard = memo(function CampaignCard({
           {(c.replyCount ?? 0) > 0 && (
             <div>
               <p className="text-muted-foreground">Replies</p>
-              <p className="flex items-center gap-1 text-lg font-bold tabular-nums text-violet-700">
+              <p className="flex items-center gap-1 text-lg font-bold tabular-nums text-viz-violet">
                 <MessageCircleReply className="h-4 w-4" />
                 {c.replyCount}
               </p>

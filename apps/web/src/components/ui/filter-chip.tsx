@@ -26,7 +26,7 @@ export function FilterChip({
         "shrink-0 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
         active
           ? attention
-            ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200/80"
+            ? "bg-warning/15 text-warning ring-1 ring-warning/30"
             : "bg-accent/10 text-accent ring-1 ring-accent/15"
           : "bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground",
       )}

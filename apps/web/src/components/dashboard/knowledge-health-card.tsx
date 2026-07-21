@@ -19,8 +19,8 @@ export interface KnowledgeHealthResponse {
 }
 
 function riskLabel(score: number): { label: string; tone: string } {
-  if (score >= 80) return { label: "High gap risk", tone: "text-amber-800 bg-amber-50" };
-  if (score >= 35) return { label: "Some gaps", tone: "text-amber-900 bg-amber-50/80" };
+  if (score >= 80) return { label: "High gap risk", tone: "text-warning bg-warning/10" };
+  if (score >= 35) return { label: "Some gaps", tone: "text-warning bg-warning/10" };
   return { label: "Well covered", tone: "text-accent bg-bento-mint/60" };
 }
 
@@ -79,9 +79,9 @@ export function KnowledgeHealthCard({ className }: { className?: string }) {
           </div>
 
           {data.gapRiskScore >= 50 && (
-            <div className="flex gap-2 rounded-xl border border-amber-200/80 bg-amber-50/50 px-3 py-2.5">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-              <p className="text-xs leading-relaxed text-amber-900">
+            <div className="flex gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <p className="text-xs leading-relaxed text-warning">
                 {data.chunkCount === 0
                   ? "Upload your rate card and FAQs before enabling Responsive auto-send."
                   : "Add pricing, policy, and delivery docs so Growvisi can answer completely."}

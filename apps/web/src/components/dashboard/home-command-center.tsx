@@ -55,12 +55,12 @@ interface HomeCommandCenterProps {
 }
 
 const STAGE_COLORS: Record<string, string> = {
-  NEW: "bg-slate-400",
+  NEW: "bg-muted-foreground/40",
   CONTACTED: "bg-sky-500",
   QUALIFIED: "bg-indigo-500",
-  PROPOSAL: "bg-violet-500",
-  NEGOTIATION: "bg-amber-500",
-  WON: "bg-emerald-500",
+  PROPOSAL: "bg-viz-violet",
+  NEGOTIATION: "bg-warning",
+  WON: "bg-success",
   LOST: "bg-rose-400",
 };
 
@@ -267,7 +267,7 @@ export function HomeCommandCenter({
               {openStages.map((s) => (
                 <div
                   key={s.stage}
-                  className={cn("h-full", STAGE_COLORS[s.stage] ?? "bg-slate-400")}
+                  className={cn("h-full", STAGE_COLORS[s.stage] ?? "bg-muted-foreground/40")}
                   style={{ width: `${(s.count / stageTotal) * 100}%` }}
                   title={`${s.stage}: ${s.count}`}
                 />
@@ -277,7 +277,7 @@ export function HomeCommandCenter({
               {openStages.map((s) => (
                 <span key={s.stage} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span
-                    className={cn("h-2 w-2 rounded-full", STAGE_COLORS[s.stage] ?? "bg-slate-400")}
+                    className={cn("h-2 w-2 rounded-full", STAGE_COLORS[s.stage] ?? "bg-muted-foreground/40")}
                   />
                   {STAGE_LABELS[s.stage as keyof typeof STAGE_LABELS] ??
                     s.stage[0] + s.stage.slice(1).toLowerCase()}{" "}

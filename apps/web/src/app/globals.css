@@ -1,31 +1,173 @@
 @import "tailwindcss";
 
-@theme {
-  --color-background: #f8f9ff;
-  --color-foreground: #0b1c30;
-  --color-muted: #eff4ff;
-  --color-muted-foreground: #45464d;
-  --color-border: #dce9ff;
-  --color-card: #ffffff;
-  --color-card-foreground: #0b1c30;
-  --color-primary: #0b1c30;
-  --color-primary-foreground: #ffffff;
-  --color-primary-hover: #213145;
-  --color-primary-light: #d3e4fe;
-  --color-primary-soft: #e5eeff;
-  --color-accent: #006c49;
-  --color-accent-foreground: #ffffff;
-  --color-success: #006c49;
-  --color-warning: #e07a00;
-  --color-destructive: #ba1a1a;
-  --color-secondary: #e5eeff;
-  --color-secondary-foreground: #0b1c30;
-  --color-bento-purple: #eff4ff;
-  --color-bento-mint: #ecfdf5;
-  --color-bento-blue: #e8f0ff;
-  --color-accent-light: #6cf8bb;
-  --color-accent-hover: #005236;
-  --color-whatsapp: #128C7E;
+/**
+ * Dark mode is class-based (not prefers-color-scheme). The `.dark` class is
+ * applied to <html> only within the authenticated app, so marketing/auth pages
+ * stay light. Overlays (Dialog, Dropdown, Toast) portal to <body>, so scoping
+ * on <html> is required for them to inherit the theme.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/**
+ * ────────────────────────────────────────────────────────────────────────
+ * Growvisi DS v1 — semantic, theme-aware design tokens.
+ * Roles are defined once here; light is the default and `.dark` overrides.
+ * Legacy --color-* names are kept (aliased in @theme inline below) so every
+ * existing utility (bg-card, text-foreground, border-border…) is now
+ * automatically theme-aware with no call-site changes.
+ * ────────────────────────────────────────────────────────────────────────
+ */
+:root {
+  /* Surfaces */
+  --surface-base: #f8f9ff;
+  --surface-panel: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-overlay: #ffffff;
+  --surface-sunken: #eff4ff;
+  /* Content */
+  --text-primary: #0b1c30;
+  --text-secondary: #45464d;
+  --text-tertiary: #6b7280;
+  --text-inverse: #ffffff;
+  /* Borders */
+  --border-subtle: #e6eeff;
+  --border-default: #dce9ff;
+  --border-strong: #c5d8f5;
+  /* Brand (navy). In dark it inverts so brand chips become light w/ dark text. */
+  --brand: #0b1c30;
+  --brand-hover: #213145;
+  --brand-fg: #ffffff;
+  --brand-soft: #e5eeff;
+  --brand-light: #d3e4fe;
+  /* Accent (green) — the primary CTA */
+  --accent: #006c49;
+  --accent-hover: #005236;
+  --accent-fg: #ffffff;
+  --accent-light: #6cf8bb;
+  /* Status */
+  --success: #006c49;
+  --success-fg: #ffffff;
+  --success-surface: #ecfdf5;
+  --warning: #e07a00;
+  --warning-fg: #ffffff;
+  --warning-surface: #fff7ed;
+  --danger: #ba1a1a;
+  --danger-fg: #ffffff;
+  --danger-surface: #fef2f2;
+  --info: #2563eb;
+  --info-fg: #ffffff;
+  --info-surface: #e8f0ff;
+  /* Decorative chip fills */
+  --bento-purple: #eff4ff;
+  --bento-mint: #ecfdf5;
+  --bento-blue: #e8f0ff;
+  --whatsapp: #128c7e;
+  /* Data-viz / campaign accent (violet) */
+  --viz-violet: #7c3aed;
+  /* Elevation shadow tint (r g b) */
+  --shadow-rgb: 11 28 48;
+}
+
+.dark {
+  --surface-base: #0a0f1a;
+  --surface-panel: #111a29;
+  --surface-raised: #16202f;
+  --surface-overlay: #16202f;
+  --surface-sunken: #0e1826;
+  --text-primary: #e8edf5;
+  --text-secondary: #a3b1c6;
+  --text-tertiary: #718296;
+  --text-inverse: #0b1220;
+  --border-subtle: #1b2740;
+  --border-default: #26344d;
+  --border-strong: #384967;
+  --brand: #e8edf5;
+  --brand-hover: #d3dced;
+  --brand-fg: #0b1220;
+  --brand-soft: #1b2740;
+  --brand-light: #24344d;
+  --accent: #0e9463;
+  --accent-hover: #12ac74;
+  --accent-fg: #ffffff;
+  --accent-light: #6cf8bb;
+  --success: #12a06e;
+  --success-fg: #ffffff;
+  --success-surface: #0f2a20;
+  --warning: #f59e0b;
+  --warning-fg: #1a1204;
+  --warning-surface: #2a1f0a;
+  --danger: #ef5a5a;
+  --danger-fg: #1a0505;
+  --danger-surface: #2a1414;
+  --info: #5b9bff;
+  --info-fg: #05122a;
+  --info-surface: #16283f;
+  --bento-purple: #1c2436;
+  --bento-mint: #0f2a20;
+  --bento-blue: #16283f;
+  --viz-violet: #a78bfa;
+  --shadow-rgb: 0 0 0;
+}
+
+/**
+ * `inline` so utilities reference the live var() (which .dark overrides),
+ * instead of freezing the resolved value at build time.
+ */
+@theme inline {
+  /* Legacy aliases — keep call sites working, now theme-aware */
+  --color-background: var(--surface-base);
+  --color-foreground: var(--text-primary);
+  --color-muted: var(--surface-sunken);
+  --color-muted-foreground: var(--text-secondary);
+  --color-border: var(--border-default);
+  --color-card: var(--surface-panel);
+  --color-card-foreground: var(--text-primary);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-fg);
+  --color-primary-hover: var(--brand-hover);
+  --color-primary-light: var(--brand-light);
+  --color-primary-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-fg);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-light: var(--accent-light);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--danger);
+  --color-secondary: var(--brand-soft);
+  --color-secondary-foreground: var(--brand);
+  --color-bento-purple: var(--bento-purple);
+  --color-bento-mint: var(--bento-mint);
+  --color-bento-blue: var(--bento-blue);
+  --color-whatsapp: var(--whatsapp);
+
+  /* Growvisi DS v1 semantic utilities (bg-surface-panel, text-text-secondary…) */
+  --color-surface-base: var(--surface-base);
+  --color-surface-panel: var(--surface-panel);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-inverse: var(--text-inverse);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-fg);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-fg);
+  --color-danger-surface: var(--danger-surface);
+  --color-success-foreground: var(--success-fg);
+  --color-success-surface: var(--success-surface);
+  --color-warning-foreground: var(--warning-fg);
+  --color-warning-surface: var(--warning-surface);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-fg);
+  --color-info-surface: var(--info-surface);
+  --color-viz-violet: var(--viz-violet);
+
   --width-marketing: 72rem;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -137,17 +279,23 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dashboard-quick-link {
-  @apply flex items-center gap-4 rounded-2xl border border-border bg-white p-4 shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-colors duration-150;
+  @apply flex items-center gap-4 rounded-2xl border border-border bg-card p-4 elev-1 transition-[transform,border-color,box-shadow] duration-150;
 }
 .dashboard-quick-link:hover {
-  @apply border-accent/25;
+  @apply -translate-y-px border-accent/25 elev-2;
+}
+.dashboard-quick-link:active {
+  @apply translate-y-0;
 }
 
 .card-interactive {
-  @apply rounded-2xl border border-border bg-card shadow-[0_2px_12px_rgb(11_28_48/0.04)] transition-colors duration-150;
+  @apply rounded-2xl border border-border bg-card elev-1 transition-[transform,border-color,box-shadow] duration-150;
 }
 .card-interactive:hover {
-  @apply border-accent/25;
+  @apply -translate-y-px border-accent/25 elev-2;
+}
+.card-interactive:active {
+  @apply translate-y-0;
 }
 
 .nav-item-active {
@@ -163,6 +311,32 @@ h1, h2, h3, h4, h5, h6 {
   background-image:
     radial-gradient(circle at 20% 20%, rgb(236 253 245 / 0.45) 0%, transparent 42%),
     radial-gradient(circle at 80% 0%, rgb(229 238 255 / 0.55) 0%, transparent 38%);
+}
+
+/**
+ * Dark-theme overrides for app chrome that uses hardcoded light values.
+ * (Semantic-token utilities already flip automatically via the .dark vars.)
+ */
+.dark .app-shell {
+  background: linear-gradient(180deg, #0a0f1a 0%, #0e1826 100%);
+}
+.dark .dashboard-quick-link {
+  background: var(--surface-panel);
+}
+.dark .surface-section {
+  background: var(--surface-panel);
+}
+.dark .conversation-thread-bg {
+  background-color: #0c1522;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgb(18 160 110 / 0.08) 0%, transparent 42%),
+    radial-gradient(circle at 80% 0%, rgb(38 52 77 / 0.45) 0%, transparent 38%);
+}
+.dark .elev-1 {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+}
+.dark .elev-2 {
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.55);
 }
 
 .status-pill {
@@ -296,11 +470,55 @@ h1, h2, h3, h4, h5, h6 {
   animation: gv-toast-in 160ms ease-out;
 }
 
+/* Popover / DropdownMenu enter+exit (Radix data-state driven) */
+@keyframes gv-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-2px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes gv-pop-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.97) translateY(-2px); }
+}
+.gv-animate-pop {
+  transform-origin: var(--radix-popper-transform-origin, center);
+}
+.gv-animate-pop[data-state="open"] {
+  animation: gv-pop-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.gv-animate-pop[data-state="closed"] {
+  animation: gv-pop-out 120ms ease-in;
+}
+
+/* Left navigation drawer (mobile) */
+@keyframes gv-drawer-left-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.gv-animate-drawer-left {
+  animation: gv-drawer-left-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tooltip enter */
+@keyframes gv-tooltip-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.gv-animate-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin, center);
+}
+.gv-animate-tooltip[data-state="delayed-open"],
+.gv-animate-tooltip[data-state="instant-open"] {
+  animation: gv-tooltip-in 120ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gv-animate-overlay,
   .gv-animate-dialog,
   .gv-animate-sheet,
   .gv-animate-toast,
+  .gv-animate-pop,
+  .gv-animate-tooltip,
+  .gv-animate-drawer-left,
   .btn-primary:active,
   .btn-outline:active,
   .btn-gradient:active {

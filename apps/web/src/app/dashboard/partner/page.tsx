@@ -119,9 +119,9 @@ You'll get a Growvisi workspace invite. Connect your business number, send a tes
       />
 
       {!agencyStatus?.isAgency && agencyStatus?.canEnableAgency && (
-        <div className="mb-6 rounded-2xl border border-amber-200/80 bg-amber-50/70 px-4 py-3.5">
-          <p className="text-sm font-semibold text-amber-950">{t("partner.enableFirst")}</p>
-          <p className="mt-1 text-xs text-amber-900/90">{t("partner.enableFirstBody")}</p>
+        <div className="mb-6 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3.5">
+          <p className="text-sm font-semibold text-warning">{t("partner.enableFirst")}</p>
+          <p className="mt-1 text-xs text-warning">{t("partner.enableFirstBody")}</p>
           <Button asChild size="sm" className="mt-3 rounded-xl">
             <Link
               href="/dashboard/agency"

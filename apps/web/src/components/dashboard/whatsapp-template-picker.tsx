@@ -27,9 +27,9 @@ interface TemplatesResponse {
 }
 
 const CATEGORY_STYLES: Record<string, string> = {
-  MARKETING: "bg-violet-100 text-violet-700",
+  MARKETING: "bg-viz-violet/15 text-viz-violet",
   UTILITY: "bg-sky-100 text-sky-700",
-  AUTHENTICATION: "bg-amber-100 text-amber-800",
+  AUTHENTICATION: "bg-warning/15 text-warning",
 };
 
 function formatSyncedAt(iso: string): string {
@@ -120,7 +120,7 @@ export function WhatsappTemplatePicker({
 
   if (isError || templates.length === 0) {
     return (
-      <div className="space-y-3 rounded-2xl border border-dashed border-amber-200/80 bg-amber-50/50 p-4">
+      <div className="space-y-3 rounded-2xl border border-dashed border-warning/30 bg-warning/10 p-4">
         <div>
           <p className="text-sm font-semibold text-foreground">
             {isError ? "Couldn’t load templates from Meta" : "No approved templates yet"}
