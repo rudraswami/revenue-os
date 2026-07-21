@@ -5,9 +5,24 @@ export const QUEUES = {
   AI_RESPOND: "ai.respond",
   AI_EMBED: "ai.embed",
   CAMPAIGN_SEND: "campaign.send",
-  NOTIFICATIONS: "notifications.dispatch",
-  ANALYTICS: "analytics.aggregate",
 } as const;
+
+/**
+ * Durable background job types dispatched via QStash (serverless) or run inline
+ * (local/dev fallback). Each maps to a handler in the API's InternalJobsController.
+ */
+export const JOB_TYPES = {
+  WHATSAPP_INBOUND: "whatsapp-inbound",
+  AI_CLASSIFY: "ai-classify",
+  AI_EMBED: "ai-embed",
+  CAMPAIGN_BATCH: "campaign-batch",
+  CRON_DIGEST_ORG: "cron-digest-org",
+  CRON_FOLLOWUP_ORG: "cron-followup-org",
+  CRON_STALE_DEAL_ORG: "cron-stale-deal-org",
+  CRON_TOKEN_REFRESH_ORG: "cron-token-refresh-org",
+} as const;
+
+export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
 
 /** Align digest, Home hot leads, and hot-lead email alerts on one threshold. */
 export const HOT_LEAD_SCORE_THRESHOLD = 70;

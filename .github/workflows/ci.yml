@@ -47,7 +47,14 @@ jobs:
         env:
           DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
 
-      - run: pnpm db:push
+      - name: Apply Prisma migrations
+        run: pnpm --filter @growvisi/database migrate:deploy
+        env:
+          DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+          DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
+
+      - name: Prisma migrate drift check
+        run: node scripts/check-prisma-drift.js
         env:
           DATABASE_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os
           DIRECT_URL: postgresql://revenue_os:revenue_os_dev@localhost:5432/revenue_os

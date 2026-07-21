@@ -187,7 +187,7 @@ curl.exe -s -H "Authorization: Bearer YOUR_CRON_SECRET" https://api.growvisi.in/
 
 ## 7. Deploy order
 
-1. **Apply DB migration** (before API deploy): `pnpm db:email-verification-migrate` or `pnpm supabase:push`
+1. **Apply DB migrations** (before API deploy): `pnpm db:deploy` (first-time adoption on an existing db-push database: `pnpm db:baseline -- --confirm`, then `pnpm db:deploy`)
 2. Add `EMAIL_VERIFICATION_REQUIRED=true` on API project (included in `pnpm vercel:env:domain`)
 3. Add `CRON_SECRET` on API project
 4. Re-save `WEBHOOK_PUBLIC_URL` (trim newline)

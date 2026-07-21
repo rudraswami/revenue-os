@@ -33,6 +33,7 @@ import { SupportModule } from "./modules/support/support.module";
 import { IntelligenceModule } from "./modules/intelligence/intelligence.module";
 import { EventsModule } from "./modules/events/events.module";
 import { ServerCacheModule } from "./modules/server-cache/server-cache.module";
+import { JobsModule } from "./modules/jobs/jobs.module";
 import { validateEnv } from "./config/env.validation";
 import { QUEUES } from "@growvisi/shared";
 import { PrivateNoStoreInterceptor } from "./common/interceptors/private-no-store.interceptor";
@@ -64,6 +65,7 @@ import { PrivateNoStoreInterceptor } from "./common/interceptors/private-no-stor
     ),
     PrismaModule,
     ServerCacheModule,
+    JobsModule,
     HealthModule,
     AuthModule,
     OrganizationsModule,

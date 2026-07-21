@@ -6,12 +6,14 @@
  *   pnpm db:setup-fresh -- --seed
  *
  * Do NOT run old supabase/migrations/*.sql on an empty DB — they assume prior
- * state. Prisma schema is the single source of truth for a fresh install.
+ * state. Prisma Migrate (packages/database/prisma/migrations) is the single
+ * source of truth for a fresh install.
  */
 const { execSync } = require("child_process");
 const path = require("path");
 const { Client } = require("pg");
 
+// Keep in sync with @@map(...) names in packages/database/prisma/schema.prisma.
 const TABLES = [
   "users",
   "refresh_tokens",
@@ -31,6 +33,10 @@ const TABLES = [
   "pipeline_stages",
   "ai_runs",
   "conversation_memories",
+  "business_events",
+  "action_plans",
+  "actions",
+  "learning_signals",
   "knowledge_documents",
   "knowledge_chunks",
   "automations",
@@ -71,8 +77,8 @@ async function main() {
   await client.query(EXTENSIONS_SQL);
   await client.end();
 
-  console.log("2/4 Pushing full Prisma schema (all tables)…");
-  execSync("pnpm --filter @growvisi/database push", {
+  console.log("2/4 Applying Prisma migrations (all tables + indexes)…");
+  execSync("pnpm --filter @growvisi/database migrate:deploy", {
     cwd: root,
     stdio: "inherit",
     env: process.env,

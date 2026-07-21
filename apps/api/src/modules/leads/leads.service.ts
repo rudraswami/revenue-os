@@ -23,6 +23,10 @@ import {
 
 const PIPELINE_STAGES = DEFAULT_PIPELINE_STAGES.map((s) => s.stage);
 
+/** Hard safety caps so a large tenant can never OOM the process on a full-table scan. */
+const MAX_EXPORT_ROWS = 50_000;
+const MAX_STALE_SCAN_ROWS = 2_000;
+
 const PIPELINE_LEAD_INCLUDE = {
   conversation: {
     select: {
@@ -334,6 +338,8 @@ export class LeadsService {
   async listStaleLeadIds(organizationId: string): Promise<string[]> {
     const leads = await this.prisma.lead.findMany({
       where: { organizationId, stage: { in: OPEN_STAGES } },
+      orderBy: { updatedAt: "asc" },
+      take: MAX_STALE_SCAN_ROWS,
       select: {
         id: true,
         stage: true,
@@ -1270,6 +1276,7 @@ export class LeadsService {
         ...(range.gte ? { createdAt: range } : {}),
       },
       orderBy: { updatedAt: "desc" },
+      take: MAX_EXPORT_ROWS,
       include: {
         tags: { include: { tag: true } },
       },

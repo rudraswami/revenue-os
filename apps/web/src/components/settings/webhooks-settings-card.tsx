@@ -84,8 +84,24 @@ export function WebhooksSettingsCard() {
         token: token ?? undefined,
         body: JSON.stringify({ enabled }),
       }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["webhooks"] }),
-    onError: (e) => toastError(toUserMessage(e, "Could not update webhook.")),
+    onMutate: async ({ id, enabled }) => {
+      await qc.cancelQueries({ queryKey: ["webhooks"] });
+      const previous = qc.getQueryData<WebhooksConfig>(["webhooks"]);
+      if (previous) {
+        qc.setQueryData<WebhooksConfig>(["webhooks"], {
+          ...previous,
+          endpoints: previous.endpoints.map((ep) =>
+            ep.id === id ? { ...ep, enabled } : ep,
+          ),
+        });
+      }
+      return { previous };
+    },
+    onError: (e, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["webhooks"], ctx.previous);
+      toastError(toUserMessage(e, "Could not update webhook."));
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: ["webhooks"] }),
   });
 
   const testMut = useMutation({

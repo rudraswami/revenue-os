@@ -307,6 +307,7 @@ model OrganizationInvite {
 
   @@unique([organizationId, email])
   @@index([organizationId])
+  @@index([invitedById])
   @@map("organization_invites")
 }
 
@@ -404,6 +405,9 @@ model Conversation {
   @@index([organizationId, status, lastMessageAt])
   @@index([organizationId, status, lastInboundAt])
   @@index([assignedToId])
+  @@index([workspaceId])
+  @@index([whatsappAccountId])
+  @@index([metadata(ops: JsonbPathOps)], type: Gin)
   @@map("conversations")
 }
 
@@ -529,6 +533,7 @@ model AiRun {
   conversation Conversation? @relation(fields: [conversationId], references: [id])
 
   @@index([organizationId, createdAt])
+  @@index([conversationId])
   @@map("ai_runs")
 }
 
@@ -691,6 +696,7 @@ model AutomationLog {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
+  @@index([leadId])
   @@map("automation_logs")
 }
 
@@ -827,6 +833,8 @@ model LeadNote {
   author       User?        @relation(fields: [authorId], references: [id])
 
   @@index([leadId, createdAt])
+  @@index([organizationId])
+  @@index([authorId])
   @@map("lead_notes")
 }
 
@@ -853,6 +861,7 @@ model Task {
   @@index([organizationId, status, dueAt])
   @@index([assignedToId, status])
   @@index([leadId])
+  @@index([createdById])
   @@map("tasks")
 }
 
@@ -883,6 +892,8 @@ model Campaign {
   recipients   CampaignRecipient[]
 
   @@index([organizationId, status])
+  @@index([whatsappAccountId])
+  @@index([createdById])
   @@map("campaigns")
 }
 

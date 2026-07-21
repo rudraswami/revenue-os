@@ -12,8 +12,10 @@ Stack: **Supabase** (Postgres) · **Upstash** (Redis) · **Railway/Render** (API
 
 ```powershell
 cd C:\Users\DELL\growvisi
-pnpm db:push
-pnpm supabase:push
+# Fresh database: apply all Prisma migrations (tables + indexes).
+pnpm db:deploy
+# Existing db-push database adopting Prisma Migrate for the first time: baseline once.
+#   pnpm db:baseline -- --confirm
 pnpm db:seed
 ```
 

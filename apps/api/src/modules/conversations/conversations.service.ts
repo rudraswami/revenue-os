@@ -846,22 +846,26 @@ export class ConversationsService {
       text,
     );
 
-    const message = await this.prisma.message.create({
-      data: {
-        organizationId: user.organizationId,
-        conversationId,
-        waMessageId,
-        direction: "OUTBOUND",
-        type: "TEXT",
-        status: "SENT",
-        content: text,
-        sentByUserId: user.sub,
-      },
-    });
-
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: { lastMessageAt: new Date() },
+    // Atomic: the message row and the conversation's lastMessageAt must move
+    // together so the thread can never show a message the list doesn't know about.
+    const message = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.message.create({
+        data: {
+          organizationId: user.organizationId,
+          conversationId,
+          waMessageId,
+          direction: "OUTBOUND",
+          type: "TEXT",
+          status: "SENT",
+          content: text,
+          sentByUserId: user.sub,
+        },
+      });
+      await tx.conversation.update({
+        where: { id: conversationId },
+        data: { lastMessageAt: new Date() },
+      });
+      return created;
     });
 
     await this.clearHandoffIfNeeded(conversationId, user.sub);
@@ -1158,24 +1162,27 @@ export class ConversationsService {
         })
       : clearAssignmentMeta(prevMeta);
 
-    const conversation = await this.prisma.conversation.updateMany({
-      where: { id, organizationId: user.organizationId },
-      data: {
-        assignedToId: assignToUserId,
-        metadata: nextMeta as object,
-      },
-    });
-    if (conversation.count === 0) throw new NotFoundException();
-
-    if (assignToUserId && existing.leadId) {
-      await this.prisma.lead.updateMany({
-        where: {
-          id: existing.leadId,
-          organizationId: user.organizationId,
+    // Atomic: conversation assignment and the lead-owner sync must not diverge.
+    await this.prisma.$transaction(async (tx) => {
+      const conversation = await tx.conversation.updateMany({
+        where: { id, organizationId: user.organizationId },
+        data: {
+          assignedToId: assignToUserId,
+          metadata: nextMeta as object,
         },
-        data: { ownerId: assignToUserId },
       });
-    }
+      if (conversation.count === 0) throw new NotFoundException();
+
+      if (assignToUserId && existing.leadId) {
+        await tx.lead.updateMany({
+          where: {
+            id: existing.leadId,
+            organizationId: user.organizationId,
+          },
+          data: { ownerId: assignToUserId },
+        });
+      }
+    });
 
     return this.getById(user, id);
   }
@@ -1304,6 +1311,7 @@ export class ConversationsService {
     }
 
     if (!conversation) {
+      // `leadId` is set in the create above — the follow-up update was redundant.
       conversation = await this.prisma.conversation.create({
         data: {
           organizationId: user.organizationId,
@@ -1314,10 +1322,6 @@ export class ConversationsService {
           leadId: lead.id,
           lastMessageAt: new Date(),
         },
-      });
-      await this.prisma.conversation.update({
-        where: { id: conversation.id },
-        data: { leadId: lead.id },
       });
     }
 

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { randomBytes } from "crypto";
-import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
+import { fetchWithRetry } from "../../common/http/fetch-with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 
 const CHUNK_SIZE = 900;
@@ -199,7 +199,7 @@ export class KnowledgeEmbedService {
     input: string,
   ): Promise<number[] | null> {
     try {
-      const res = await fetchWithTimeout(
+      const res = await fetchWithRetry(
         "https://api.openai.com/v1/embeddings",
         {
           method: "POST",
@@ -209,7 +209,7 @@ export class KnowledgeEmbedService {
           },
           body: JSON.stringify({ model, input }),
         },
-        20_000,
+        { timeoutMs: 20_000, attempts: 3, baseDelayMs: 500 },
       );
 
       const body = (await res.json()) as {

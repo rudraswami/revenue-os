@@ -118,70 +118,99 @@ export class AgencyService {
       },
     });
 
-    const rows = await Promise.all(
-      links.map(async (link) => {
-        const orgId = link.clientOrganizationId;
-        const [waActive, unreadAgg, handoffs, pipelineAgg, openLeads, waSummary] =
-          await Promise.all([
-            this.prisma.whatsappAccount.count({
-              where: { organizationId: orgId, isActive: true },
-            }),
-            this.prisma.conversation.aggregate({
-              where: { organizationId: orgId },
-              _sum: { unreadCount: true },
-            }),
-            this.prisma.conversation.count({
-              where: {
-                organizationId: orgId,
-                metadata: { path: ["requiresHuman"], equals: true },
-              },
-            }),
-            this.prisma.lead.aggregate({
-              where: {
-                organizationId: orgId,
-                stage: { notIn: ["WON", "LOST"] },
-                valueCents: { not: null },
-              },
-              _sum: { valueCents: true },
-            }),
-            this.prisma.lead.count({
-              where: {
-                organizationId: orgId,
-                stage: { notIn: ["WON", "LOST"] },
-              },
-            }),
-            this.whatsappAccounts.getOrganizationWhatsAppSummary(orgId),
-          ]);
+    const orgIds = links.map((l) => l.clientOrganizationId);
 
-        const sub = link.client.subscription;
-        const trialEndsAt =
-          sub?.planId === "trial" && sub.createdAt
-            ? new Date(sub.createdAt.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString()
-            : null;
-
-        return {
-          id: link.id,
-          displayName: link.displayName,
-          organizationId: link.client.id,
-          slug: link.client.slug,
-          createdAt: link.createdAt.toISOString(),
-          whatsappConnected: waActive > 0,
-          unreadMessages: unreadAgg._sum.unreadCount ?? 0,
-          handoffs,
-          openPipelineInr: (pipelineAgg._sum.valueCents ?? 0) / 100,
-          openLeads,
-          connectionStatus: waSummary.connectionStatus,
-          goLiveProgressPct: waSummary.goLiveProgressPct,
-          displayPhoneNumber: waSummary.displayPhoneNumber,
-          needsReconnect: waSummary.tokenNeedsRefresh || waSummary.connectionStatus === "token",
-          planId: sub?.planId ?? "trial",
-          subscriptionStatus: sub?.status ?? "TRIALING",
-          trialEndsAt,
-        };
+    // Batched cross-client aggregates — replaces the previous 5×N per-client
+    // queries with 5 grouped queries. WhatsApp summaries stay per-org (their
+    // logic lives in the accounts service) but run in parallel.
+    const [
+      waActiveGroups,
+      unreadGroups,
+      handoffGroups,
+      pipelineGroups,
+      openLeadGroups,
+      waSummaries,
+    ] = await Promise.all([
+      this.prisma.whatsappAccount.groupBy({
+        by: ["organizationId"],
+        where: { organizationId: { in: orgIds }, isActive: true },
+        _count: { _all: true },
       }),
-    );
+      this.prisma.conversation.groupBy({
+        by: ["organizationId"],
+        where: { organizationId: { in: orgIds } },
+        _sum: { unreadCount: true },
+      }),
+      this.prisma.conversation.groupBy({
+        by: ["organizationId"],
+        where: {
+          organizationId: { in: orgIds },
+          metadata: { path: ["requiresHuman"], equals: true },
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.lead.groupBy({
+        by: ["organizationId"],
+        where: {
+          organizationId: { in: orgIds },
+          stage: { notIn: ["WON", "LOST"] },
+          valueCents: { not: null },
+        },
+        _sum: { valueCents: true },
+      }),
+      this.prisma.lead.groupBy({
+        by: ["organizationId"],
+        where: { organizationId: { in: orgIds }, stage: { notIn: ["WON", "LOST"] } },
+        _count: { _all: true },
+      }),
+      Promise.all(
+        orgIds.map(async (orgId) => ({
+          orgId,
+          summary: await this.whatsappAccounts.getOrganizationWhatsAppSummary(orgId),
+        })),
+      ),
+    ]);
 
-    return rows;
+    const waActiveByOrg = new Map(waActiveGroups.map((g) => [g.organizationId, g._count._all]));
+    const unreadByOrg = new Map(
+      unreadGroups.map((g) => [g.organizationId, g._sum.unreadCount ?? 0]),
+    );
+    const handoffByOrg = new Map(handoffGroups.map((g) => [g.organizationId, g._count._all]));
+    const pipelineByOrg = new Map(
+      pipelineGroups.map((g) => [g.organizationId, g._sum.valueCents ?? 0]),
+    );
+    const openLeadByOrg = new Map(openLeadGroups.map((g) => [g.organizationId, g._count._all]));
+    const waSummaryByOrg = new Map(waSummaries.map((s) => [s.orgId, s.summary]));
+
+    return links.map((link) => {
+      const orgId = link.clientOrganizationId;
+      const waSummary = waSummaryByOrg.get(orgId)!;
+      const sub = link.client.subscription;
+      const trialEndsAt =
+        sub?.planId === "trial" && sub.createdAt
+          ? new Date(sub.createdAt.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString()
+          : null;
+
+      return {
+        id: link.id,
+        displayName: link.displayName,
+        organizationId: link.client.id,
+        slug: link.client.slug,
+        createdAt: link.createdAt.toISOString(),
+        whatsappConnected: (waActiveByOrg.get(orgId) ?? 0) > 0,
+        unreadMessages: unreadByOrg.get(orgId) ?? 0,
+        handoffs: handoffByOrg.get(orgId) ?? 0,
+        openPipelineInr: (pipelineByOrg.get(orgId) ?? 0) / 100,
+        openLeads: openLeadByOrg.get(orgId) ?? 0,
+        connectionStatus: waSummary.connectionStatus,
+        goLiveProgressPct: waSummary.goLiveProgressPct,
+        displayPhoneNumber: waSummary.displayPhoneNumber,
+        needsReconnect: waSummary.tokenNeedsRefresh || waSummary.connectionStatus === "token",
+        planId: sub?.planId ?? "trial",
+        subscriptionStatus: sub?.status ?? "TRIALING",
+        trialEndsAt,
+      };
+    });
   }
 
   async getClientsHealthSummary(user: JwtPayload) {

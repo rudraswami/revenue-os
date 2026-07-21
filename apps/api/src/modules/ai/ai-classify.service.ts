@@ -4,8 +4,8 @@ import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { createHash } from "crypto";
 import type { AiClassificationResult, JwtPayload, LeadStage, ReplyDecision } from "@growvisi/shared";
-import { DOMAIN_EVENTS, HOT_LEAD_SCORE_THRESHOLD, LEAD_STAGE_ORDER, applyClassificationJudgmentGuards, normalizeClassificationResult, QUEUES } from "@growvisi/shared";
-import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
+import { DOMAIN_EVENTS, HOT_LEAD_SCORE_THRESHOLD, JOB_TYPES, LEAD_STAGE_ORDER, applyClassificationJudgmentGuards, normalizeClassificationResult, QUEUES } from "@growvisi/shared";
+import { fetchWithRetry } from "../../common/http/fetch-with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 import { AutomationsService } from "../automations/automations.service";
 import { EntitlementsService } from "../billing/entitlements.service";
@@ -35,6 +35,7 @@ import type { IntelligenceWorkspaceSettings } from "@growvisi/shared";
 import { useBackgroundWorkers } from "../../config/workers";
 import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { withTimeout } from "../../common/utils/with-timeout";
+import { JobsService } from "../jobs/jobs.service";
 
 export interface ClassifyJobData {
   organizationId: string;
@@ -98,6 +99,7 @@ export class AiClassifyService {
     private readonly fastReply: FastReplyService,
     private readonly replySend: ReplySendService,
     private readonly postCloseAlert: PostCloseAlertService,
+    private readonly jobs: JobsService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -106,7 +108,16 @@ export class AiClassifyService {
 
     if (!useBackgroundWorkers()) {
       if (opts?.background) {
-        deferBackgroundTask(run);
+        // Serverless: durable QStash job (retries/backoff), inline fallback.
+        this.jobs.enqueue(JOB_TYPES.AI_CLASSIFY, data, run, {
+          deduplicationId: createHash("sha256")
+            .update(
+              data.refreshAfterCorrection
+                ? `correction:${data.organizationId}:${data.messageId}`
+                : `${data.organizationId}:${data.messageId}`,
+            )
+            .digest("hex"),
+        });
         return;
       }
       await run();
@@ -1109,7 +1120,7 @@ export class AiClassifyService {
     const feedbackBlock = humanFeedback
       ? `\n\nHuman sales agent correction (treat as ground truth — do not contradict stage/score/handoff; improve summary and nextAction to match):\n${JSON.stringify(humanFeedback)}`
       : "";
-    const res = await fetchWithTimeout(
+    const res = await fetchWithRetry(
       "https://api.openai.com/v1/chat/completions",
       {
         method: "POST",
@@ -1157,7 +1168,7 @@ Current pipeline stage: ${currentStage}.${contextBlock}${feedbackBlock}`,
           ],
         }),
       },
-      25_000,
+      { timeoutMs: 25_000, attempts: 3, baseDelayMs: 600 },
     );
 
     const body = (await res.json()) as {

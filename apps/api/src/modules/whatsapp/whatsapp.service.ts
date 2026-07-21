@@ -4,11 +4,12 @@ import { ConfigService } from "@nestjs/config";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { createHash } from "crypto";
-import { DOMAIN_EVENTS, QUEUES } from "@growvisi/shared";
+import { DOMAIN_EVENTS, JOB_TYPES, QUEUES } from "@growvisi/shared";
 import { isProductionDeploy } from "../../config/production";
 import { useBackgroundWorkers } from "../../config/workers";
 import { WEBHOOK_ACK_ENQUEUE_TIMEOUT_MS } from "../../config/webhook-ack";
 import { deferBackgroundTask } from "../../common/utils/defer-background";
+import { JobsService } from "../jobs/jobs.service";
 import { withTimeout } from "../../common/utils/with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -73,6 +74,7 @@ export class WhatsappService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     @InjectQueue(QUEUES.WHATSAPP_INBOUND) private readonly inboundQueue: Queue,
+    private readonly jobs: JobsService,
     private readonly aiClassify: AiClassifyService,
     private readonly realtime: RealtimeGateway,
     private readonly entitlements: EntitlementsService,
@@ -124,6 +126,7 @@ export class WhatsappService {
   scheduleWebhookProcessing(eventId: string, payload: WhatsappWebhookPayload): void {
     const runInline = () => this.processInline(eventId, payload);
 
+    // Local worker host (BullMQ): enqueue to Redis, defer on failure.
     if (useBackgroundWorkers()) {
       const jobId = createHash("sha256")
         .update(JSON.stringify({ id: eventId, entry: payload.entry }))
@@ -138,7 +141,22 @@ export class WhatsappService {
       return;
     }
 
-    deferBackgroundTask(runInline);
+    // Serverless: durable QStash job (retries/backoff/DLQ), inline fallback.
+    this.jobs.enqueue(
+      JOB_TYPES.WHATSAPP_INBOUND,
+      { webhookEventId: eventId, payload },
+      runInline,
+      {
+        deduplicationId: createHash("sha256")
+          .update(JSON.stringify({ id: eventId, entry: payload.entry }))
+          .digest("hex"),
+      },
+    );
+  }
+
+  /** QStash callback entrypoint — runs the same processing as the inline fallback. */
+  async processWebhookJob(eventId: string, payload: WhatsappWebhookPayload): Promise<void> {
+    await this.processInline(eventId, payload);
   }
 
   private async tryEnqueueWebhook(
@@ -594,22 +612,26 @@ export class WhatsappService {
 
     if (!shouldAdvanceCampaignRecipientStatus(recipient.status, campaignStatus)) return;
 
-    await this.prisma.campaignRecipient.update({
-      where: { id: recipient.id },
-      data: { status: campaignStatus as never },
-    });
+    // Atomic: recipient status and the campaign's aggregate counter move
+    // together so delivered/failed counts can't drift under concurrent webhooks.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.campaignRecipient.update({
+        where: { id: recipient.id },
+        data: { status: campaignStatus as never },
+      });
 
-    if (campaignStatus === "DELIVERED") {
-      await this.prisma.campaign.update({
-        where: { id: recipient.campaignId },
-        data: { deliveredCount: { increment: 1 } },
-      });
-    } else if (campaignStatus === "FAILED" && recipient.status !== "FAILED") {
-      await this.prisma.campaign.update({
-        where: { id: recipient.campaignId },
-        data: { failedCount: { increment: 1 } },
-      });
-    }
+      if (campaignStatus === "DELIVERED") {
+        await tx.campaign.update({
+          where: { id: recipient.campaignId },
+          data: { deliveredCount: { increment: 1 } },
+        });
+      } else if (campaignStatus === "FAILED" && recipient.status !== "FAILED") {
+        await tx.campaign.update({
+          where: { id: recipient.campaignId },
+          data: { failedCount: { increment: 1 } },
+        });
+      }
+    });
   }
 
   private mapMessageType(type: string) {

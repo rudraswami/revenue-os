@@ -2,12 +2,13 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from "@nes
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import type { JwtPayload, LeadStage } from "@growvisi/shared";
-import { QUEUES } from "@growvisi/shared";
+import { JOB_TYPES, QUEUES } from "@growvisi/shared";
 import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { withTimeout } from "../../common/utils/with-timeout";
 import { useBackgroundWorkers } from "../../config/workers";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
+import { JobsService } from "../jobs/jobs.service";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
 import {
   aggregateCampaignRecipientStats,
@@ -67,6 +68,7 @@ export class CampaignsService {
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementsService,
     private readonly messaging: WhatsappMessagingService,
+    private readonly jobs: JobsService,
     @InjectQueue(QUEUES.CAMPAIGN_SEND) private readonly sendQueue: Queue,
   ) {}
 
@@ -165,6 +167,7 @@ export class CampaignsService {
     const recipients = await this.prisma.campaignRecipient.findMany({
       where: { campaignId: id },
       orderBy: { createdAt: "asc" },
+      take: 50_000,
       select: {
         phone: true,
         name: true,
@@ -437,23 +440,57 @@ export class CampaignsService {
       if (!unique.has(r.phone)) unique.set(r.phone, r);
     }
 
+    // Batched lead resolution — replaces the previous per-phone find/create
+    // N+1 (up to 2×N queries) with 3 queries total: one read for existing
+    // leads, one bulk create for the missing ones (bounded by remaining plan
+    // capacity), and one read to resolve the newly-created ids.
+    const uniquePhones = [...unique.keys()];
+    const leadByPhone = new Map<string, { id: string; displayName: string | null }>();
+
+    const existingLeads = await this.prisma.lead.findMany({
+      where: { organizationId: user.organizationId, phone: { in: uniquePhones } },
+      select: { id: true, phone: true, displayName: true },
+    });
+    for (const lead of existingLeads) {
+      leadByPhone.set(lead.phone, { id: lead.id, displayName: lead.displayName });
+    }
+
+    const missingPhones = uniquePhones.filter((p) => !leadByPhone.has(p));
+    if (missingPhones.length > 0) {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      const usedThisMonth = await this.prisma.lead.count({
+        where: { organizationId: user.organizationId, createdAt: { gte: monthStart } },
+      });
+      const remainingLeadCapacity = access.hasAccess
+        ? Math.max(0, access.limits.monthlyLeads - usedThisMonth)
+        : 0;
+
+      const phonesToCreate = missingPhones.slice(0, remainingLeadCapacity);
+      if (phonesToCreate.length > 0) {
+        await this.prisma.lead.createMany({
+          data: phonesToCreate.map((phone) => ({
+            organizationId: user.organizationId,
+            phone,
+            displayName: unique.get(phone)?.name ?? null,
+            source: "import",
+          })),
+          skipDuplicates: true,
+        });
+        const createdLeads = await this.prisma.lead.findMany({
+          where: { organizationId: user.organizationId, phone: { in: phonesToCreate } },
+          select: { id: true, phone: true, displayName: true },
+        });
+        for (const lead of createdLeads) {
+          leadByPhone.set(lead.phone, { id: lead.id, displayName: lead.displayName });
+        }
+      }
+    }
+
     const recipientRows: Array<{ leadId?: string; phone: string; name: string | null }> = [];
     for (const r of unique.values()) {
-      let lead = await this.prisma.lead.findUnique({
-        where: { organizationId_phone: { organizationId: user.organizationId, phone: r.phone } },
-        select: { id: true, displayName: true },
-      });
-      if (!lead && (await this.entitlements.canCreateLead(user.organizationId))) {
-        lead = await this.prisma.lead.create({
-          data: {
-            organizationId: user.organizationId,
-            phone: r.phone,
-            displayName: r.name,
-            source: "import",
-          },
-          select: { id: true, displayName: true },
-        });
-      }
+      const lead = leadByPhone.get(r.phone);
       recipientRows.push({
         leadId: lead?.id,
         phone: r.phone,
@@ -645,29 +682,104 @@ export class CampaignsService {
   private async enqueueSendWork(organizationId: string, campaignId: string) {
     const run = () => this.runSendUntilDone(organizationId, campaignId);
 
-    if (!useBackgroundWorkers()) {
-      deferBackgroundTask(run);
+    // Long-running worker host (BullMQ): one job drains the whole campaign.
+    if (useBackgroundWorkers()) {
+      try {
+        await withTimeout(
+          this.sendQueue.add(
+            "send",
+            { organizationId, campaignId },
+            {
+              jobId: `campaign-send:${campaignId}`,
+              removeOnComplete: 500,
+              removeOnFail: 2000,
+              attempts: 2,
+            },
+          ),
+          5_000,
+          "Campaign send queue unavailable",
+        );
+        return;
+      } catch {
+        deferBackgroundTask(run);
+        return;
+      }
+    }
+
+    // Serverless with QStash: chunk into per-batch jobs so a large campaign
+    // never runs as one long `waitUntil` invocation. Each batch chains the
+    // next via `enqueueNextSendBatch`.
+    if (this.jobs.durable) {
+      await this.enqueueNextSendBatch(organizationId, campaignId);
       return;
     }
 
-    try {
-      await withTimeout(
-        this.sendQueue.add(
-          "send",
-          { organizationId, campaignId },
-          {
-            jobId: `campaign-send:${campaignId}`,
-            removeOnComplete: 500,
-            removeOnFail: 2000,
-            attempts: 2,
-          },
-        ),
-        5_000,
-        "Campaign send queue unavailable",
-      );
-    } catch {
-      deferBackgroundTask(run);
+    // Local dev without QStash configured: run the full loop inline, as before.
+    deferBackgroundTask(run);
+  }
+
+  /** Enqueues (or finalizes) the next pending batch for a campaign send. */
+  private async enqueueNextSendBatch(
+    organizationId: string,
+    campaignId: string,
+    delaySeconds?: number,
+  ): Promise<void> {
+    const pending = await this.prisma.campaignRecipient.findMany({
+      where: { campaignId, status: "PENDING" },
+      take: SEND_BATCH_SIZE,
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+
+    if (pending.length === 0) {
+      await this.finalizeCampaignIfDone(organizationId, campaignId);
+      return;
     }
+
+    const recipientIds = pending.map((r) => r.id);
+    this.jobs.enqueue(
+      JOB_TYPES.CAMPAIGN_BATCH,
+      { campaignId, recipientIds },
+      () => this.runSendBatchJob(campaignId, recipientIds),
+      {
+        delaySeconds,
+        deduplicationId: `campaign-batch:${campaignId}:${recipientIds[0]}`,
+      },
+    );
+  }
+
+  /**
+   * QStash callback for one campaign-send batch. Sends exactly the given
+   * recipient ids, then chains the next batch (or finalizes) — this is what
+   * keeps a large broadcast off a single serverless invocation.
+   */
+  async runSendBatchJob(campaignId: string, recipientIds: string[]): Promise<void> {
+    const campaign = await this.prisma.campaign.findUnique({ where: { id: campaignId } });
+    if (!campaign || campaign.status !== "RUNNING" || !campaign.templateName) return;
+
+    const recipients = await this.prisma.campaignRecipient.findMany({
+      where: { id: { in: recipientIds }, campaignId, status: "PENDING" },
+    });
+
+    try {
+      if (recipients.length > 0) {
+        await this.sendRecipientBatch(campaign, recipients);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Send batch failed";
+      this.logger.error(`Campaign ${campaignId} batch failed: ${message}`);
+      await this.prisma.campaign.updateMany({
+        where: { id: campaignId, organizationId: campaign.organizationId, status: "RUNNING" },
+        data: { status: "FAILED", completedAt: new Date() },
+      });
+      return;
+    }
+
+    await this.enqueueNextSendBatch(
+      campaign.organizationId,
+      campaignId,
+      Math.ceil(SEND_BATCH_PAUSE_MS / 1000),
+    );
   }
 
   /** Process all pending recipients in batches (worker or deferred task). */
@@ -701,11 +813,6 @@ export class CampaignsService {
     if (!campaign || campaign.status !== "RUNNING") return true;
     if (!campaign.templateName) return true;
 
-    const account = await this.resolveWhatsappAccount(
-      organizationId,
-      campaign.whatsappAccountId,
-    );
-
     const recipients = await this.prisma.campaignRecipient.findMany({
       where: { campaignId, status: "PENDING" },
       take: SEND_BATCH_SIZE,
@@ -713,9 +820,41 @@ export class CampaignsService {
     });
     if (recipients.length === 0) return true;
 
+    await this.sendRecipientBatch(campaign, recipients);
+
+    const remaining = await this.prisma.campaignRecipient.count({
+      where: { campaignId, status: "PENDING" },
+    });
+    return remaining === 0;
+  }
+
+  /**
+   * Sends one already-fetched batch of PENDING recipients for a campaign and
+   * updates the aggregate sent/failed counters. Shared by the legacy
+   * pull-based loop (`processSendBatch`) and the QStash per-batch callback
+   * (`runSendBatchJob`).
+   */
+  private async sendRecipientBatch(
+    campaign: {
+      id: string;
+      organizationId: string;
+      whatsappAccountId: string | null;
+      templateName: string | null;
+      audienceFilter: unknown;
+      messageBody: string | null;
+    },
+    recipients: Array<{ id: string; phone: string }>,
+  ): Promise<void> {
+    if (!campaign.templateName) return;
+
+    const account = await this.resolveWhatsappAccount(
+      campaign.organizationId,
+      campaign.whatsappAccountId,
+    );
+
     const optedOutPhones = await loadOptedOutPhones(
       this.prisma,
-      organizationId,
+      campaign.organizationId,
       recipients.map((r) => r.phone),
     );
 
@@ -733,7 +872,6 @@ export class CampaignsService {
 
     let sent = 0;
     let failed = 0;
-    let skipped = 0;
 
     for (const recipient of recipients) {
       const { status: skipStatus, error: skipError } = recipientStatusForOptOut(
@@ -745,7 +883,6 @@ export class CampaignsService {
           where: { id: recipient.id },
           data: { status: "SKIPPED", error: skipError },
         });
-        skipped += 1;
         continue;
       }
 
@@ -777,18 +914,13 @@ export class CampaignsService {
 
     if (sent > 0 || failed > 0) {
       await this.prisma.campaign.update({
-        where: { id: campaignId },
+        where: { id: campaign.id },
         data: {
           sentCount: { increment: sent },
           failedCount: { increment: failed },
         },
       });
     }
-
-    const remaining = await this.prisma.campaignRecipient.count({
-      where: { campaignId, status: "PENDING" },
-    });
-    return remaining === 0;
   }
 
   private async finalizeCampaignIfDone(organizationId: string, campaignId: string) {

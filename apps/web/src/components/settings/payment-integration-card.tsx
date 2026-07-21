@@ -10,6 +10,7 @@ import { canManageBilling } from "@/lib/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { useShellPaymentIntegration } from "@/hooks/use-shell-data";
 import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
+import { QUERY_KEYS } from "@/lib/query-config";
 
 interface PaymentIntegration {
   autoWinOnPayment: boolean;
@@ -38,11 +39,30 @@ export function PaymentIntegrationCard() {
         token: token ?? undefined,
         body: JSON.stringify(body),
       }),
+    onMutate: async (body) => {
+      // Only the boolean toggle is safe to reflect instantly; the secret field
+      // is write-only and never rendered back.
+      if (body.autoWinOnPayment === undefined) return { previous: undefined };
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.paymentIntegration });
+      const previous = qc.getQueryData<PaymentIntegration>(QUERY_KEYS.paymentIntegration);
+      if (previous) {
+        qc.setQueryData<PaymentIntegration>(QUERY_KEYS.paymentIntegration, {
+          ...previous,
+          autoWinOnPayment: body.autoWinOnPayment,
+        });
+      }
+      return { previous };
+    },
     onSuccess: () => {
       setError(null);
       invalidateWorkspaceShellCache(qc);
     },
-    onError: (e) => setError(toUserMessage(e, "Could not save.")),
+    onError: (e, _vars, ctx) => {
+      if (ctx?.previous) {
+        qc.setQueryData(QUERY_KEYS.paymentIntegration, ctx.previous);
+      }
+      setError(toUserMessage(e, "Could not save."));
+    },
   });
 
   async function copyUrl() {

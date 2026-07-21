@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import type { JwtPayload, KnowledgeCategory } from "@growvisi/shared";
-import { DOMAIN_EVENTS, QUEUES } from "@growvisi/shared";
+import { DOMAIN_EVENTS, JOB_TYPES, QUEUES } from "@growvisi/shared";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { BusinessEventService } from "../events/business-event.service";
@@ -10,6 +10,7 @@ import { KnowledgeEmbedService } from "./knowledge-embed.service";
 import { KnowledgeRetrievalService } from "./knowledge-retrieval.service";
 import { useBackgroundWorkers } from "../../config/workers";
 import { withTimeout } from "../../common/utils/with-timeout";
+import { JobsService } from "../jobs/jobs.service";
 
 @Injectable()
 export class KnowledgeService {
@@ -19,6 +20,7 @@ export class KnowledgeService {
     private readonly retrieval: KnowledgeRetrievalService,
     private readonly entitlements: EntitlementsService,
     private readonly events: BusinessEventService,
+    private readonly jobs: JobsService,
     @InjectQueue(QUEUES.AI_EMBED) private readonly embedQueue: Queue,
   ) {}
 
@@ -220,6 +222,26 @@ export class KnowledgeService {
       }
     }
 
+    // Serverless with QStash: embed off the request path so uploads never block.
+    if (this.jobs.durable && !forceInline) {
+      this.jobs.enqueue(
+        JOB_TYPES.AI_EMBED,
+        { documentId, organizationId },
+        () => this.runEmbedJob(documentId, organizationId),
+        { deduplicationId: `embed:${documentId}` },
+      );
+      return { chunks: 0 };
+    }
+
+    const result = await this.runEmbedJob(documentId, organizationId);
+    return { chunks: result.chunks, failed: result.failed };
+  }
+
+  /** QStash callback / inline entrypoint — embed a document and refresh caches. */
+  async runEmbedJob(
+    documentId: string,
+    organizationId: string,
+  ): Promise<{ chunks: number; failed?: boolean }> {
     const result = await this.embed.embedDocument(documentId, organizationId);
     this.retrieval.invalidateChunkCountCache(organizationId);
     return { chunks: result.chunks, failed: result.failed };
