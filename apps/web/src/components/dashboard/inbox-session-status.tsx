@@ -9,6 +9,15 @@ import {
 } from "@/lib/inbox-session-status";
 import { cn } from "@/lib/utils";
 
+/**
+ * Contextual "closing soon" nudge. To keep the composer area clean, the
+ * session line is hidden while the 24h window has plenty of time left and
+ * when it is fully closed (the closed state is surfaced by the dedicated
+ * window-closed banner in the thread pane). It only appears in the final
+ * stretch so agents get a timely reminder.
+ */
+const SESSION_WARN_MS = 2 * 60 * 60 * 1000;
+
 export function InboxSessionStatus({
   lastInboundAt,
   className,
@@ -29,34 +38,22 @@ export function InboxSessionStatus({
     return () => window.clearInterval(id);
   }, [lastInboundAt]);
 
-  const open = isMessagingWindowOpen(lastInboundAt);
   if (!lastInboundAt) return null;
+  const open = isMessagingWindowOpen(lastInboundAt);
+  if (!open || remainingMs > SESSION_WARN_MS) return null;
 
   return (
     <p
       className={cn(
-        "mb-2 flex items-center gap-2 text-xs",
-        open ? "text-success" : "text-warning",
+        "mb-2 flex items-center gap-2 text-xs text-warning",
         className,
       )}
     >
-      <span
-        className={cn(
-          "h-1.5 w-1.5 rounded-full",
-          open ? "bg-success" : "bg-warning",
-        )}
-        aria-hidden
-      />
-      {open ? (
-        <>
-          <span className="font-medium">{copy.sessionOpen}</span>
-          <span className="text-muted-foreground">
-            · {formatSessionTimeLeft(remainingMs, copy.locale)}
-          </span>
-        </>
-      ) : (
-        <span className="font-medium">{copy.sessionClosed}</span>
-      )}
+      <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden />
+      <span className="font-medium">{copy.sessionClosingSoon}</span>
+      <span className="text-warning/80">
+        · {formatSessionTimeLeft(remainingMs, copy.locale)}
+      </span>
     </p>
   );
 }

@@ -22,6 +22,12 @@ export interface MessageNewEvent {
   createdAt?: string;
 }
 
+export interface MessageStatusEvent {
+  conversationId: string;
+  messageId: string;
+  status: "PENDING" | "SENT" | "DELIVERED" | "READ" | "FAILED";
+}
+
 @WebSocketGateway({
   cors: {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -95,6 +101,11 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const payload = { conversationId: conversationId ?? undefined };
     this.server?.to(`org:${organizationId}`).emit("inbox.updated", payload);
     void this.broadcast.publish(organizationId, "inbox.updated", payload);
+  }
+
+  emitMessageStatusUpdated(organizationId: string, data: MessageStatusEvent) {
+    this.server?.to(`org:${organizationId}`).emit("message.status.updated", data);
+    void this.broadcast.publish(organizationId, "message.status.updated", data);
   }
 
   emitWhatsappSetupUpdated(

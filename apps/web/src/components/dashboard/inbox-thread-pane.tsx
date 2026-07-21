@@ -21,6 +21,7 @@ import type { AssignmentExplain } from "@/lib/assignment-explain";
 import { trackCoaching } from "@/lib/coaching-analytics";
 import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
 import { InboxMessageActions } from "@/components/dashboard/inbox-message-actions";
+import { InboxMessageStatus } from "@/components/dashboard/inbox-message-status";
 import { InboxImageLightbox } from "@/components/dashboard/inbox-image-lightbox";
 import { InboxHandoffPackageDialog } from "@/components/dashboard/inbox-handoff-package-dialog";
 import { InboxFollowUpDialog } from "@/components/dashboard/inbox-follow-up-dialog";
@@ -28,6 +29,7 @@ import { InboxPaymentAssistBanner } from "@/components/dashboard/inbox-payment-a
 import { InboxSessionStatus } from "@/components/dashboard/inbox-session-status";
 import { InboxComposer } from "@/components/dashboard/inbox-composer";
 import { InboxOwnershipStrip } from "@/components/dashboard/inbox-ownership-strip";
+import { InboxHandlingBar } from "@/components/dashboard/inbox-handling-bar";
 import { InboxReplyDecision } from "@/components/dashboard/inbox-reply-decision";
 import { InboxTimeline } from "@/components/dashboard/inbox-timeline";
 import { LostReasonDialog } from "@/components/dashboard/lost-reason-dialog";
@@ -96,6 +98,7 @@ interface Message {
   createdAt: string;
   status: string;
   sentByAi?: boolean;
+  errorMessage?: string | null;
 }
 
 interface ConversationDetail {
@@ -994,6 +997,23 @@ function InboxThreadPaneInner({
     pinNoteMutation.mutate(formatPinnedNoteText(text));
   }
 
+  function canRetryMessage(m: Message): boolean {
+    return (
+      m.direction === "OUTBOUND" &&
+      (m.type ?? "TEXT") === "TEXT" &&
+      !!m.content?.trim() &&
+      canSend &&
+      !windowClosed &&
+      !sendPending
+    );
+  }
+
+  function retryFailedMessage(m: Message) {
+    if (!canRetryMessage(m) || !m.content) return;
+    scrollSmoothRef.current = true;
+    sendMutation.mutate({ content: m.content.trim() });
+  }
+
   if (threadLoading && !thread) {
     return <InboxThreadSkeleton />;
   }
@@ -1261,55 +1281,21 @@ function InboxThreadPaneInner({
               assigneeLabel={thread.assignedTo?.name ?? thread.assignedTo?.email ?? undefined}
               className="md:hidden"
             />
-            <div className="flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/60 px-4 py-1.5 lg:px-5">
-              <div className="hidden items-center gap-2 rounded-lg border border-border/50 bg-card px-2.5 py-1 md:flex">
-                <label htmlFor="assign-agent" className="text-xs font-medium text-muted-foreground">
-                  {copy.assignedTo}
-                </label>
-                {canAssignOthers ? (
-                  <select
-                    id="assign-agent"
-                    className="max-w-[140px] truncate rounded-md border-0 bg-transparent text-xs font-medium focus:outline-none"
-                    value={thread.assignedTo?.id ?? ""}
-                    disabled={assignMutation.isPending}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      requestAssign(v ? v : null);
-                    }}
-                  >
-                    <option value="">{copy.unassigned}</option>
-                    {(teamMembers ?? []).map((m) => (
-                      <option key={m.user.id} value={m.user.id}>
-                        {m.user.name ?? m.user.email}
-                      </option>
-                    ))}
-                  </select>
-                ) : canTakeOver && !thread.assignedTo?.id ? (
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="outline"
-                    className="h-7 rounded-lg text-xs"
-                    isLoading={assignMutation.isPending}
-                    onClick={() => myUserId && assignMutation.mutate(myUserId)}
-                  >
-                    {copy.assignedTo} me
-                  </Button>
-                ) : (
-                  <span className="text-xs font-medium text-foreground">
-                    {thread.assignedTo?.name ?? thread.assignedTo?.email ?? copy.unassigned}
-                  </span>
-                )}
-              </div>
-            </div>
-            <InboxOwnershipStrip
+            <InboxHandlingBar
+              className="hidden md:flex"
               aiEnabled={thread.aiEnabled}
-              canToggle={canToggleAi}
+              canToggleAi={canToggleAi}
               togglePending={aiToggleMutation.isPending}
-              onTakeOver={() => aiToggleMutation.mutate(false)}
+              onTakeOverAi={() => aiToggleMutation.mutate(false)}
               onLetAiAssist={() => aiToggleMutation.mutate(true)}
               assigneeLabel={thread.assignedTo?.name ?? thread.assignedTo?.email ?? undefined}
-              className="hidden md:flex"
+              canAssignOthers={canAssignOthers}
+              canTakeOver={canTakeOver}
+              assignedToId={thread.assignedTo?.id ?? null}
+              assignPending={assignMutation.isPending}
+              teamMembers={teamMembers ?? []}
+              myUserId={myUserId}
+              onAssign={(userId) => requestAssign(userId)}
             />
           </div>
 
@@ -1343,7 +1329,7 @@ function InboxThreadPaneInner({
                     "group relative max-w-[88%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm",
                     m.direction === "OUTBOUND"
                       ? "ml-auto rounded-br-md border border-success/30 bg-whatsapp-green text-foreground"
-                      : "mr-auto rounded-bl-md border border-white/80 bg-card text-foreground",
+                      : "mr-auto rounded-bl-md border border-border/70 bg-card text-foreground",
                   )}
                 >
                   <InboxMessageActions
@@ -1388,7 +1374,27 @@ function InboxThreadPaneInner({
                         minute: "2-digit",
                       })}
                     </span>
+                    {m.direction === "OUTBOUND" && (
+                      <InboxMessageStatus status={m.status} />
+                    )}
                   </p>
+                  {m.direction === "OUTBOUND" &&
+                    (m.status ?? "").toUpperCase() === "FAILED" && (
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-destructive">
+                        <span className="font-medium">
+                          {m.errorMessage?.trim() || copy.messageFailed}
+                        </span>
+                        {canRetryMessage(m) && (
+                          <button
+                            type="button"
+                            className="font-semibold underline underline-offset-2 hover:no-underline"
+                            onClick={() => retryFailedMessage(m)}
+                          >
+                            {copy.messageRetry}
+                          </button>
+                        )}
+                      </div>
+                    )}
                 </div>
               );
               })}

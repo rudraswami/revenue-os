@@ -727,6 +727,9 @@ h1, h2, h3, h4, h5, h6 {
 .bg-whatsapp-green {
   background: #d9fdd3;
 }
+.dark .bg-whatsapp-green {
+  background: #10362b;
+}
 .bg-whatsapp-header {
   background: #075e54;
 }

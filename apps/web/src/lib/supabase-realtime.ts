@@ -42,6 +42,13 @@ export function subscribeSupabaseOrgChannel(
     .on("broadcast", { event: "inbox.updated" }, ({ payload }) => {
       handleRealtimeEvent(queryClient, "inbox.updated", payload as { conversationId?: string });
     })
+    .on("broadcast", { event: "message.status.updated" }, ({ payload }) => {
+      handleRealtimeEvent(
+        queryClient,
+        "message.status.updated",
+        payload as RealtimeRefreshPayload,
+      );
+    })
     .on("broadcast", { event: "lead.stage.changed" }, ({ payload }) => {
       handleRealtimeEvent(queryClient, "lead.stage.changed", payload as { leadId?: string });
     })

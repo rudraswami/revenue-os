@@ -5,6 +5,7 @@ import { invalidateInboxThreadQueries } from "@/lib/inbox-thread-bundle";
 import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import {
   handleMessageNewCacheUpdate,
+  patchThreadMessageStatus,
   refreshConversationLists,
   refreshQueueStats,
   type MessageNewRealtimePayload,
@@ -17,6 +18,7 @@ export interface RealtimeRefreshPayload {
   direction?: "INBOUND" | "OUTBOUND";
   content?: string | null;
   createdAt?: string;
+  status?: string;
 }
 
 /** Targeted cache updates — never blanket-invalidate the full inbox unless unavoidable. */
@@ -50,6 +52,17 @@ export function handleRealtimeEvent(
         });
       } else {
         refreshConversationLists(queryClient);
+      }
+      break;
+    case "message.status.updated":
+      // Patch ticks in place. If the message isn't in cache (thread closed or
+      // not loaded), do nothing — status reconciles on next open/poll.
+      if (conversationId && payload.messageId && payload.status) {
+        patchThreadMessageStatus(queryClient, {
+          conversationId,
+          messageId: payload.messageId,
+          status: payload.status,
+        });
       }
       break;
     case "lead.stage.changed":

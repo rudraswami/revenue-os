@@ -77,6 +77,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       handleRealtimeEvent(queryClient, "inbox.updated", payload);
     });
 
+    socket.on(
+      "message.status.updated",
+      (payload: { conversationId?: string; messageId?: string; status?: string }) => {
+        handleRealtimeEvent(queryClient, "message.status.updated", payload);
+      },
+    );
+
     socket.on("lead.stage.changed", (payload: { leadId?: string }) => {
       handleRealtimeEvent(queryClient, "lead.stage.changed", payload);
     });

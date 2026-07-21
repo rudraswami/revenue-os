@@ -64,7 +64,10 @@ import {
   isCampaignOptOutMessage,
   withCampaignOptOutProfile,
 } from "../campaigns/campaign-opt-out";
-import { RealtimeGateway } from "../realtime/realtime.gateway";
+import {
+  RealtimeGateway,
+  type MessageStatusEvent,
+} from "../realtime/realtime.gateway";
 
 @Injectable()
 export class WhatsappService {
@@ -604,7 +607,7 @@ export class WhatsappService {
 
     const existing = await this.prisma.message.findFirst({
       where: { organizationId, waMessageId },
-      select: { status: true },
+      select: { id: true, status: true, conversationId: true },
     });
 
     if (!existing) return;
@@ -613,11 +616,24 @@ export class WhatsappService {
     const newRank = WhatsappService.STATUS_RANK[mapped] ?? 0;
 
     if (mapped === "FAILED" || newRank > currentRank) {
+      const errorMessage =
+        mapped === "FAILED" ? extractWhatsappStatusError(status) : undefined;
       await this.prisma.message.updateMany({
         where: { organizationId, waMessageId },
-        data: { status: mapped as never },
+        data: {
+          status: mapped as never,
+          ...(errorMessage ? { errorMessage } : {}),
+        },
       });
       await this.updateCampaignRecipientStatus(organizationId, waMessageId, mapped);
+
+      // Push the status change so open threads update their ticks instantly.
+      // Ticks also reconcile via the thread poll, so a missed broadcast is not fatal.
+      this.realtime.emitMessageStatusUpdated(organizationId, {
+        conversationId: existing.conversationId,
+        messageId: existing.id,
+        status: mapped as MessageStatusEvent["status"],
+      });
     }
   }
 
@@ -711,4 +727,21 @@ export class WhatsappService {
     const label = labels[type] ?? "Attachment";
     return caption ? `${label}: ${caption}` : `[${label}]`;
   }
+}
+
+/** Pull a human-readable reason out of a Meta message-status FAILED webhook. */
+function extractWhatsappStatusError(
+  status: Record<string, unknown>,
+): string | undefined {
+  const errors = status.errors;
+  if (!Array.isArray(errors) || errors.length === 0) return undefined;
+  const first = errors[0] as Record<string, unknown> | undefined;
+  if (!first) return undefined;
+  const errorData = first.error_data as { details?: unknown } | undefined;
+  const detail =
+    (typeof errorData?.details === "string" && errorData.details) ||
+    (typeof first.title === "string" && first.title) ||
+    (typeof first.message === "string" && first.message) ||
+    undefined;
+  return detail ? String(detail).slice(0, 500) : undefined;
 }

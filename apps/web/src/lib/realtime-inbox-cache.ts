@@ -16,6 +16,21 @@ export interface MessageNewRealtimePayload {
   createdAt?: string;
 }
 
+export interface MessageStatusRealtimePayload {
+  conversationId: string;
+  messageId: string;
+  status: string;
+}
+
+/** Monotonic status ranking — mirrors the API so ticks never regress. */
+const MESSAGE_STATUS_RANK: Record<string, number> = {
+  PENDING: 0,
+  SENT: 1,
+  DELIVERED: 2,
+  READ: 3,
+  FAILED: -1,
+};
+
 const STATS_KEYS = [
   QUERY_KEYS.conversationStats(),
   QUERY_KEYS.conversationQueueStats,
@@ -116,6 +131,50 @@ export function patchOpenThreadOnMessageNew(
     messages: [...thread.messages, message],
     unreadCount: payload.direction === "INBOUND" ? thread.unreadCount + 1 : thread.unreadCount,
   });
+  return true;
+}
+
+/**
+ * Patch a single message's delivery/read status in the open thread cache.
+ * Returns true when the message exists in cache (whether or not it changed),
+ * so callers can skip a thread refetch. Ranking prevents READ→DELIVERED
+ * regressions from out-of-order webhooks; FAILED always applies.
+ */
+export function patchThreadMessageStatus(
+  queryClient: QueryClient,
+  payload: MessageStatusRealtimePayload,
+): boolean {
+  const { conversationId, messageId, status } = payload;
+  if (!conversationId || !messageId || !status) return false;
+
+  const thread = queryClient.getQueryData<{
+    id: string;
+    messages: InboxThreadMessage[];
+    unreadCount: number;
+  }>(QUERY_KEYS.conversation(conversationId));
+  if (!thread) return false;
+
+  const next = status.toUpperCase();
+  let seen = false;
+  let changed = false;
+
+  const messages = thread.messages.map((m) => {
+    if (m.id !== messageId) return m;
+    seen = true;
+    const currentRank = MESSAGE_STATUS_RANK[(m.status ?? "").toUpperCase()] ?? 0;
+    const nextRank = MESSAGE_STATUS_RANK[next] ?? 0;
+    if (next !== "FAILED" && nextRank <= currentRank) return m;
+    changed = true;
+    return { ...m, status: next };
+  });
+
+  if (!seen) return false;
+  if (changed) {
+    syncInboxThreadBundleConversation(queryClient, conversationId, {
+      ...thread,
+      messages,
+    });
+  }
   return true;
 }
 
