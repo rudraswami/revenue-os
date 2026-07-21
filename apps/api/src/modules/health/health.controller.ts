@@ -6,6 +6,7 @@ import Redis from "ioredis";
 import { setHealthCacheControl } from "../../common/http/cache-headers";
 import { getProcessRole, getQueueMode, useBackgroundWorkers } from "../../config/workers";
 import { PrismaService } from "../prisma/prisma.service";
+import { JobsService } from "../jobs/jobs.service";
 import { ServerCacheService } from "../server-cache/server-cache.service";
 import { QueueHealthService } from "./queue-health.service";
 
@@ -17,6 +18,7 @@ export class HealthController {
     private readonly config: ConfigService,
     private readonly serverCache: ServerCacheService,
     private readonly queueHealth: QueueHealthService,
+    private readonly jobs: JobsService,
   ) {}
 
   @Get()
@@ -56,6 +58,7 @@ export class HealthController {
         database: "ok",
         redis,
         queueMode,
+        durableJobs: this.jobs.durable,
         workersEnabled,
         cookieDomain: Boolean(this.config.get<string>("COOKIE_DOMAIN")?.trim()),
         cronConfigured: Boolean(this.config.get<string>("CRON_SECRET")?.trim()),
