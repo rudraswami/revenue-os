@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { getQueryClientRef } from "@/lib/query-client-ref";
 import { QUERY_KEYS } from "@/lib/query-config";
+import { removePersistedQueryCache } from "@/lib/query-persister";
 
 /** Keys seeded by GET /organizations/shell-bootstrap — invalidate together on workspace changes. */
 export const SHELL_WORKSPACE_QUERY_KEYS = [
@@ -27,6 +28,9 @@ export function clearSessionQueryCache(qc?: QueryClient): void {
   const client = clientOrRef(qc);
   if (!client) return;
   client.clear();
+  // Also wipe the on-disk (IndexedDB) snapshot so a new user on this device
+  // cannot hydrate the previous account's cached data on next load.
+  void removePersistedQueryCache();
 }
 
 /**

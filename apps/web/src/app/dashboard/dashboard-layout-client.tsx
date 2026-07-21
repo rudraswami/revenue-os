@@ -8,16 +8,16 @@ import { LocaleProvider } from "@/lib/i18n/locale-provider";
 import type { ShellBootstrapResponse } from "@/lib/shell-bootstrap";
 
 export function DashboardLayoutClient({
-  initialShell,
+  initialShellPromise,
   children,
 }: {
-  initialShell: ShellBootstrapResponse | null;
+  initialShellPromise: Promise<ShellBootstrapResponse | null>;
   children: React.ReactNode;
 }) {
   return (
     <AuthGuard>
       <LocaleProvider>
-        <ShellBootstrapInitialProvider initial={initialShell}>
+        <ShellBootstrapInitialProvider initialPromise={initialShellPromise}>
           <DashboardShell>
             <OnboardingGate>{children}</OnboardingGate>
           </DashboardShell>

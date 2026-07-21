@@ -1,6 +1,7 @@
 "use client";
 
-import { QueryClient, QueryClientProvider, keepPreviousData } from "@tanstack/react-query";
+import { QueryClient, keepPreviousData } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useEffect, useState } from "react";
 import { AuthBootstrap } from "@/components/auth/auth-bootstrap";
 import { ProactiveTokenRefresh } from "@/components/auth/proactive-token-refresh";
@@ -10,6 +11,11 @@ import { RealtimeProvider } from "@/components/realtime/realtime-provider";
 import { ToastProvider } from "@/components/ui/toast";
 import { GC, STALE } from "@/lib/query-config";
 import { setQueryClientRef } from "@/lib/query-client-ref";
+import {
+  createQueryPersister,
+  QUERY_CACHE_BUSTER,
+  QUERY_CACHE_MAX_AGE,
+} from "@/lib/query-persister";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -32,12 +38,28 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }),
   );
 
+  const [persister] = useState(() => createQueryPersister());
+
   useEffect(() => {
     setQueryClientRef(client);
   }, [client]);
 
   return (
-    <QueryClientProvider client={client}>
+    <PersistQueryClientProvider
+      client={client}
+      persistOptions={{
+        persister,
+        maxAge: QUERY_CACHE_MAX_AGE,
+        buster: QUERY_CACHE_BUSTER,
+        dehydrateOptions: {
+          // Persist only settled, successful queries. Never persist errors or
+          // in-flight state, and skip anything holding auth material.
+          shouldDehydrateQuery: (query) =>
+            query.state.status === "success" &&
+            !String(query.queryKey[0] ?? "").includes("auth-refresh"),
+        },
+      }}
+    >
       <AuthBootstrap>
         <ProactiveTokenRefresh />
         <SentryInit />
@@ -48,6 +70,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           </RealtimeProvider>
         </ToastProvider>
       </AuthBootstrap>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }

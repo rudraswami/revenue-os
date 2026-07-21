@@ -17,7 +17,14 @@ export type CachedMembership = {
   userStatus: string;
 };
 
-const REDIS_OP_TIMEOUT_MS = 150;
+/**
+ * Default per-op timeout. Must comfortably exceed a warm in-region round-trip
+ * AND absorb the one-time lazy connect on the first op after a cold start.
+ * 150 ms was too tight and caused first-hit timeouts (cache miss → DB). With
+ * compute co-located in-region, normal ops are single-digit ms; this ceiling
+ * only bites when Redis is genuinely slow/unreachable (we then fall back to DB).
+ */
+const DEFAULT_REDIS_OP_TIMEOUT_MS = 500;
 const DEL_RETRY_ATTEMPTS = 2;
 
 @Injectable()
@@ -25,9 +32,16 @@ export class ServerCacheService implements OnModuleDestroy {
   private readonly logger = new Logger(ServerCacheService.name);
   private readonly client: Redis | null;
   private readonly enabled: boolean;
+  private readonly opTimeoutMs: number;
   private readonly metrics = createEmptyCacheMetrics();
 
   constructor(private readonly config: ConfigService) {
+    const parsedTimeout = Number(this.config.get<string>("REDIS_OP_TIMEOUT_MS"));
+    this.opTimeoutMs =
+      Number.isFinite(parsedTimeout) && parsedTimeout > 0
+        ? parsedTimeout
+        : DEFAULT_REDIS_OP_TIMEOUT_MS;
+
     const url = this.config.get<string>("REDIS_URL")?.trim();
     if (!url) {
       this.client = null;
@@ -69,7 +83,7 @@ export class ServerCacheService implements OnModuleDestroy {
     try {
       const raw = await withTimeout(
         this.client.get(key),
-        REDIS_OP_TIMEOUT_MS,
+        this.opTimeoutMs,
         "Redis cache get timed out",
       );
       if (!raw) {
@@ -91,7 +105,7 @@ export class ServerCacheService implements OnModuleDestroy {
       const payload = JSON.stringify(value);
       await withTimeout(
         this.client.set(key, payload, "EX", ttlSec),
-        REDIS_OP_TIMEOUT_MS,
+        this.opTimeoutMs,
         "Redis cache set timed out",
       );
       this.metrics.sets += 1;
@@ -108,7 +122,7 @@ export class ServerCacheService implements OnModuleDestroy {
       try {
         const removed = await withTimeout(
           this.client.del(...keys),
-          REDIS_OP_TIMEOUT_MS,
+          this.opTimeoutMs,
           "Redis cache del timed out",
         );
         this.metrics.dels += removed;

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useRef } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/query-config";
 import {
@@ -10,25 +10,38 @@ import {
 
 const ShellBootstrapInitialContext = createContext<ShellBootstrapResponse | null>(null);
 
+/**
+ * Consumes the streamed server shell-bootstrap promise WITHOUT blocking the app
+ * shell. The chrome renders immediately (returning users hydrate from the
+ * persisted React Query cache); when the server seed resolves it fills/refreshes
+ * the cache so the sidebar, banners and setup FAB reconcile to server truth.
+ */
 export function ShellBootstrapInitialProvider({
-  initial,
+  initialPromise,
   children,
 }: {
-  initial: ShellBootstrapResponse | null;
+  initialPromise: Promise<ShellBootstrapResponse | null>;
   children: React.ReactNode;
 }) {
   const queryClient = useQueryClient();
-  const seededKeyRef = useRef<string | null>(null);
+  const [initial, setInitial] = useState<ShellBootstrapResponse | null>(null);
 
-  // Seed before child queries read cache — useEffect was too late (false "not connected" flash).
-  if (initial) {
-    const key = initial.me.user.id;
-    if (seededKeyRef.current !== key) {
-      seedDashboardShellCache(queryClient, initial);
-      queryClient.setQueryData(QUERY_KEYS.shellBootstrap, initial);
-      seededKeyRef.current = key;
-    }
-  }
+  useEffect(() => {
+    let active = true;
+    Promise.resolve(initialPromise)
+      .then((res) => {
+        if (!active || !res) return;
+        seedDashboardShellCache(queryClient, res);
+        queryClient.setQueryData(QUERY_KEYS.shellBootstrap, res);
+        setInitial(res);
+      })
+      .catch(() => {
+        // Non-blocking optimization — client bootstrap + cache take over.
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialPromise, queryClient]);
 
   return (
     <ShellBootstrapInitialContext.Provider value={initial}>

@@ -9,9 +9,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .map((c) => `${c.name}=${c.value}`)
     .join("; ");
 
-  const initialShell = await fetchShellBootstrapServer(cookieHeader);
+  // Do NOT await — start the shell-bootstrap fetch and stream the promise to the
+  // client. The app shell paints immediately (from persisted React Query cache
+  // for returning users); the server seed fills/refreshes the cache when it
+  // resolves. This removes the serial cross-region blocking fetch from TTFB.
+  const initialShellPromise = fetchShellBootstrapServer(cookieHeader);
 
   return (
-    <DashboardLayoutClient initialShell={initialShell}>{children}</DashboardLayoutClient>
+    <DashboardLayoutClient initialShellPromise={initialShellPromise}>
+      {children}
+    </DashboardLayoutClient>
   );
 }

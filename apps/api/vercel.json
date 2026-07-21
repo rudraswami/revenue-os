@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nestjs",
+  "regions": ["bom1"],
   "installCommand": "cd ../.. && corepack enable && NODE_ENV=development pnpm install --frozen-lockfile",
   "buildCommand": "cd ../.. && pnpm turbo run build --filter=@growvisi/api",
   "crons": [
