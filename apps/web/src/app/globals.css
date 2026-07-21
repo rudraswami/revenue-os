@@ -10,6 +10,23 @@
 
 /**
  * ────────────────────────────────────────────────────────────────────────
+ * Growvisi DS v1 — layout & scale standard (single source of truth).
+ *  • Spacing: 4pt grid (Tailwind default). Panel padding p-5; page gutters
+ *    px-4 / lg:px-8; section gaps space-y-5/6/8.
+ *  • Radius: controls/inputs rounded-xl (--radius-md), cards/panels rounded-2xl
+ *    (--radius-lg), chips/pills rounded-full.
+ *  • Elevation: elev-0 / elev-1 (cards) / elev-2 (overlays). Never shadow-sm in app.
+ *  • Icons: 16px h-4 w-4 (inline/text), 18px h-[18px] (buttons/nav), 20px h-5
+ *    (section/hero). Avoid one-off sizes.
+ *  • Type: display-* / body-lg / body-sm helpers; body text text-sm, labels
+ *    text-xs font-medium, headings font-semibold tracking-tight.
+ *  • Color: only semantic tokens (surface/text/border/brand/accent/status).
+ *    No raw palette classes (bg-white, text-gray-*, bg-amber-*) in the app.
+ * ────────────────────────────────────────────────────────────────────────
+ */
+
+/**
+ * ────────────────────────────────────────────────────────────────────────
  * Growvisi DS v1 — semantic, theme-aware design tokens.
  * Roles are defined once here; light is the default and `.dark` overrides.
  * Legacy --color-* names are kept (aliased in @theme inline below) so every
@@ -66,6 +83,9 @@
   --viz-violet: #7c3aed;
   /* Elevation shadow tint (r g b) */
   --shadow-rgb: 11 28 48;
+  --elev-1: 0 1px 3px rgb(11 28 48 / 0.08);
+  --elev-2: 0 8px 32px rgb(11 28 48 / 0.12);
+  --elev-interactive: 0 4px 12px rgb(11 28 48 / 0.06);
 }
 
 .dark {
@@ -107,6 +127,9 @@
   --bento-blue: #16283f;
   --viz-violet: #a78bfa;
   --shadow-rgb: 0 0 0;
+  --elev-1: 0 1px 3px rgb(0 0 0 / 0.4);
+  --elev-2: 0 8px 32px rgb(0 0 0 / 0.55);
+  --elev-interactive: 0 4px 14px rgb(0 0 0 / 0.45);
 }
 
 /**
@@ -279,20 +302,24 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dashboard-quick-link {
-  @apply flex items-center gap-4 rounded-2xl border border-border bg-card p-4 elev-1 transition-[transform,border-color,box-shadow] duration-150;
+  @apply flex items-center gap-4 rounded-2xl border border-border bg-card p-4 transition-[transform,border-color,box-shadow] duration-150;
+  box-shadow: var(--elev-1);
 }
 .dashboard-quick-link:hover {
-  @apply -translate-y-px border-accent/25 elev-2;
+  @apply -translate-y-px border-accent/25;
+  box-shadow: var(--elev-2);
 }
 .dashboard-quick-link:active {
   @apply translate-y-0;
 }
 
 .card-interactive {
-  @apply rounded-2xl border border-border bg-card elev-1 transition-[transform,border-color,box-shadow] duration-150;
+  @apply rounded-2xl border border-border bg-card transition-[transform,border-color,box-shadow] duration-150;
+  box-shadow: var(--elev-1);
 }
 .card-interactive:hover {
-  @apply -translate-y-px border-accent/25 elev-2;
+  @apply -translate-y-px border-accent/25;
+  box-shadow: var(--elev-2);
 }
 .card-interactive:active {
   @apply translate-y-0;
@@ -332,12 +359,6 @@ h1, h2, h3, h4, h5, h6 {
     radial-gradient(circle at 20% 20%, rgb(18 160 110 / 0.08) 0%, transparent 42%),
     radial-gradient(circle at 80% 0%, rgb(38 52 77 / 0.45) 0%, transparent 38%);
 }
-.dark .elev-1 {
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
-}
-.dark .elev-2 {
-  box-shadow: 0 8px 32px rgb(0 0 0 / 0.55);
-}
 
 .status-pill {
   @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
@@ -363,7 +384,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 1px 3px rgb(11 28 48 / 0.08);
+  box-shadow: var(--elev-1);
   overflow: hidden;
 }
 
@@ -374,18 +395,18 @@ h1, h2, h3, h4, h5, h6 {
 
 .elev-1 {
   border: 1px solid var(--color-border);
-  box-shadow: 0 1px 3px rgb(11 28 48 / 0.08);
+  box-shadow: var(--elev-1);
 }
 
 .elev-2 {
   border: 1px solid var(--color-border);
-  box-shadow: 0 8px 32px rgb(11 28 48 / 0.12);
+  box-shadow: var(--elev-2);
 }
 
 /** Optional lift — marketing interactive cards only, not app chrome */
 .elev-interactive {
   border: 1px solid var(--color-border);
-  box-shadow: 0 4px 12px rgb(11 28 48 / 0.06);
+  box-shadow: var(--elev-interactive);
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 .elev-interactive:hover {
