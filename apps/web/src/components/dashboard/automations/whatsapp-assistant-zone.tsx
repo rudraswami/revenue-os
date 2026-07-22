@@ -11,6 +11,7 @@ import type {
   GrowvisiPlanId,
   IntelligenceWorkspaceSettings,
   IntelligenceWorkspaceSettingsPatch,
+  QuickAnswer,
   ReplyAutonomyMode,
 } from "@growvisi/shared";
 import { apiFetch } from "@/lib/api-client";
@@ -23,6 +24,7 @@ import { AUTONOMY_OPTIONS, PRESET_OPTIONS } from "@/lib/automation-scenarios";
 import { AssistantTrustPanel } from "@/components/dashboard/automations/assistant-trust-panel";
 import { AutonomyModeIcon } from "@/components/dashboard/automations/autonomy-mode-icons";
 import { ConversationPreview } from "@/components/dashboard/automations/conversation-preview";
+import { QuickAnswersEditor } from "@/components/dashboard/automations/quick-answers-editor";
 import { IndustryHandbookPicker } from "@/components/dashboard/industry-handbook-picker";
 import { KnowledgeSettingsLink } from "@/components/settings/knowledge-settings-link";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -44,6 +46,7 @@ type ProfileDraft = {
   closeActions: NonNullable<BusinessEmployeeProfile["closeActions"]>;
   firstContactText: string;
   returningText: string;
+  quickAnswers: QuickAnswer[];
 };
 
 function profileToDraft(profile: BusinessEmployeeProfile): ProfileDraft {
@@ -54,6 +57,7 @@ function profileToDraft(profile: BusinessEmployeeProfile): ProfileDraft {
     closeActions: { ...profile.closeActions },
     firstContactText: profile.greetingVariants.firstContact.join("\n"),
     returningText: profile.greetingVariants.returning.join("\n"),
+    quickAnswers: profile.quickAnswers ?? [],
   };
 }
 
@@ -82,6 +86,13 @@ function draftToPatch(draft: ProfileDraft): BusinessEmployeeProfilePatch {
       firstContact: linesToGreetings(draft.firstContactText),
       returning: linesToGreetings(draft.returningText),
     },
+    quickAnswers: draft.quickAnswers
+      .map((qa) => ({
+        ...qa,
+        question: qa.question.trim(),
+        answer: qa.answer.trim(),
+      }))
+      .filter((qa) => qa.question && qa.answer),
   };
 }
 
@@ -408,6 +419,17 @@ export function WhatsAppAssistantZone() {
           thanksSample={thanksPreview}
           syncing={isSyncing}
         />
+      </div>
+
+      {/* Quick answers — structured FAQ/price grounding (no upload needed) */}
+      <div className="rounded-2xl border border-border/80 bg-card p-5">
+        {draft ? (
+          <QuickAnswersEditor
+            value={draft.quickAnswers}
+            disabled={!canManage}
+            onChange={(next) => updateDraft("quickAnswers", next)}
+          />
+        ) : null}
       </div>
 
       {/* Communication style — collapsed */}

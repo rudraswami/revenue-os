@@ -513,6 +513,7 @@ export class AiClassifyService {
       limit: 4,
       intentKind: opts.preRoute.intentKind,
       lastInbound: ctx.lastInbound,
+      quickAnswers: opts.businessProfile.quickAnswers,
     });
     const knowledgeHits = retrieval.hits;
     opts.spans.measure("rag_ms", "rag_start");

@@ -1,8 +1,14 @@
 import { Injectable } from "@nestjs/common";
-import type { KnowledgeCategory, KnowledgeHit, RetrievalResult } from "@growvisi/shared";
+import type {
+  KnowledgeCategory,
+  KnowledgeHit,
+  QuickAnswer,
+  RetrievalResult,
+} from "@growvisi/shared";
 import {
   buildRetrievalResult,
   computeGapRiskScore,
+  matchQuickAnswers,
   rankKnowledgeHits,
   resolveRetrievalCategories,
   type KnowledgeHealthSummary,
@@ -20,10 +26,23 @@ export interface RetrieveKnowledgeInput {
   intentKind?: string;
   lastInbound?: string | null;
   customerNeeds?: string[];
+  /** Structured FAQ/price pairs matched deterministically as extra grounding. */
+  quickAnswers?: QuickAnswer[];
 }
 
 const CHUNK_CACHE_TTL_MS = 60_000;
 const MAX_RETRIEVAL_QUERIES = 3;
+
+/** Defensively count stored Quick Answers from an org's settings JSON. */
+function countQuickAnswers(settings: unknown): number {
+  if (!settings || typeof settings !== "object") return 0;
+  const intelligence = (settings as Record<string, unknown>).intelligence;
+  if (!intelligence || typeof intelligence !== "object") return 0;
+  const profile = (intelligence as Record<string, unknown>).businessProfile;
+  if (!profile || typeof profile !== "object") return 0;
+  const quickAnswers = (profile as Record<string, unknown>).quickAnswers;
+  return Array.isArray(quickAnswers) ? quickAnswers.length : 0;
+}
 
 /**
  * Build the set of retrieval queries: the primary query plus up to two distinct
@@ -93,15 +112,41 @@ export class KnowledgeRetrievalService {
   async retrieveDetailed(input: RetrieveKnowledgeInput): Promise<RetrievalResult> {
     const categoriesUsed =
       input.categories ?? resolveRetrievalCategories(input.intentKind);
-    const hasIndexedChunks = await this.hasIndexedChunks(input.organizationId);
+    const hasChunks = await this.hasIndexedChunks(input.organizationId);
 
-    if (!hasIndexedChunks) {
+    // Structured Quick Answers are matched deterministically (no embeddings) and
+    // act as first-class grounding, so an SMB can auto-answer common questions
+    // with zero uploaded documents.
+    const quickHits = matchQuickAnswers(
+      input.lastInbound ?? input.query,
+      input.quickAnswers,
+      3,
+    );
+
+    // Effective grounding exists if the org has indexed chunks OR a curated quick
+    // answer matched. `hasIndexedChunks` gates the kb_not_indexed auto-send
+    // blocker downstream, so quick answers unblock auto-answers on their own.
+    const hasGrounding = hasChunks || quickHits.length > 0;
+
+    if (!hasGrounding) {
       return buildRetrievalResult({
         hits: [],
         intentKind: input.intentKind,
         lastInbound: input.lastInbound,
         customerNeeds: input.customerNeeds,
         hasIndexedChunks: false,
+        categoriesUsed,
+      });
+    }
+
+    if (!hasChunks) {
+      // Quick-answer-only grounding (no uploaded docs to search).
+      return buildRetrievalResult({
+        hits: quickHits,
+        intentKind: input.intentKind,
+        lastInbound: input.lastInbound,
+        customerNeeds: input.customerNeeds,
+        hasIndexedChunks: true,
         categoriesUsed,
       });
     }
@@ -135,7 +180,7 @@ export class KnowledgeRetrievalService {
       }
     }
 
-    const hits: KnowledgeHit[] = Array.from(bestByChunk.values())
+    const embeddingHits: KnowledgeHit[] = Array.from(bestByChunk.values())
       .filter((r) => r.similarity >= minSimilarity)
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, limit)
@@ -148,6 +193,9 @@ export class KnowledgeRetrievalService {
         category: r.category,
         citation: `${r.title} (${Math.round(r.similarity * 100)}% match)`,
       }));
+
+    // Curated quick answers first (authoritative), then fill with embedding hits.
+    const hits = [...quickHits, ...embeddingHits].slice(0, limit + quickHits.length);
 
     return buildRetrievalResult({
       hits,
@@ -186,7 +234,7 @@ export class KnowledgeRetrievalService {
   }
 
   async getHealth(organizationId: string): Promise<KnowledgeHealthSummary> {
-    const [docCount, chunkCount, lastDoc] = await Promise.all([
+    const [docCount, chunkCount, lastDoc, org] = await Promise.all([
       this.prisma.knowledgeDocument.count({ where: { organizationId } }),
       this.prisma.knowledgeChunk.count({
         where: { document: { organizationId } },
@@ -196,16 +244,24 @@ export class KnowledgeRetrievalService {
         orderBy: { updatedAt: "desc" },
         select: { updatedAt: true },
       }),
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { settings: true },
+      }),
     ]);
 
+    const quickAnswerCount = countQuickAnswers(org?.settings);
     const gapRiskScore = computeGapRiskScore({ chunkCount, docCount });
 
     return {
       docCount,
       chunkCount,
+      quickAnswerCount,
       lastIndexedAt: lastDoc?.updatedAt?.toISOString() ?? null,
       gapRiskScore,
-      readyForResponsivePreset: chunkCount > 0,
+      // Quick answers are curated grounding, so they unlock broader auto-send
+      // without requiring uploaded documents.
+      readyForResponsivePreset: chunkCount > 0 || quickAnswerCount > 0,
     };
   }
 }

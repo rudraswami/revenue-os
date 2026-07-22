@@ -152,10 +152,12 @@ export function computeGroundingConfidence(
 export interface KnowledgeHealthSummary {
   docCount: number;
   chunkCount: number;
+  /** Curated structured FAQ/price pairs (count as grounding without uploads). */
+  quickAnswerCount: number;
   lastIndexedAt: string | null;
   /** 0–100 — higher means more auto-send risk from missing KB coverage. */
   gapRiskScore: number;
-  /** Responsive preset requires indexed chunks (server-enforced). */
+  /** Responsive preset requires indexed chunks OR quick answers (server-enforced). */
   readyForResponsivePreset: boolean;
 }
 

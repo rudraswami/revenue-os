@@ -19,7 +19,7 @@ describe("inbox-thread-bundle cache", () => {
     const client = new QueryClient();
     const bundle = {
       conversation: { id: "c1", unreadCount: 1, messages: [] },
-      inboxContext: { kbHealth: { chunkCount: 2, docCount: 0, lastIndexedAt: null, gapRiskScore: 0, readyForResponsivePreset: true } },
+      inboxContext: { kbHealth: { chunkCount: 2, docCount: 0, quickAnswerCount: 0, lastIndexedAt: null, gapRiskScore: 0, readyForResponsivePreset: true } },
     };
 
     seedInboxThreadBundleCache(client, "c1", bundle);
@@ -66,6 +66,7 @@ describe("inbox-thread-bundle cache", () => {
         kbHealth: {
           chunkCount: 1,
           docCount: 0,
+          quickAnswerCount: 0,
           lastIndexedAt: null,
           gapRiskScore: 0,
           readyForResponsivePreset: false,

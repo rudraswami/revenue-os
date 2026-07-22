@@ -8,6 +8,7 @@ export * from "./classification-judgment";
 export * from "./commercial-sensitivity";
 export * from "./industry-handbooks";
 export * from "./knowledge-retrieval";
+export * from "./quick-answers";
 export * from "./working-memory";
 export * from "./constants";
 export * from "./domains";

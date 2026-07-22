@@ -168,6 +168,8 @@ export type BusinessEmployeeProfilePatch = {
   acknowledgments?: Partial<Record<string, string>>;
   greetingVariants?: Partial<BusinessGreetingVariants>;
   courtesyTemplates?: Partial<BusinessCourtesyTemplates>;
+  /** Full replace on save — the whole quick answers list. */
+  quickAnswers?: QuickAnswer[];
 };
 
 export type IntelligenceWorkspaceSettingsPatch = Partial<
@@ -266,6 +268,26 @@ export interface BusinessCourtesyTemplates {
   checking: string;
 }
 
+/**
+ * Structured FAQ / price pair. Lets an SMB answer common questions with zero
+ * uploaded documents — matched deterministically (no embeddings) and used as a
+ * first-class grounding source so strong matches can auto-send and weak matches
+ * still produce a grounded draft.
+ */
+export interface QuickAnswer {
+  id: string;
+  /** Canonical customer question / trigger phrase. */
+  question: string;
+  /** The reply Growvisi should send/draft when this matches. */
+  answer: string;
+  /** Optional extra trigger phrases/keywords that should also match. */
+  keywords?: string[];
+  /** Category for retrieval routing (pricing/faq/policy/product/general). */
+  category?: KnowledgeCategory;
+}
+
+export const MAX_QUICK_ANSWERS = 50;
+
 /** Per-workspace operational profile for the AI employee. Stored in org.settings.intelligence.businessProfile */
 export interface BusinessEmployeeProfile {
   profileVersion: number;
@@ -278,6 +300,8 @@ export interface BusinessEmployeeProfile {
   acknowledgments: Record<string, string>;
   greetingVariants: BusinessGreetingVariants;
   courtesyTemplates: BusinessCourtesyTemplates;
+  /** Structured FAQ/price pairs — deterministic auto-answers without uploads. */
+  quickAnswers: QuickAnswer[];
 }
 
 const MAX_STRING = 500;
@@ -301,6 +325,42 @@ function stringArray(value: unknown, maxItems = MAX_TEMPLATE_ITEMS): string[] {
 
 function substituteBusinessName(text: string, businessName: string): string {
   return text.replace(/\{businessName\}/gi, businessName);
+}
+
+function normalizeQuickAnswers(raw: unknown): QuickAnswer[] {
+  if (!Array.isArray(raw)) return [];
+  const out: QuickAnswer[] = [];
+  const seenIds = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const entry = item as Partial<QuickAnswer>;
+    const question = trimString(entry.question, 200);
+    const answer = trimString(entry.answer, MAX_STRING);
+    if (!question || !answer) continue;
+
+    const category = KNOWLEDGE_CATEGORIES.includes(entry.category as KnowledgeCategory)
+      ? (entry.category as KnowledgeCategory)
+      : undefined;
+    const keywords = stringArray(entry.keywords, 12)
+      .map((k) => k.slice(0, 60))
+      .filter(Boolean);
+
+    let id = trimString(entry.id, 40);
+    if (!id || seenIds.has(id)) {
+      id = `qa_${out.length + 1}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+    seenIds.add(id);
+
+    out.push({
+      id,
+      question,
+      answer,
+      keywords: keywords.length ? keywords : undefined,
+      category,
+    });
+    if (out.length >= MAX_QUICK_ANSWERS) break;
+  }
+  return out;
 }
 
 export function defaultBusinessEmployeeProfile(businessName: string): BusinessEmployeeProfile {
@@ -347,6 +407,7 @@ export function defaultBusinessEmployeeProfile(businessName: string): BusinessEm
       ],
       checking: `Let me check with the team and get back to you shortly.`,
     },
+    quickAnswers: [],
   };
 }
 
@@ -461,6 +522,7 @@ export function normalizeBusinessEmployeeProfile(
         trimString(input.courtesyTemplates?.checking, 280) ??
         defaults.courtesyTemplates.checking,
     },
+    quickAnswers: normalizeQuickAnswers(input.quickAnswers),
   };
 }
 
