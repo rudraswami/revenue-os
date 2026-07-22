@@ -190,7 +190,12 @@ export class KnowledgeEmbedService {
       let indexed = 0;
 
       for (const content of pieces) {
-        const vector = await this.createEmbedding(apiKey, model, content);
+        // Embed title + category WITH the content. The title is often the
+        // highest-signal text ("Our Services", "Pricing Plans") — leaving it
+        // out of the vector made docs invisible to questions that match the
+        // title but not the body copy. Stored chunk content stays unchanged.
+        const embedInput = `${doc.title} (${doc.category ?? "general"})\n\n${content}`;
+        const vector = await this.createEmbedding(apiKey, model, embedInput);
         if (!vector) continue;
 
         const id = `kc_${randomBytes(8).toString("hex")}`;
@@ -289,9 +294,8 @@ export class KnowledgeEmbedService {
     );
 
     // 0.25 floor: informal/Hindi/paraphrased messages routinely score 0.28-0.34
-    // against English knowledge chunks. The old 0.35 floor silently dropped
-    // them, making the AI "not understand" semantically similar questions.
-    // Post-retrieval ranking + the policy RELEVANCE_FLOOR (0.32) handle quality.
+    // against English knowledge chunks. Post-retrieval ranking and the
+    // mechanical post-compose citation check handle final quality.
     return rows.filter((r) => r.similarity > 0.25);
   }
 
@@ -328,12 +332,12 @@ export class KnowledgeEmbedService {
       >(
         `SELECT kc.id AS "chunkId", kd.id AS "documentId", kc.content, kd.title,
           COALESCE(kc.metadata->>'category', kd.category, 'general') AS category,
-          similarity(kc.content, $1) AS similarity
+          GREATEST(similarity(kc.content, $1), similarity(kd.title, $1)) AS similarity
         FROM knowledge_chunks kc
         INNER JOIN knowledge_documents kd ON kd.id = kc."documentId"
         WHERE kd."organizationId" = $2
           AND kd.status IN ('active', 'indexed', 'pending')
-          AND kc.content % $1
+          AND (kc.content % $1 OR kd.title % $1)
         ORDER BY similarity DESC
         LIMIT $3`,
         query.trim(),

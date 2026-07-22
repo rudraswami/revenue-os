@@ -1,7 +1,8 @@
 /** Composite score for whether Growvisi can safely auto-answer this turn. */
 
-export const MIN_ANSWERABILITY_FAQ_AUTO = 0.55;
-export const MIN_ANSWERABILITY_PRICING_AUTO = 0.68;
+export const MIN_ANSWERABILITY_FAQ_AUTO = 0.45;
+/** Pricing auto-send: grounded enough to cite — post-compose trust rails enforce citation. */
+export const MIN_ANSWERABILITY_PRICING_AUTO = 0.55;
 
 export interface AssessAnswerabilityInput {
   groundingConfidence: number;
@@ -53,7 +54,9 @@ export function assessAnswerability(input: AssessAnswerabilityInput): Answerabil
   ) / 100;
 
   const canAutoSendFaq = score >= MIN_ANSWERABILITY_FAQ_AUTO;
-  const canAutoSendPricing = score >= MIN_ANSWERABILITY_PRICING_AUTO && topSim >= 0.7;
+  // One grounded-with-citation bar (not three stacked floors). Trust rails
+  // still block invented prices after compose.
+  const canAutoSendPricing = score >= MIN_ANSWERABILITY_PRICING_AUTO && topSim >= 0.5;
 
   let reason: string | undefined;
   if (!canAutoSendFaq) {

@@ -8,6 +8,7 @@ import { LearningSignalService } from "./learning-signal.service";
 import type { PipelineContext } from "./pipeline-context";
 import { ReplyComposerService } from "./reply-composer.service";
 import { ReplyPolicyService } from "./reply-policy.service";
+import { ReplyTrustRailsService } from "./reply-trust-rails.service";
 import { resolveReplyIntentKind } from "./reply-intent";
 import { SuggestReplyService } from "./suggest-reply.service";
 
@@ -28,6 +29,7 @@ export class ReplySendService {
     private readonly learning: LearningSignalService,
     private readonly suggestReply: SuggestReplyService,
     private readonly replyPolicy: ReplyPolicyService,
+    private readonly trustRails: ReplyTrustRailsService,
   ) {}
 
   async sendGuardedAutoReply(
@@ -60,6 +62,7 @@ export class ReplySendService {
       classification: opts.classification,
       pipelineContext: opts.pipelineContext,
       fastReplyText: opts.fastReplyText,
+      voiceExemplars: opts.pipelineContext?.voiceExemplars,
     });
 
     opts.pipelineContext?.spans?.measure("compose_in_send_ms", "reply_send_start");
@@ -123,6 +126,51 @@ export class ReplySendService {
         reason: coverage.reason,
         blocker: coverage.blocker,
       };
+    }
+
+    // Mechanical trust rails: prices/numbers in the reply MUST be grounded in
+    // a retrieved chunk. This replaces self-confidence vibes with a checkable
+    // citation requirement.
+    const trustCheck = this.trustRails.validatePostCompose({
+      text: composed.suggestion,
+      sources: composed.sources,
+      isFastPath: !!composed.fastPath,
+      intentKind,
+    });
+    if (!trustCheck.allowed) {
+      const downgraded: ReplyDecision = {
+        ...opts.replyDecision,
+        mode: "draft",
+        risk: "medium",
+        reasons: [trustCheck.reason ?? "Trust rail blocked", ...opts.replyDecision.reasons].slice(0, 5),
+        blockers: [
+          ...(opts.replyDecision.blockers ?? []),
+          trustCheck.blocker ?? "trust_rail",
+        ].filter((b, i, arr) => arr.indexOf(b) === i),
+        autoEligible: false,
+        evaluatedAt: new Date().toISOString(),
+      };
+
+      await this.replyPolicy.persistDecision(organizationId, conversationId, downgraded);
+      await this.suggestReply.storeComposedDraft(
+        organizationId,
+        conversationId,
+        { suggestion: composed.suggestion, sources: composed.sources, aiRunId: composed.aiRunId },
+        downgraded,
+      );
+      this.realtime.emitInboxUpdated(organizationId, conversationId);
+      this.logger.log(`Trust rail held auto-send for ${conversationId}: ${trustCheck.blocker}`);
+
+      void this.learning.recordTrustRailBlock({
+        organizationId,
+        conversationId,
+        aiRunId: composed.aiRunId ?? opts.aiRunId,
+        blocker: trustCheck.blocker ?? "trust_rail",
+        reason: trustCheck.reason,
+        intentKind,
+      });
+
+      return { sent: false, drafted: true, reason: trustCheck.reason ?? "Trust rail", blocker: trustCheck.blocker ?? "trust_rail" };
     }
 
     const waMessageId = await this.whatsapp.sendText(

@@ -61,6 +61,8 @@ export interface ComposeReplyInput {
   pipelineContext?: PipelineContext;
   /** Template text from fast path — skips LLM */
   fastReplyText?: string;
+  /** Recent human-edited drafts used as few-shot voice examples. */
+  voiceExemplars?: Array<{ draft: string; final: string }>;
 }
 
 @Injectable()
@@ -204,7 +206,11 @@ export class ReplyComposerService {
     // Structured JSON contract adds a small wrapper; keep enough headroom so the
     // reply text itself is never truncated (multi-part pricing/EMI answers need room).
     const maxTokens =
-      intentKind === "greeting" || intentKind === "thanks" ? 160 : 520;
+      intentKind === "greeting" || intentKind === "thanks"
+        ? 160
+        : intentKind === "pricing" || intentKind === "negotiation"
+          ? 700
+          : 520;
 
     const aiRun = await this.prisma.aiRun.create({
       data: {
@@ -271,6 +277,7 @@ export class ReplyComposerService {
                   classification: classification ?? undefined,
                   threadSummary,
                   businessContext: input.pipelineContext?.businessContext,
+                  voiceExemplars: input.voiceExemplars,
                 }),
               },
               {
@@ -511,6 +518,7 @@ export class ReplyComposerService {
       socialLinks?: string | null;
       phone?: string | null;
     } | null;
+    voiceExemplars?: Array<{ draft: string; final: string }>;
   }): string {
     const voiceLines = buildVoiceInstructions(opts.businessProfile);
     const languageLine = resolveComposeLanguageInstruction(
@@ -605,6 +613,10 @@ export class ReplyComposerService {
       opts.memoryBlock ? `Customer memory:\n${opts.memoryBlock}` : "",
       opts.customerCardBlock ? `Customer card:\n${opts.customerCardBlock}` : "",
       closeActions ?? "",
+
+      opts.voiceExemplars?.length
+        ? `## Our writing style (learn from these real edits)\n${opts.voiceExemplars.map((e, i) => `Example ${i + 1}:\nAI draft: "${e.draft}"\nTeam corrected to: "${e.final}"`).join("\n\n")}\n\nAdopt the corrected style — that's how this business sounds.`
+        : "",
 
       `## Good vs Bad replies
 Customer: "What do you guys offer?"

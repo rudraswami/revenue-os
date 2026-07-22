@@ -193,10 +193,10 @@ export const AUTOMATION_PRESET_DEFAULTS: Record<
 > = {
   careful: {
     autoSendGreetings: true,
-    autoSendFaqWhenGrounded: false,
+    autoSendFaqWhenGrounded: true,
     autoSendPricingWhenGrounded: false,
-    minClassifyConfidence: 0.6,
-    minGroundingSimilarity: 0.60,
+    minClassifyConfidence: 0.55,
+    minGroundingSimilarity: 0.55,
     humanForStages: ["NEGOTIATION", "PROPOSAL"],
   },
   balanced: {

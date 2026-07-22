@@ -53,16 +53,16 @@ export function resolveRetrievalCategories(
     case "pricing":
     case "negotiation":
     case "ready_to_buy":
-      return ["pricing", "product"];
+      return ["pricing", "product", "services"];
     case "complaint":
       return ["policy", "faq"];
     case "availability_check":
     case "product_info":
-      return ["product", "faq"];
+      return ["product", "services", "faq", "about"];
     case "hours_location":
-      return ["general", "faq"];
+      return ["contact", "general", "faq"];
     case "booking_request":
-      return ["faq", "product"];
+      return ["faq", "product", "services"];
     case "payment_method":
       return ["faq", "pricing"];
     default:

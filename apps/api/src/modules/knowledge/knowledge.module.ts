@@ -12,6 +12,7 @@ import { KnowledgeController } from "./knowledge.controller";
 import { KnowledgeEmbedService } from "./knowledge-embed.service";
 import { KnowledgeRetrievalService } from "./knowledge-retrieval.service";
 import { KnowledgeService } from "./knowledge.service";
+import { QueryRewriteService } from "./query-rewrite.service";
 import { WebsiteCrawlService } from "./website-crawl.service";
 import { ContentStructureService } from "./content-structure.service";
 import { WebsiteImportService } from "./website-import.service";
@@ -32,6 +33,7 @@ const registerProcessors = useBackgroundWorkers();
     KnowledgeParseService,
     KnowledgeEmbedService,
     KnowledgeRetrievalService,
+    QueryRewriteService,
     WebsiteCrawlService,
     ContentStructureService,
     WebsiteImportService,
@@ -40,6 +42,6 @@ const registerProcessors = useBackgroundWorkers();
     EmailVerifiedGuard,
     ...(registerProcessors ? [AiEmbedProcessor] : []),
   ],
-  exports: [KnowledgeService, KnowledgeEmbedService, KnowledgeRetrievalService, WebsiteImportService],
+  exports: [KnowledgeService, KnowledgeEmbedService, KnowledgeRetrievalService, WebsiteImportService, QueryRewriteService],
 })
 export class KnowledgeModule {}

@@ -28,6 +28,12 @@ export interface RetrieveKnowledgeInput {
   customerNeeds?: string[];
   /** Structured FAQ/price pairs matched deterministically as extra grounding. */
   quickAnswers?: QuickAnswer[];
+  /**
+   * Clean rewritten search queries (from QueryRewriteService). When present,
+   * these REPLACE the raw primary query for vector search — they embed far
+   * closer to knowledge chunks than raw Hinglish/vague customer text.
+   */
+  rewrittenQueries?: string[];
 }
 
 const CHUNK_CACHE_TTL_MS = 60_000;
@@ -154,11 +160,15 @@ export class KnowledgeRetrievalService {
     const limit = input.limit ?? 8;
     const minSimilarity = input.minSimilarity ?? 0.2;
 
-    // Multi-query: search the raw message plus each distinct customer need in
-    // parallel, then merge. This surfaces evidence for every part of a multi-part
-    // question ("price AND delivery AND EMI") that a single embedding misses.
-    // Queries run concurrently, so latency stays close to a single lookup.
-    const queries = buildRetrievalQueries(input.query, input.customerNeeds);
+    // Multi-query: search the rewritten queries (preferred) or the raw message
+    // plus each distinct customer need in parallel, then merge. This surfaces
+    // evidence for every part of a multi-part question ("price AND delivery
+    // AND EMI") that a single embedding misses. Queries run concurrently, so
+    // latency stays close to a single lookup.
+    const queries =
+      input.rewrittenQueries && input.rewrittenQueries.length > 0
+        ? [...new Set([...input.rewrittenQueries, ...buildRetrievalQueries(input.query, input.customerNeeds)])].slice(0, 4)
+        : buildRetrievalQueries(input.query, input.customerNeeds);
 
     // Hybrid retrieval: vector search + keyword search (pg_trgm) in parallel.
     // Keyword search catches exact product names and acronyms that embeddings

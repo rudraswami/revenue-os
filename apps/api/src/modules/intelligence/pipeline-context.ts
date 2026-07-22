@@ -31,6 +31,8 @@ export interface PipelineContext {
   groundingConfidence?: number;
   /** Structured org-level business context (hours, address, etc.). */
   businessContext?: BusinessContext;
+  /** Recent human-edited drafts for few-shot voice learning. */
+  voiceExemplars?: Array<{ draft: string; final: string }>;
 }
 
 export interface DeferredCrmSync {

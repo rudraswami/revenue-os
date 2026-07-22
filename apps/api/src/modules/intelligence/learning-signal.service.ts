@@ -38,6 +38,8 @@ export class LearningSignalService {
         metadata: {
           draftLength: draft.length,
           finalLength: finalText.length,
+          draftText: draft.slice(0, 500),
+          finalText: finalText.slice(0, 500),
         },
       },
     });
@@ -167,6 +169,41 @@ export class LearningSignalService {
       draftRejected,
       blockerCounts,
     });
+  }
+
+  /**
+   * Fetch recent draft edits where the human corrected the AI's reply. These
+   * become "voice exemplars" — the composer injects them as few-shot examples
+   * so the LLM adopts the brand's actual tone instead of generic AI prose.
+   */
+  async getVoiceExemplars(
+    organizationId: string,
+    limit = 3,
+  ): Promise<Array<{ draft: string; final: string; createdAt: Date }>> {
+    const signals = await this.prisma.learningSignal.findMany({
+      where: {
+        organizationId,
+        type: "draft_feedback",
+        signal: { in: ["draft_heavily_edited", "draft_used_as_is"] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit * 3,
+      select: { metadata: true, createdAt: true },
+    });
+
+    const exemplars: Array<{ draft: string; final: string; createdAt: Date }> = [];
+    for (const s of signals) {
+      const meta = s.metadata && typeof s.metadata === "object"
+        ? (s.metadata as Record<string, unknown>)
+        : {};
+      const draft = typeof meta.draftText === "string" ? meta.draftText : "";
+      const final = typeof meta.finalText === "string" ? meta.finalText : "";
+      if (draft && final && draft !== final) {
+        exemplars.push({ draft, final, createdAt: s.createdAt });
+        if (exemplars.length >= limit) break;
+      }
+    }
+    return exemplars;
   }
 
   private overlapRatio(a: string, b: string): boolean {

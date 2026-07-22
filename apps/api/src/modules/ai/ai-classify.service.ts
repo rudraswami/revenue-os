@@ -36,6 +36,8 @@ import { useBackgroundWorkers } from "../../config/workers";
 import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { withTimeout } from "../../common/utils/with-timeout";
 import { JobsService } from "../jobs/jobs.service";
+import { LearningSignalService } from "../intelligence/learning-signal.service";
+import { QueryRewriteService } from "../knowledge/query-rewrite.service";
 
 export interface ClassifyJobData {
   organizationId: string;
@@ -100,6 +102,8 @@ export class AiClassifyService {
     private readonly replySend: ReplySendService,
     private readonly postCloseAlert: PostCloseAlertService,
     private readonly jobs: JobsService,
+    private readonly queryRewrite: QueryRewriteService,
+    private readonly learningSignals: LearningSignalService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -482,11 +486,47 @@ export class AiClassifyService {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      this.logger.error(`Pipeline failed for ${data.conversationId}: ${message}`);
       await this.prisma.aiRun.update({
         where: { id: aiRunId },
         data: { status: "FAILED", error: message, completedAt: new Date() },
       });
-      throw error;
+
+      // Classify-failure fallback: never leave the customer in silence.
+      // Store a safe holding draft the team can one-tap send.
+      try {
+        const conversation = await this.prisma.conversation.findFirst({
+          where: { id: data.conversationId, organizationId: data.organizationId },
+          select: { metadata: true, lastInboundAt: true },
+        });
+        const withinWindow = conversation?.lastInboundAt &&
+          Date.now() - conversation.lastInboundAt.getTime() < 24 * 60 * 60 * 1000;
+        if (conversation && withinWindow) {
+          const meta = conversation.metadata && typeof conversation.metadata === "object"
+            ? (conversation.metadata as Record<string, unknown>)
+            : {};
+          await this.prisma.conversation.update({
+            where: { id: data.conversationId },
+            data: {
+              metadata: {
+                ...meta,
+                pendingDraft: {
+                  suggestion: "Thanks for your message! Let me confirm the details and get right back to you shortly.",
+                  sources: [],
+                  createdAt: new Date().toISOString(),
+                  fallback: true,
+                },
+              } as object,
+            },
+          });
+          this.realtime.emitInboxUpdated(data.organizationId, data.conversationId);
+          this.logger.log(`Classify-failure fallback: stored holding draft for ${data.conversationId}`);
+        }
+      } catch (fallbackErr) {
+        this.logger.warn(
+          `Classify-failure fallback also failed: ${fallbackErr instanceof Error ? fallbackErr.message : fallbackErr}`,
+        );
+      }
     }
   }
 
@@ -509,14 +549,29 @@ export class AiClassifyService {
     const model = this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini";
     const classifyStarted = Date.now();
 
+    // Query rewrite: convert raw/Hinglish/vague customer messages into clean
+    // English search queries BEFORE embedding. This is the single biggest
+    // retrieval-quality lever — "aap kya karte ho?" becomes "services offered".
+    opts.spans.mark("query_rewrite_start");
+    const recentForContext = ctx.messages
+      .slice(-4)
+      .map((m) => `${m.direction === "INBOUND" ? "Customer" : "Agent"}: ${(m.content ?? "").slice(0, 120)}`)
+      .join("\n");
+    const rewritten = await this.queryRewrite.rewrite(
+      ctx.lastInbound ?? "",
+      recentForContext,
+    );
+    opts.spans.measure("query_rewrite_ms", "query_rewrite_start");
+
     opts.spans.mark("rag_start");
     const retrieval = await this.knowledge.retrieveDetailed({
       organizationId: data.organizationId,
       query: ctx.ragQuery,
-      limit: 6,
+      limit: 8,
       intentKind: opts.preRoute.intentKind,
       lastInbound: ctx.lastInbound,
       quickAnswers: opts.businessProfile.quickAnswers,
+      rewrittenQueries: rewritten.rewritten ? rewritten.queries : undefined,
     });
     const knowledgeHits = retrieval.hits;
     opts.spans.measure("rag_ms", "rag_start");
@@ -532,15 +587,20 @@ export class AiClassifyService {
       .join("\n\n");
 
     opts.spans.mark("classify_llm_start");
-    let result = await this.callOpenAi(
-      opts.apiKey,
-      model,
-      ctx.lead.stage,
-      ctx.transcript,
-      ctx.lastInbound,
-      combinedContext,
-      data.humanFeedback,
-    );
+    // Fetch voice exemplars in parallel with the LLM call — zero added latency.
+    const [classifyResult, voiceExemplars] = await Promise.all([
+      this.callOpenAi(
+        opts.apiKey,
+        model,
+        ctx.lead.stage,
+        ctx.transcript,
+        ctx.lastInbound,
+        combinedContext,
+        data.humanFeedback,
+      ),
+      this.learningSignals.getVoiceExemplars(data.organizationId, 3).catch(() => []),
+    ]);
+    let result = classifyResult;
     opts.spans.measure("classify_llm_ms", "classify_llm_start");
 
     const knowledgeGap = this.planner.detectKnowledgeGap(ctx, knowledgeHits, {
@@ -623,6 +683,7 @@ export class AiClassifyService {
       hasIndexedChunks: retrieval.hasIndexedChunks,
       groundingConfidence: retrieval.groundingConfidence,
       businessContext: opts.businessContext,
+      voiceExemplars: voiceExemplars.length > 0 ? voiceExemplars : undefined,
     };
 
     const { actions, replyDecision } = this.planner.buildFromClassification({
