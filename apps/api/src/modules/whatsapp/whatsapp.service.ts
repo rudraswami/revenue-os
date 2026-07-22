@@ -553,16 +553,26 @@ export class WhatsappService {
       });
     }
 
-    try {
-      await this.assignments.applyAutoAssign(organizationId, {
-        conversationId: conversation.id,
-        leadId: lead?.id ?? null,
-        reason: "new_inbound",
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`Auto-assign failed for conversation ${conversation.id}: ${message}`);
-    }
+    // Auto-assign is not needed to render the message bubble. Keep it OFF the
+    // realtime critical path so `message.new` reaches clients immediately; the
+    // assignment badge reconciles on the next thread open / inbox.updated / poll.
+    const assignConversationId = conversation.id;
+    const assignLeadId = lead?.id ?? null;
+    deferBackgroundTask(async () => {
+      try {
+        const assignee = await this.assignments.applyAutoAssign(organizationId, {
+          conversationId: assignConversationId,
+          leadId: assignLeadId,
+          reason: "new_inbound",
+        });
+        if (assignee) {
+          this.realtime.emitInboxUpdated(organizationId, assignConversationId);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Auto-assign failed for conversation ${assignConversationId}: ${message}`);
+      }
+    });
 
     return {
       organizationId,

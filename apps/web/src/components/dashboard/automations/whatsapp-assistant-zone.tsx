@@ -364,6 +364,11 @@ export function WhatsAppAssistantZone() {
                 options={PRESET_OPTIONS.map((p) => ({
                   value: p.preset,
                   label: p.title,
+                  disabled: p.preset === "responsive" && responsiveBlocked,
+                  disabledReason:
+                    p.preset === "responsive" && responsiveBlocked
+                      ? "Add Business Knowledge to unlock broader auto-replies."
+                      : undefined,
                 }))}
                 className="w-full"
               />
@@ -373,7 +378,9 @@ export function WhatsAppAssistantZone() {
               {responsiveBlocked ? (
                 <div className="mt-3 rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5">
                   <div className="mb-1.5 flex items-center justify-between gap-2 text-xs">
-                    <span className="font-medium text-foreground">Business Knowledge</span>
+                    <span className="font-medium text-foreground">
+                      “Broader auto-replies” is locked
+                    </span>
                     <span className="text-muted-foreground">{kbHealth?.chunkCount ?? 0} docs</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -383,7 +390,8 @@ export function WhatsAppAssistantZone() {
                     />
                   </div>
                   <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                    Add pricing &amp; FAQs in <KnowledgeSettingsLink /> to unlock broader auto-send.
+                    Growvisi only auto-answers what it can ground in your docs. Add pricing &amp;
+                    FAQs in <KnowledgeSettingsLink /> to unlock broader auto-send.
                   </p>
                 </div>
               ) : null}

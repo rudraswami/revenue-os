@@ -47,13 +47,19 @@ function patchConversationStatsCaches(
   }
 }
 
-/** Bump list row on new activity — no blanket list invalidation. */
+/**
+ * Bump list row on new activity — no blanket list invalidation.
+ * Returns true if the conversation existed in at least one cached list page and
+ * was patched; false when the conversation is not in any cached list (e.g. a
+ * brand-new conversation), so callers can decide to invalidate/refetch.
+ */
 export function patchConversationListOnMessageActivity(
   queryClient: QueryClient,
   conversationId: string,
   preview: { content: string | null; createdAt: string },
   options: { incrementUnread?: boolean } = {},
-): void {
+): boolean {
+  let patched = false;
   updateConversationListCaches(queryClient, (cached) => {
     let row: InboxListRow | undefined;
     if ("pages" in cached) {
@@ -72,8 +78,11 @@ export function patchConversationListOnMessageActivity(
       messages: [{ content: preview.content }],
       unreadCount: options.incrementUnread ? row.unreadCount + 1 : row.unreadCount,
     };
-    return bumpConversationListRow(cached, conversationId, updated);
+    const next = bumpConversationListRow(cached, conversationId, updated);
+    if (next) patched = true;
+    return next;
   });
+  return patched;
 }
 
 export function patchQueueStatsOnInbound(
@@ -196,12 +205,22 @@ export function handleMessageNewCacheUpdate(
   const isInbound = payload.direction !== "OUTBOUND";
   const isActive = conversationId === options.activeConversationId;
 
-  patchConversationListOnMessageActivity(
+  const rowPatched = patchConversationListOnMessageActivity(
     queryClient,
     conversationId,
     { content: payload.content ?? null, createdAt },
     { incrementUnread: isInbound && !isActive },
   );
+
+  // Brand-new conversation (first-ever message from a new customer) isn't in any
+  // cached list page, so the patch above is a no-op. Without this, the new thread
+  // only appears on the next list poll (5–8s). Invalidate so it shows instantly.
+  if (!rowPatched && isInbound) {
+    void queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.conversationsList,
+      refetchType: "active",
+    });
+  }
 
   if (isInbound && !isActive) {
     patchQueueStatsOnInbound(queryClient, { unreadDelta: 1 });
