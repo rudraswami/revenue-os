@@ -31,7 +31,7 @@ const MANAGE_ROLES = ["OWNER", "ADMIN", "MANAGER"] as const;
 
 class StartImportDto {
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: "URL is required" })
   @MaxLength(2000)
   url!: string;
 }

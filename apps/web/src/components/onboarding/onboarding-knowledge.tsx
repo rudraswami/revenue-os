@@ -9,7 +9,7 @@ import {
   Globe,
   Loader2,
   Search,
-  Sparkles,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -80,6 +80,7 @@ export function OnboardingKnowledge({
   const queryClient = useQueryClient();
   const { success, error: toastError } = useToast();
   const [url, setUrl] = useState("");
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("input");
   const [importId, setImportId] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -107,12 +108,49 @@ export function OnboardingKnowledge({
       setPhase("scanning");
     }
     if (importData.status === "review" && phase === "scanning") {
-      setPhase("review");
-      const highConf = importData.items
-        .filter((i) => i.status === "pending" && i.confidence >= 0.5)
-        .map((i) => i.id);
-      setSelectedItems(new Set(highConf));
+      const pending = importData.items.filter((i) => i.status === "pending");
+      if (pending.length === 0 && importData.itemsExtracted === 0) {
+        // Pipeline completed but found nothing useful — let user retry
+        setPhase("input");
+        setImportId(null);
+        toastError("Could not extract knowledge from this website. Try a different URL.");
+      } else {
+        setPhase("review");
+        const highConf = pending
+          .filter((i) => i.confidence >= 0.5)
+          .map((i) => i.id);
+        setSelectedItems(new Set(highConf));
+      }
     }
+    if (importData.status === "failed" && phase === "scanning") {
+      setPhase("input");
+      setImportId(null);
+      toastError(importData.error ?? "Could not scan the website. Check the URL and try again.");
+    }
+  }
+
+  function validateUrl(input: string): string | null {
+    const trimmed = input.trim();
+    if (!trimmed) return "Please enter a URL";
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      const parsed = new URL(withProtocol);
+      if (!parsed.hostname.includes(".")) return "Please enter a valid domain (e.g. yourbusiness.com)";
+      if (/^(localhost|127\.|10\.|192\.168\.)/.test(parsed.hostname)) return "Cannot scan local addresses";
+      return null;
+    } catch {
+      return "Please enter a valid website URL";
+    }
+  }
+
+  function handleScan() {
+    const error = validateUrl(url);
+    if (error) {
+      setUrlError(error);
+      return;
+    }
+    setUrlError(null);
+    startMutation.mutate(url.trim());
   }
 
   const startMutation = useMutation({
@@ -176,30 +214,35 @@ export function OnboardingKnowledge({
             so your AI can answer customer questions instantly.
           </p>
 
-          <div className="mt-8 flex gap-2">
-            <Input
-              placeholder="https://yourbusiness.com"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && url.trim() && startMutation.mutate(url.trim())}
-              className="h-12 flex-1 rounded-xl text-sm"
-              autoFocus
-            />
-            <Button
-              size="lg"
-              className="h-12 rounded-xl px-6"
-              disabled={!url.trim() || startMutation.isPending}
-              onClick={() => startMutation.mutate(url.trim())}
-            >
-              {startMutation.isPending ? (
-                <GrowvisiSpinner size="xs" />
-              ) : (
-                <>
-                  <Search className="h-4 w-4" />
-                  Scan
-                </>
-              )}
-            </Button>
+          <div className="mt-8 space-y-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://yourbusiness.com"
+                value={url}
+                onChange={(e) => { setUrl(e.target.value); setUrlError(null); }}
+                onKeyDown={(e) => e.key === "Enter" && url.trim() && handleScan()}
+                className={cn("h-12 flex-1 rounded-xl text-sm", urlError && "border-destructive")}
+                autoFocus
+              />
+              <Button
+                size="lg"
+                className="h-12 rounded-xl px-6"
+                disabled={!url.trim() || startMutation.isPending}
+                onClick={handleScan}
+              >
+                {startMutation.isPending ? (
+                  <GrowvisiSpinner size="xs" />
+                ) : (
+                  <>
+                    <Search className="h-4 w-4" />
+                    Scan
+                  </>
+                )}
+              </Button>
+            </div>
+            {urlError && (
+              <p className="text-xs text-destructive">{urlError}</p>
+            )}
           </div>
 
           <button
@@ -224,9 +267,13 @@ export function OnboardingKnowledge({
           className="flex flex-col items-center py-12 text-center"
         >
           <div className="relative mb-6">
-            <div className="absolute inset-0 animate-ping rounded-full bg-accent/20" />
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-accent/10">
-              <Sparkles className="h-8 w-8 text-accent" />
+            <motion.div
+              className="absolute inset-0 rounded-2xl bg-accent/10"
+              animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.2, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/10">
+              <Globe className="h-8 w-8 text-accent" />
             </div>
           </div>
           <h3 className="text-lg font-bold text-foreground">
@@ -361,7 +408,7 @@ export function OnboardingKnowledge({
           className="flex flex-col items-center py-12 text-center"
         >
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10">
-            <Sparkles className="h-8 w-8 text-accent" />
+            <Zap className="h-8 w-8 text-accent" />
           </div>
           <h3 className="text-lg font-bold text-foreground">Your AI is ready to help!</h3>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
@@ -379,29 +426,7 @@ export function OnboardingKnowledge({
         </motion.div>
       )}
 
-      {/* Error state */}
-      {phase === "scanning" && importData?.status === "failed" && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mt-6 text-center"
-        >
-          <p className="text-sm text-destructive">
-            {importData.error ?? "Could not scan the website. Check the URL and try again."}
-          </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-3 rounded-xl"
-            onClick={() => {
-              setPhase("input");
-              setImportId(null);
-            }}
-          >
-            Try again
-          </Button>
-        </motion.div>
-      )}
+      {/* Error handled via auto-transition above */}
     </div>
   );
 }

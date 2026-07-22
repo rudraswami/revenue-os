@@ -4,6 +4,7 @@ import { DOMAIN_EVENTS } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { BusinessEventService } from "../events/business-event.service";
+import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { WebsiteCrawlService } from "./website-crawl.service";
 import { ContentStructureService } from "./content-structure.service";
 import { KnowledgeService } from "./knowledge.service";
@@ -24,6 +25,9 @@ export class WebsiteImportService {
   async startImport(user: JwtPayload, url: string) {
     await this.entitlements.assertHasAccess(user.organizationId);
 
+    const cleanUrl = url.trim();
+    this.validateUrl(cleanUrl);
+
     // Don't allow multiple concurrent imports
     const active = await this.prisma.websiteImport.findFirst({
       where: {
@@ -40,13 +44,16 @@ export class WebsiteImportService {
     const imp = await this.prisma.websiteImport.create({
       data: {
         organizationId: user.organizationId,
-        url: url.trim(),
+        url: cleanUrl,
         status: "crawling",
       },
     });
 
-    // Run crawl + extraction asynchronously
-    void this.runImportPipeline(imp.id, user.organizationId, url.trim());
+    // Use deferBackgroundTask (Vercel waitUntil) to keep the function alive
+    // after the response is sent — bare `void` gets killed on serverless.
+    deferBackgroundTask(() =>
+      this.runImportPipeline(imp.id, user.organizationId, cleanUrl),
+    );
 
     return {
       id: imp.id,
@@ -54,6 +61,27 @@ export class WebsiteImportService {
       status: imp.status,
       createdAt: imp.createdAt,
     };
+  }
+
+  private validateUrl(url: string): void {
+    if (!url) {
+      throw new BadRequestException("URL is required");
+    }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+    } catch {
+      throw new BadRequestException("Please enter a valid website URL");
+    }
+
+    if (!parsed.hostname.includes(".")) {
+      throw new BadRequestException("Please enter a valid domain (e.g. yourbusiness.com)");
+    }
+
+    if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(parsed.hostname)) {
+      throw new BadRequestException("Cannot import from local/private network addresses");
+    }
   }
 
   async getImport(user: JwtPayload, importId: string) {
@@ -256,7 +284,9 @@ export class WebsiteImportService {
       },
     });
 
-    void this.runImportPipeline(importId, user.organizationId, imp.url);
+    deferBackgroundTask(() =>
+      this.runImportPipeline(importId, user.organizationId, imp.url),
+    );
 
     return { id: importId, status: "crawling" };
   }

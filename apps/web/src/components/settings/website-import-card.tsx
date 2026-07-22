@@ -13,7 +13,6 @@ import {
   Loader2,
   RefreshCw,
   Search,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -95,6 +94,7 @@ export function WebsiteImportCard() {
   const queryClient = useQueryClient();
   const { success, error: toastError } = useToast();
   const [url, setUrl] = useState("");
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [activeImportId, setActiveImportId] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -217,8 +217,28 @@ export function WebsiteImportCard() {
     },
   });
 
+  function validateUrl(input: string): string | null {
+    const trimmed = input.trim();
+    if (!trimmed) return "Please enter a URL";
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      const parsed = new URL(withProtocol);
+      if (!parsed.hostname.includes(".")) return "Please enter a valid domain (e.g. yourbusiness.com)";
+      if (/^(localhost|127\.|10\.|192\.168\.)/.test(parsed.hostname)) return "Cannot scan local addresses";
+      return null;
+    } catch {
+      return "Please enter a valid website URL";
+    }
+  }
+
   function handleStartImport() {
     if (!url.trim() || startMutation.isPending) return;
+    const error = validateUrl(url);
+    if (error) {
+      setUrlError(error);
+      return;
+    }
+    setUrlError(null);
     startMutation.mutate(url.trim());
   }
 
@@ -269,29 +289,34 @@ export function WebsiteImportCard() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Input
-              placeholder="https://yourbusiness.com"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleStartImport()}
-              className="h-10 flex-1 rounded-xl text-sm"
-            />
-            <Button
-              size="sm"
-              className="h-10 rounded-xl px-5"
-              disabled={!url.trim() || startMutation.isPending}
-              onClick={handleStartImport}
-            >
-              {startMutation.isPending ? (
-                <GrowvisiSpinner size="xs" />
-              ) : (
-                <>
-                  <Search className="h-4 w-4" />
-                  Scan
-                </>
-              )}
-            </Button>
+          <div className="space-y-1.5">
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://yourbusiness.com"
+                value={url}
+                onChange={(e) => { setUrl(e.target.value); setUrlError(null); }}
+                onKeyDown={(e) => e.key === "Enter" && handleStartImport()}
+                className={cn("h-10 flex-1 rounded-xl text-sm", urlError && "border-destructive")}
+              />
+              <Button
+                size="sm"
+                className="h-10 rounded-xl px-5"
+                disabled={!url.trim() || startMutation.isPending}
+                onClick={handleStartImport}
+              >
+                {startMutation.isPending ? (
+                  <GrowvisiSpinner size="xs" />
+                ) : (
+                  <>
+                    <Search className="h-4 w-4" />
+                    Scan
+                  </>
+                )}
+              </Button>
+            </div>
+            {urlError && (
+              <p className="text-xs text-destructive">{urlError}</p>
+            )}
           </div>
 
           {/* Past imports */}
@@ -349,7 +374,7 @@ export function WebsiteImportCard() {
           <div className="flex items-center gap-3">
             <div className="relative flex h-12 w-12 items-center justify-center">
               <div className="absolute inset-0 animate-spin rounded-full border-2 border-accent/20 border-t-accent" />
-              <Sparkles className="h-5 w-5 text-accent" />
+              <Globe className="h-5 w-5 text-accent" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">
