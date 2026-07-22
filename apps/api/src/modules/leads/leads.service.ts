@@ -12,6 +12,7 @@ import { EntitlementsService } from "../billing/entitlements.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { AuditService } from "../audit/audit.service";
 import { AutomationsService } from "../automations/automations.service";
+import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 import {
   computePipelineSignals,
@@ -75,6 +76,7 @@ export class LeadsService {
     private readonly webhooks: WebhookDispatchService,
     private readonly audit: AuditService,
     private readonly automations: AutomationsService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   async listByStage(user: JwtPayload, filter?: PipelineFilter, perStageLimit = 40) {
@@ -424,6 +426,17 @@ export class LeadsService {
       phone: lead.phone,
       displayName: lead.displayName,
       at: new Date().toISOString(),
+    });
+
+    const linkedConversation = await this.prisma.conversation.findFirst({
+      where: { leadId: id, organizationId: user.organizationId },
+      select: { id: true },
+    });
+    this.realtime.emitLeadStageChanged(user.organizationId, {
+      leadId: id,
+      fromStage: lead.stage,
+      toStage: stage,
+      conversationId: linkedConversation?.id,
     });
 
     this.audit.log({

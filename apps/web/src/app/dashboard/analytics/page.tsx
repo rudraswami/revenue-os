@@ -18,7 +18,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { IndianRupee, MessageSquare, TrendingUp, Users, Zap } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
-import { cn } from "@/lib/utils";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 const AnalyticsBarCharts = dynamic(
   () =>
@@ -67,7 +67,7 @@ export default function AnalyticsPage() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: revenue, isLoading: revenueLoading } = useQuery({
+  const { data: revenue, isLoading: revenueLoading, isError: revenueError, refetch: refetchRevenue } = useQuery({
     queryKey: QUERY_KEYS.revenue(period),
     queryFn: () =>
       apiFetch<{
@@ -114,23 +114,15 @@ export default function AnalyticsPage() {
         title="Analytics"
         description="Revenue and response metrics from your WhatsApp sales pipeline."
         action={
-          <div className="flex flex-wrap gap-1 rounded-xl border border-border/80 bg-card p-1">
-            {METRICS_PERIOD_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setPeriod(opt.value)}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-                  period === opt.value
-                    ? "bg-accent text-white"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            aria-label="Analytics period"
+            value={period}
+            onChange={setPeriod}
+            options={METRICS_PERIOD_OPTIONS.map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+            }))}
+          />
         }
       />
 
@@ -140,6 +132,7 @@ export default function AnalyticsPage() {
             onRetry={() => {
               void refetchFunnel();
               void refetchConv();
+              void refetchRevenue();
             }}
           />
         </div>
@@ -158,15 +151,23 @@ export default function AnalyticsPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title="Open pipeline"
-              value={formatInr(revenue?.pipelineValueCents)}
-              delta={`${revenue?.pipelineDealsWithValue ?? 0} deals with value`}
+              value={revenueError ? "—" : formatInr(revenue?.pipelineValueCents)}
+              delta={
+                revenueError
+                  ? "Could not load revenue"
+                  : `${revenue?.pipelineDealsWithValue ?? 0} deals with value`
+              }
               icon={<IndianRupee className="h-4 w-4" />}
               highlight
             />
             <MetricCard
               title="Won revenue"
-              value={formatInr(revenue?.wonValueCents)}
-              delta={`${revenue?.wonDealsWithValue ?? 0} won in period`}
+              value={revenueError ? "—" : formatInr(revenue?.wonValueCents)}
+              delta={
+                revenueError
+                  ? "Could not load revenue"
+                  : `${revenue?.wonDealsWithValue ?? 0} won in period`
+              }
               icon={<TrendingUp className="h-4 w-4" />}
             />
             <MetricCard title="Total leads" value={funnel?.total ?? 0} icon={<Users className="h-4 w-4" />} />

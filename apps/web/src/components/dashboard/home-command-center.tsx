@@ -55,13 +55,13 @@ interface HomeCommandCenterProps {
 }
 
 const STAGE_COLORS: Record<string, string> = {
-  NEW: "bg-muted-foreground/40",
-  CONTACTED: "bg-sky-500",
-  QUALIFIED: "bg-indigo-500",
-  PROPOSAL: "bg-viz-violet",
+  NEW: "bg-foreground/70",
+  CONTACTED: "bg-accent/60",
+  QUALIFIED: "bg-accent",
+  PROPOSAL: "bg-accent-light",
   NEGOTIATION: "bg-warning",
-  WON: "bg-success",
-  LOST: "bg-rose-400",
+  WON: "bg-accent",
+  LOST: "bg-muted-foreground",
 };
 
 function openLeadCount(funnel?: FunnelData) {

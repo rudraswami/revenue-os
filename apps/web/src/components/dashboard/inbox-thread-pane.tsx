@@ -234,6 +234,7 @@ function InboxThreadPaneInner({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const restoreScrollRef = useRef<{ height: number; top: number } | null>(null);
   const unreadDividerRef = useRef<{ convId: string; count: number } | null>(null);
+  const draftDirtyRef = useRef(false);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -303,6 +304,7 @@ function InboxThreadPaneInner({
   useEffect(() => {
     if (prevConversationIdRef.current === conversationId) return;
     prevConversationIdRef.current = conversationId;
+    draftDirtyRef.current = false;
     const saved = loadInboxDraft(conversationId);
     setDraft(saved?.text ?? "");
     setDraftMeta(saved?.meta ?? null);
@@ -506,7 +508,7 @@ function InboxThreadPaneInner({
 
   useEffect(() => {
     const pending = thread?.pendingDraft;
-    if (!pending?.suggestion || !thread?.aiEnabled) return;
+    if (!pending?.suggestion || !thread?.aiEnabled || draftDirtyRef.current) return;
     setDraft(pending.suggestion);
     setDraftMeta({
       aiRunId: pending.aiRunId,
@@ -544,6 +546,7 @@ function InboxThreadPaneInner({
         token: token ?? undefined,
       }),
     onSuccess: (res) => {
+      draftDirtyRef.current = false;
       setDraft(res.suggestion);
       setDraftMeta({ aiRunId: res.aiRunId, sources: res.sources ?? [] });
       setSendError(null);
@@ -636,6 +639,13 @@ function InboxThreadPaneInner({
     : 0;
   const classifySettled =
     !!replyDecision && lastInboundMs > 0 && decisionMs >= lastInboundMs - 3_000;
+  const classifySkipped =
+    !!replyDecision &&
+    replyDecision.mode === "skip" &&
+    lastInboundMs > 0 &&
+    decisionMs >= lastInboundMs - 3_000;
+  const classifyGiveUp =
+    lastInboundMs > 0 && Date.now() - lastInboundMs > 45_000 && !classifySettled;
 
   const awaitingAiDraft =
     !!thread?.aiEnabled &&
@@ -644,6 +654,8 @@ function InboxThreadPaneInner({
     !aiToggleMutation.isPending &&
     lastMessage?.direction === "INBOUND" &&
     !classifySettled &&
+    !classifySkipped &&
+    !classifyGiveUp &&
     lastInboundMs > 0 &&
     Date.now() - lastInboundMs < 120_000;
 
@@ -1180,20 +1192,12 @@ function InboxThreadPaneInner({
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
         <p className="text-sm text-destructive">{copy.threadLoadError}</p>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => void refetchThread()}
-            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90"
-          >
+          <Button type="button" size="sm" onClick={() => void refetchThread()}>
             {copy.threadRetry}
-          </button>
-          <button
-            type="button"
-            onClick={onClearSelection}
-            className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted"
-          >
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={onClearSelection}>
             {copy.threadBackToList}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -1809,7 +1813,10 @@ function InboxThreadPaneInner({
               )}
               <InboxComposer
                 draft={draft}
-                onDraftChange={setDraft}
+                onDraftChange={(text) => {
+                  draftDirtyRef.current = true;
+                  setDraft(text);
+                }}
                 onSend={handleSend}
                 sendPending={sendPending}
                 sendDisabled={!thread.whatsappAccount.isActive || windowClosed || !canSend}

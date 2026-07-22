@@ -211,6 +211,7 @@ export class ActionExecutorService {
         fromStage: input.ctx.lead.stage,
         toStage: input.classification.stage,
         confidence: input.classification.confidence,
+        conversationId: input.conversationId,
       });
     }
 

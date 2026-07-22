@@ -38,7 +38,7 @@ const VARIANT_STYLES: Record<
   },
   rose: {
     card: "border-border bg-card",
-    icon: "bg-rose-100 text-rose-700",
+    icon: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
     value: "text-foreground",
     title: "text-muted-foreground",
   },
@@ -107,7 +107,7 @@ export function MetricCard({
     >
       {urgent && (typeof value === "number" ? value > 0 : value !== "0" && value !== "—") && (
         <span className="absolute right-4 top-4 flex h-2.5 w-2.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-60" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-60 motion-reduce:animate-none" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
         </span>
       )}

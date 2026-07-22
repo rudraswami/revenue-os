@@ -16,6 +16,7 @@ import {
 } from "@/lib/i18n/conversations-copy";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { FilterChip } from "@/components/ui/filter-chip";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { InboxConversationRowItem, INBOX_LIST_ROW_HEIGHT } from "@/components/dashboard/inbox-conversation-row";
 import { cn } from "@/lib/utils";
 
@@ -185,23 +186,16 @@ export function InboxConversationList({
         </p>
 
         {hasWhatsapp && onListScopeChange && (
-          <div className="mt-2.5 flex rounded-lg bg-muted/60 p-0.5">
-            {(["active", "closed"] as const).map((scope) => (
-              <button
-                key={scope}
-                type="button"
-                onClick={() => onListScopeChange(scope)}
-                className={cn(
-                  "flex-1 rounded-md py-1.5 text-xs font-semibold transition",
-                  listScope === scope
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {scope === "active" ? copy.scopeActive : copy.scopeClosed}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            className="mt-2.5 w-full"
+            aria-label="Conversation scope"
+            value={listScope}
+            onChange={onListScopeChange}
+            options={[
+              { value: "active", label: copy.scopeActive },
+              { value: "closed", label: copy.scopeClosed },
+            ]}
+          />
         )}
 
         {hasWhatsapp && (

@@ -41,6 +41,7 @@ import { prefetchInboxThread } from "@/lib/inbox-thread-prefetch";
 import { useInboxConversationList } from "@/hooks/use-inbox-conversation-list";
 import { useInboxKeyboard } from "@/hooks/use-inbox-keyboard";
 import { inboxConversationIdFromParams } from "@/lib/inbox-url";
+import { useToast } from "@/components/ui/toast";
 
 export default function InboxPage() {
   const copy = useConversationsCopy();
@@ -48,6 +49,7 @@ export default function InboxPage() {
   const role = useAuthStore((s) => s.role);
   const canSend = canWrite(role);
   const queryClient = useQueryClient();
+  const { error: toastError } = useToast();
   const { connected: live } = useRealtime();
   const listPollInterval = useVisibleRefetchInterval(live ? 5_000 : 8_000);
   const statsPollInterval = useVisibleRefetchInterval(live ? 20_000 : 30_000);
@@ -198,12 +200,13 @@ export default function InboxPage() {
         method: "POST",
         token: token ?? undefined,
       }).catch(() => {
+        toastError("Could not sync read status. Retrying…");
         refreshConversationLists(queryClient);
         invalidateInboxThreadQueries(queryClient, id);
         refreshQueueStats(queryClient);
       });
     },
-    [queryClient, token],
+    [queryClient, token, toastError],
   );
 
   const clearSelection = useCallback(() => {

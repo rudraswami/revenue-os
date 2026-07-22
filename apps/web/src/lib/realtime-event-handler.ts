@@ -5,6 +5,7 @@ import { invalidateInboxThreadQueries } from "@/lib/inbox-thread-bundle";
 import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import {
   handleMessageNewCacheUpdate,
+  patchLeadStageInCaches,
   patchThreadMessageStatus,
   refreshConversationLists,
   refreshQueueStats,
@@ -14,10 +15,12 @@ import {
 export interface RealtimeRefreshPayload {
   conversationId?: string;
   leadId?: string;
+  toStage?: string;
   messageId?: string;
   direction?: "INBOUND" | "OUTBOUND";
   content?: string | null;
   createdAt?: string;
+  type?: string;
   status?: string;
 }
 
@@ -71,6 +74,8 @@ export function handleRealtimeEvent(
       refreshQueueStats(queryClient);
       if (conversationId) {
         invalidateInboxThreadQueries(queryClient, conversationId);
+      } else if (leadId && payload.toStage) {
+        patchLeadStageInCaches(queryClient, leadId, payload.toStage);
       }
       if (leadId) {
         void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.leadTimeline(leadId) });

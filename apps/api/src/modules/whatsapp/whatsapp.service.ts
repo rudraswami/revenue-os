@@ -47,6 +47,7 @@ export interface InboundMessageEvent {
   direction: "INBOUND";
   content: string | null;
   createdAt: string;
+  type: string;
 }
 
 import { AiClassifyService } from "../ai/ai-classify.service";
@@ -188,15 +189,14 @@ export class WhatsappService {
           organizationId: events[0]?.organizationId ?? undefined,
         },
       });
-      const orgIds = new Set<string>();
       for (const inbound of events) {
-        orgIds.add(inbound.organizationId);
         this.realtime.emitMessageNew(inbound.organizationId, {
           conversationId: inbound.conversationId,
           messageId: inbound.messageId,
           direction: inbound.direction,
           content: inbound.content,
           createdAt: inbound.createdAt,
+          type: inbound.type,
         });
 
         const correlationId = this.businessEvents.createCorrelationId();
@@ -224,9 +224,6 @@ export class WhatsappService {
           },
           { background: true },
         );
-      }
-      for (const orgId of orgIds) {
-        this.realtime.emitInboxUpdated(orgId);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -577,6 +574,7 @@ export class WhatsappService {
       direction: "INBOUND" as const,
       content,
       createdAt: message.createdAt.toISOString(),
+      type,
     };
   }
 

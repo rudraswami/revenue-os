@@ -940,6 +940,7 @@ export class ConversationsService {
       direction: "OUTBOUND",
       content: message.content,
       createdAt: message.createdAt.toISOString(),
+      type: message.type,
     });
     this.realtime.emitInboxUpdated(user.organizationId, conversationId);
 
@@ -1074,6 +1075,7 @@ export class ConversationsService {
       direction: "OUTBOUND",
       content: message.content,
       createdAt: message.createdAt.toISOString(),
+      type: message.type,
     });
     this.realtime.emitInboxUpdated(user.organizationId, conversationId);
 

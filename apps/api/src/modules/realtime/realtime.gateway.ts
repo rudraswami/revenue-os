@@ -21,6 +21,7 @@ export interface MessageNewEvent {
   direction?: "INBOUND" | "OUTBOUND";
   content?: string | null;
   createdAt?: string;
+  type?: string;
 }
 
 export interface MessageStatusEvent {
@@ -124,6 +125,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       fromStage: string;
       toStage: string;
       confidence?: number;
+      conversationId?: string;
     },
   ) {
     this.server?.to(`org:${organizationId}`).emit("lead.stage.changed", data);

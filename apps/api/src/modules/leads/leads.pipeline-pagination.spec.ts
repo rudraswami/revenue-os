@@ -30,6 +30,7 @@ describe("LeadsService.listByStage pagination (P1)", () => {
     {} as WebhookDispatchService,
     {} as AuditService,
     automations,
+    {} as never,
   );
 
   beforeEach(() => {

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, apiUpload, toUserMessage } from "@/lib/api-client";
 import { canManageCampaigns } from "@/lib/permissions";
@@ -69,7 +70,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
 
-  const { data: docs, isLoading } = useQuery({
+  const { data: docs, isLoading, isError: docsError, refetch: refetchDocs } = useQuery({
     queryKey: ["knowledge-documents"],
     queryFn: () => apiFetch<KnowledgeDoc[]>("/knowledge/documents", { token: token ?? undefined }),
     enabled: !!token,
@@ -297,6 +298,11 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
           <div className="h-14 animate-pulse rounded-xl bg-muted" />
           <div className="h-14 animate-pulse rounded-xl bg-muted" />
         </div>
+      ) : docsError ? (
+        <QueryErrorState
+          title="Could not load knowledge documents"
+          onRetry={() => void refetchDocs()}
+        />
       ) : (docs?.length ?? 0) === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/70 px-4 py-6 text-center">
           <p className="text-sm font-medium text-foreground">No documents yet</p>
@@ -358,6 +364,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                       size="sm"
                       variant="ghost"
                       className="rounded-xl"
+                      aria-label="Cancel editing"
                       onClick={() => setEditingId(null)}
                     >
                       <X className="h-4 w-4" />
@@ -401,38 +408,40 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                         : doc.status}
                   </span>
                   {canManage && (
-                    <div className="flex shrink-0 gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => startEdit(doc)}
-                      >
+                    <div className="flex shrink-0 gap-0.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={`Edit ${doc.title}`}
+                      onClick={() => startEdit(doc)}
+                    >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={reindexMutation.isPending}
-                        onClick={() => reindexMutation.mutate(doc.id)}
-                      >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={`Reindex ${doc.title}`}
+                      disabled={reindexMutation.isPending}
+                      onClick={() => reindexMutation.mutate(doc.id)}
+                    >
                         {pendingReindexId === doc.id ? (
                           <GrowvisiSpinner size="xs" />
                         ) : (
                           <RefreshCw className="h-3.5 w-3.5" />
                         )}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => deleteMutation.mutate(doc.id)}
-                        aria-label="Delete"
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      aria-label={`Delete ${doc.title}`}
+                      disabled={deleteMutation.isPending}
+                      onClick={() => deleteMutation.mutate(doc.id)}
                       >
                         {pendingDeleteId === doc.id ? (
                           <GrowvisiSpinner size="xs" />

@@ -36,15 +36,14 @@ export class WhatsappInboundProcessor extends WorkerHost {
         data: { processedAt: new Date() },
       });
 
-      const orgIds = new Set<string>();
       for (const event of events) {
-        orgIds.add(event.organizationId);
         this.realtime.emitMessageNew(event.organizationId, {
           conversationId: event.conversationId,
           messageId: event.messageId,
           direction: event.direction,
           content: event.content,
           createdAt: event.createdAt,
+          type: event.type,
         });
 
         const correlationId = this.businessEvents.createCorrelationId();
@@ -69,9 +68,6 @@ export class WhatsappInboundProcessor extends WorkerHost {
           ...(event.leadId ? { leadId: event.leadId } : {}),
           correlationId,
         });
-      }
-      for (const orgId of orgIds) {
-        this.realtime.emitInboxUpdated(orgId);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";

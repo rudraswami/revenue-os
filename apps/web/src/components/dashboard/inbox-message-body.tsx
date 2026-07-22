@@ -4,6 +4,7 @@ import { FileText, ImageIcon, Loader2, Mic, Video, ZoomIn } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import { InboxDocumentCard } from "@/components/dashboard/inbox-document-card";
 import { InboxImageLightbox } from "@/components/dashboard/inbox-image-lightbox";
+import { Button } from "@/components/ui/button";
 import { getCachedInboxMediaUrl } from "@/lib/inbox-media-cache";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
@@ -58,20 +59,24 @@ function useAuthenticatedMediaUrl(
   conversationId: string,
   messageId: string,
   enabled: boolean,
-): { url: string | null; loading: boolean } {
+): { url: string | null; loading: boolean; error: boolean; retry: () => void } {
   const token = useAuthStore((s) => s.accessToken);
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!enabled || !token) {
       setUrl(null);
       setLoading(false);
+      setError(false);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
+    setError(false);
 
     void (async () => {
       try {
@@ -84,6 +89,7 @@ function useAuthenticatedMediaUrl(
         if (!cancelled) {
           setUrl(null);
           setLoading(false);
+          setError(true);
         }
       }
     })();
@@ -91,9 +97,14 @@ function useAuthenticatedMediaUrl(
     return () => {
       cancelled = true;
     };
-  }, [conversationId, messageId, enabled, token]);
+  }, [conversationId, messageId, enabled, token, attempt]);
 
-  return { url, loading };
+  return {
+    url,
+    loading,
+    error,
+    retry: () => setAttempt((n) => n + 1),
+  };
 }
 
 function mediaCaption(content: string | null): string | null {
@@ -121,7 +132,8 @@ export const InboxMessageBody = memo(function InboxMessageBody({
   const isAudio = type === "AUDIO";
   const needsMedia = isImage || isDocument || isVideo || isAudio;
   const { ref, inView } = useInView();
-  const { url: mediaUrl, loading: mediaLoading } = useAuthenticatedMediaUrl(
+  const { url: mediaUrl, loading: mediaLoading, error: mediaError, retry: retryMedia } =
+    useAuthenticatedMediaUrl(
     conversationId,
     messageId,
     needsMedia && inView,
@@ -144,6 +156,20 @@ export const InboxMessageBody = memo(function InboxMessageBody({
       <div ref={ref} className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
         <Icon className="h-3.5 w-3.5" />
         <span>{content ?? "Attachment"}</span>
+      </div>
+    );
+  }
+
+  if (needsMedia && mediaError) {
+    return (
+      <div className={cn("flex flex-col gap-2 text-sm text-muted-foreground", className)}>
+        <div className="flex items-center gap-2">
+          <Icon className="h-3.5 w-3.5" />
+          <span>Couldn&apos;t load attachment</span>
+        </div>
+        <Button type="button" size="sm" variant="outline" className="h-7 w-fit text-xs" onClick={retryMedia}>
+          Retry
+        </Button>
       </div>
     );
   }

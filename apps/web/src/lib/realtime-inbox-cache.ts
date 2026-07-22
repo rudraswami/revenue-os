@@ -3,6 +3,7 @@ import { QUERY_KEYS } from "./query-config";
 import {
   type ConversationStatsCache,
   type InboxListRow,
+  type InboxThreadCache,
   type InboxThreadMessage,
 } from "./inbox-query-cache";
 import { bumpConversationListRow, updateConversationListCaches } from "./inbox-list-cache";
@@ -14,6 +15,7 @@ export interface MessageNewRealtimePayload {
   direction?: "INBOUND" | "OUTBOUND";
   content?: string | null;
   createdAt?: string;
+  type?: string;
 }
 
 export interface MessageStatusRealtimePayload {
@@ -120,7 +122,7 @@ export function patchOpenThreadOnMessageNew(
   const message: InboxThreadMessage = {
     id: payload.messageId,
     direction: payload.direction,
-    type: "TEXT",
+    type: payload.type ?? "TEXT",
     content: payload.content ?? null,
     createdAt: payload.createdAt ?? new Date().toISOString(),
     status: payload.direction === "INBOUND" ? "DELIVERED" : "SENT",
@@ -213,6 +215,48 @@ export function handleMessageNewCacheUpdate(
     queryKey: QUERY_KEYS.conversationThread(conversationId),
     refetchType: "active",
   });
+}
+
+/** Refresh open thread + list rows when a lead stage changes without conversationId. */
+export function patchLeadStageInCaches(
+  queryClient: QueryClient,
+  leadId: string,
+  toStage: string,
+): void {
+  updateConversationListCaches(queryClient, (cached) => {
+    const patchRows = (rows: InboxListRow[]) => {
+      let changed = false;
+      const data = rows.map((row) => {
+        if (row.lead?.id !== leadId) return row;
+        changed = true;
+        return { ...row, lead: { ...row.lead, stage: toStage } };
+      });
+      return changed ? data : null;
+    };
+
+    if ("pages" in cached) {
+      const pages = cached.pages.map((page) => {
+        const data = patchRows(page.data);
+        return data ? { ...page, data } : page;
+      });
+      const changed = pages.some((page, i) => page !== cached.pages[i]);
+      return changed ? { ...cached, pages } : null;
+    }
+
+    const data = patchRows(cached.data);
+    return data ? { ...cached, data } : null;
+  });
+
+  const threadEntries = queryClient.getQueriesData<InboxThreadCache>({
+    predicate: (query) => query.queryKey[0] === "conversation",
+  });
+  for (const [, thread] of threadEntries) {
+    if (!thread?.lead || thread.lead.id !== leadId) continue;
+    syncInboxThreadBundleConversation(queryClient, thread.id, {
+      ...thread,
+      lead: { ...thread.lead, stage: toStage },
+    });
+  }
 }
 
 /** Scoped list refresh when bulk server mutations affect unknown rows. */

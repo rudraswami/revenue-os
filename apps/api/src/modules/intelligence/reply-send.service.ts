@@ -242,6 +242,7 @@ export class ReplySendService {
       direction: "OUTBOUND",
       content: message.content,
       createdAt: message.createdAt.toISOString(),
+      type: "TEXT",
     });
     this.realtime.emitInboxUpdated(organizationId, conversationId);
 

@@ -78,7 +78,7 @@ export function InboxHandlingBar({
             </label>
             <select
               id="assign-agent"
-              className="max-w-[140px] truncate rounded-md border-0 bg-transparent text-xs font-medium focus:outline-none"
+              className="max-w-[140px] truncate rounded-md border-0 bg-transparent text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
               value={assignedToId ?? ""}
               disabled={assignPending}
               onChange={(e) => {

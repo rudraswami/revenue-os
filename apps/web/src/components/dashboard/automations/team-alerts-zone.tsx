@@ -29,6 +29,7 @@ import {
   DEFAULT_AUTOMATIONS,
 } from "@/lib/automation-preferences";
 import { Switch } from "@/components/ui/switch";
+import { QueryErrorState } from "@/components/ui/query-state";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -105,7 +106,7 @@ export function TeamAlertsZone() {
   const { error: toastError } = useToast();
   const [digestOpen, setDigestOpen] = useState(false);
 
-  const { data: toggles, isLoading } = useQuery({
+  const { data: toggles, isLoading, isError: prefsError, refetch: refetchPrefs } = useQuery({
     queryKey: ["automation-preferences"],
     queryFn: () =>
       apiFetch<Record<AutomationId, boolean>>("/automations/preferences", {
@@ -238,6 +239,13 @@ export function TeamAlertsZone() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-16 animate-pulse bg-muted/30" />
             ))}
+          </div>
+        ) : prefsError ? (
+          <div className="p-6">
+            <QueryErrorState
+              title="Could not load team alert settings"
+              onRetry={() => void refetchPrefs()}
+            />
           </div>
         ) : (
           <ul className="divide-y divide-border/60">

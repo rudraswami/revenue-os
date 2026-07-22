@@ -334,7 +334,7 @@ export function InboxComposer({
           disabled={sendPending || sendDisabled}
           className={cn(
             "block w-full resize-none border-0 bg-transparent px-4 py-3 text-sm leading-relaxed text-foreground",
-            "placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0",
+            "placeholder:text-muted-foreground/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
             "min-h-[3.25rem] max-h-32 disabled:cursor-not-allowed disabled:opacity-60",
           )}
         />

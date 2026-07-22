@@ -82,17 +82,19 @@ export default function AutomationsPage() {
             void refetchPrefs();
           }}
         />
-      ) : null}
+      ) : (
+        <>
+          <WhatsAppAssistantZone />
 
-      <WhatsAppAssistantZone />
+          <div className="my-12 border-t border-border/60" role="separator" />
 
-      <div className="my-12 border-t border-border/60" role="separator" />
+          <TeamAlertsZone />
 
-      <TeamAlertsZone />
-
-      <div className="mt-10">
-        <AutomationActivityZone />
-      </div>
+          <div className="mt-10">
+            <AutomationActivityZone />
+          </div>
+        </>
+      )}
     </div>
   );
 }

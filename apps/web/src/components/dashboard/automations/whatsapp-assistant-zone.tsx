@@ -219,6 +219,7 @@ export function WhatsAppAssistantZone() {
 
   function selectMode(mode: ReplyAutonomyMode) {
     if (!canManage || mode === currentMode) return;
+    if (mode === "auto_guarded" && !growthPlanOk) return;
     setOptimisticMode(mode);
     setSavingMode(mode);
     const patch: IntelligenceWorkspaceSettingsPatch = { replyAutonomy: mode };
@@ -296,7 +297,7 @@ export function WhatsAppAssistantZone() {
                   <button
                     key={opt.mode}
                     type="button"
-                    disabled={!canManage}
+                    disabled={!canManage || needsGrowth}
                     onClick={() => selectMode(opt.mode)}
                     aria-pressed={active}
                     aria-busy={isSaving}

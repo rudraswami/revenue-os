@@ -310,6 +310,7 @@ export class AiClassifyService {
         fromStage: lead.stage,
         toStage: input.stage,
         confidence: 1,
+        conversationId,
       });
       void this.webhooks.emit(user.organizationId, "lead.stage.changed", {
         leadId: lead.id,
