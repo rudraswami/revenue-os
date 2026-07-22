@@ -204,7 +204,11 @@ export class WhatsappService {
         });
       }
 
-      // Now enqueue AI classification — non-blocking for message visibility.
+      // Enqueue AI classification. On Vercel without QStash, nested waitUntil
+      // calls from within a deferred task can silently drop — the inner promise
+      // isn't tracked by the outer waitUntil scope. Run classification INLINE
+      // (awaited) when we're already inside a deferred task so the full pipeline
+      // completes before the function terminates.
       for (const inbound of events) {
         const correlationId = this.businessEvents.createCorrelationId();
         void this.businessEvents.emit({
@@ -229,7 +233,7 @@ export class WhatsappService {
             ...(inbound.leadId ? { leadId: inbound.leadId } : {}),
             correlationId,
           },
-          { background: true },
+          { background: false },
         );
       }
     } catch (err) {
