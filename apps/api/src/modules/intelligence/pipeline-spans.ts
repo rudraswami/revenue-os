@@ -24,6 +24,8 @@ export interface PipelineTurnMetrics {
   stageChanged: boolean;
   safetyBlocked: string | null;
   fastPath: boolean;
+  /** Topics the customer asked about that are not covered in KB. */
+  missingTopics?: string[];
   /** Phase 2 shadow — structured judgment logged for baseline audits. */
   judgment?: {
     customerNeedsCount: number;
@@ -53,6 +55,7 @@ export interface BuildPipelineTurnMetricsInput {
     | "recoveryMode"
   >;
   groundingConfidence?: number;
+  missingTopics?: string[];
 }
 
 export function buildPipelineTurnMetrics(
@@ -78,6 +81,7 @@ export function buildPipelineTurnMetrics(
     stageChanged: input.stageChanged,
     safetyBlocked: input.safetyBlocked?.code ?? null,
     fastPath: input.fastPath ?? false,
+    missingTopics: input.missingTopics?.length ? input.missingTopics : undefined,
     judgment: input.classification
       ? {
           customerNeedsCount: input.classification.customerNeeds?.length ?? 0,

@@ -10,6 +10,11 @@ export type ReplyIntentKind =
   | "ready_to_buy"
   | "follow_up"
   | "complaint"
+  | "availability_check"
+  | "hours_location"
+  | "booking_request"
+  | "payment_method"
+  | "product_info"
   | "general";
 
 /** Shared across policy, routing, and knowledge-gap detection. */
@@ -22,6 +27,12 @@ export const PRICING_INBOUND_PATTERN =
 const TEST_MSG = /^(test(ing)?|hello\s*test|hi\s*test)[\s!.?]*$/i;
 const THANKS_MSG = /^(thanks?|thank\s*you|thx|dhanyavaad|shukriya)[\s!.?]*$/i;
 const BUY_MSG = /ready to (buy|order|purchase)|let'?s (proceed|go ahead)|book\s*now|place\s*order/i;
+
+const AVAILABILITY_MSG = /availab|stock|in stock|milega\s*kya|mil jayega|do you have|kya hai|product hai/i;
+const HOURS_LOCATION_MSG = /where|location|address|timing|hours|open|close|kahan|pata|map|direction|shop|store|office|visit/i;
+const BOOKING_MSG = /book|appoint|slot|schedul|reserv|tomorrow|kal|parso|time slot/i;
+const PAYMENT_METHOD_MSG = /upi|gpay|paytm|phonepe|card|cash|cod|cash on delivery|net bank|neft|imps|payment.*method|how.*pay|kaise.*pay/i;
+const PRODUCT_INFO_MSG = /what.*offer|service|product|feature|detail|specification|menu|catalog|batao|kya kya|tell me about|show me|which/i;
 
 export function isSensitiveInbound(text: string | null | undefined): boolean {
   return SENSITIVE_INBOUND_PATTERN.test((text ?? "").trim());
@@ -76,6 +87,8 @@ export function resolveReplyIntentKind(
     return "negotiation";
   }
 
+  if (PAYMENT_METHOD_MSG.test(msg) || /payment method/i.test(intentText)) return "payment_method";
+
   if (isPricingInbound(msg) || /pricing|price inquiry|cost/i.test(intentText)) {
     return "pricing";
   }
@@ -83,6 +96,11 @@ export function resolveReplyIntentKind(
   if (/follow.?up|checking in|any update|status/i.test(msg) || /follow up/i.test(intentText)) {
     return "follow_up";
   }
+
+  if (BOOKING_MSG.test(msg) || /booking/i.test(intentText)) return "booking_request";
+  if (AVAILABILITY_MSG.test(msg) || /availab/i.test(intentText)) return "availability_check";
+  if (HOURS_LOCATION_MSG.test(msg) || /location/i.test(intentText)) return "hours_location";
+  if (PRODUCT_INFO_MSG.test(msg) || /product/i.test(intentText)) return "product_info";
 
   return "general";
 }
@@ -155,6 +173,36 @@ export function playbookForIntent(kind: ReplyIntentKind): string {
       return [
         "Playbook: Complaint",
         "Empathy first. Apologize without admitting fault. Offer to have a teammate follow up quickly.",
+      ].join(" ");
+    case "availability_check":
+      return [
+        "Playbook: Availability check",
+        "Check business knowledge for product/service availability. If not in knowledge, ask one clarifying question about what they need.",
+        "Never confirm availability unless it's in the knowledge base.",
+      ].join(" ");
+    case "hours_location":
+      return [
+        "Playbook: Hours & location",
+        "Share business hours, address, or directions from knowledge. Keep it short and actionable.",
+        "Include Google Maps link if available in knowledge.",
+      ].join(" ");
+    case "booking_request":
+      return [
+        "Playbook: Booking request",
+        "Confirm what they want to book and when. If booking URL exists in close actions, share it.",
+        "If no booking system, offer to schedule manually and confirm timing.",
+      ].join(" ");
+    case "payment_method":
+      return [
+        "Playbook: Payment method",
+        "List accepted payment methods from knowledge. If payment link exists in close actions, share it.",
+        "Keep it factual — never invent payment options not in business knowledge.",
+      ].join(" ");
+    case "product_info":
+      return [
+        "Playbook: Product information",
+        "Share relevant product/service details from knowledge. Be specific and helpful.",
+        "If catalog is available, point them to it. Ask what specific product they're interested in if the question is broad.",
       ].join(" ");
     default:
       return [

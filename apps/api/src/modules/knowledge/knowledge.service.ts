@@ -216,6 +216,77 @@ export class KnowledgeService {
     return this.retrieval.getHealth(user.organizationId);
   }
 
+  /**
+   * Aggregate knowledge gap signals from recent AI runs to surface actionable
+   * recommendations like "Your customers asked about delivery 12 times this
+   * week — add it to Business Knowledge to auto-answer."
+   */
+  async getGapRecommendations(user: JwtPayload) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const runs = await this.prisma.aiRun.findMany({
+      where: {
+        organizationId: user.organizationId,
+        type: { in: ["classify", "classify_refresh"] },
+        status: "COMPLETED",
+        createdAt: { gte: since },
+      },
+      select: { output: true },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+
+    const topicCounts = new Map<string, number>();
+    const blockerCounts = new Map<string, number>();
+    let totalGaps = 0;
+
+    for (const run of runs) {
+      const output = run.output as Record<string, unknown> | null;
+      if (!output) continue;
+
+      const metrics = output.metrics as Record<string, unknown> | undefined;
+      if (metrics?.knowledgeGap) {
+        totalGaps++;
+      }
+
+      const missingTopics = metrics?.missingTopics as string[] | undefined;
+      if (Array.isArray(missingTopics)) {
+        for (const topic of missingTopics) {
+          topicCounts.set(topic, (topicCounts.get(topic) ?? 0) + 1);
+        }
+      }
+
+      const spans = output.spans as Record<string, unknown> | undefined;
+      const blockers = (spans as Record<string, unknown> | undefined) ?? output;
+      const metricBlockers = metrics?.blockers as string[] | undefined;
+      if (Array.isArray(metricBlockers)) {
+        for (const b of metricBlockers) {
+          if (["not_grounded", "weak_grounding", "knowledge_gap", "kb_not_indexed", "low_answerability"].includes(b)) {
+            blockerCounts.set(b, (blockerCounts.get(b) ?? 0) + 1);
+          }
+        }
+      }
+    }
+
+    const recommendations = Array.from(topicCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([topic, count]) => ({
+        topic,
+        count,
+        message: `Your customers asked about "${topic}" ${count} time${count === 1 ? "" : "s"} this week — add it to Business Knowledge to auto-answer.`,
+      }));
+
+    return {
+      totalClassifications: runs.length,
+      totalGaps,
+      gapRate: runs.length > 0 ? Math.round((totalGaps / runs.length) * 100) : 0,
+      recommendations,
+      blockerBreakdown: Object.fromEntries(blockerCounts),
+    };
+  }
+
   private async scheduleEmbed(
     documentId: string,
     organizationId: string,

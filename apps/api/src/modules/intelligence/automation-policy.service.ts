@@ -275,12 +275,34 @@ export class AutomationPolicyService {
       return { outcome: "send", risk: "low", reasons, blockers };
     }
 
+    // Classification-confident path: the LLM is highly confident about the
+    // intent and there are *some* KB hits (even if below the strict grounding
+    // threshold). The reply-send coverage gate will still block if the
+    // composer can't fully answer (answeredEverything=false, needsHuman, or
+    // selfConfidence < 0.5), so this is a safe expansion.
+    if (
+      rules.autoSendFaqWhenGrounded &&
+      input.knowledgeHits.length > 0 &&
+      input.classification.confidence >= 0.8 &&
+      answerability.score >= 0.4 &&
+      !this.isSensitiveIntent(intentKind)
+    ) {
+      reasons.push(
+        `AI is ${Math.round(input.classification.confidence * 100)}% confident — sending with post-compose safety check.`,
+      );
+      return { outcome: "send", risk: "medium", reasons, blockers };
+    }
+
     if (input.knowledgeHits.length === 0) {
       pushBlocker("not_grounded", "No Business Knowledge match — draft for review.");
     } else {
       pushBlocker("weak_grounding", "Knowledge match too weak — draft for review.");
     }
     return { outcome: "draft", risk, reasons, blockers };
+  }
+
+  private isSensitiveIntent(intentKind: string): boolean {
+    return ["complaint", "negotiation"].includes(intentKind);
   }
 
   private withAck(

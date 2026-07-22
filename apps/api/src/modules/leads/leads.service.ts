@@ -234,6 +234,7 @@ export class LeadsService {
         ownerId,
       });
       const owner = ownerId ? ownerMap.get(ownerId) : null;
+      const autoReplied = typeof convMeta.lastAiAutoReplyAt === "string";
 
       return {
         ...rest,
@@ -254,6 +255,7 @@ export class LeadsService {
         isStale: signals.isStale,
         staleLabel: signals.staleLabel,
         waitingOnTeam: signals.waitingOnTeam,
+        autoReplied,
         tags: tags.map((lt) => ({ id: lt.tag.id, name: lt.tag.name, color: lt.tag.color })),
       };
     });
@@ -292,9 +294,20 @@ export class LeadsService {
       },
     });
 
-    const totalLeads = await this.prisma.lead.count({
-      where: { organizationId: orgId },
-    });
+    const [totalLeads, autoRepliedConversations] = await Promise.all([
+      this.prisma.lead.count({
+        where: { organizationId: orgId },
+      }),
+      this.prisma.conversation.count({
+        where: {
+          organizationId: orgId,
+          metadata: {
+            path: ["lastAiAutoReplyAt"],
+            not: "null",
+          },
+        },
+      }),
+    ]);
 
     return {
       totalLeads,
@@ -305,6 +318,7 @@ export class LeadsService {
       hotCount,
       avgDaysInStage: avgDays,
       automationRunsToday: runsToday,
+      autoRepliedLeads: autoRepliedConversations,
     };
   }
 

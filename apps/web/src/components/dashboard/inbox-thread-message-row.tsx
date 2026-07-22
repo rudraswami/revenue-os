@@ -154,6 +154,7 @@ export const InboxThreadMessageRow = memo(function InboxThreadMessageRow({
             {new Date(m.createdAt).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
+              timeZone: "Asia/Kolkata",
             })}
           </span>
           {m.direction === "OUTBOUND" && <InboxMessageStatus status={m.status} />}

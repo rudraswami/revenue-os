@@ -440,4 +440,101 @@ describe("AutomationPolicyService", () => {
     expect(result.outcome).toBe("draft");
     expect(result.blockers).toContain("kb_not_indexed");
   });
+
+  it("auto-sends via classification-confident path when LLM confidence is high with moderate KB match", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "Do you deliver to Andheri?" }),
+      classification: {
+        stage: "NEW",
+        confidence: 0.88,
+        intent: "Delivery inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "faq",
+          title: "Delivery areas",
+          content: "We deliver across Mumbai including Andheri, Bandra, Juhu",
+          similarity: 0.55,
+          citation: "Delivery areas",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+      hasIndexedChunks: true,
+      groundingConfidence: 0.55,
+    });
+    expect(result.outcome).toBe("send");
+    expect(result.reasons.join(" ")).toContain("confident");
+  });
+
+  it("does NOT auto-send via classification-confident path for complaints", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "Your delivery was terrible" }),
+      classification: {
+        stage: "NEW",
+        confidence: 0.9,
+        intent: "Complaint",
+        sentiment: "negative",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "policy",
+          title: "Returns",
+          content: "30-day return policy",
+          similarity: 0.5,
+          citation: "Returns",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+      hasIndexedChunks: true,
+      groundingConfidence: 0.5,
+    });
+    expect(result.outcome).not.toBe("send");
+  });
+
+  it("does NOT auto-send via classification-confident path when LLM confidence is low", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "Tell me about your products" }),
+      classification: {
+        stage: "NEW",
+        confidence: 0.6,
+        intent: "General inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "product",
+          title: "Products",
+          content: "We sell organic spices",
+          similarity: 0.45,
+          citation: "Products",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+      hasIndexedChunks: true,
+      groundingConfidence: 0.45,
+    });
+    expect(result.outcome).toBe("draft");
+  });
 });

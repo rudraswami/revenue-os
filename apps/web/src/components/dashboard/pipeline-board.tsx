@@ -25,6 +25,7 @@ export interface PipelineLead {
   isStale: boolean;
   staleLabel: string | null;
   waitingOnTeam: boolean;
+  autoReplied: boolean;
   conversation: { id: string; unreadCount: number; lastInboundAt: string | null } | null;
   tags?: Array<{ id: string; name: string; color: string }>;
 }
@@ -117,6 +118,11 @@ const LeadCard = memo(function LeadCard({
             {lead.isHot && (
               <span className="rounded-full bg-bento-mint px-2 py-0.5 text-xs font-medium text-accent">
                 Hot
+              </span>
+            )}
+            {lead.autoReplied && (
+              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                AI replied
               </span>
             )}
             {lead.waitingOnTeam && (

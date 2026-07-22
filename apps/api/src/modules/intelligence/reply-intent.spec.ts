@@ -76,4 +76,73 @@ describe("reply-intent", () => {
       }),
     ).toBe("low");
   });
+
+  describe("new SMB intents", () => {
+    it("detects availability_check in English", () => {
+      expect(resolveReplyIntentKind("Is this product available?", null)).toBe("availability_check");
+      expect(resolveReplyIntentKind("Do you have this in stock?", null)).toBe("availability_check");
+    });
+
+    it("detects availability_check in Hinglish", () => {
+      expect(resolveReplyIntentKind("Ye available hai?", null)).toBe("availability_check");
+      expect(resolveReplyIntentKind("Ye milega kya?", null)).toBe("availability_check");
+    });
+
+    it("detects hours_location in English", () => {
+      expect(resolveReplyIntentKind("Where is your shop?", null)).toBe("hours_location");
+      expect(resolveReplyIntentKind("What are your office hours?", null)).toBe("hours_location");
+    });
+
+    it("detects hours_location in Hinglish", () => {
+      expect(resolveReplyIntentKind("Kahan hai aapka store?", null)).toBe("hours_location");
+      expect(resolveReplyIntentKind("Address batao", null)).toBe("hours_location");
+    });
+
+    it("detects booking_request in English", () => {
+      expect(resolveReplyIntentKind("I want to book for tomorrow", null)).toBe("booking_request");
+      expect(resolveReplyIntentKind("Can I schedule an appointment?", null)).toBe("booking_request");
+    });
+
+    it("detects booking_request in Hinglish", () => {
+      expect(resolveReplyIntentKind("Kal ka slot book karna hai", null)).toBe("booking_request");
+      expect(resolveReplyIntentKind("Parso ka appointment mil jayega?", null)).toBe("booking_request");
+    });
+
+    it("detects payment_method in English", () => {
+      expect(resolveReplyIntentKind("Do you accept UPI?", null)).toBe("payment_method");
+      expect(resolveReplyIntentKind("Can I pay by card?", null)).toBe("payment_method");
+    });
+
+    it("detects payment_method in Hinglish", () => {
+      expect(resolveReplyIntentKind("UPI se payment ho jayega?", null)).toBe("payment_method");
+      expect(resolveReplyIntentKind("GPay chalega kya?", null)).toBe("payment_method");
+    });
+
+    it("detects product_info in English", () => {
+      expect(resolveReplyIntentKind("What services do you offer?", null)).toBe("product_info");
+      expect(resolveReplyIntentKind("Tell me about your products", null)).toBe("product_info");
+    });
+
+    it("detects product_info in Hinglish", () => {
+      expect(resolveReplyIntentKind("Kya kya milega?", null)).toBe("product_info");
+      expect(resolveReplyIntentKind("Catalog dikhao", null)).toBe("product_info");
+    });
+
+    it("returns playbooks for new intents", () => {
+      expect(playbookForIntent("availability_check")).toMatch(/Availability/i);
+      expect(playbookForIntent("hours_location")).toMatch(/Hours/i);
+      expect(playbookForIntent("booking_request")).toMatch(/Booking/i);
+      expect(playbookForIntent("payment_method")).toMatch(/Payment/i);
+      expect(playbookForIntent("product_info")).toMatch(/Product/i);
+    });
+
+    it("still falls back to general for unrecognized messages", () => {
+      expect(resolveReplyIntentKind("Random gibberish xyz", null)).toBe("general");
+    });
+
+    it("existing intents take priority over new ones", () => {
+      expect(resolveReplyIntentKind("What is the price of this product?", null)).toBe("pricing");
+      expect(resolveReplyIntentKind("I want a refund for this product", null)).toBe("complaint");
+    });
+  });
 });

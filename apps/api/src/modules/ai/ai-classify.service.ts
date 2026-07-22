@@ -699,6 +699,7 @@ export class AiClassifyService {
         fastPath: false,
         classification: result,
         groundingConfidence: retrieval.groundingConfidence,
+        missingTopics: retrieval.missingTopics,
       }),
       classifyLatencyMs,
     );

@@ -150,4 +150,10 @@ export class KnowledgeController {
   health(@CurrentUser() user: JwtPayload) {
     return this.knowledge.health(user);
   }
+
+  @Get("gap-recommendations")
+  @RequireCapability("knowledge.manage")
+  gapRecommendations(@CurrentUser() user: JwtPayload) {
+    return this.knowledge.getGapRecommendations(user);
+  }
 }

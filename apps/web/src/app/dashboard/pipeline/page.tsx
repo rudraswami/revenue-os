@@ -81,6 +81,7 @@ interface PipelineSummary {
   hotCount: number;
   avgDaysInStage: number | null;
   automationRunsToday: number;
+  autoRepliedLeads: number;
 }
 
 function formatInr(cents: number) {
@@ -388,8 +389,13 @@ export default function PipelinePage() {
             />
             <MetricCard title="Hot leads" value={summary?.hotCount ?? 0} delay={0.1} />
             <MetricCard
-              title="Avg days in stage"
-              value={summary?.avgDaysInStage != null ? `${summary.avgDaysInStage}d` : "—"}
+              title="AI replied"
+              value={summary?.autoRepliedLeads ?? 0}
+              delta={
+                (summary?.autoRepliedLeads ?? 0) > 0 && (summary?.totalLeads ?? 0) > 0
+                  ? `${Math.round(((summary?.autoRepliedLeads ?? 0) / (summary?.totalLeads ?? 1)) * 100)}% of leads`
+                  : undefined
+              }
               delay={0.15}
             />
           </div>

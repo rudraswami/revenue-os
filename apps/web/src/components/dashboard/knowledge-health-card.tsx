@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, AlertTriangle } from "lucide-react";
+import { BookOpen, AlertTriangle, Lightbulb } from "lucide-react";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api-client";
@@ -102,8 +102,78 @@ export function KnowledgeHealthCard({ className }: { className?: string }) {
           >
             Manage business knowledge →
           </Link>
+
+          <KnowledgeGapRecommendations />
         </div>
       )}
     </DashboardPanel>
+  );
+}
+
+interface GapRecommendation {
+  topic: string;
+  count: number;
+  message: string;
+}
+
+interface GapRecommendationsResponse {
+  totalClassifications: number;
+  totalGaps: number;
+  gapRate: number;
+  recommendations: GapRecommendation[];
+}
+
+function KnowledgeGapRecommendations() {
+  const token = useAuthStore((s) => s.accessToken);
+
+  const { data } = useQuery({
+    queryKey: ["knowledge-gap-recommendations"],
+    queryFn: () =>
+      apiFetch<GapRecommendationsResponse>("/knowledge/gap-recommendations", {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  if (!data?.recommendations?.length) return null;
+
+  return (
+    <div className="mt-1 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Lightbulb className="h-3.5 w-3.5 text-accent" />
+        <p className="text-xs font-semibold text-foreground">
+          What your customers are asking about
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        {data.recommendations.map((rec) => (
+          <div
+            key={rec.topic}
+            className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
+          >
+            <span className="mt-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/10 text-[10px] font-bold text-accent">
+              {rec.count}
+            </span>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Customers asked about <span className="font-medium text-foreground">{rec.topic}</span>{" "}
+              {rec.count} time{rec.count === 1 ? "" : "s"} this week
+            </p>
+          </div>
+        ))}
+      </div>
+      {data.gapRate > 20 && (
+        <p className="text-[11px] text-muted-foreground">
+          {data.gapRate}% of conversations hit a knowledge gap.{" "}
+          <Link
+            href={KNOWLEDGE_SETTINGS_PATH}
+            className="font-semibold text-accent hover:underline"
+          >
+            Add docs to improve auto-reply →
+          </Link>
+        </p>
+      )}
+    </div>
   );
 }

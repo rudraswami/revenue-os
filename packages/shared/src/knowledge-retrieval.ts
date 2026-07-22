@@ -10,6 +10,11 @@ export type RetrievalIntentKind =
   | "ready_to_buy"
   | "follow_up"
   | "complaint"
+  | "availability_check"
+  | "hours_location"
+  | "booking_request"
+  | "payment_method"
+  | "product_info"
   | "general";
 
 export interface RetrievalResult {
@@ -36,6 +41,9 @@ const POLICY_TOPIC_PATTERN =
   /refund|return policy|warranty|guarantee|complaint|cancel|exchange/i;
 const DELIVERY_TOPIC_PATTERN = /deliver|shipping|dispatch|timeline|turnaround/i;
 const EMI_TOPIC_PATTERN = /emi|installment|payment plan|financ/i;
+const AVAILABILITY_TOPIC_PATTERN = /availab|stock|in stock|milega|mil jayega|do you have/i;
+const HOURS_LOCATION_TOPIC_PATTERN = /where|location|address|timing|hours|open|close|kahan|direction|shop|store|office|visit/i;
+const PAYMENT_METHOD_TOPIC_PATTERN = /upi|gpay|paytm|phonepe|card|cash|cod|net bank|neft|imps|payment.*method|how.*pay/i;
 
 /** Map conversation intent to preferred knowledge categories for vector search. */
 export function resolveRetrievalCategories(
@@ -48,6 +56,15 @@ export function resolveRetrievalCategories(
       return ["pricing", "product"];
     case "complaint":
       return ["policy", "faq"];
+    case "availability_check":
+    case "product_info":
+      return ["product", "faq"];
+    case "hours_location":
+      return ["general", "faq"];
+    case "booking_request":
+      return ["faq", "product"];
+    case "payment_method":
+      return ["faq", "pricing"];
     default:
       return undefined;
   }
@@ -115,6 +132,33 @@ export function detectMissingTopics(input: DetectMissingTopicsInput): string[] {
 
   if (needsEmi && !corpusMatches(corpus, EMI_TOPIC_PATTERN)) {
     topics.push("EMI or payment plans");
+  }
+
+  const needsAvailability =
+    input.intentKind === "availability_check" ||
+    AVAILABILITY_TOPIC_PATTERN.test(inbound) ||
+    needs.some((n) => AVAILABILITY_TOPIC_PATTERN.test(n));
+
+  if (needsAvailability && !corpusMatches(corpus, AVAILABILITY_TOPIC_PATTERN)) {
+    topics.push("product availability");
+  }
+
+  const needsHoursLocation =
+    input.intentKind === "hours_location" ||
+    HOURS_LOCATION_TOPIC_PATTERN.test(inbound) ||
+    needs.some((n) => HOURS_LOCATION_TOPIC_PATTERN.test(n));
+
+  if (needsHoursLocation && !corpusMatches(corpus, HOURS_LOCATION_TOPIC_PATTERN)) {
+    topics.push("business hours or location");
+  }
+
+  const needsPaymentMethod =
+    input.intentKind === "payment_method" ||
+    PAYMENT_METHOD_TOPIC_PATTERN.test(inbound) ||
+    needs.some((n) => PAYMENT_METHOD_TOPIC_PATTERN.test(n));
+
+  if (needsPaymentMethod && !corpusMatches(corpus, PAYMENT_METHOD_TOPIC_PATTERN)) {
+    topics.push("accepted payment methods");
   }
 
   return [...new Set(topics)];

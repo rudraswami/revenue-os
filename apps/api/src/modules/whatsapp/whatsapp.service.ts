@@ -386,6 +386,15 @@ export class WhatsappService {
 
     const waConversationKey = `${whatsappAccountId}:${from}`;
 
+    let waTimestamp = new Date();
+    if (msg.timestamp) {
+      const parsed = new Date(Number(msg.timestamp) * 1000);
+      const now = Date.now();
+      if (!isNaN(parsed.getTime()) && parsed.getTime() > 0 && parsed.getTime() <= now + 60_000) {
+        waTimestamp = parsed;
+      }
+    }
+
     const existing = await this.prisma.message.findUnique({
       where: { organizationId_waMessageId: { organizationId, waMessageId } },
     });
@@ -419,14 +428,14 @@ export class WhatsappService {
             contactPhone: from,
             contactName,
             aiEnabled: true,
-            lastMessageAt: new Date(),
-            lastInboundAt: new Date(),
+            lastMessageAt: waTimestamp,
+            lastInboundAt: waTimestamp,
             unreadCount: isReaction ? 0 : 1,
           },
           update: {
             contactName: contactName ?? undefined,
-            lastMessageAt: new Date(),
-            lastInboundAt: new Date(),
+            lastMessageAt: waTimestamp,
+            lastInboundAt: waTimestamp,
             ...(isReaction ? {} : { unreadCount: { increment: 1 } }),
           },
         });
@@ -441,6 +450,7 @@ export class WhatsappService {
             status: "DELIVERED",
             content,
             payload: msg as object,
+            createdAt: waTimestamp,
           },
         });
 

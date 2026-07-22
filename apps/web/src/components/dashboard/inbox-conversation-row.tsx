@@ -14,14 +14,13 @@ function formatListTime(iso: string | null) {
   if (!iso) return "";
   const d = new Date(iso);
   const now = new Date();
-  const sameDay =
-    d.getDate() === now.getDate() &&
-    d.getMonth() === now.getMonth() &&
-    d.getFullYear() === now.getFullYear();
+  const tz = "Asia/Kolkata" as const;
+  const fmt = new Intl.DateTimeFormat("en-IN", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
+  const sameDay = fmt.format(d) === fmt.format(now);
   if (sameDay) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: tz });
   }
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return d.toLocaleDateString([], { month: "short", day: "numeric", timeZone: tz });
 }
 
 function previewText(content: string | null | undefined): string {
