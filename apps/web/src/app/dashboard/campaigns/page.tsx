@@ -68,6 +68,12 @@ import {
   type CampaignSaveMode,
 } from "@/components/dashboard/campaign-schedule-picker";
 import { TemplatePreviewBubble } from "@/components/dashboard/template-preview-bubble";
+import {
+  TemplateParamFields,
+  buildTemplateParamsPayload,
+  resizeTemplateParams,
+  templateParamsReady,
+} from "@/components/dashboard/template-param-fields";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { useShellBilling } from "@/hooks/use-shell-cached-query";
 import { useShellBootstrapSettled } from "@/hooks/use-shell-bootstrap-settled";
@@ -191,7 +197,7 @@ export default function CampaignsPage() {
   const [name, setName] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [languageCode, setLanguageCode] = useState("en");
-  const [templateParam, setTemplateParam] = useState("");
+  const [templateParams, setTemplateParams] = useState<string[]>([]);
   const [templateVarCount, setTemplateVarCount] = useState(0);
   const [messageBody, setMessageBody] = useState("");
   const [stages, setStages] = useState<LeadStage[]>([]);
@@ -306,6 +312,10 @@ export default function CampaignsPage() {
     refetchInterval: 3_000,
   });
 
+  useEffect(() => {
+    setTemplateParams((prev) => resizeTemplateParams(templateVarCount, prev));
+  }, [templateVarCount]);
+
   function audience() {
     return {
       stages: stages.length ? stages : undefined,
@@ -317,7 +327,7 @@ export default function CampaignsPage() {
   function templatePayload() {
     return {
       languageCode,
-      templateParams: templateParam.trim() ? [templateParam.trim()] : [],
+      templateParams: buildTemplateParamsPayload(templateVarCount, templateParams),
       messageBody: messageBody.trim() || undefined,
     };
   }
@@ -331,7 +341,7 @@ export default function CampaignsPage() {
     setName("");
     setTemplateName("");
     setLanguageCode("en");
-    setTemplateParam("");
+    setTemplateParams([]);
     setMessageBody("");
     setStages([]);
     setTagIds([]);
@@ -601,6 +611,16 @@ export default function CampaignsPage() {
       done: !!templateName.trim(),
       hint: "Enter exact name from Meta or pick from synced list",
     },
+    ...(templateVarCount > 0
+      ? [
+          {
+            id: "template-vars",
+            label: `All ${templateVarCount} template variable${templateVarCount > 1 ? "s" : ""} filled`,
+            done: templateParamsReady(templateVarCount, templateParams),
+            hint: "Each {{1}}, {{2}}, … placeholder needs a value",
+          } satisfies CampaignSubmitChecklistItem,
+        ]
+      : []),
     {
       id: "when",
       label: saveMode === "schedule" ? "Scheduled time (IST)" : "Save as draft",
@@ -613,6 +633,7 @@ export default function CampaignsPage() {
     canManage &&
     name.trim() &&
     templateName.trim() &&
+    templateParamsReady(templateVarCount, templateParams) &&
     (saveMode === "draft" || !!scheduledLocal) &&
     !createMut.isPending &&
     !previewMut.isPending;
@@ -620,6 +641,7 @@ export default function CampaignsPage() {
     canManage &&
     name.trim() &&
     templateName.trim() &&
+    templateParamsReady(templateVarCount, templateParams) &&
     importRecipients.length > 0 &&
     (saveMode === "draft" || !!scheduledLocal) &&
     !importMut.isPending;
@@ -879,21 +901,19 @@ export default function CampaignsPage() {
                     <WhatsappTemplatePicker
                       templateName={templateName}
                       languageCode={languageCode}
-                      templateParam={templateParam}
+                      templateParams={templateParams}
                       onTemplateNameChange={setTemplateName}
                       onLanguageCodeChange={setLanguageCode}
                       onVariableCountChange={setTemplateVarCount}
                       disabled={!canManage}
                     />
-                    {(templateVarCount > 0 || templateParam) && (
-                      <Field label="Template variable {{1}}">
-                        <Input
-                          value={templateParam}
-                          onChange={(e) => setTemplateParam(e.target.value)}
-                          placeholder="Customer name or offer"
-                          className="h-11 rounded-xl text-sm"
-                        />
-                      </Field>
+                    {templateVarCount > 0 && (
+                      <TemplateParamFields
+                        count={templateVarCount}
+                        values={templateParams}
+                        onChange={setTemplateParams}
+                        disabled={!canManage}
+                      />
                     )}
                     <Field label="Fallback message body (optional)">
                       <textarea

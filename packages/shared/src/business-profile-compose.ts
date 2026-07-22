@@ -46,20 +46,20 @@ export function buildVoiceInstructions(profile: BusinessEmployeeProfile): string
   const lines: string[] = [];
   if (profile.voice.register === "professional") {
     lines.push(
-      "Tone: professional and polished — warm, not stiff corporate English.",
+      "Tone: warm and professional. Sound like a real person who is knowledgeable and helpful — not corporate or stiff. Imagine you're a trusted advisor texting a client.",
     );
   } else {
     lines.push(
-      "Tone: casual and friendly — like a helpful shop owner on WhatsApp.",
+      "Tone: friendly and conversational. Sound like a real person texting — like a helpful shop owner who genuinely cares about helping the customer. Keep it natural.",
     );
   }
   if (profile.voice.emoji === "none") {
     lines.push("Do not use emojis.");
   } else {
-    lines.push("Emojis sparingly at most — never more than one per message.");
+    lines.push("You may use 1 emoji per message if it feels natural — never force them.");
   }
   if (profile.voice.signOff?.trim()) {
-    lines.push(`Sign-off when appropriate: ${profile.voice.signOff.trim()}`);
+    lines.push(`If the reply is a detailed answer (4+ lines), you may end with: ${profile.voice.signOff.trim()}. For short quick replies, skip the sign-off.`);
   }
   return lines;
 }

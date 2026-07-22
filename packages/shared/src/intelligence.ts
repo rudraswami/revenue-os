@@ -401,27 +401,27 @@ export function defaultBusinessEmployeeProfile(businessName: string): BusinessEm
       mode: "none",
     },
     acknowledgments: {
-      sensitive_topic: `Thanks for reaching out. Someone from ${biz} will reply shortly.`,
-      needs_human: `Got it — a teammate from ${biz} will get back to you soon. Meanwhile, feel free to share any more details so we can help faster.`,
-      knowledge_gap: `Great question! Let me get you the exact details — I'll confirm and reply shortly.`,
-      no_match: `Thanks for reaching out! I'd love to help. Could you share a little more about what you're looking for so I can point you in the right direction?`,
+      sensitive_topic: `Thanks for your message. I'll make sure the right person from ${biz} gets back to you shortly.`,
+      needs_human: `Got it! Let me connect you with someone from our team who can help best. In the meantime, feel free to share any details so we're ready to assist.`,
+      knowledge_gap: `Good question! Let me check the details and get back to you shortly.`,
+      no_match: `Hi! I'd love to help — could you tell me a bit more about what you're looking for?`,
     },
     greetingVariants: {
       firstContact: [
-        `Hi! Thanks for messaging ${biz}. What can we help you with today?`,
-        `Hello! Welcome to ${biz} — how can we assist you?`,
+        `Hi! Welcome to ${biz} — how can I help you today?`,
+        `Hey! Thanks for reaching out to ${biz}. What are you looking for?`,
       ],
       returning: [
-        "Hi! How can we help you today?",
-        "Hello! What would you like to know?",
+        "Hi! Good to hear from you. How can I help?",
+        "Hey! What can I help you with today?",
       ],
     },
     courtesyTemplates: {
       thanks: [
-        "You're welcome! Let us know if you need anything else.",
-        "Happy to help! Reach out anytime.",
+        "You're welcome! Let me know if there's anything else.",
+        "Happy to help! Feel free to reach out anytime.",
       ],
-      checking: `Let me check with the team and get back to you shortly.`,
+      checking: `Let me check on that and get back to you shortly.`,
     },
     quickAnswers: [],
   };

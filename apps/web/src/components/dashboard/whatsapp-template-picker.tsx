@@ -40,7 +40,7 @@ function formatSyncedAt(iso: string): string {
 export function WhatsappTemplatePicker({
   templateName,
   languageCode,
-  templateParam,
+  templateParams = [],
   onTemplateNameChange,
   onLanguageCodeChange,
   onVariableCountChange,
@@ -49,7 +49,7 @@ export function WhatsappTemplatePicker({
 }: {
   templateName: string;
   languageCode: string;
-  templateParam?: string;
+  templateParams?: string[];
   onTemplateNameChange: (name: string) => void;
   onLanguageCodeChange: (code: string) => void;
   onVariableCountChange?: (count: number) => void;
@@ -260,7 +260,7 @@ export function WhatsappTemplatePicker({
       {showPreview && selected && (
         <TemplatePreviewBubble
           body={selected.bodyPreview}
-          params={templateParam?.trim() ? [templateParam.trim()] : []}
+          params={templateParams}
         />
       )}
     </div>

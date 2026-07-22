@@ -136,19 +136,13 @@ export function playbookForRelationshipPhase(
 ): string {
   switch (phase) {
     case "post_sale":
-      return [
-        "Relationship: Post-sale customer.",
-        "Be supportive and helpful. Focus on delivery, scheduling, and service — do not pitch or upsell unless they ask.",
-      ].join(" ");
+      return "Relationship: Existing customer. Focus on helping, not selling. Be supportive with delivery, service, and post-purchase needs.";
     case "win_back":
-      return [
-        "Relationship: Win-back opportunity.",
-        "Be warm and professional. Acknowledge their return. Do not pressure — invite conversation.",
-      ].join(" ");
+      return "Relationship: Returning contact. Be warm and welcoming. Show genuine interest in how you can help — no pressure.";
     case "active_deal":
-      return "Relationship: Active deal — be clear, responsive, and move toward next step.";
+      return "Relationship: Active conversation. Be responsive and clear. Help them move toward a decision naturally.";
     default:
-      return "Relationship: Pre-sale — welcome, qualify needs, build trust.";
+      return "Relationship: New or early conversation. Be welcoming and curious about their needs. Build trust through helpful, honest answers.";
   }
 }
 
@@ -157,83 +151,89 @@ export function playbookForIntent(kind: ReplyIntentKind): string {
   switch (kind) {
     case "greeting":
       return [
-        "Playbook: Greeting",
-        "Warm welcome. Mirror their energy. One open question about what they need.",
-        "Do not mention pricing unless they asked in this message.",
+        "Playbook: Greeting.",
+        "Give a warm, natural welcome. Match their energy — if they sent 'hi', keep it short.",
+        "Ask one friendly question about what they need. Don't jump into pricing or product details unless they asked.",
       ].join(" ");
     case "thanks":
       return [
-        "Playbook: Thanks",
-        "Acknowledge graciously. Offer one helpful next step or ask if anything else is needed.",
+        "Playbook: Thanks.",
+        "A simple, warm acknowledgment. Offer to help with anything else — keep it brief and natural.",
       ].join(" ");
     case "test_checkin":
       return [
-        "Playbook: Test / check-in",
-        "Confirm you received their message. Sound human and available. Invite them to share what they need.",
+        "Playbook: Test message.",
+        "Confirm you got their message. Sound human and welcoming. Invite them to share what they need.",
       ].join(" ");
     case "pricing":
       return [
-        "Playbook: Pricing inquiry",
-        "Answer from business knowledge only. If docs are missing, ask 1–2 clarifying questions (scope, team size, timeline).",
-        "Never quote numbers not in the knowledge section.",
+        "Playbook: Pricing inquiry.",
+        "Share pricing from business knowledge. Be specific — mention plan names, starting prices, what's included.",
+        "If exact numbers aren't in the knowledge, share what you know and offer to confirm the specific pricing they need.",
+        "Never make up prices. If you truly have no pricing info, say you'll get the details and share them.",
       ].join(" ");
     case "negotiation":
       return [
-        "Playbook: Negotiation / objection",
-        "Acknowledge their concern first. Understand budget, timeline, and what matters most.",
-        "Reframe value using business knowledge — do not invent discounts.",
-        "If they push on price without policy docs, offer a quick call or human follow-up.",
+        "Playbook: Negotiation / price concern.",
+        "First acknowledge their concern — show you understand. Don't be defensive.",
+        "Highlight the value they get (features, support, quality) using knowledge. Don't just repeat the price.",
+        "If they want a discount and you can't offer one, suggest speaking with the team or mention any existing payment flexibility (EMI, plans).",
+        "Keep the tone understanding and helpful, not salesy.",
       ].join(" ");
     case "ready_to_buy":
       return [
-        "Playbook: Ready to buy",
-        "Positive momentum. Confirm what they want, next step to close (payment, onboarding, call).",
+        "Playbook: Ready to buy.",
+        "Great momentum! Confirm what they want and make the next step easy — share payment link, booking URL, or guide them on what to do next.",
+        "Keep it simple and smooth. Don't add unnecessary details at this stage.",
       ].join(" ");
     case "follow_up":
       return [
-        "Playbook: Follow-up",
-        "Reference the thread context. Give a clear status or next step. Sound proactive, not robotic.",
+        "Playbook: Follow-up.",
+        "Reference what was discussed before. Give a clear update or next step.",
+        "If you don't have an update, acknowledge their follow-up and say when they can expect one.",
       ].join(" ");
     case "complaint":
       return [
-        "Playbook: Complaint",
-        "Empathy first. Apologize without admitting fault. Offer to have a teammate follow up quickly.",
+        "Playbook: Complaint / issue.",
+        "Start with genuine empathy. Acknowledge their frustration.",
+        "Don't make excuses. Focus on what you can do to help resolve it.",
+        "If it needs human attention, connect them with the right person — don't just say 'someone will get back to you.'",
       ].join(" ");
     case "availability_check":
       return [
-        "Playbook: Availability check",
-        "Check business knowledge for product/service availability. If not in knowledge, ask one clarifying question about what they need.",
-        "Never confirm availability unless it's in the knowledge base.",
+        "Playbook: Availability check.",
+        "Check business knowledge for availability. If available, confirm clearly.",
+        "If not in knowledge, ask what specifically they're looking for so you can help better.",
+        "Don't confirm availability you're not sure about.",
       ].join(" ");
     case "hours_location":
       return [
-        "Playbook: Hours & location",
-        "Share business hours, address, or directions from knowledge. Keep it short and actionable.",
-        "Include Google Maps link if available in knowledge.",
+        "Playbook: Hours and location.",
+        "Share the info clearly and briefly from knowledge. Include Google Maps link if available.",
       ].join(" ");
     case "booking_request":
       return [
-        "Playbook: Booking request",
-        "Confirm what they want to book and when. If booking URL exists in close actions, share it.",
-        "If no booking system, offer to schedule manually and confirm timing.",
+        "Playbook: Booking request.",
+        "Confirm what they want to book and when. Share booking link from close actions if available.",
+        "If no online booking, offer to help schedule and confirm the timing.",
       ].join(" ");
     case "payment_method":
       return [
-        "Playbook: Payment method",
-        "List accepted payment methods from knowledge. If payment link exists in close actions, share it.",
-        "Keep it factual — never invent payment options not in business knowledge.",
+        "Playbook: Payment method.",
+        "List the payment options from knowledge clearly. Share payment link if available.",
+        "Keep it simple and helpful.",
       ].join(" ");
     case "product_info":
       return [
-        "Playbook: Product information",
-        "Share relevant product/service details from knowledge. Be specific and helpful.",
-        "If catalog is available, point them to it. Ask what specific product they're interested in if the question is broad.",
+        "Playbook: Product / service inquiry.",
+        "Share relevant details from knowledge. Be specific about features, benefits, or what makes it valuable.",
+        "If the question is broad (like 'what do you offer?'), give a helpful overview and ask what interests them most.",
       ].join(" ");
     default:
       return [
-        "Playbook: General inquiry",
-        "Read the latest message carefully. Answer every distinct question or request.",
-        "Qualify gently (what they need, timeline, location) when it helps close the deal.",
+        "Playbook: General inquiry.",
+        "Read the message carefully and answer every question. Be helpful and specific.",
+        "If it helps the conversation, ask a gentle clarifying question — but don't interrogate.",
         "Sound like a helpful sales rep — specific, warm, never generic filler.",
       ].join(" ");
   }

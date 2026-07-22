@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageSquarePlus } from "lucide-react";
@@ -20,6 +20,12 @@ import { Select } from "@/components/ui/select";
 import { apiFetch, toUserMessage } from "@/lib/api-client";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { WhatsappTemplatePicker } from "@/components/dashboard/whatsapp-template-picker";
+import {
+  TemplateParamFields,
+  buildTemplateParamsPayload,
+  resizeTemplateParams,
+  templateParamsReady,
+} from "@/components/dashboard/template-param-fields";
 import { cn } from "@/lib/utils";
 import { refreshConversationLists } from "@/lib/realtime-inbox-cache";
 import { useAuthStore } from "@/stores/auth-store";
@@ -93,10 +99,14 @@ export function OutboundCompose({
   const [content, setContent] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [languageCode, setLanguageCode] = useState("en");
-  const [templateParam, setTemplateParam] = useState("");
+  const [templateParams, setTemplateParams] = useState<string[]>([]);
   const [templateVarCount, setTemplateVarCount] = useState(0);
   const [mode, setMode] = useState<"template" | "session">("template");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTemplateParams((prev) => resizeTemplateParams(templateVarCount, prev));
+  }, [templateVarCount]);
 
   const fullPhone = useMemo(
     () => `${dialCode}${digitsOnly(nationalNumber)}`,
@@ -112,7 +122,7 @@ export function OutboundCompose({
     setDisplayName("");
     setContent("");
     setTemplateName("");
-    setTemplateParam("");
+    setTemplateParams([]);
     setTemplateVarCount(0);
     setMode("template");
     setLanguageCode("en");
@@ -131,7 +141,7 @@ export function OutboundCompose({
             ? {
                 templateName: templateName.trim(),
                 languageCode,
-                templateParams: templateParam.trim() ? [templateParam.trim()] : [],
+                templateParams: buildTemplateParamsPayload(templateVarCount, templateParams),
               }
             : { content: content.trim() }),
         }),
@@ -150,7 +160,9 @@ export function OutboundCompose({
   const canSend =
     phoneReady &&
     !sendMut.isPending &&
-    (mode === "template" ? Boolean(templateName.trim()) : Boolean(content.trim()));
+    (mode === "template"
+      ? Boolean(templateName.trim()) && templateParamsReady(templateVarCount, templateParams)
+      : Boolean(content.trim()));
 
   return (
     <Dialog
@@ -261,20 +273,17 @@ export function OutboundCompose({
               <WhatsappTemplatePicker
                 templateName={templateName}
                 languageCode={languageCode}
-                templateParam={templateParam}
+                templateParams={templateParams}
                 onTemplateNameChange={setTemplateName}
                 onLanguageCodeChange={setLanguageCode}
                 onVariableCountChange={setTemplateVarCount}
               />
               {templateVarCount > 0 && (
-                <Field label={copy.outboundTemplateVarLabel} hint={copy.outboundTemplateVarHint}>
-                  <Input
-                    value={templateParam}
-                    onChange={(e) => setTemplateParam(e.target.value)}
-                    placeholder="Value for {{1}}"
-                    className="h-11 rounded-xl text-sm"
-                  />
-                </Field>
+                <TemplateParamFields
+                  count={templateVarCount}
+                  values={templateParams}
+                  onChange={setTemplateParams}
+                />
               )}
             </div>
           ) : (
