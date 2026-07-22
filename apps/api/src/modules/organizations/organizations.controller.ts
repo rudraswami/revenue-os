@@ -97,6 +97,31 @@ class BusinessGreetingVariantsDto {
   returning?: string[];
 }
 
+class QuickAnswerDto {
+  @IsString()
+  @MaxLength(40)
+  id!: string;
+
+  @IsString()
+  @MaxLength(200)
+  question!: string;
+
+  @IsString()
+  @MaxLength(500)
+  answer!: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  @ArrayMaxSize(12)
+  keywords?: string[];
+
+  @IsOptional()
+  @IsEnum(["general", "pricing", "policy", "faq", "product"])
+  category?: "general" | "pricing" | "policy" | "faq" | "product";
+}
+
 class BusinessProfilePatchDto {
   @IsOptional()
   @ValidateNested()
@@ -122,6 +147,13 @@ class BusinessProfilePatchDto {
   @ValidateNested()
   @Type(() => BusinessGreetingVariantsDto)
   greetingVariants?: BusinessGreetingVariantsDto;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => QuickAnswerDto)
+  @ArrayMaxSize(50)
+  quickAnswers?: QuickAnswerDto[];
 }
 
 class UpdateIntelligenceSettingsDto {

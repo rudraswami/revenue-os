@@ -162,7 +162,9 @@ export class OrganizationsService {
 
     if (patch.automationPreset === "responsive") {
       const health = await this.knowledgeRetrieval.getHealth(user.organizationId);
-      if (!health.readyForResponsivePreset) {
+      // Also count quickAnswers being submitted in the same request.
+      const incomingQaCount = patch.businessProfile?.quickAnswers?.length ?? 0;
+      if (!health.readyForResponsivePreset && incomingQaCount === 0) {
         throw new BadRequestException(
           "Upload and index Business Knowledge before enabling the Responsive preset.",
         );
@@ -191,6 +193,11 @@ export class OrganizationsService {
             ...current.businessProfile?.greetingVariants,
             ...patch.businessProfile.greetingVariants,
           },
+          // quickAnswers are full-replace (not merged) — the UI sends the whole list.
+          quickAnswers:
+            patch.businessProfile.quickAnswers ??
+            current.businessProfile?.quickAnswers ??
+            [],
         }
       : current.businessProfile;
     const next = resolveIntelligenceSettings(
