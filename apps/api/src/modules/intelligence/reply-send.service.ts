@@ -222,6 +222,11 @@ export class ReplySendService {
   }): { block: boolean; reason: string; blocker: string } {
     const pass = { block: false, reason: "", blocker: "" };
 
+    // Answer-first: only hold for a genuine human requirement or a model that
+    // is truly unsure. A partial-but-useful answer (answeredEverything=false
+    // with reasonable confidence) is allowed to send — the composer is
+    // instructed to always give substance and bridge to the team for any
+    // missing specifics, so it is a real reply, not a dead-end deferral.
     if (composed.needsHuman === true) {
       return {
         block: true,
@@ -229,20 +234,13 @@ export class ReplySendService {
         blocker: "needs_human",
       };
     }
-    if (composed.answeredEverything === false) {
-      return {
-        block: true,
-        reason: "AI could not fully answer — draft ready for review.",
-        blocker: "incomplete_answer",
-      };
-    }
     if (
       typeof composed.selfConfidence === "number" &&
-      composed.selfConfidence < 0.5
+      composed.selfConfidence < 0.35
     ) {
       return {
         block: true,
-        reason: "AI confidence below auto-send threshold — draft ready for review.",
+        reason: "AI confidence too low to auto-send — draft ready for review.",
         blocker: "low_self_confidence",
       };
     }

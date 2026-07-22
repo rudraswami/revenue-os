@@ -236,87 +236,72 @@ export class AutomationPolicyService {
     }
 
     const topHit = input.knowledgeHits[0];
-    // Adaptive thresholds: orgs with a healthy KB get lower confidence
-    // requirements because we have richer context to generate from.
-    const kbHealthy = input.knowledgeHits.length >= 3 || (input.totalKbDocs ?? 0) >= 10;
-    const adaptedGroundingSimilarity = kbHealthy
-      ? Math.max(rules.minGroundingSimilarity - 0.10, 0.40)
-      : rules.minGroundingSimilarity;
-
-    const grounded =
-      topHit && topHit.similarity >= adaptedGroundingSimilarity;
+    const topSimilarity = topHit?.similarity ?? 0;
     const answerability = assessAnswerability({
-      groundingConfidence: input.groundingConfidence ?? topHit?.similarity ?? 0,
+      groundingConfidence: input.groundingConfidence ?? topSimilarity,
       hasIndexedChunks: input.hasIndexedChunks !== false,
       topSimilarity: topHit?.similarity,
       knowledgeGap: input.knowledgeGap,
       knowledgeHitCount: input.knowledgeHits.length,
     });
 
-    // Trust the LLM's self-assessment: if classification confidence is high
-    // enough, don't block on weak_grounding alone — the reply-send coverage
-    // gate (selfConfidence, answeredEverything, needsHuman) will still catch
-    // genuinely bad replies post-compose. Healthy KBs get a lower bar.
-    const llmOverrideThreshold = kbHealthy ? 0.65 : 0.75;
-    const llmConfidenceOverridesGrounding =
-      input.classification.confidence >= llmOverrideThreshold && input.knowledgeHits.length > 0;
-
-    if (!isCourtesy && answerability.reason && !answerability.canAutoSendFaq) {
-      if (!input.hasIndexedChunks) {
-        // kb_not_indexed already handled above
-      } else if (input.knowledgeGap || input.knowledgeHits.length === 0) {
-        pushBlocker("low_answerability", answerability.reason);
-        return { outcome: "draft", risk: "medium", reasons, blockers };
-      } else if (answerability.score < adaptedGroundingSimilarity && !llmConfidenceOverridesGrounding) {
-        pushBlocker("weak_grounding", "Draft for your review.");
-        return { outcome: "draft", risk, reasons, blockers };
-      }
-    }
-
     const isPricing = isPricingInbound(lastInbound) || intentKind === "pricing";
 
+    // ── Pricing stays strict: never auto-send weak or ungrounded pricing. ──
     if (isPricing) {
+      const grounded = Boolean(topHit) && topSimilarity >= rules.minGroundingSimilarity;
       if (grounded && rules.autoSendPricingWhenGrounded && answerability.canAutoSendPricing) {
-        reasons.push(`Grounded in “${topHit!.title}” (${Math.round(topHit!.similarity * 100)}% match).`);
+        reasons.push(
+          `Grounded in “${topHit!.title}” (${Math.round(topSimilarity * 100)}% match).`,
+        );
         return { outcome: "send", risk: "medium", reasons, blockers };
-      }
-      if (grounded && rules.autoSendPricingWhenGrounded && !answerability.canAutoSendPricing) {
-        pushBlocker("low_answerability", "Pricing match is not strong enough to auto-send.");
       }
       pushBlocker("pricing_review", "Pricing reply — review before sending.");
       return { outcome: "draft", risk: "medium", reasons, blockers };
     }
 
-    if (grounded && rules.autoSendFaqWhenGrounded && answerability.canAutoSendFaq) {
-      reasons.push(`Answered from “${topHit!.title}” (${Math.round(topHit!.similarity * 100)}% match).`);
-      return { outcome: "send", risk: "low", reasons, blockers };
-    }
-
-    // Classification-confident path: the LLM is highly confident about the
-    // intent and there are *some* KB hits (even if below the strict grounding
-    // threshold). The reply-send coverage gate will still block if the
-    // composer can't fully answer (answeredEverything=false, needsHuman, or
-    // selfConfidence < 0.5), so this is a safe expansion.
-    const confidenceThreshold = kbHealthy ? 0.65 : 0.80;
+    // ── Answer-first for FAQ / general / product questions. ──
+    // The pre-compose gate only checks whether *relevant knowledge plausibly
+    // exists*. The post-compose coverage gate (needsHuman, selfConfidence) is
+    // the real arbiter of whether the reply is safe — so we do NOT double-block
+    // here on strict raw similarity. Retrieval already filters weak matches, so
+    // any surviving hit above the relevance floor is worth answering from.
+    const RELEVANCE_FLOOR = 0.32;
     if (
       rules.autoSendFaqWhenGrounded &&
       input.knowledgeHits.length > 0 &&
-      input.classification.confidence >= confidenceThreshold &&
-      answerability.score >= 0.4 &&
+      topSimilarity >= RELEVANCE_FLOOR &&
       !this.isSensitiveIntent(intentKind)
     ) {
       reasons.push(
-        `AI is ${Math.round(input.classification.confidence * 100)}% confident — sending with post-compose safety check.`,
+        `Relevant knowledge found (“${topHit!.title}”, ${Math.round(topSimilarity * 100)}% match) — composing an answer with a post-send safety check.`,
       );
-      return { outcome: "send", risk: "medium", reasons, blockers };
+      return { outcome: "send", risk: "low", reasons, blockers };
     }
 
+    // ── No usable knowledge → send a branded, helpful holding message. ──
+    // Answer-first means the customer should never get silence: we auto-send a
+    // warm generic reply (and still create a draft for the team to follow up).
     if (input.knowledgeHits.length === 0) {
-      pushBlocker("not_grounded", "No Business Knowledge match — draft for review.");
+      pushBlocker("no_knowledge", "No matching Business Knowledge — sending a helpful holding reply.");
     } else {
-      pushBlocker("weak_grounding", "Knowledge match too weak — draft for review.");
+      pushBlocker("weak_grounding", "Knowledge match too weak — sending a helpful holding reply.");
     }
-    return { outcome: "draft", risk, reasons, blockers };
+    return {
+      outcome: "draft",
+      risk,
+      reasons,
+      blockers,
+      acknowledgment: this.genericHoldingMessage(profile),
+    };
+  }
+
+  /** Warm, generic customer-facing reply when we have no knowledge to ground on. */
+  private genericHoldingMessage(profile: BusinessEmployeeProfile): string {
+    const configured =
+      profile.acknowledgments["no_match"] ?? profile.acknowledgments["general"];
+    if (configured?.trim()) return configured.trim();
+    return "Thanks for reaching out! I'd love to help you with this. Could you share a little more about what you're looking for? I'll get you the details right away.";
   }
 
   private isSensitiveIntent(intentKind: string): boolean {

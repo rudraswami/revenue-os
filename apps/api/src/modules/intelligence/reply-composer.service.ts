@@ -549,7 +549,7 @@ export class ReplyComposerService {
         ? "Never promise discounts or price cuts — escalate discount requests to the team."
         : "",
       "Never invent prices, discounts, or policies. Use business knowledge when present.",
-      'IMPORTANT: If you cannot find the answer in the business knowledge above, say something like "I\'ll check with the team and get back to you" or "Let me confirm that for you." NEVER make up information.',
+      'ANSWER-FIRST: Always answer the customer directly and helpfully. Use the business knowledge above for specific facts (prices, policies, timings). If one specific detail genuinely is not in the knowledge, still give a useful answer about what the business offers and then offer to confirm the exact detail — e.g. "…I\'ll confirm the exact figure for you." NEVER reply with a bare "our team will get back to you" that has no substance, and NEVER invent facts.',
       businessProfileBlock,
       opts.knowledgeGap
         ? "No pricing docs matched — ask clarifying questions only."
@@ -569,7 +569,7 @@ Good reply: "Hi! We're open [hours]. Feel free to visit us at [location] or I ca
 
 Customer: "I want to return my order"
 Good reply: "I understand. Let me connect you with our team to assist with the return. Could you share your order details?"`,
-      'Respond with ONLY a JSON object (no markdown, no code fences) shaped exactly: {"reply": string, "answeredEverything": boolean, "unresolved": string[], "confidence": number, "needsHuman": boolean}. "reply" is the exact WhatsApp message to send to the customer (natural text, no JSON). "answeredEverything" is true only if you fully answered every question the customer asked using the business knowledge above (courtesy/greeting replies count as true). "unresolved" lists any questions you could NOT answer from the knowledge. "confidence" is 0-1 for how well "reply" resolves the customer\'s message. "needsHuman" is true only if a human must handle this (e.g. sensitive complaint, legal, or a promise you cannot make).',
+      'Respond with ONLY a JSON object (no markdown, no code fences) shaped exactly: {"reply": string, "answeredEverything": boolean, "unresolved": string[], "confidence": number, "needsHuman": boolean}. "reply" is the exact WhatsApp message to send to the customer (natural text, no JSON). "answeredEverything" is true if your reply meaningfully addresses the customer\'s core question — a helpful general answer counts even if one specific detail still needs confirmation; courtesy/greeting replies count as true. Set it false only if you truly could not say anything useful. "unresolved" lists any specific details you could NOT confirm from the knowledge. "confidence" is 0-1 for how well "reply" resolves the customer\'s message. "needsHuman" is true only if a human MUST handle this (sensitive complaint, legal, refund/cancellation dispute, or a promise you cannot make) — not merely because a detail was missing.',
     ]
       .filter(Boolean)
       .join("\n\n");

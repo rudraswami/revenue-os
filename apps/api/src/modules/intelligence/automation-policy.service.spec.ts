@@ -504,7 +504,7 @@ describe("AutomationPolicyService", () => {
       groundingConfidence: 0.42,
     });
     expect(result.outcome).toBe("send");
-    expect(result.reasons.join(" ")).toContain("confident");
+    expect(result.reasons.join(" ")).toContain("Relevant knowledge found");
   });
 
   it("uses adaptive threshold — healthy KB lowers confidence requirement", () => {
@@ -540,7 +540,7 @@ describe("AutomationPolicyService", () => {
       totalKbDocs: 12,
     });
     expect(result.outcome).toBe("send");
-    expect(result.reasons.join(" ")).toContain("confident");
+    expect(result.reasons.join(" ")).toContain("Relevant knowledge found");
   });
 
   it("does NOT auto-send via classification-confident path for complaints", () => {
@@ -575,7 +575,40 @@ describe("AutomationPolicyService", () => {
     expect(result.outcome).not.toBe("send");
   });
 
-  it("does NOT auto-send via classification-confident path when LLM confidence is low", () => {
+  it("drafts when LLM classification confidence is below the minimum threshold", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "Tell me about your products" }),
+      classification: {
+        stage: "NEW",
+        // Below balanced preset minClassifyConfidence (0.55) — genuinely unsure.
+        confidence: 0.4,
+        intent: "General inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "product",
+          title: "Products",
+          content: "We sell organic spices",
+          similarity: 0.45,
+          citation: "Products",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+      hasIndexedChunks: true,
+      groundingConfidence: 0.45,
+    });
+    expect(result.outcome).toBe("draft");
+  });
+
+  it("answer-first: sends when relevant knowledge exists and confidence clears the minimum", () => {
     const result = service.evaluate({
       settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
       ctx: baseCtx({ lastInbound: "Tell me about your products" }),
@@ -604,6 +637,30 @@ describe("AutomationPolicyService", () => {
       hasIndexedChunks: true,
       groundingConfidence: 0.45,
     });
+    expect(result.outcome).toBe("send");
+  });
+
+  it("answer-first: no knowledge → drafts with a generic holding acknowledgment", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "Do you offer gift wrapping?" }),
+      classification: {
+        stage: "NEW",
+        confidence: 0.7,
+        intent: "General inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+      hasIndexedChunks: true,
+      groundingConfidence: 0,
+    });
     expect(result.outcome).toBe("draft");
+    expect(result.acknowledgment).toBeTruthy();
+    expect(result.blockers).toContain("no_knowledge");
   });
 });
