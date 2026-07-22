@@ -24,6 +24,11 @@ export interface RealtimeRefreshPayload {
   status?: string;
 }
 
+// Track recently patched threads to debounce inbox.updated invalidation.
+// When message.new patches a thread, a follow-up inbox.updated within 2s
+// would refetch stale server data and overwrite the in-memory patch.
+const recentlyPatchedThreads = new Map<string, number>();
+
 /** Targeted cache updates — never blanket-invalidate the full inbox unless unavoidable. */
 export function handleRealtimeEvent(
   queryClient: QueryClient,
@@ -35,20 +40,23 @@ export function handleRealtimeEvent(
 
   switch (event) {
     case "message.new":
-      // Targeted cache patch already updates list + unread stats (see
-      // handleMessageNewCacheUpdate). Avoid a blanket stats invalidation on
-      // every message — queue re-categorization arrives via lead.* events.
       if (payload.conversationId) {
         handleMessageNewCacheUpdate(
           queryClient,
           payload as MessageNewRealtimePayload,
           { activeConversationId },
         );
+        recentlyPatchedThreads.set(payload.conversationId, Date.now());
+        setTimeout(() => recentlyPatchedThreads.delete(payload.conversationId!), 2_000);
       }
       break;
     case "inbox.updated":
       refreshQueueStats(queryClient);
       if (conversationId) {
+        const lastPatch = recentlyPatchedThreads.get(conversationId);
+        if (lastPatch && Date.now() - lastPatch < 2_000) {
+          break;
+        }
         void queryClient.invalidateQueries({
           queryKey: QUERY_KEYS.conversationThread(conversationId),
           refetchType: "active",

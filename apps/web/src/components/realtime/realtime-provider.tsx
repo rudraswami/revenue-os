@@ -59,7 +59,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const socket: Socket = io(`${wsBaseUrl()}/realtime`, {
       auth: { token: accessToken },
       transports: ["polling", "websocket"],
-      reconnectionAttempts: 3,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1_000,
+      reconnectionDelayMax: 15_000,
     });
 
     socket.on("connect", () => setConnected(true));

@@ -189,6 +189,10 @@ export class WhatsappService {
           organizationId: events[0]?.organizationId ?? undefined,
         },
       });
+
+      // Emit ALL realtime events FIRST, then enqueue AI classification.
+      // This decouples message visibility from AI processing — customers see
+      // messages instantly instead of waiting for classification to finish.
       for (const inbound of events) {
         this.realtime.emitMessageNew(inbound.organizationId, {
           conversationId: inbound.conversationId,
@@ -198,7 +202,10 @@ export class WhatsappService {
           createdAt: inbound.createdAt,
           type: inbound.type,
         });
+      }
 
+      // Now enqueue AI classification — non-blocking for message visibility.
+      for (const inbound of events) {
         const correlationId = this.businessEvents.createCorrelationId();
         void this.businessEvents.emit({
           organizationId: inbound.organizationId,
@@ -231,7 +238,9 @@ export class WhatsappService {
       await this.prisma.webhookEvent.update({
         where: { id: eventId },
         data: { error: message },
-      });
+      }).catch(() => {});
+      // Rethrow so QStash/BullMQ can retry on transient failures.
+      throw err;
     }
   }
 

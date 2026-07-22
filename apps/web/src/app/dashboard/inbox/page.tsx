@@ -51,8 +51,8 @@ export default function InboxPage() {
   const queryClient = useQueryClient();
   const { error: toastError } = useToast();
   const { connected: live } = useRealtime();
-  const listPollInterval = useVisibleRefetchInterval(live ? 5_000 : 8_000);
-  const statsPollInterval = useVisibleRefetchInterval(live ? 20_000 : 30_000);
+  const listPollInterval = useVisibleRefetchInterval(live ? 5_000 : 2_500);
+  const statsPollInterval = useVisibleRefetchInterval(live ? 20_000 : 10_000);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");

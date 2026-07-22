@@ -9,7 +9,7 @@ jest.mock("../../config/workers", () => ({
 
 jest.mock("../../common/utils/defer-background", () => ({
   deferBackgroundTask: jest.fn((task: () => Promise<unknown>) => {
-    void task();
+    void task().catch(() => {});
   }),
 }));
 

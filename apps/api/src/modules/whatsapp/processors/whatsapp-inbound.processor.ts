@@ -36,6 +36,8 @@ export class WhatsappInboundProcessor extends WorkerHost {
         data: { processedAt: new Date() },
       });
 
+      // Emit ALL realtime events first so messages appear instantly in the UI,
+      // then enqueue AI classification as a separate pass.
       for (const event of events) {
         this.realtime.emitMessageNew(event.organizationId, {
           conversationId: event.conversationId,
@@ -45,7 +47,9 @@ export class WhatsappInboundProcessor extends WorkerHost {
           createdAt: event.createdAt,
           type: event.type,
         });
+      }
 
+      for (const event of events) {
         const correlationId = this.businessEvents.createCorrelationId();
         void this.businessEvents.emit({
           organizationId: event.organizationId,

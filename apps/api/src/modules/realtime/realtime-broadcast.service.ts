@@ -42,13 +42,19 @@ export class RealtimeBroadcastService implements OnModuleDestroy {
   ): Promise<void> {
     if (!this.client) return;
 
-    try {
-      const channel = await this.getOrCreateChannel(organizationId);
-      await channel.send({ type: "broadcast", event, payload });
-    } catch (err) {
-      // Channel might be stale/disconnected — drop it so next call retries.
-      this.dropChannel(organizationId);
-      this.logger.warn(`Supabase broadcast failed (${event}): ${String(err)}`);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const channel = await this.getOrCreateChannel(organizationId);
+        await channel.send({ type: "broadcast", event, payload });
+        return;
+      } catch (err) {
+        this.dropChannel(organizationId);
+        if (attempt === 0) {
+          this.logger.warn(`Supabase broadcast retry (${event}): ${String(err)}`);
+          continue;
+        }
+        this.logger.warn(`Supabase broadcast failed after retry (${event}): ${String(err)}`);
+      }
     }
   }
 

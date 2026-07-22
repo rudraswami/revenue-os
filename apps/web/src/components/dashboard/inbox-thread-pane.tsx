@@ -213,7 +213,7 @@ function InboxThreadPaneInner({
   // important surface, so keep a background reconcile poll even when live
   // (slower than the offline cadence) so new messages never get stuck until
   // the pane is remounted. Realtime still patches instantly when it works.
-  const threadPollInterval = useVisibleRefetchInterval(live ? 8_000 : 4_000);
+  const threadPollInterval = useVisibleRefetchInterval(live ? 8_000 : 2_500);
   const timelinePollInterval = useVisibleRefetchInterval(live ? 30_000 : 12_000);
   const { error: toastError, success: toastSuccess } = useToast();
   const showMutationError = (e: unknown, fallback: string) => {
