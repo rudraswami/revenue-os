@@ -27,10 +27,12 @@ RULES:
 - Extract SPECIFIC facts: prices in ₹, hours, addresses, phone numbers, policies, product details
 - Combine related items (don't create separate items for each product variant — group them)
 - Format content as clear, concise text an AI can use to answer questions
-- Skip: cookie notices, privacy policies (unless specifically a business policy), generic marketing copy, navigation text
+- Skip: cookie notices, legal boilerplate, navigation labels
+- DO extract: product positioning, plan names, trial terms, feature lists, and value propositions — even if phrased as marketing copy
 - For pricing, always include currency (₹) and any conditions/validity
 - For services/products, include what's included, pricing if available, duration, availability
 - Each item should be self-contained — an AI reading just that item should understand the full context
+- ALWAYS return at least one item if the page describes what the business does or sells
 
 Respond with a JSON array. Example:
 [
@@ -81,6 +83,84 @@ export class ContentStructureService {
     }
 
     return this.deduplicateItems(allItems);
+  }
+
+  /**
+   * Heuristic fallback when LLM extraction returns nothing.
+   * Builds knowledge items directly from page meta + crawled text.
+   * Critical for SPAs where body content is client-rendered.
+   */
+  buildFallbackItems(pages: CrawledPage[]): ExtractedItem[] {
+    const items: ExtractedItem[] = [];
+
+    for (const page of pages) {
+      // Skip legal boilerplate pages — not useful for sales AI
+      if (/\/(privacy|terms|cookies|cookie|dpa|gdpr|legal|data-deletion)/i.test(page.url)) continue;
+
+      const content = this.buildPageKnowledgeContent(page);
+      if (content.length < 30) continue;
+
+      items.push({
+        title: this.inferPageTitle(page),
+        category: this.inferPageCategory(page),
+        content,
+        confidence: 0.65,
+        sourceUrl: page.url,
+      });
+    }
+
+    this.logger.log(`Fallback extraction produced ${items.length} items from ${pages.length} pages`);
+    return items;
+  }
+
+  private buildPageKnowledgeContent(page: CrawledPage): string {
+    const parts: string[] = [];
+
+    const heading = page.title.replace(/\s*[|–—-]\s*.*$/, "").trim();
+    if (heading) parts.push(`## ${heading}`);
+
+    if (page.description) parts.push(page.description);
+
+    if (page.text) {
+      // Avoid duplicating description text already included
+      let extra = page.text;
+      if (page.description) {
+        extra = extra.replace(page.description, "").trim();
+      }
+      if (extra.length > 40) parts.push(extra.slice(0, 10_000));
+    }
+
+    return parts.join("\n\n").trim();
+  }
+
+  private inferPageTitle(page: CrawledPage): string {
+    const url = page.url.toLowerCase();
+    if (url.includes("pricing") || url.includes("plans")) return "Pricing & Plans";
+    if (url.includes("faq")) return "Frequently Asked Questions";
+    if (url.includes("about")) return "About the Business";
+    if (url.includes("contact")) return "Contact Information";
+    if (url.includes("service")) return "Services";
+    if (url.includes("product") || url.includes("feature")) return "Products & Features";
+
+    const heading = page.title.split(/[|–—-]/)[0]?.trim();
+    return heading?.slice(0, 200) || "Business Overview";
+  }
+
+  private inferPageCategory(page: CrawledPage): KnowledgeCategory {
+    const url = page.url.toLowerCase();
+    const combined = `${page.title} ${page.description ?? ""} ${page.text}`.toLowerCase();
+
+    if (url.includes("pricing") || url.includes("plans") || /₹|inr|\/mo|per month|plan/.test(combined))
+      return "pricing";
+    if (url.includes("faq")) return "faq";
+    if (url.includes("about")) return "about";
+    if (url.includes("contact")) return "contact";
+    if (url.includes("product") || url.includes("feature")) return "product";
+    if (/return|refund|privacy|terms|policy/.test(url)) return "policy";
+    if (url.includes("service")) return "services";
+    if (/₹|price|cost|fee/.test(combined)) return "pricing";
+    if (/phone|email|address|hours|contact/.test(combined)) return "contact";
+    return "general";
   }
 
   private async extractBatch(

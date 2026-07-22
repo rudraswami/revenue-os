@@ -368,10 +368,17 @@ export class WebsiteImportService {
         `[Import ${importId}] Phase 2: Extracting knowledge from ${crawlResult.pages.length} pages`,
       );
       const items = await this.structure.extractFromPages(crawlResult.pages);
-      this.logger.log(`[Import ${importId}] Extraction result: ${items.length} items`);
+      let finalItems = items;
+      if (items.length === 0) {
+        this.logger.warn(
+          `[Import ${importId}] LLM returned 0 items — using fallback extraction from ${crawlResult.pages.length} pages`,
+        );
+        finalItems = this.structure.buildFallbackItems(crawlResult.pages);
+      }
+      this.logger.log(`[Import ${importId}] Extraction result: ${finalItems.length} items`);
 
       // Phase 3: Store import items for review
-      for (const item of items) {
+      for (const item of finalItems) {
         await this.prisma.websiteImportItem.create({
           data: {
             importId,
@@ -389,13 +396,13 @@ export class WebsiteImportService {
         where: { id: importId },
         data: {
           status: "review",
-          itemsExtracted: items.length,
+          itemsExtracted: finalItems.length,
           completedAt: new Date(),
         },
       });
 
       this.logger.log(
-        `[Import ${importId}] Completed — ${items.length} items from ${crawlResult.pages.length} pages`,
+        `[Import ${importId}] Completed — ${finalItems.length} items from ${crawlResult.pages.length} pages`,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

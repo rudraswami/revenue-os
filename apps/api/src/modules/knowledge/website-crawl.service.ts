@@ -7,6 +7,21 @@ const MAX_PAGES = 30;
 const CRAWL_TIMEOUT_MS = 12_000;
 const MAX_DEPTH = 3;
 
+/** Common business pages — seeded for SPAs with no <a> tags in initial HTML. */
+const COMMON_BUSINESS_PATHS = [
+  "/pricing",
+  "/plans",
+  "/about",
+  "/about-us",
+  "/contact",
+  "/contact-us",
+  "/faq",
+  "/faqs",
+  "/services",
+  "/products",
+  "/features",
+];
+
 export interface CrawledPage {
   url: string;
   title: string;
@@ -59,7 +74,18 @@ export class WebsiteCrawlService {
         pages.push(page);
 
         if (item.depth < MAX_DEPTH) {
-          for (const link of page.links) {
+          const linksToFollow = [...page.links];
+
+          // SPAs (Next.js App Router, etc.) often have zero <a> tags in HTML.
+          // Seed common business paths so we pick up /pricing, /about, etc.
+          if (item.depth === 0 && linksToFollow.length < 4) {
+            for (const path of COMMON_BUSINESS_PATHS) {
+              const seeded = new URL(path, parsed.origin).href;
+              if (!linksToFollow.includes(seeded)) linksToFollow.push(seeded);
+            }
+          }
+
+          for (const link of linksToFollow) {
             const linkCanonical = this.canonicalize(link);
             if (!visited.has(linkCanonical) && pages.length + queue.length < MAX_PAGES * 2) {
               queue.push({ url: link, depth: item.depth + 1 });
@@ -109,8 +135,10 @@ export class WebsiteCrawlService {
       $('meta[property="og:description"]').attr("content")?.trim() ??
       null;
 
-    // Extract links BEFORE removing elements
-    const links = this.extractSameOriginLinks($, url, origin);
+    // Extract links BEFORE removing elements — merge anchor tags + RSC payload hrefs
+    const anchorLinks = this.extractSameOriginLinks($, url, origin);
+    const rscLinks = this.extractRscLinks(html, origin);
+    const links = [...new Set([...anchorLinks, ...rscLinks])];
 
     // Extract SPA data BEFORE stripping scripts (Next.js, Nuxt, JSON-LD)
     const spaText = this.extractSpaContent(html, $);
@@ -189,7 +217,11 @@ export class WebsiteCrawlService {
     const rscTexts = this.extractRscText(html);
     if (rscTexts.length > 0) parts.push(rscTexts.join("\n\n"));
 
-    // 5. Nuxt.js — window.__NUXT__
+    // 5. RSC children strings — nav labels, headings, body copy embedded in JSON
+    const childTexts = this.extractRscChildrenText(html);
+    if (childTexts.length > 0) parts.push(childTexts.join("\n"));
+
+    // 6. Nuxt.js — window.__NUXT__
     const nuxtMatch = html.match(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\});?\s*<\/script>/);
     if (nuxtMatch) {
       const nuxtText = this.extractStringValues(nuxtMatch[1]);
@@ -246,29 +278,105 @@ export class WebsiteCrawlService {
     return this.extractStringValues(JSON.stringify(pageProps));
   }
 
-  /** Extract readable text from RSC streaming payload. */
-  private extractRscText(html: string): string[] {
-    const chunks = [...html.matchAll(/self\.__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g)];
+  /** Extract same-origin links embedded in Next.js / React RSC payloads. */
+  private extractRscLinks(html: string, origin: string): string[] {
+    const links: string[] = [];
+    const seen = new Set<string>();
+    const sources = this.getRscSources(html);
+
+    for (const source of sources) {
+      for (const match of source.matchAll(/"href":"(\/[^"#?\\]+)"/g)) {
+        const path = match[1];
+        if (this.shouldSkipPath(path)) continue;
+        try {
+          const absolute = new URL(path, origin);
+          absolute.hash = "";
+          const clean = absolute.href;
+          if (!seen.has(clean)) {
+            seen.add(clean);
+            links.push(clean);
+          }
+        } catch {
+          // Invalid URL
+        }
+      }
+    }
+
+    return links;
+  }
+
+  /** Extract user-facing text from RSC `children` JSON properties. */
+  private extractRscChildrenText(html: string): string[] {
     const texts: string[] = [];
     const seen = new Set<string>();
 
-    for (const [, raw] of chunks) {
-      const decoded = raw
-        .replace(/\\n/g, "\n")
-        .replace(/\\"/g, '"')
-        .replace(/\\\\/g, "\\");
+    for (const source of this.getRscSources(html)) {
+      for (const match of source.matchAll(/"children":"([^"]{5,})"/g)) {
+        const text = match[1].replace(/\\n/g, "\n").trim();
+        if (this.isRscNoise(text)) continue;
+        if (seen.has(text)) continue;
+        seen.add(text);
+        texts.push(text);
+      }
+    }
 
-      // Extract meaningful text fragments (sentences, not code)
-      const matches = decoded.match(
-        /[A-Z\u0900-\u097F₹][a-zA-Z\u0900-\u097F\s,.\-—₹:;!?'&/()]{12,}/g,
+    return texts;
+  }
+
+  /** Decode and collect all RSC chunk sources from HTML. */
+  private getRscSources(html: string): string[] {
+    const sources = [html];
+    for (const [, raw] of html.matchAll(/self\.__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g)) {
+      sources.push(this.decodeRscChunk(raw));
+    }
+    return sources;
+  }
+
+  private decodeRscChunk(raw: string): string {
+    return raw.replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+  }
+
+  /** Filter React/Next.js internals, CSS classes, and code fragments. */
+  private isRscNoise(text: string): boolean {
+    if (/^(static\/chunks|__variable|webpack|next\/static|\/_next\/)/.test(text)) return true;
+    if (/^(flex|grid|mt-|px-|py-|text-|bg-|border|rounded|inline-flex|min-h-|max-w-|items-|justify-)/.test(text))
+      return true;
+    if (/^(Element|Function|Object|Array|import|export|const|let|var|class)\b/.test(text)) return true;
+    if (/react|fragment|Boundary|Metadata|Viewport|Outlet|Suspense|ClientPage|AsyncMetadata/i.test(text))
+      return true;
+    if (/^[\$#@]|^\d+:|^I\[|^:\w/.test(text)) return true;
+    if (text.length > 150 && /className|children|templateScripts/.test(text)) return true;
+    if (/Page not found|doesn't exist or has been moved/i.test(text)) return true;
+    return false;
+  }
+
+  private shouldSkipPath(pathname: string): boolean {
+    if (/\.(pdf|jpg|jpeg|png|gif|svg|mp4|zip|doc|docx|woff2?|css|js|json|ico|webp|map)$/i.test(pathname))
+      return true;
+    if (
+      /\/(login|signup|register|auth|admin|cart|checkout|dashboard|api|_next|privacy|terms|cookies|cookie|dpa|gdpr|legal|data-deletion|disclaimer)/i.test(
+        pathname,
+      )
+    )
+      return true;
+    if (pathname.startsWith("/#") || pathname === "#") return true;
+    return false;
+  }
+
+  /** Extract readable text from RSC streaming payload. */
+  private extractRscText(html: string): string[] {
+    const texts: string[] = [];
+    const seen = new Set<string>();
+
+    for (const source of this.getRscSources(html)) {
+      const matches = source.match(
+        /[A-Z\u0900-\u097F₹][a-zA-Z\u0900-\u097F0-9\s,.\-—₹:;!?'&/()%+]{12,}/g,
       );
       if (!matches) continue;
 
       for (const m of matches) {
         const trimmed = m.trim();
-        // Skip code-like fragments
-        if (/^(Element|Function|Object|Array|import|export|const|let|var|class)\b/.test(trimmed)) continue;
-        if (/classList|querySelector|addEventListener|className/.test(trimmed)) continue;
+        if (this.isRscNoise(trimmed)) continue;
         if (seen.has(trimmed)) continue;
         seen.add(trimmed);
         texts.push(trimmed);
@@ -353,10 +461,11 @@ export class WebsiteCrawlService {
         if (absolute.origin !== origin) return;
         if (absolute.protocol !== "http:" && absolute.protocol !== "https:") return;
 
-        // Skip anchors, files, login/auth pages
+        // Skip anchors, files, login/auth pages, legal boilerplate
         if (absolute.hash && absolute.pathname === new URL(currentUrl).pathname) return;
         if (/\.(pdf|jpg|jpeg|png|gif|svg|mp4|zip|doc|docx)$/i.test(absolute.pathname)) return;
-        if (/\/(login|signup|register|auth|admin|cart|checkout)/i.test(absolute.pathname)) return;
+        if (/\/(login|signup|register|auth|admin|cart|checkout|privacy|terms|cookies|cookie|dpa|gdpr|legal|data-deletion)/i.test(absolute.pathname))
+          return;
 
         absolute.hash = "";
         const clean = absolute.href;
