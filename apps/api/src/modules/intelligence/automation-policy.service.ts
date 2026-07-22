@@ -85,16 +85,13 @@ export class AutomationPolicyService {
       knowledgeHitCount: input.knowledgeHits.length,
     });
 
+    // ── 1. Human handling (user took over) ──
     if (input.humanHandling) {
       pushBlocker("human_handling", "You're handling this thread — Growvisi won't message the customer.");
       return { outcome: "human", risk, reasons, blockers };
     }
 
-    // Intent first, knowledge second, reply third. Only a HARD human signal
-    // (explicit "talk to a person", sensitive topic, owner-only, recovery)
-    // hands off before knowledge is consulted. The classify LLM's bare
-    // `requiresHuman` flag is advisory — it misfires on ordinary product
-    // questions and must never override an answerable, knowledge-grounded turn.
+    // ── 2. Hard human signals only ──
     const hardHumanSignal = hasHardHumanSignal(lastInbound, input.classification);
 
     if (input.executionPath === "human" && hardHumanSignal) {
@@ -107,19 +104,10 @@ export class AutomationPolicyService {
       });
     }
 
-    if (
-      input.classification.requiresHuman &&
-      !hardHumanSignal &&
-      input.knowledgeHits.length > 0
-    ) {
-      reasons.push(
-        "AI flagged human review, but relevant Business Knowledge exists — answering from knowledge.",
-      );
-    } else if (input.classification.requiresHuman && !hardHumanSignal) {
-      // Advisory flag with no knowledge to answer from → draft (holding reply
-      // handled by the no-knowledge path below keeps the customer engaged).
-      reasons.push("AI suggested human review — continuing with guarded evaluation.");
-    } else if (input.classification.requiresHuman) {
+    // Advisory requiresHuman is informational — knowledge decides.
+    if (input.classification.requiresHuman && !hardHumanSignal) {
+      reasons.push("AI suggested human review — knowledge will decide.");
+    } else if (input.classification.requiresHuman && hardHumanSignal) {
       pushBlocker("needs_human", "Customer needs a person — your team should reply.");
       return this.withAck(profile, blockers, {
         outcome: "human",
@@ -164,6 +152,7 @@ export class AutomationPolicyService {
       });
     }
 
+    // ── 3. Courtesy fast path ──
     const rules = this.resolveRules(input.settings);
     const stage = input.ctx.lead.stage;
     const relationshipPhase = input.ctx.workingMemory.relationshipPhase;
@@ -182,12 +171,12 @@ export class AutomationPolicyService {
       isSimpleThanks(lastInbound) ||
       isSimpleAck(lastInbound);
 
-    // Courtesy replies bypass deal-stage gate (Hello still sends in Negotiation / post-sale).
     if (isCourtesy && rules.autoSendGreetings) {
       reasons.push("Simple courtesy reply — safe to send.");
       return { outcome: "send", risk: "low", reasons, blockers };
     }
 
+    // ── 4. KB not indexed yet ──
     if (input.hasIndexedChunks === false && !isCourtesy) {
       pushBlocker(
         "kb_not_indexed",
@@ -201,14 +190,12 @@ export class AutomationPolicyService {
       });
     }
 
+    // ── 5. Post-sale / win-back commercial messages need human review. ──
     if (
       relationshipPhase === "post_sale" &&
       commercialSensitivity === "high"
     ) {
-      pushBlocker(
-        "post_sale_commercial",
-        "Deal is closed — commercial replies need your review.",
-      );
+      pushBlocker("post_sale_commercial", "Deal is closed — commercial replies need your review.");
       return { outcome: "draft", risk: "medium", reasons, blockers };
     }
 
@@ -216,10 +203,7 @@ export class AutomationPolicyService {
       relationshipPhase === "win_back" &&
       commercialSensitivity !== "low"
     ) {
-      pushBlocker(
-        "win_back_commercial",
-        "Win-back opportunity — review before sending commercial details.",
-      );
+      pushBlocker("win_back_commercial", "Win-back opportunity — review before sending commercial details.");
       return { outcome: "draft", risk: "medium", reasons, blockers };
     }
 
@@ -236,59 +220,32 @@ export class AutomationPolicyService {
       return { outcome: "draft", risk, reasons, blockers };
     }
 
-    // "complex" path (low confidence, negotiation, complaint) only drafts when
-    // we genuinely have nothing to work with. If relevant knowledge exists, the
-    // answer-first path below handles it — the post-compose gate is the arbiter.
-    if (
-      input.executionPath === "complex" &&
-      input.knowledgeHits.length === 0 &&
-      this.isSensitiveIntent(intentKind)
-    ) {
-      pushBlocker("high_stakes", "High-stakes message with no knowledge — draft for your review.");
-      return { outcome: "draft", risk: "high", reasons, blockers };
-    }
-
-    if (input.classification.confidence < rules.minClassifyConfidence) {
-      pushBlocker("low_confidence", "AI isn't confident enough to send automatically.");
-      return { outcome: "draft", risk, reasons, blockers };
-    }
-
-    // knowledgeGap is informational — it signals a topic gap (e.g. pricing
-    // question without a pricing doc) but must NOT block the answer path.
-    // The composer re-retrieves with a richer query and may find relevant
-    // chunks from other categories. The post-compose coverage gate
-    // (needsHuman, selfConfidence) is the real quality arbiter.
-    if (input.knowledgeGap) {
-      reasons.push("Topic gap detected — composer will answer from available knowledge.");
-    }
-
+    // ── 6. Discount requests need owner approval ──
     const discountBlocked =
       profile.discountAuthority.mode === "none" &&
       (intentKind === "negotiation" || isDiscountNegotiationMessage(lastInbound));
-
     if (discountBlocked) {
       pushBlocker("discount_authority", "Discounts need owner approval — draft for review.");
       return { outcome: "draft", risk: "medium", reasons, blockers };
     }
 
+    // ── 7. Pricing stays strict ──
     const topHit = input.knowledgeHits[0];
     const topSimilarity = topHit?.similarity ?? 0;
-    const answerability = assessAnswerability({
-      groundingConfidence: input.groundingConfidence ?? topSimilarity,
-      hasIndexedChunks: input.hasIndexedChunks !== false,
-      topSimilarity: topHit?.similarity,
-      knowledgeGap: input.knowledgeGap,
-      knowledgeHitCount: input.knowledgeHits.length,
-    });
-
     const isPricing = isPricingInbound(lastInbound) || intentKind === "pricing";
 
-    // ── Pricing stays strict: never auto-send weak or ungrounded pricing. ──
     if (isPricing) {
       const grounded = Boolean(topHit) && topSimilarity >= rules.minGroundingSimilarity;
-      if (grounded && rules.autoSendPricingWhenGrounded && answerability.canAutoSendPricing) {
+      const answerability = assessAnswerability({
+        groundingConfidence: input.groundingConfidence ?? topSimilarity,
+        hasIndexedChunks: input.hasIndexedChunks !== false,
+        topSimilarity: topHit?.similarity,
+        knowledgeGap: input.knowledgeGap,
+        knowledgeHitCount: input.knowledgeHits.length,
+      });
+      if (grounded && answerability.canAutoSendPricing) {
         reasons.push(
-          `Grounded in “${topHit!.title}” (${Math.round(topSimilarity * 100)}% match).`,
+          `Grounded in "${topHit!.title}" (${Math.round(topSimilarity * 100)}% match).`,
         );
         return { outcome: "send", risk: "medium", reasons, blockers };
       }
@@ -296,32 +253,34 @@ export class AutomationPolicyService {
       return { outcome: "draft", risk: "medium", reasons, blockers };
     }
 
-    // ── Answer-first for FAQ / general / product questions. ──
-    // The pre-compose gate only checks whether *relevant knowledge plausibly
-    // exists*. The post-compose coverage gate (needsHuman, selfConfidence) is
-    // the real arbiter of whether the reply is safe — so we do NOT double-block
-    // here on strict raw similarity. Retrieval already filters weak matches, so
-    // any surviving hit above the relevance floor is worth answering from.
-    const RELEVANCE_FLOOR = 0.32;
-    if (
-      rules.autoSendFaqWhenGrounded &&
-      input.knowledgeHits.length > 0 &&
-      topSimilarity >= RELEVANCE_FLOOR &&
-      !this.isSensitiveIntent(intentKind)
-    ) {
+    // ── 8. ANSWER-FIRST: every non-pricing question with knowledge → send. ──
+    //
+    // As a founder: every draft is a customer waiting. The post-compose gate
+    // (needsHuman, selfConfidence < 0.35) is the quality check. The pre-compose
+    // gate only decides send vs draft — if ANY knowledge exists, we send.
+    //
+    // No confidence threshold. No similarity floor. No preset flag.
+    // The composer has the enriched RAG query + full knowledge block +
+    // classification. If the reply is bad, post-compose catches it.
+    if (input.knowledgeHits.length > 0 && !this.isSensitiveIntent(intentKind)) {
       reasons.push(
-        `Relevant knowledge found (“${topHit!.title}”, ${Math.round(topSimilarity * 100)}% match) — composing an answer with a post-send safety check.`,
+        `Knowledge found ("${topHit!.title}", ${Math.round(topSimilarity * 100)}% match) — answering.`,
       );
       return { outcome: "send", risk: "low", reasons, blockers };
     }
 
-    // ── No usable knowledge → send a branded, helpful holding message. ──
-    // Answer-first means the customer should never get silence: we auto-send a
-    // warm generic reply (and still create a draft for the team to follow up).
+    // Sensitive intents (complaint, negotiation) always draft — they need
+    // human judgment. The AI may compose a suggestion but the team decides.
+    if (this.isSensitiveIntent(intentKind) && input.knowledgeHits.length > 0) {
+      pushBlocker("sensitive_intent", "Complaint/negotiation — draft with AI suggestion for your review.");
+      return { outcome: "draft", risk: "medium", reasons, blockers };
+    }
+
+    // ── 9. No knowledge → warm holding message ──
     if (input.knowledgeHits.length === 0) {
       pushBlocker("no_knowledge", "No matching Business Knowledge — sending a helpful holding reply.");
     } else {
-      pushBlocker("weak_grounding", "Knowledge match too weak — sending a helpful holding reply.");
+      pushBlocker("weak_grounding", "Knowledge match too weak for sensitive topic — sending a helpful holding reply.");
     }
     return {
       outcome: "draft",

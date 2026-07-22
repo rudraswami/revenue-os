@@ -79,7 +79,7 @@ describe("AutomationPolicyService", () => {
     expect(result.outcome).toBe("send");
   });
 
-  it("knowledgeGap is informational — does not block on its own", () => {
+  it("pricing question with no knowledge → draft for review", () => {
     const result = service.evaluate({
       settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
       ctx: baseCtx({ lastInbound: "What is your pricing for 10 users?" }),
@@ -96,9 +96,8 @@ describe("AutomationPolicyService", () => {
       executionPath: "standard",
       humanHandling: false,
     });
-    // knowledgeGap no longer forces draft; the no-knowledge path below
-    // handles it with a holding reply instead.
-    expect(result.reasons.join(" ")).toContain("Topic gap");
+    expect(result.outcome).toBe("draft");
+    expect(result.blockers).toContain("pricing_review");
   });
 
   it("human for sensitive inbound", () => {
@@ -505,7 +504,7 @@ describe("AutomationPolicyService", () => {
       groundingConfidence: 0.42,
     });
     expect(result.outcome).toBe("send");
-    expect(result.reasons.join(" ")).toContain("Relevant knowledge found");
+    expect(result.reasons.join(" ")).toContain("Knowledge found");
   });
 
   it("uses adaptive threshold — healthy KB lowers confidence requirement", () => {
@@ -541,7 +540,7 @@ describe("AutomationPolicyService", () => {
       totalKbDocs: 12,
     });
     expect(result.outcome).toBe("send");
-    expect(result.reasons.join(" ")).toContain("Relevant knowledge found");
+    expect(result.reasons.join(" ")).toContain("Knowledge found");
   });
 
   it("does NOT auto-send via classification-confident path for complaints", () => {
@@ -576,13 +575,12 @@ describe("AutomationPolicyService", () => {
     expect(result.outcome).not.toBe("send");
   });
 
-  it("drafts when LLM classification confidence is below the minimum threshold", () => {
+  it("answer-first: sends even with low classifier confidence when knowledge exists", () => {
     const result = service.evaluate({
       settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
       ctx: baseCtx({ lastInbound: "Tell me about your products" }),
       classification: {
         stage: "NEW",
-        // Below balanced preset minClassifyConfidence (0.55) — genuinely unsure.
         confidence: 0.4,
         intent: "General inquiry",
         sentiment: "neutral",
@@ -606,7 +604,7 @@ describe("AutomationPolicyService", () => {
       hasIndexedChunks: true,
       groundingConfidence: 0.45,
     });
-    expect(result.outcome).toBe("draft");
+    expect(result.outcome).toBe("send");
   });
 
   it("answer-first: sends when relevant knowledge exists and confidence clears the minimum", () => {
