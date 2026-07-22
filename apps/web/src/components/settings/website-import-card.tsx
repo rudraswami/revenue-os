@@ -126,36 +126,27 @@ export function WebsiteImportCard() {
     },
   });
 
-  // Auto-transition phases based on import status
-  if (activeImport) {
-    if (
-      (activeImport.status === "crawling" || activeImport.status === "extracting") &&
-      phase !== "importing"
-    ) {
-      setPhase("importing");
-    }
-    if (activeImport.status === "review" && phase !== "review") {
-      setPhase("review");
-      // Auto-select high confidence items
-      const highConf = activeImport.items
-        .filter((i) => i.status === "pending" && i.confidence >= 0.6)
-        .map((i) => i.id);
-      setSelectedItems(new Set(highConf));
-    }
-  }
-
   const startMutation = useMutation({
     mutationFn: (importUrl: string) =>
-      apiFetch<{ id: string }>("/knowledge/imports", {
+      apiFetch<WebsiteImportData>("/knowledge/imports", {
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({ url: importUrl }),
       }),
     onSuccess: (result) => {
       setActiveImportId(result.id);
-      setPhase("importing");
       setUrl("");
       void queryClient.invalidateQueries({ queryKey: ["website-imports"] });
+      // Pipeline runs synchronously — result already has items
+      const pending = result.items?.filter((i) => i.status === "pending") ?? [];
+      if (pending.length > 0) {
+        setPhase("review");
+        const highConf = pending.filter((i) => i.confidence >= 0.6).map((i) => i.id);
+        setSelectedItems(new Set(highConf));
+      } else {
+        setPhase("idle");
+        toastError("Could not extract knowledge from this website. Try a different URL.");
+      }
     },
     onError: (err) => toastError(toUserMessage(err, "Could not start import")),
   });
@@ -217,6 +208,17 @@ export function WebsiteImportCard() {
     },
   });
 
+  // Auto-transition when viewing a past import (clicked from list)
+  if (activeImport && !startMutation.isPending) {
+    if (activeImport.status === "review" && phase === "importing") {
+      setPhase("review");
+      const highConf = activeImport.items
+        .filter((i) => i.status === "pending" && i.confidence >= 0.6)
+        .map((i) => i.id);
+      setSelectedItems(new Set(highConf));
+    }
+  }
+
   function validateUrl(input: string): string | null {
     const trimmed = input.trim();
     if (!trimmed) return "Please enter a URL";
@@ -275,7 +277,7 @@ export function WebsiteImportCard() {
   return (
     <div className="space-y-4">
       {/* URL Input */}
-      {phase === "idle" && (
+      {phase === "idle" && !startMutation.isPending && (
         <div className="space-y-4 rounded-2xl border border-border/70 bg-gradient-to-b from-accent/[0.03] to-card p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
@@ -368,8 +370,8 @@ export function WebsiteImportCard() {
         </div>
       )}
 
-      {/* Crawling Progress */}
-      {phase === "importing" && activeImport && (
+      {/* Scanning Progress — shown while mutation is pending */}
+      {startMutation.isPending && (
         <div className="space-y-4 rounded-2xl border border-accent/20 bg-gradient-to-b from-accent/[0.04] to-card p-6">
           <div className="flex items-center gap-3">
             <div className="relative flex h-12 w-12 items-center justify-center">
@@ -378,37 +380,19 @@ export function WebsiteImportCard() {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">
-                {activeImport.status === "crawling"
-                  ? "Scanning your website..."
-                  : "Extracting knowledge..."}
+                Scanning your website...
               </h3>
               <p className="text-xs text-muted-foreground">
-                {activeImport.status === "crawling"
-                  ? `Found ${activeImport.pagesFound} page${activeImport.pagesFound === 1 ? "" : "s"} so far`
-                  : `Processing ${activeImport.pagesCrawled} page${activeImport.pagesCrawled === 1 ? "" : "s"} — extracting products, pricing, FAQs...`}
+                Finding products, pricing, FAQs, and more
               </p>
             </div>
           </div>
 
-          {/* Visual progress */}
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>Progress</span>
-              <span>
-                {activeImport.status === "crawling"
-                  ? `${activeImport.pagesCrawled} pages crawled`
-                  : `${activeImport.itemsExtracted} items found`}
-              </span>
-            </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-accent/10">
               <div
-                className="h-full rounded-full bg-accent transition-all duration-500"
-                style={{
-                  width:
-                    activeImport.status === "crawling"
-                      ? `${Math.min(90, (activeImport.pagesCrawled / Math.max(1, activeImport.pagesFound)) * 100)}%`
-                      : "95%",
-                }}
+                className="h-full animate-pulse rounded-full bg-accent transition-all duration-500"
+                style={{ width: "60%" }}
               />
             </div>
           </div>
@@ -420,14 +404,14 @@ export function WebsiteImportCard() {
       )}
 
       {/* Error state */}
-      {phase === "importing" && activeImport?.status === "failed" && (
+      {startMutation.isError && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
             <div>
               <p className="text-sm font-semibold text-destructive">Import failed</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {activeImport.error ?? "Could not crawl the website. Check the URL and try again."}
+                {toUserMessage(startMutation.error, "Could not crawl the website. Check the URL and try again.")}
               </p>
             </div>
           </div>
@@ -436,6 +420,7 @@ export function WebsiteImportCard() {
             variant="outline"
             className="mt-3 rounded-xl"
             onClick={() => {
+              startMutation.reset();
               setPhase("idle");
               setActiveImportId(null);
             }}

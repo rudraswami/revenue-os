@@ -129,13 +129,33 @@ export class ContentStructureService {
     };
 
     const raw = body.choices?.[0]?.message?.content?.trim();
-    if (!raw) return [];
+    if (!raw) {
+      this.logger.warn(`Empty GPT response for pages: ${pages.map((p) => p.url).join(", ")}`);
+      return [];
+    }
 
     try {
       const parsed = JSON.parse(raw);
-      const items: unknown[] = Array.isArray(parsed) ? parsed : parsed.items ?? parsed.knowledge ?? [];
 
-      return items
+      // GPT with json_object mode always returns an object, never a bare array.
+      // The model may wrap the array under any key (items, results, extracted_items, etc.)
+      // so we find the first array property dynamically.
+      let items: unknown[];
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (typeof parsed === "object" && parsed !== null) {
+        const firstArray = Object.values(parsed).find((v) => Array.isArray(v));
+        items = (firstArray as unknown[]) ?? [];
+        if (!firstArray) {
+          this.logger.warn(
+            `GPT response has no array property. Keys: ${Object.keys(parsed).join(", ")}. Raw: ${raw.slice(0, 300)}`,
+          );
+        }
+      } else {
+        items = [];
+      }
+
+      const mapped = items
         .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
         .map((item) => ({
           title: String(item.title ?? "Untitled").slice(0, 200),
@@ -145,8 +165,15 @@ export class ContentStructureService {
           sourceUrl: pages[0].url,
         }))
         .filter((item) => item.content.length >= 20 && item.confidence >= 0.3);
-    } catch {
-      this.logger.warn("Failed to parse extraction JSON");
+
+      this.logger.log(
+        `Extracted ${mapped.length} items from ${pages.length} page(s) (raw array had ${items.length} entries)`,
+      );
+      return mapped;
+    } catch (err) {
+      this.logger.warn(
+        `Failed to parse extraction JSON: ${err instanceof Error ? err.message : err}. Raw: ${raw.slice(0, 300)}`,
+      );
       return [];
     }
   }

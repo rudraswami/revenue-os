@@ -85,8 +85,9 @@ export class WebsiteCrawlService {
       url,
       {
         headers: {
-          "User-Agent": "GrowvisiBot/1.0 (+https://growvisi.com/bot)",
-          Accept: "text/html,application/xhtml+xml",
+          "User-Agent":
+            "Mozilla/5.0 (compatible; GrowvisiBot/1.0; +https://growvisi.com/bot)",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
       },
       CRAWL_TIMEOUT_MS,
@@ -128,12 +129,16 @@ export class WebsiteCrawlService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private extractCleanText($: cheerio.CheerioAPI, el: cheerio.Cheerio<any>): string {
     const blocks: string[] = [];
+    const seen = new Set<string>();
 
+    // First pass: structured elements for proper formatting
     el.find("h1, h2, h3, h4, h5, h6, p, li, td, th, blockquote, dt, dd, address").each(
       (_, elem) => {
         const tag = (elem as { tagName?: string }).tagName?.toLowerCase() ?? "";
         const text = $(elem).text().replace(/\s+/g, " ").trim();
-        if (!text) return;
+        if (!text || text.length < 3) return;
+        if (seen.has(text)) return;
+        seen.add(text);
 
         if (tag.startsWith("h")) {
           const level = parseInt(tag[1], 10);
@@ -145,6 +150,14 @@ export class WebsiteCrawlService {
         }
       },
     );
+
+    // Fallback: if structured extraction got too little, extract ALL visible text
+    if (blocks.join("\n").length < 100) {
+      const rawText = el.text().replace(/\s+/g, " ").trim();
+      if (rawText.length > 50) {
+        return rawText.slice(0, 15_000);
+      }
+    }
 
     return blocks.join("\n\n").slice(0, 15_000);
   }

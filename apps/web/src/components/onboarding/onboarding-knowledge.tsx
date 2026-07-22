@@ -7,7 +7,6 @@ import {
   Check,
   CheckCircle2,
   Globe,
-  Loader2,
   Search,
   Zap,
 } from "lucide-react";
@@ -85,49 +84,15 @@ export function OnboardingKnowledge({
   const [importId, setImportId] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
+  // Fetch import data for the review phase (items are populated by the sync POST)
   const { data: importData } = useQuery({
     queryKey: ["onboarding-import", importId],
     queryFn: () =>
       apiFetch<ImportData>(`/knowledge/imports/${importId}`, {
         token: token ?? undefined,
       }),
-    enabled: !!token && !!importId,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status === "crawling" || status === "extracting") return 2000;
-      return false;
-    },
+    enabled: !!token && !!importId && phase === "review",
   });
-
-  // Auto-transition
-  if (importData) {
-    if (
-      (importData.status === "crawling" || importData.status === "extracting") &&
-      phase !== "scanning"
-    ) {
-      setPhase("scanning");
-    }
-    if (importData.status === "review" && phase === "scanning") {
-      const pending = importData.items.filter((i) => i.status === "pending");
-      if (pending.length === 0 && importData.itemsExtracted === 0) {
-        // Pipeline completed but found nothing useful — let user retry
-        setPhase("input");
-        setImportId(null);
-        toastError("Could not extract knowledge from this website. Try a different URL.");
-      } else {
-        setPhase("review");
-        const highConf = pending
-          .filter((i) => i.confidence >= 0.5)
-          .map((i) => i.id);
-        setSelectedItems(new Set(highConf));
-      }
-    }
-    if (importData.status === "failed" && phase === "scanning") {
-      setPhase("input");
-      setImportId(null);
-      toastError(importData.error ?? "Could not scan the website. Check the URL and try again.");
-    }
-  }
 
   function validateUrl(input: string): string | null {
     const trimmed = input.trim();
@@ -155,15 +120,24 @@ export function OnboardingKnowledge({
 
   const startMutation = useMutation({
     mutationFn: (importUrl: string) =>
-      apiFetch<{ id: string }>("/knowledge/imports", {
+      apiFetch<ImportData>("/knowledge/imports", {
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({ url: importUrl }),
       }),
     onSuccess: (result) => {
       setImportId(result.id);
-      setPhase("scanning");
       trackActivation("onboarding_knowledge_scan_started");
+      // Pipeline runs synchronously on the server — result already has items
+      const pending = result.items?.filter((i) => i.status === "pending") ?? [];
+      if (pending.length > 0) {
+        setPhase("review");
+        const highConf = pending.filter((i) => i.confidence >= 0.5).map((i) => i.id);
+        setSelectedItems(new Set(highConf));
+      } else {
+        setPhase("input");
+        toastError("Could not extract knowledge from this website. Try a different URL.");
+      }
     },
     onError: (err) => toastError(toUserMessage(err, "Could not scan website")),
   });
@@ -193,12 +167,14 @@ export function OnboardingKnowledge({
     });
   }
 
-  const pendingItems = importData?.items.filter((i) => i.status === "pending") ?? [];
+  // Use query data if available (refreshed after approvals), otherwise mutation data
+  const resolvedImport = importData ?? startMutation.data;
+  const pendingItems = resolvedImport?.items?.filter((i) => i.status === "pending") ?? [];
 
   return (
     <div className="mx-auto max-w-lg py-10">
-      {/* Phase: URL Input */}
-      {phase === "input" && (
+      {/* Phase: URL Input — or Scanning while mutation is pending */}
+      {phase === "input" && !startMutation.isPending && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -227,17 +203,11 @@ export function OnboardingKnowledge({
               <Button
                 size="lg"
                 className="h-12 rounded-xl px-6"
-                disabled={!url.trim() || startMutation.isPending}
+                disabled={!url.trim()}
                 onClick={handleScan}
               >
-                {startMutation.isPending ? (
-                  <GrowvisiSpinner size="xs" />
-                ) : (
-                  <>
-                    <Search className="h-4 w-4" />
-                    Scan
-                  </>
-                )}
+                <Search className="h-4 w-4" />
+                Scan
               </Button>
             </div>
             {urlError && (
@@ -258,8 +228,8 @@ export function OnboardingKnowledge({
         </motion.div>
       )}
 
-      {/* Phase: Scanning */}
-      {phase === "scanning" && (
+      {/* Scanning animation — shown while POST runs the pipeline synchronously */}
+      {(phase === "input" && startMutation.isPending) && (
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -276,23 +246,17 @@ export function OnboardingKnowledge({
               <Globe className="h-8 w-8 text-accent" />
             </div>
           </div>
-          <h3 className="text-lg font-bold text-foreground">
-            {importData?.status === "crawling"
-              ? "Scanning your website..."
-              : "Extracting knowledge..."}
-          </h3>
+          <h3 className="text-lg font-bold text-foreground">Scanning your website...</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            {importData?.status === "crawling"
-              ? `Found ${importData?.pagesFound ?? 0} pages so far`
-              : `Processing ${importData?.pagesCrawled ?? 0} pages — finding products, pricing, FAQs...`}
+            Finding products, pricing, FAQs, and more
           </p>
 
           <div className="mt-6 w-full max-w-xs">
             <div className="h-1.5 overflow-hidden rounded-full bg-accent/10">
               <motion.div
                 className="h-full rounded-full bg-accent"
-                animate={{ width: ["10%", "90%"] }}
-                transition={{ duration: 30, ease: "linear" }}
+                animate={{ width: ["5%", "85%"] }}
+                transition={{ duration: 45, ease: "linear" }}
               />
             </div>
           </div>
@@ -302,7 +266,7 @@ export function OnboardingKnowledge({
       )}
 
       {/* Phase: Review */}
-      {phase === "review" && importData && (
+      {phase === "review" && resolvedImport && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -314,8 +278,8 @@ export function OnboardingKnowledge({
               <CheckCircle2 className="h-6 w-6 text-accent" />
             </div>
             <h3 className="text-lg font-bold text-foreground">
-              Found {importData.itemsExtracted} knowledge items
-              {importData.siteName ? ` from ${importData.siteName}` : ""}
+              Found {resolvedImport.itemsExtracted} knowledge items
+              {resolvedImport.siteName ? ` from ${resolvedImport.siteName}` : ""}
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
               We&apos;ve pre-selected the most relevant items. Review and approve them for your AI.

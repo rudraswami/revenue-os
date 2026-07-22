@@ -4,7 +4,6 @@ import { DOMAIN_EVENTS } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { BusinessEventService } from "../events/business-event.service";
-import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { WebsiteCrawlService } from "./website-crawl.service";
 import { ContentStructureService } from "./content-structure.service";
 import { KnowledgeService } from "./knowledge.service";
@@ -49,18 +48,11 @@ export class WebsiteImportService {
       },
     });
 
-    // Use deferBackgroundTask (Vercel waitUntil) to keep the function alive
-    // after the response is sent — bare `void` gets killed on serverless.
-    deferBackgroundTask(() =>
-      this.runImportPipeline(imp.id, user.organizationId, cleanUrl),
-    );
+    // Run pipeline synchronously — serverless kills background work (void/waitUntil)
+    // before the crawl + extraction can complete. Awaiting ensures it finishes.
+    await this.runImportPipeline(imp.id, user.organizationId, cleanUrl);
 
-    return {
-      id: imp.id,
-      url: imp.url,
-      status: imp.status,
-      createdAt: imp.createdAt,
-    };
+    return this.getImport(user, imp.id);
   }
 
   private validateUrl(url: string): void {
@@ -284,11 +276,9 @@ export class WebsiteImportService {
       },
     });
 
-    deferBackgroundTask(() =>
-      this.runImportPipeline(importId, user.organizationId, imp.url),
-    );
+    await this.runImportPipeline(importId, user.organizationId, imp.url);
 
-    return { id: importId, status: "crawling" };
+    return this.getImport(user, importId);
   }
 
   /** Cancel an in-progress import. */
@@ -311,8 +301,17 @@ export class WebsiteImportService {
   private async runImportPipeline(importId: string, organizationId: string, url: string) {
     try {
       // Phase 1: Crawl
-      this.logger.log(`[Import ${importId}] Crawling ${url}`);
+      this.logger.log(`[Import ${importId}] Phase 1: Crawling ${url}`);
       const crawlResult = await this.crawl.crawl(url);
+
+      this.logger.log(
+        `[Import ${importId}] Crawl result: ${crawlResult.pages.length} pages, error=${crawlResult.error ?? "none"}`,
+      );
+      for (const page of crawlResult.pages) {
+        this.logger.debug(
+          `[Import ${importId}] Page: ${page.url} — title="${page.title}" textLen=${page.text.length}`,
+        );
+      }
 
       await this.prisma.websiteImport.update({
         where: { id: importId },
@@ -334,11 +333,12 @@ export class WebsiteImportService {
         return;
       }
 
-      // Phase 2: Extract structured knowledge
+      // Phase 2: Extract structured knowledge via LLM
       this.logger.log(
-        `[Import ${importId}] Extracting from ${crawlResult.pages.length} pages`,
+        `[Import ${importId}] Phase 2: Extracting knowledge from ${crawlResult.pages.length} pages`,
       );
       const items = await this.structure.extractFromPages(crawlResult.pages);
+      this.logger.log(`[Import ${importId}] Extraction result: ${items.length} items`);
 
       // Phase 3: Store import items for review
       for (const item of items) {
@@ -365,20 +365,25 @@ export class WebsiteImportService {
       });
 
       this.logger.log(
-        `[Import ${importId}] Completed — ${items.length} items extracted from ${crawlResult.pages.length} pages`,
+        `[Import ${importId}] Completed — ${items.length} items from ${crawlResult.pages.length} pages`,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`[Import ${importId}] Failed: ${message}`);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.logger.error(`[Import ${importId}] Pipeline failed: ${message}`, stack);
 
-      await this.prisma.websiteImport.update({
-        where: { id: importId },
-        data: {
-          status: "failed",
-          error: message.slice(0, 500),
-          completedAt: new Date(),
-        },
-      });
+      await this.prisma.websiteImport
+        .update({
+          where: { id: importId },
+          data: {
+            status: "failed",
+            error: message.slice(0, 500),
+            completedAt: new Date(),
+          },
+        })
+        .catch((dbErr) =>
+          this.logger.error(`[Import ${importId}] Could not update status to failed: ${dbErr}`),
+        );
     }
   }
 
