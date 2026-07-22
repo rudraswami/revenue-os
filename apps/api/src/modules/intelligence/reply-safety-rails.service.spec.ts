@@ -22,7 +22,7 @@ describe("ReplySafetyRailsService", () => {
   });
 
   it("blocks when velocity cap exceeded", async () => {
-    prisma.message.count.mockResolvedValue(3);
+    prisma.message.count.mockResolvedValue(5);
     const result = await service.checkVelocity({
       organizationId: "org",
       conversationId: "conv",

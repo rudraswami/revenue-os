@@ -236,8 +236,15 @@ export class AutomationPolicyService {
       return { outcome: "draft", risk, reasons, blockers };
     }
 
-    if (input.executionPath === "complex") {
-      pushBlocker("high_stakes", "High-stakes message — draft for your review.");
+    // "complex" path (low confidence, negotiation, complaint) only drafts when
+    // we genuinely have nothing to work with. If relevant knowledge exists, the
+    // answer-first path below handles it — the post-compose gate is the arbiter.
+    if (
+      input.executionPath === "complex" &&
+      input.knowledgeHits.length === 0 &&
+      this.isSensitiveIntent(intentKind)
+    ) {
+      pushBlocker("high_stakes", "High-stakes message with no knowledge — draft for your review.");
       return { outcome: "draft", risk: "high", reasons, blockers };
     }
 

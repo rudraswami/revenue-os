@@ -206,7 +206,7 @@ export const AUTOMATION_PRESET_DEFAULTS: Record<
     // strong match (score >= 0.68 and top similarity >= 0.7), so weak pricing
     // matches keep going to draft for human review.
     autoSendPricingWhenGrounded: true,
-    minClassifyConfidence: 0.55,
+    minClassifyConfidence: 0.45,
     minGroundingSimilarity: 0.55,
     humanForStages: ["NEGOTIATION", "PROPOSAL"],
   },
@@ -221,7 +221,7 @@ export const AUTOMATION_PRESET_DEFAULTS: Record<
 };
 
 export const DEFAULT_AUTOMATION_SAFETY: AutomationSafetySettings = {
-  maxSendsPerVelocityWindow: 3,
+  maxSendsPerVelocityWindow: 5,
   velocityWindowMinutes: 2,
 };
 
