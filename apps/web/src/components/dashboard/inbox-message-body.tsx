@@ -129,6 +129,16 @@ export const InboxMessageBody = memo(function InboxMessageBody({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const caption = mediaCaption(content);
 
+  if (type === "REACTION" && content) {
+    return (
+      <div className={cn("flex justify-center py-0.5", className)}>
+        <span className="text-2xl leading-none" title="Reaction" aria-label="Reaction">
+          {content}
+        </span>
+      </div>
+    );
+  }
+
   if (needsMedia && !inView) {
     return (
       <div ref={ref} className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>

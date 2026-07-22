@@ -169,6 +169,10 @@ export class OrganizationsService {
       }
     }
 
+    if (patch.replyAutonomy === "auto_guarded") {
+      await this.entitlements.assertPlanAtLeast(user.organizationId, "growth");
+    }
+
     const mergedProfile = patch.businessProfile
       ? {
           ...current.businessProfile,

@@ -136,9 +136,10 @@ export function playbookForIntent(kind: ReplyIntentKind): string {
       ].join(" ");
     case "negotiation":
       return [
-        "Playbook: Negotiation",
-        "Empathize. Understand budget/constraints. Do not commit to discounts without policy docs.",
-        "Move toward a call or human follow-up if terms are unclear.",
+        "Playbook: Negotiation / objection",
+        "Acknowledge their concern first. Understand budget, timeline, and what matters most.",
+        "Reframe value using business knowledge — do not invent discounts.",
+        "If they push on price without policy docs, offer a quick call or human follow-up.",
       ].join(" ");
     case "ready_to_buy":
       return [
@@ -157,8 +158,10 @@ export function playbookForIntent(kind: ReplyIntentKind): string {
       ].join(" ");
     default:
       return [
-        "Playbook: General",
-        "Read the latest message carefully. Be helpful, specific, and conversational.",
+        "Playbook: General inquiry",
+        "Read the latest message carefully. Answer every distinct question or request.",
+        "Qualify gently (what they need, timeline, location) when it helps close the deal.",
+        "Sound like a helpful sales rep — specific, warm, never generic filler.",
       ].join(" ");
   }
 }

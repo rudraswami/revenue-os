@@ -36,6 +36,7 @@ import { InboxHandoffPackageDialog } from "@/components/dashboard/inbox-handoff-
 import { InboxFollowUpDialog } from "@/components/dashboard/inbox-follow-up-dialog";
 import { InboxPaymentAssistBanner } from "@/components/dashboard/inbox-payment-assist-banner";
 import { InboxSessionStatus } from "@/components/dashboard/inbox-session-status";
+import { InboxTypingIndicator } from "@/components/dashboard/inbox-typing-indicator";
 import { InboxComposer } from "@/components/dashboard/inbox-composer";
 import { InboxOwnershipStrip } from "@/components/dashboard/inbox-ownership-strip";
 import { InboxHandlingBar } from "@/components/dashboard/inbox-handling-bar";
@@ -54,6 +55,7 @@ import {
 } from "@/hooks/use-shell-data";
 import { useToast } from "@/components/ui/toast";
 import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
+import { useInboxThreadKeyboard } from "@/hooks/use-inbox-thread-keyboard";
 import { useAuthStore } from "@/stores/auth-store";
 import { canAssignToSelf, canAssignWork, canManageTeam, canToggleInboxAi, canWrite } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -70,6 +72,10 @@ import {
   type InboxThreadMessage,
 } from "@/lib/inbox-query-cache";
 import { refreshQueueStats } from "@/lib/realtime-inbox-cache";
+import {
+  emitConversationTyping,
+  onConversationTyping,
+} from "@/lib/realtime-typing";
 import {
   cancelInboxThreadQueries,
   invalidateInboxThreadQueries,
@@ -194,6 +200,7 @@ function InboxThreadPaneInner({
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
   const myUserId = useAuthStore((s) => s.user?.id);
+  const myUserName = useAuthStore((s) => s.user?.name ?? s.user?.email ?? "Teammate");
   const canSend = canWrite(role);
   const canAssignOthers = canAssignWork(role);
   const canEditAssignmentRules = canAssignOthers || canManageTeam(role);
@@ -234,6 +241,9 @@ function InboxThreadPaneInner({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
+  const [typingUser, setTypingUser] = useState<string | null>(null);
+  const typingClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingEmitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const threadOpenMarkRef = useRef<string | null>(null);
   const threadOpenStartedRef = useRef<Record<string, number>>({});
@@ -464,8 +474,27 @@ function InboxThreadPaneInner({
   useEffect(() => {
     return () => {
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      if (typingClearRef.current) clearTimeout(typingClearRef.current);
+      if (typingEmitRef.current) clearTimeout(typingEmitRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    return onConversationTyping((payload) => {
+      if (payload.conversationId !== conversationId) return;
+      setTypingUser(payload.userName);
+      if (typingClearRef.current) clearTimeout(typingClearRef.current);
+      typingClearRef.current = setTimeout(() => setTypingUser(null), 3500);
+    });
+  }, [conversationId]);
+
+  function emitTyping() {
+    if (typingEmitRef.current) return;
+    emitConversationTyping(conversationId, myUserName);
+    typingEmitRef.current = setTimeout(() => {
+      typingEmitRef.current = null;
+    }, 2000);
+  }
 
   useEffect(() => {
     saveInboxDraft(conversationId, { text: draft, meta: draftMeta });
@@ -676,6 +705,8 @@ function InboxThreadPaneInner({
     onSuccess: () => {
       setFollowUpExcerpt(null);
       toastSuccess(copy.followUpSuccess);
+      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      void queryClient.invalidateQueries({ queryKey: ["tasks-summary"] });
     },
     onError: (e) => showMutationError(e, "Could not create follow-up task."),
   });
@@ -801,15 +832,17 @@ function InboxThreadPaneInner({
       content,
       draftText,
       aiRunId,
+      replyToMessageId,
     }: {
       content: string;
       draftText?: string;
       aiRunId?: string;
+      replyToMessageId?: string;
     }) =>
       apiFetch<InboxThreadMessage>(`/conversations/${conversationId}/messages`, {
         method: "POST",
         token: token ?? undefined,
-        body: JSON.stringify({ content, draftText, aiRunId }),
+        body: JSON.stringify({ content, draftText, aiRunId, replyToMessageId }),
       }),
     onMutate: async ({ content }) => {
       await cancelInboxThreadQueries(queryClient, conversationId);
@@ -832,6 +865,12 @@ function InboxThreadPaneInner({
       clearInboxDraft(conversationId);
       setSendError(null);
       appendOptimisticOutboundMessage(queryClient, conversationId, optimisticMessage);
+      if (previousThread.pendingDraft) {
+        syncInboxThreadBundleConversation(queryClient, conversationId, {
+          ...previousThread,
+          pendingDraft: null,
+        });
+      }
       patchConversationListsAfterOutbound(
         queryClient,
         conversationId,
@@ -963,6 +1002,7 @@ function InboxThreadPaneInner({
       content: text,
       draftText: draftMeta?.aiRunId ? text : undefined,
       aiRunId: draftMeta?.aiRunId,
+      replyToMessageId: draftMeta?.replyToMessageId,
     });
   }
 
@@ -1004,13 +1044,18 @@ function InboxThreadPaneInner({
     });
   }
 
-  function quoteInboundMessage(content: string | null) {
+  function quoteInboundMessage(content: string | null, messageId?: string) {
     const quote = formatQuotedReply(content ?? "");
     if (!quote) return;
     setDraft((prev) => {
       const { body } = parseQuotedReply(prev);
       return quote + body;
     });
+    setDraftMeta((prev) => ({
+      sources: prev?.sources ?? [],
+      aiRunId: prev?.aiRunId,
+      replyToMessageId: messageId ?? prev?.replyToMessageId,
+    }));
     composeRef.current?.focus();
   }
 
@@ -1086,6 +1131,45 @@ function InboxThreadPaneInner({
     scrollSmoothRef.current = true;
     sendMutation.mutate({ content: m.content.trim() });
   }
+
+  const quoteInboundRef = useRef(quoteInboundMessage);
+  quoteInboundRef.current = quoteInboundMessage;
+
+  const lastInboundForQuote = useMemo(() => {
+    if (!thread?.messages?.length) return null;
+    for (let i = thread.messages.length - 1; i >= 0; i--) {
+      const m = thread.messages[i];
+      if (
+        m.direction === "INBOUND" &&
+        m.content &&
+        (m.type ?? "TEXT") !== "REACTION"
+      ) {
+        return m;
+      }
+    }
+    return null;
+  }, [thread?.messages]);
+
+  useInboxThreadKeyboard({
+    enabled: !!thread && !threadLoading,
+    onFocusComposer: () => composeRef.current?.focus(),
+    onToggleSearch: () => {
+      setSearchOpen((open) => {
+        if (open) {
+          setSearchQuery("");
+          setSearchMatchIndex(0);
+        }
+        return !open;
+      });
+    },
+    onQuoteLastInbound: lastInboundForQuote
+      ? () =>
+          quoteInboundRef.current(
+            lastInboundForQuote.content,
+            lastInboundForQuote.id,
+          )
+      : undefined,
+  });
 
   if (threadLoading && !thread) {
     return <InboxThreadSkeleton />;
@@ -1576,7 +1660,9 @@ function InboxThreadPaneInner({
                     canCopy={!!copyableText}
                     canPin={canPin}
                     onQuote={
-                      canQuote ? () => quoteInboundMessage(m.content) : undefined
+                      canQuote
+                        ? () => quoteInboundMessage(m.content, m.id)
+                        : undefined
                     }
                     onCopy={
                       copyableText ? () => void copyMessageText(m.content) : undefined
@@ -1682,6 +1768,7 @@ function InboxThreadPaneInner({
           <div className="shrink-0 border-t border-border/80 bg-card px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-6">
             <div className="mx-auto w-full max-w-3xl">
               <InboxSessionStatus lastInboundAt={thread.lastInboundAt} />
+              <InboxTypingIndicator userName={typingUser} />
               {showPaymentAssist && (
                 <InboxPaymentAssistBanner
                   onMarkWon={() => {
@@ -1756,6 +1843,7 @@ function InboxThreadPaneInner({
                     : null
                 }
                 onAttachFile={handleAttachFile}
+                onTyping={emitTyping}
                 onClearAttachment={clearAttachment}
                 attachInputRef={attachInputRef}
                 showTranslate={!!capabilities?.aiSuggestReply}

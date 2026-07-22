@@ -38,6 +38,7 @@ export function InboxComposer({
   onTranslateDraft,
   translatePending,
   showTranslate,
+  onTyping,
 }: {
   draft: string;
   onDraftChange: (v: string) => void;
@@ -60,6 +61,7 @@ export function InboxComposer({
   onTranslateDraft?: (target: "hi" | "en") => void;
   translatePending?: boolean;
   showTranslate?: boolean;
+  onTyping?: () => void;
 }) {
   const copy = useConversationsCopy();
   const [dragActive, setDragActive] = useState(false);
@@ -323,7 +325,10 @@ export function InboxComposer({
           rows={2}
           placeholder={copy.composePlaceholder}
           value={draft}
-          onChange={(e) => onDraftChange(e.target.value)}
+          onChange={(e) => {
+            onDraftChange(e.target.value);
+            onTyping?.();
+          }}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           disabled={sendPending || sendDisabled}

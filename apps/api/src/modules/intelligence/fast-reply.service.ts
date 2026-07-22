@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { BusinessEmployeeProfile } from "@growvisi/shared";
-import { defaultBusinessEmployeeProfile, isSimpleAck, isSimpleGreeting, isSimpleThanks } from "@growvisi/shared";
+import { defaultBusinessEmployeeProfile, isCourtesyOnlyMessage, isSimpleAck, isSimpleGreeting, isSimpleThanks } from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
 
 /** Legacy fallbacks when profile pools are unexpectedly empty. */
@@ -32,7 +32,7 @@ export class FastReplyService {
   }
 
   isFastPathMessage(text: string | null | undefined): boolean {
-    return isSimpleGreeting(text) || isSimpleThanks(text) || isSimpleAck(text);
+    return isCourtesyOnlyMessage(text);
   }
 
   compose(

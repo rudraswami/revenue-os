@@ -125,6 +125,13 @@ export class KnowledgeController {
     return this.knowledge.remove(user, id);
   }
 
+  @Post("documents/reindex-all")
+  @RequireEmailVerified()
+  @Roles(...MANAGE_ROLES)
+  reindexAll(@CurrentUser() user: JwtPayload) {
+    return this.knowledge.reindexAll(user);
+  }
+
   @Post("documents/:id/reindex")
   @RequireEmailVerified()
   @Roles(...MANAGE_ROLES)

@@ -707,6 +707,12 @@ export class WhatsappService {
     if (text) return text;
 
     const type = String(msg.type ?? "text");
+    if (type === "reaction") {
+      const reaction = msg.reaction as { emoji?: string } | undefined;
+      const emoji = reaction?.emoji?.trim();
+      return emoji ? emoji : "[Reaction]";
+    }
+
     const block = msg[type] as Record<string, unknown> | undefined;
     const caption =
       block?.caption != null

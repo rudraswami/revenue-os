@@ -15,7 +15,12 @@ export class WhatsappMessagingService {
 
   constructor(private readonly config: ConfigService) {}
 
-  async sendText(account: WhatsappAccountRow, toPhone: string, body: string): Promise<string> {
+  async sendText(
+    account: WhatsappAccountRow,
+    toPhone: string,
+    body: string,
+    opts?: { replyToWaMessageId?: string },
+  ): Promise<string> {
     if (!account.isActive) {
       throw new BadRequestException("WhatsApp number is not active.");
     }
@@ -24,18 +29,23 @@ export class WhatsappMessagingService {
     const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
     const to = toPhone.replace(/\D/g, "");
 
+    const payload: Record<string, unknown> = {
+      messaging_product: "whatsapp",
+      to,
+      type: "text",
+      text: { body },
+    };
+    if (opts?.replyToWaMessageId) {
+      payload.context = { message_id: opts.replyToWaMessageId };
+    }
+
     const res = await fetchWithTimeout(`https://graph.facebook.com/${version}/${account.phoneNumberId}/messages`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body },
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = (await res.json()) as {

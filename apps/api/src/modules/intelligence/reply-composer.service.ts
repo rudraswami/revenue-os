@@ -135,6 +135,10 @@ export class ReplyComposerService {
     }
 
     const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
+    const threadSummary =
+      classification?.summary?.trim() ||
+      ctx.observedMemory.find((m) => m.type === "summary")?.content?.trim() ||
+      "";
     const customerCardBlock = ctx.workingMemory
       ? formatCustomerCardBlock(ctx.workingMemory)
       : "";
@@ -165,7 +169,9 @@ export class ReplyComposerService {
     const routePath = input.pipelineContext?.executionRoute?.path;
     const useStrongModel =
       routePath === "complex" ||
+      intentKind === "pricing" ||
       intentKind === "negotiation" ||
+      intentKind === "ready_to_buy" ||
       intentKind === "complaint";
     const model = useStrongModel
       ? this.config.get<string>("AI_CHAT_MODEL_COMPLEX") ?? "gpt-4o"
@@ -240,6 +246,7 @@ export class ReplyComposerService {
                   contactName,
                   businessProfile,
                   classification: classification ?? undefined,
+                  threadSummary,
                 }),
               },
               {
@@ -450,6 +457,7 @@ export class ReplyComposerService {
     contactName?: string;
     businessProfile: BusinessEmployeeProfile;
     classification?: AiClassificationResult;
+    threadSummary?: string;
   }): string {
     const voiceLines = buildVoiceInstructions(opts.businessProfile);
     const languageLine = resolveComposeLanguageInstruction(
@@ -492,6 +500,9 @@ export class ReplyComposerService {
       opts.intent ? `Thread intent: ${opts.intent}` : "",
       opts.sentiment ? `Sentiment: ${opts.sentiment}` : "",
       opts.summary ? `Context: ${opts.summary}` : "",
+      opts.threadSummary && opts.threadSummary !== opts.summary
+        ? `Thread summary: ${opts.threadSummary}`
+        : "",
       opts.stage ? `Deal stage: ${opts.stage}` : "",
       opts.lastInbound
         ? `Reply to this exact message from ${opts.contactName ?? "the customer"}: "${opts.lastInbound}"`

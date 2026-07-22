@@ -6,6 +6,7 @@ import { io, type Socket } from "socket.io-client";
 import { handleRealtimeEvent, type RealtimeRefreshPayload } from "@/lib/realtime-event-handler";
 import { organizationIdFromStore, useAuthStore } from "@/stores/auth-store";
 import { subscribeSupabaseOrgChannel, supabaseRealtimeEnabled } from "@/lib/supabase-realtime";
+import { bindRealtimeSocket } from "@/lib/realtime-typing";
 
 interface RealtimeContextValue {
   connected: boolean;
@@ -96,7 +97,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       handleRealtimeEvent(queryClient, "whatsapp.setup.updated");
     });
 
+    bindRealtimeSocket(socket);
+
     return () => {
+      bindRealtimeSocket(null);
       socket.disconnect();
       setConnected(false);
     };

@@ -97,12 +97,16 @@ export class ReplySendService {
       };
 
       await this.replyPolicy.persistDecision(organizationId, conversationId, downgraded);
-      await this.suggestReply.generateAndStoreDraft(organizationId, conversationId, {
-        knowledgeGap: opts.knowledgeGap,
-        decision: downgraded,
-        classification: opts.classification,
-        pipelineContext: opts.pipelineContext,
-      });
+      await this.suggestReply.storeComposedDraft(
+        organizationId,
+        conversationId,
+        {
+          suggestion: composed.suggestion,
+          sources: composed.sources,
+          aiRunId: composed.aiRunId,
+        },
+        downgraded,
+      );
 
       this.realtime.emitInboxUpdated(organizationId, conversationId);
       this.logger.warn(

@@ -80,6 +80,11 @@ class SendMessageDto {
   @IsOptional()
   @IsString()
   aiRunId?: string;
+
+  /** Growvisi message id to quote-reply on WhatsApp (maps to context.message_id). */
+  @IsOptional()
+  @IsString()
+  replyToMessageId?: string;
 }
 
 class SendMediaMessageDto {
@@ -236,6 +241,7 @@ export class ConversationsController {
   }
 
   @Get(":id/messages/:messageId/media")
+  @RequireCapability("inbox.reply")
   async messageMedia(
     @CurrentUser() user: JwtPayload,
     @Param("id") conversationId: string,
@@ -270,6 +276,7 @@ export class ConversationsController {
     return this.conversations.sendMessage(user, id, dto.content, {
       draftText: dto.draftText,
       aiRunId: dto.aiRunId,
+      replyToMessageId: dto.replyToMessageId,
     });
   }
 

@@ -3,6 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
@@ -149,5 +150,21 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {
     this.server?.to(`org:${organizationId}`).emit("lead.handoff", data);
     void this.broadcast.publish(organizationId, "lead.handoff", data);
+  }
+
+  /** Relay agent typing in a conversation to other org members. */
+  @SubscribeMessage("conversation.typing")
+  handleConversationTyping(
+    client: Socket,
+    data: { conversationId?: string; userName?: string },
+  ) {
+    const organizationId = client.data.organizationId as string | undefined;
+    if (!organizationId || !data?.conversationId) return;
+    const payload = {
+      conversationId: data.conversationId,
+      userName: data.userName?.trim() || "Teammate",
+    };
+    client.to(`org:${organizationId}`).emit("conversation.typing", payload);
+    void this.broadcast.publish(organizationId, "conversation.typing", payload);
   }
 }

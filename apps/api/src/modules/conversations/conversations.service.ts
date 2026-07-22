@@ -672,7 +672,7 @@ export class ConversationsService {
       },
     });
 
-    this.realtime.emitInboxUpdated(user.organizationId);
+    this.realtime.emitInboxUpdated(user.organizationId, id);
     return { ok: true };
   }
 
@@ -769,7 +769,7 @@ export class ConversationsService {
       });
     }
 
-    this.realtime.emitInboxUpdated(user.organizationId);
+    this.realtime.emitInboxUpdated(user.organizationId, id);
     return this.getById(user, id);
   }
 
@@ -793,7 +793,7 @@ export class ConversationsService {
         },
       },
     });
-    this.realtime.emitInboxUpdated(conversation.organizationId);
+    this.realtime.emitInboxUpdated(conversation.organizationId, conversationId);
   }
 
   async markRead(user: JwtPayload, id: string) {
@@ -802,6 +802,7 @@ export class ConversationsService {
       include: { whatsappAccount: true },
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
+    this.assertInboxThreadAccess(user, conversation);
 
     if (conversation.unreadCount > 0) {
       await this.prisma.conversation.update({
@@ -833,11 +834,37 @@ export class ConversationsService {
     );
   }
 
+  private async resolveWhatsappReplyContext(
+    organizationId: string,
+    conversationId: string,
+    replyToMessageId?: string,
+  ): Promise<{ replyToWaMessageId?: string } | undefined> {
+    if (!replyToMessageId) return undefined;
+    const quoted = await this.prisma.message.findFirst({
+      where: { id: replyToMessageId, organizationId, conversationId },
+      select: { waMessageId: true },
+    });
+    if (!quoted?.waMessageId) return undefined;
+    return { replyToWaMessageId: quoted.waMessageId };
+  }
+
+  private async buildReplyContextPayload(
+    organizationId: string,
+    replyToMessageId: string,
+  ): Promise<{ context: { id: string } } | undefined> {
+    const quoted = await this.prisma.message.findFirst({
+      where: { id: replyToMessageId, organizationId },
+      select: { waMessageId: true },
+    });
+    if (!quoted?.waMessageId) return undefined;
+    return { context: { id: quoted.waMessageId } };
+  }
+
   async sendMessage(
     user: JwtPayload,
     conversationId: string,
     content: string,
-    opts?: { draftText?: string; aiRunId?: string },
+    opts?: { draftText?: string; aiRunId?: string; replyToMessageId?: string },
   ) {
     await this.entitlements.assertHasAccess(user.organizationId);
 
@@ -851,6 +878,7 @@ export class ConversationsService {
       include: { whatsappAccount: true },
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
+    this.assertInboxThreadAccess(user, conversation);
 
     if (!conversation.whatsappAccount.isActive) {
       throw new BadRequestException("This WhatsApp number is disconnected. Reconnect it in Settings.");
@@ -872,7 +900,13 @@ export class ConversationsService {
       conversation.whatsappAccount,
       conversation.contactPhone,
       text,
+      await this.resolveWhatsappReplyContext(user.organizationId, conversationId, opts?.replyToMessageId),
     );
+
+    const replyPayload =
+      opts?.replyToMessageId
+        ? await this.buildReplyContextPayload(user.organizationId, opts.replyToMessageId)
+        : undefined;
 
     // Atomic: the message row and the conversation's lastMessageAt must move
     // together so the thread can never show a message the list doesn't know about.
@@ -887,6 +921,7 @@ export class ConversationsService {
           status: "SENT",
           content: text,
           sentByUserId: user.sub,
+          ...(replyPayload ? { payload: replyPayload as object } : {}),
         },
       });
       await tx.conversation.update({
@@ -906,7 +941,7 @@ export class ConversationsService {
       content: message.content,
       createdAt: message.createdAt.toISOString(),
     });
-    this.realtime.emitInboxUpdated(user.organizationId);
+    this.realtime.emitInboxUpdated(user.organizationId, conversationId);
 
     void this.businessEvents.emit({
       organizationId: user.organizationId,
@@ -957,6 +992,7 @@ export class ConversationsService {
       include: { whatsappAccount: true },
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
+    this.assertInboxThreadAccess(user, conversation);
 
     if (!conversation.whatsappAccount.isActive) {
       throw new BadRequestException("This WhatsApp number is disconnected. Reconnect it in Settings.");
@@ -1039,7 +1075,7 @@ export class ConversationsService {
       content: message.content,
       createdAt: message.createdAt.toISOString(),
     });
-    this.realtime.emitInboxUpdated(user.organizationId);
+    this.realtime.emitInboxUpdated(user.organizationId, conversationId);
 
     void this.businessEvents.emit({
       organizationId: user.organizationId,
@@ -1055,6 +1091,13 @@ export class ConversationsService {
   }
 
   async suggestReply(user: JwtPayload, conversationId: string) {
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId: user.organizationId },
+      select: { assignedToId: true },
+    });
+    if (!conversation) throw new NotFoundException("Conversation not found");
+    this.assertInboxThreadAccess(user, conversation);
+
     const draft = await this.suggestReplyService.generateAndStoreDraft(
       user.organizationId,
       conversationId,
@@ -1224,11 +1267,12 @@ export class ConversationsService {
       },
       include: {
         conversation: {
-          include: { whatsappAccount: true },
+          select: { assignedToId: true, whatsappAccount: true },
         },
       },
     });
     if (!message) throw new NotFoundException("Message not found");
+    this.assertInboxThreadAccess(user, message.conversation);
 
     const payload = message.payload as Record<string, unknown>;
     const typeKey = String(message.type).toLowerCase();
@@ -1410,7 +1454,7 @@ export class ConversationsService {
       content: message.content,
       createdAt: message.createdAt.toISOString(),
     });
-    this.realtime.emitInboxUpdated(user.organizationId);
+    this.realtime.emitInboxUpdated(user.organizationId, conversation.id);
 
     return { conversation: await this.getById(user, conversation.id), message };
   }

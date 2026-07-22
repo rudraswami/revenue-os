@@ -168,6 +168,22 @@ export class KnowledgeService {
     return { ok: true, chunkCount: embedResult.chunks, failed: embedResult.failed ?? false };
   }
 
+  /** Re-embed every document for the org (e.g. after chunking improvements). */
+  async reindexAll(user: JwtPayload) {
+    await this.entitlements.assertHasAccess(user.organizationId);
+    const docs = await this.prisma.knowledgeDocument.findMany({
+      where: { organizationId: user.organizationId },
+      select: { id: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    let queued = 0;
+    for (const doc of docs) {
+      await this.scheduleEmbed(doc.id, user.organizationId, true);
+      queued += 1;
+    }
+    return { ok: true, queued };
+  }
+
   async remove(user: JwtPayload, id: string) {
     await this.entitlements.assertHasAccess(user.organizationId);
     const existing = await this.prisma.knowledgeDocument.findFirst({

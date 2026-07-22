@@ -23,6 +23,7 @@ import { HomeCommandCenter } from "@/components/dashboard/home-command-center";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { QueryErrorState } from "@/components/ui/query-state";
+import { PanelRowsSkeleton } from "@/components/ui/page-loading";
 import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
 import { formatActivityLabel } from "@/lib/activity-labels";
 import { CTA } from "@/lib/brand-copy";
@@ -86,7 +87,12 @@ export default function DashboardPage() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: activityFeed } = useQuery({
+  const {
+    data: activityFeed,
+    isLoading: activityLoading,
+    isError: activityError,
+    refetch: refetchActivity,
+  } = useQuery({
     queryKey: QUERY_KEYS.activityFeed,
     queryFn: () =>
       apiFetch<Array<{ type: string; time: string; data: Record<string, unknown> }>>(
@@ -237,7 +243,14 @@ export default function DashboardPage() {
           description="Classifications, pipeline moves, and team actions"
           delay={0.15}
         >
-          {!activityFeed || activityFeed.length === 0 ? (
+          {activityLoading ? (
+            <PanelRowsSkeleton rows={5} />
+          ) : activityError ? (
+            <QueryErrorState
+              title="Could not load activity"
+              onRetry={() => void refetchActivity()}
+            />
+          ) : !activityFeed || activityFeed.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bento-mint">
                 <Sparkles className="h-5 w-5 text-accent" />

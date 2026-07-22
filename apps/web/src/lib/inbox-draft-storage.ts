@@ -3,6 +3,8 @@ const PREFIX = "gv:inbox-draft:";
 export type InboxDraftMeta = {
   aiRunId?: string;
   sources: Array<{ title: string; citation?: string; similarity: number }>;
+  /** Message being quoted — sent as WhatsApp context.message_id */
+  replyToMessageId?: string;
 };
 
 export type InboxDraftSnapshot = {
