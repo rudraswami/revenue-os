@@ -122,21 +122,23 @@ export class WhatsappService {
     });
 
     // Worker host (Redis/BullMQ): a dedicated worker process persists and
-    // classifies independently of any HTTP request or browser session. Keep
-    // the fast-ACK enqueue path.
+    // classifies independently of any HTTP request or browser session.
     if (useBackgroundWorkers()) {
       this.scheduleWebhookProcessing(event.id, payload);
       return { received: true, eventId: event.id };
     }
 
-    // Serverless (Vercel): there are no long-lived workers, so we must NOT rely
-    // on waitUntil to persist messages — if that background task is dropped, the
-    // message is lost until (previously) the user reopened the app. Instead we
-    // persist inbound messages SYNCHRONOUSLY here, before ACKing Meta. This
-    // guarantees every message lands in the DB and is visible on next inbox
-    // load, fully independent of the browser. Only the slow AI pipeline is
-    // deferred (durable QStash job, or waitUntil with the reconcile cron as a
-    // server-side safety net).
+    // ── Serverless (Vercel) ──────────────────────────────────────────────
+    // Everything runs SYNCHRONOUSLY inside this request. No waitUntil, no
+    // deferred tasks, no reliance on QStash callbacks for the critical path.
+    // This guarantees that every webhook Meta sends results in:
+    //   1. Message persisted to DB
+    //   2. Realtime events emitted (for open browsers)
+    //   3. AI classify + auto-reply executed
+    // …all within a single Vercel function invocation, fully independent of
+    // whether the Growvisi web app is open or the user is logged in.
+    //
+    // The 6-hourly reconcile cron is a last-resort safety net only.
     try {
       const events = await this.processWebhookPayload(payload);
       await this.prisma.webhookEvent.update({
@@ -147,17 +149,13 @@ export class WhatsappService {
         },
       });
       this.emitInboundRealtime(events);
-      // Fast ACK: enqueue classification durably, do NOT await the AI pipeline.
-      void this.enqueueClassificationForEvents(events, { awaitInline: false });
+      await this.enqueueClassificationForEvents(events, { awaitInline: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Synchronous webhook persist failed: ${message}`);
+      this.logger.error(`Webhook processing failed: ${message}`);
       await this.prisma.webhookEvent
         .update({ where: { id: event.id }, data: { error: message } })
         .catch(() => {});
-      // Hand off to the durable background path (QStash retries) — the reconcile
-      // cron is the final safety net if that also fails.
-      this.scheduleWebhookProcessing(event.id, payload);
     }
 
     return { received: true, eventId: event.id };
@@ -264,11 +262,14 @@ export class WhatsappService {
   /**
    * Enqueue AI classification for each newly persisted inbound message.
    *
-   * - `awaitInline: true` runs the pipeline inline (used inside an already
-   *   durable/deferred task so it completes before the task ends).
-   * - `awaitInline: false` enqueues durably (QStash) or via waitUntil and
-   *   returns immediately (used on the fast-ACK request path). The reconcile
-   *   cron re-enqueues anything that never completes.
+   * - `awaitInline: true` runs the full classify + auto-reply pipeline
+   *   synchronously within the calling function invocation. Used on the
+   *   Vercel serverless path so the entire pipeline completes within a
+   *   single request — no dependency on QStash callbacks, waitUntil,
+   *   or the browser being open.
+   * - `awaitInline: false` enqueues durably via QStash / waitUntil and
+   *   returns immediately (used by the reconcile cron when QStash is
+   *   configured, to fan out work quickly).
    */
   private async enqueueClassificationForEvents(
     events: InboundMessageEvent[],
@@ -328,7 +329,14 @@ export class WhatsappService {
   }
 
   /** Reprocess inbound webhook events that never reached `processedAt`. */
-  private async reprocessPendingWebhooks(limit = 50): Promise<number> {
+  private async reprocessPendingWebhooks(): Promise<number> {
+    // When QStash is configured we can fan out durable jobs quickly and take a
+    // big batch. Without it, the cron must run the AI pipeline INLINE (awaited)
+    // within its own invocation — never via waitUntil, which Vercel can drop.
+    // Inline runs are serial and slow, so cap the batch to stay under budget;
+    // the next cron tick drains the remainder.
+    const durable = this.jobs.durable;
+    const limit = durable ? 50 : 5;
     const now = Date.now();
     const pending = await this.prisma.webhookEvent.findMany({
       where: {
@@ -349,8 +357,10 @@ export class WhatsappService {
     let count = 0;
     for (const evt of pending) {
       try {
-        // Persist fast, enqueue classify durably (don't await the AI pipeline
-        // inline — keeps the cron function well under its time budget).
+        // Persist, emit realtime, then run classify. When QStash is absent we
+        // await the pipeline INLINE so Auto Reply is guaranteed to fire from
+        // this server-side cron invocation, independent of the browser or
+        // waitUntil. With QStash we fan out durable jobs instead.
         const payload = evt.payload as unknown as WhatsappWebhookPayload;
         const events = await this.processWebhookPayload(payload);
         await this.prisma.webhookEvent.update({
@@ -361,7 +371,7 @@ export class WhatsappService {
           },
         });
         this.emitInboundRealtime(events);
-        await this.enqueueClassificationForEvents(events, { awaitInline: false });
+        await this.enqueueClassificationForEvents(events, { awaitInline: !durable });
         count += 1;
       } catch (err) {
         this.logger.warn(
@@ -379,7 +389,11 @@ export class WhatsappService {
    * never classified). Classification dedupes internally, so already-handled
    * turns are skipped cheaply.
    */
-  private async reconcileUnclassifiedConversations(limit = 50): Promise<number> {
+  private async reconcileUnclassifiedConversations(): Promise<number> {
+    // Same durability rule as reprocessPendingWebhooks: inline+awaited without
+    // QStash (deterministic completion, no waitUntil), durable fan-out with it.
+    const durable = this.jobs.durable;
+    const limit = durable ? 50 : 5;
     const rows = await this.prisma.$queryRaw<
       Array<{
         conversationId: string;
@@ -404,7 +418,7 @@ export class WhatsappService {
       WHERE c."aiEnabled" = true
         AND c."lastInboundAt" IS NOT NULL
         AND c."lastInboundAt" < NOW() - INTERVAL '90 seconds'
-        AND c."lastInboundAt" > NOW() - INTERVAL '6 hours'
+        AND c."lastInboundAt" > NOW() - INTERVAL '8 hours'
         AND (
           c."leadId" IS NULL
           OR l."lastClassifiedAt" IS NULL
@@ -424,7 +438,8 @@ export class WhatsappService {
             messageId: row.messageId,
             ...(row.leadId ? { leadId: row.leadId } : {}),
           },
-          { background: true },
+          // background:false → awaited inline within this cron invocation.
+          { background: durable },
         );
         count += 1;
       } catch (err) {

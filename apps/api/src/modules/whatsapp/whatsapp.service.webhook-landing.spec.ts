@@ -55,32 +55,27 @@ describe("WhatsappService webhook landing (P0-5)", () => {
     prisma.webhookEvent.update.mockResolvedValue({});
   });
 
-  it("persists webhookEvent synchronously before ACK, without awaiting the AI pipeline", async () => {
+  it("runs persist + classify INLINE within the webhook request (no deferred tasks)", async () => {
     const service = makeService();
-    // The AI pipeline classify enqueue must not block the ACK.
-    let classifyAwaited = false;
+    let classifyRan = false;
     jest.spyOn(service as any, "enqueueClassificationForEvents").mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          setTimeout(() => {
-            classifyAwaited = true;
-            resolve();
-          }, 30);
-        }),
+      async () => { classifyRan = true; },
     );
 
     const ack = await service.ingestWebhook(payload);
 
     expect(ack).toEqual({ received: true, eventId: "evt_land" });
-    // Message persistence is committed inside the request (processedAt set).
+    // Message persistence is committed synchronously.
     expect(prisma.webhookEvent.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "evt_land" },
         data: expect.objectContaining({ processedAt: expect.any(Date) }),
       }),
     );
-    // ACK returned before the deferred classify resolved.
-    expect(classifyAwaited).toBe(false);
+    // Classify ran inline (awaited) — NOT deferred via waitUntil/QStash.
+    expect(classifyRan).toBe(true);
+    // No deferBackgroundTask calls on this path.
+    expect(deferBackgroundTask).not.toHaveBeenCalled();
   });
 
   it("records processing errors on webhookEvent without failing ACK", async () => {

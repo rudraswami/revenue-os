@@ -21,10 +21,10 @@ export class InternalCronController {
   ) {}
 
   /**
-   * Vercel Cron (every minute): server-side safety net that reprocesses any
-   * inbound webhook or unclassified conversation left behind by a dropped
-   * background task. Guarantees messaging + Auto Reply run without the web app
-   * being open.
+   * Vercel Cron (daily at 02:00 UTC — Hobby-compatible): last-resort safety
+   * net that reprocesses orphaned webhook events and re-enqueues dropped AI
+   * classify jobs. Primary reliability is in the webhook handler itself
+   * (fully synchronous persist + inline classify); this catches edge cases.
    */
   @Get("reconcile-inbound")
   @UseGuards(CronSecretGuard)

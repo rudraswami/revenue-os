@@ -7,7 +7,7 @@
   "crons": [
     {
       "path": "/api/v1/internal/cron/reconcile-inbound",
-      "schedule": "* * * * *"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/v1/internal/cron/whatsapp-token-reminders",
