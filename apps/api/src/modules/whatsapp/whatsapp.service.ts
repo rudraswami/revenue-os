@@ -121,7 +121,44 @@ export class WhatsappService {
       },
     });
 
-    this.scheduleWebhookProcessing(event.id, payload);
+    // Worker host (Redis/BullMQ): a dedicated worker process persists and
+    // classifies independently of any HTTP request or browser session. Keep
+    // the fast-ACK enqueue path.
+    if (useBackgroundWorkers()) {
+      this.scheduleWebhookProcessing(event.id, payload);
+      return { received: true, eventId: event.id };
+    }
+
+    // Serverless (Vercel): there are no long-lived workers, so we must NOT rely
+    // on waitUntil to persist messages — if that background task is dropped, the
+    // message is lost until (previously) the user reopened the app. Instead we
+    // persist inbound messages SYNCHRONOUSLY here, before ACKing Meta. This
+    // guarantees every message lands in the DB and is visible on next inbox
+    // load, fully independent of the browser. Only the slow AI pipeline is
+    // deferred (durable QStash job, or waitUntil with the reconcile cron as a
+    // server-side safety net).
+    try {
+      const events = await this.processWebhookPayload(payload);
+      await this.prisma.webhookEvent.update({
+        where: { id: event.id },
+        data: {
+          processedAt: new Date(),
+          organizationId: events[0]?.organizationId ?? undefined,
+        },
+      });
+      this.emitInboundRealtime(events);
+      // Fast ACK: enqueue classification durably, do NOT await the AI pipeline.
+      void this.enqueueClassificationForEvents(events, { awaitInline: false });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Synchronous webhook persist failed: ${message}`);
+      await this.prisma.webhookEvent
+        .update({ where: { id: event.id }, data: { error: message } })
+        .catch(() => {});
+      // Hand off to the durable background path (QStash retries) — the reconcile
+      // cron is the final safety net if that also fails.
+      this.scheduleWebhookProcessing(event.id, payload);
+    }
 
     return { received: true, eventId: event.id };
   }
@@ -190,52 +227,14 @@ export class WhatsappService {
         },
       });
 
-      // Emit ALL realtime events FIRST, then enqueue AI classification.
-      // This decouples message visibility from AI processing — customers see
-      // messages instantly instead of waiting for classification to finish.
-      for (const inbound of events) {
-        this.realtime.emitMessageNew(inbound.organizationId, {
-          conversationId: inbound.conversationId,
-          messageId: inbound.messageId,
-          direction: inbound.direction,
-          content: inbound.content,
-          createdAt: inbound.createdAt,
-          type: inbound.type,
-        });
-      }
+      // Emit realtime FIRST so messages appear instantly, then classify.
+      this.emitInboundRealtime(events);
 
-      // Enqueue AI classification. On Vercel without QStash, nested waitUntil
-      // calls from within a deferred task can silently drop — the inner promise
-      // isn't tracked by the outer waitUntil scope. Run classification INLINE
-      // (awaited) when we're already inside a deferred task so the full pipeline
-      // completes before the function terminates.
-      for (const inbound of events) {
-        const correlationId = this.businessEvents.createCorrelationId();
-        void this.businessEvents.emit({
-          organizationId: inbound.organizationId,
-          type: DOMAIN_EVENTS.MESSAGE_RECEIVED,
-          entityType: "message",
-          entityId: inbound.messageId,
-          correlationId,
-          payload: {
-            conversationId: inbound.conversationId,
-            leadId: inbound.leadId,
-            waMessageId: inbound.waMessageId,
-            contactPhone: inbound.contactPhone,
-          },
-        });
-
-        await this.aiClassify.enqueue(
-          {
-            organizationId: inbound.organizationId,
-            conversationId: inbound.conversationId,
-            messageId: inbound.messageId,
-            ...(inbound.leadId ? { leadId: inbound.leadId } : {}),
-            correlationId,
-          },
-          { background: false },
-        );
-      }
+      // We are already inside a deferred/durable task (QStash callback, BullMQ
+      // worker, or waitUntil). Run classification INLINE (awaited) so the full
+      // pipeline finishes before the task terminates — nested waitUntil calls
+      // can silently drop on Vercel.
+      await this.enqueueClassificationForEvents(events, { awaitInline: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Inline webhook processing failed: ${message}`);
@@ -246,6 +245,196 @@ export class WhatsappService {
       // Rethrow so QStash/BullMQ can retry on transient failures.
       throw err;
     }
+  }
+
+  /** Push new inbound messages to any connected inbox clients (Socket.IO + Supabase). */
+  private emitInboundRealtime(events: InboundMessageEvent[]): void {
+    for (const inbound of events) {
+      this.realtime.emitMessageNew(inbound.organizationId, {
+        conversationId: inbound.conversationId,
+        messageId: inbound.messageId,
+        direction: inbound.direction,
+        content: inbound.content,
+        createdAt: inbound.createdAt,
+        type: inbound.type,
+      });
+    }
+  }
+
+  /**
+   * Enqueue AI classification for each newly persisted inbound message.
+   *
+   * - `awaitInline: true` runs the pipeline inline (used inside an already
+   *   durable/deferred task so it completes before the task ends).
+   * - `awaitInline: false` enqueues durably (QStash) or via waitUntil and
+   *   returns immediately (used on the fast-ACK request path). The reconcile
+   *   cron re-enqueues anything that never completes.
+   */
+  private async enqueueClassificationForEvents(
+    events: InboundMessageEvent[],
+    opts: { awaitInline: boolean },
+  ): Promise<void> {
+    for (const inbound of events) {
+      const correlationId = this.businessEvents.createCorrelationId();
+      void this.businessEvents.emit({
+        organizationId: inbound.organizationId,
+        type: DOMAIN_EVENTS.MESSAGE_RECEIVED,
+        entityType: "message",
+        entityId: inbound.messageId,
+        correlationId,
+        payload: {
+          conversationId: inbound.conversationId,
+          leadId: inbound.leadId,
+          waMessageId: inbound.waMessageId,
+          contactPhone: inbound.contactPhone,
+        },
+      });
+
+      const classifyData = {
+        organizationId: inbound.organizationId,
+        conversationId: inbound.conversationId,
+        messageId: inbound.messageId,
+        ...(inbound.leadId ? { leadId: inbound.leadId } : {}),
+        correlationId,
+      };
+
+      if (opts.awaitInline) {
+        await this.aiClassify.enqueue(classifyData, { background: false });
+      } else {
+        await this.aiClassify.enqueue(classifyData, { background: true });
+      }
+    }
+  }
+
+  /**
+   * Server-side safety net (Vercel Cron). Runs on a schedule regardless of any
+   * browser session, so messaging + Auto Reply never depend on the web app
+   * being open.
+   *
+   * 1. Reprocess webhook events that never finished persisting (`processedAt`
+   *    still null) — catches a dropped waitUntil task.
+   * 2. Re-enqueue AI classification for conversations whose latest inbound
+   *    arrived but was never classified — catches a dropped AI pipeline so
+   *    Auto Reply still fires. Both persistence and classify are idempotent, so
+   *    re-running is safe.
+   */
+  async reconcilePendingWork(): Promise<{
+    reprocessedWebhooks: number;
+    reclassified: number;
+  }> {
+    const reprocessedWebhooks = await this.reprocessPendingWebhooks();
+    const reclassified = await this.reconcileUnclassifiedConversations();
+    return { reprocessedWebhooks, reclassified };
+  }
+
+  /** Reprocess inbound webhook events that never reached `processedAt`. */
+  private async reprocessPendingWebhooks(limit = 50): Promise<number> {
+    const now = Date.now();
+    const pending = await this.prisma.webhookEvent.findMany({
+      where: {
+        source: "whatsapp",
+        processedAt: null,
+        // Give the fast path ~90s to finish before we step in, and ignore
+        // anything older than 24h (past the WhatsApp reply window).
+        createdAt: {
+          lt: new Date(now - 90_000),
+          gt: new Date(now - 24 * 60 * 60 * 1000),
+        },
+      },
+      orderBy: { createdAt: "asc" },
+      take: limit,
+      select: { id: true, payload: true },
+    });
+
+    let count = 0;
+    for (const evt of pending) {
+      try {
+        // Persist fast, enqueue classify durably (don't await the AI pipeline
+        // inline — keeps the cron function well under its time budget).
+        const payload = evt.payload as unknown as WhatsappWebhookPayload;
+        const events = await this.processWebhookPayload(payload);
+        await this.prisma.webhookEvent.update({
+          where: { id: evt.id },
+          data: {
+            processedAt: new Date(),
+            organizationId: events[0]?.organizationId ?? undefined,
+          },
+        });
+        this.emitInboundRealtime(events);
+        await this.enqueueClassificationForEvents(events, { awaitInline: false });
+        count += 1;
+      } catch (err) {
+        this.logger.warn(
+          `Reconcile: reprocess webhook ${evt.id} failed (${err instanceof Error ? err.message : err})`,
+        );
+      }
+    }
+    if (count > 0) this.logger.log(`Reconcile: reprocessed ${count} pending webhook(s)`);
+    return count;
+  }
+
+  /**
+   * Re-enqueue classification for AI-enabled conversations whose most recent
+   * inbound message arrived after the last successful classification (or was
+   * never classified). Classification dedupes internally, so already-handled
+   * turns are skipped cheaply.
+   */
+  private async reconcileUnclassifiedConversations(limit = 50): Promise<number> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        conversationId: string;
+        organizationId: string;
+        leadId: string | null;
+        messageId: string;
+      }>
+    >`
+      SELECT c.id AS "conversationId",
+             c."organizationId" AS "organizationId",
+             c."leadId" AS "leadId",
+             m.id AS "messageId"
+      FROM conversations c
+      LEFT JOIN leads l ON l.id = c."leadId"
+      JOIN LATERAL (
+        SELECT id
+        FROM messages
+        WHERE "conversationId" = c.id AND direction = 'INBOUND'
+        ORDER BY "createdAt" DESC
+        LIMIT 1
+      ) m ON true
+      WHERE c."aiEnabled" = true
+        AND c."lastInboundAt" IS NOT NULL
+        AND c."lastInboundAt" < NOW() - INTERVAL '90 seconds'
+        AND c."lastInboundAt" > NOW() - INTERVAL '6 hours'
+        AND (
+          c."leadId" IS NULL
+          OR l."lastClassifiedAt" IS NULL
+          OR l."lastClassifiedAt" < c."lastInboundAt"
+        )
+      ORDER BY c."lastInboundAt" ASC
+      LIMIT ${limit}
+    `;
+
+    let count = 0;
+    for (const row of rows) {
+      try {
+        await this.aiClassify.enqueue(
+          {
+            organizationId: row.organizationId,
+            conversationId: row.conversationId,
+            messageId: row.messageId,
+            ...(row.leadId ? { leadId: row.leadId } : {}),
+          },
+          { background: true },
+        );
+        count += 1;
+      } catch (err) {
+        this.logger.warn(
+          `Reconcile: reclassify ${row.conversationId} failed (${err instanceof Error ? err.message : err})`,
+        );
+      }
+    }
+    if (count > 0) this.logger.log(`Reconcile: re-enqueued classify for ${count} conversation(s)`);
+    return count;
   }
 
   /** Process message + account_update webhook fields. */

@@ -6,6 +6,10 @@
   "buildCommand": "cd ../.. && pnpm turbo run build --filter=@growvisi/api",
   "crons": [
     {
+      "path": "/api/v1/internal/cron/reconcile-inbound",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/v1/internal/cron/whatsapp-token-reminders",
       "schedule": "0 9 * * *"
     },

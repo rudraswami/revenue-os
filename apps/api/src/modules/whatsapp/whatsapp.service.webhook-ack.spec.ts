@@ -53,24 +53,29 @@ describe("WhatsappService webhook ACK (P0-5)", () => {
     inboundQueue.add.mockResolvedValue({ id: "job_1" });
   });
 
-  it("returns after persist without awaiting processInline when workers disabled", async () => {
+  it("persists synchronously before ACK on serverless, without deferring the whole pipeline", async () => {
     (useBackgroundWorkers as jest.Mock).mockReturnValue(false);
 
     const service = makeService();
-    let processStarted = false;
-    jest.spyOn(service as any, "processInline").mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          processStarted = true;
-          setTimeout(resolve, 50);
-        }),
-    );
+    // processInline is the deferred/durable path — it must NOT be used on the
+    // serverless request path anymore (persistence is synchronous instead).
+    const processInlineSpy = jest
+      .spyOn(service as any, "processInline")
+      .mockResolvedValue(undefined);
 
     const result = await service.ingestWebhook(payload);
 
     expect(result).toEqual({ received: true, eventId: "evt_1" });
-    expect(deferBackgroundTask).toHaveBeenCalledTimes(1);
-    expect(processStarted).toBe(false);
+    // Synchronous persist marks the event processed inside the request.
+    expect(prisma.webhookEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "evt_1" },
+        data: expect.objectContaining({ processedAt: expect.any(Date) }),
+      }),
+    );
+    // Happy path: no deferral, no processInline hand-off.
+    expect(deferBackgroundTask).not.toHaveBeenCalled();
+    expect(processInlineSpy).not.toHaveBeenCalled();
   });
 
   it("enqueues with bounded timeout when workers enabled", async () => {

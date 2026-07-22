@@ -5,6 +5,7 @@ import { AutomationsService } from "../automations/automations.service";
 import { CampaignsService } from "../campaigns/campaigns.service";
 import { DigestService } from "../digest/digest.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
+import { WhatsappService } from "../whatsapp/whatsapp.service";
 import { DataRetentionService } from "./data-retention.service";
 
 @SkipThrottle()
@@ -12,11 +13,24 @@ import { DataRetentionService } from "./data-retention.service";
 export class InternalCronController {
   constructor(
     private readonly whatsappAccounts: WhatsappAccountsService,
+    private readonly whatsapp: WhatsappService,
     private readonly automations: AutomationsService,
     private readonly digest: DigestService,
     private readonly campaigns: CampaignsService,
     private readonly retention: DataRetentionService,
   ) {}
+
+  /**
+   * Vercel Cron (every minute): server-side safety net that reprocesses any
+   * inbound webhook or unclassified conversation left behind by a dropped
+   * background task. Guarantees messaging + Auto Reply run without the web app
+   * being open.
+   */
+  @Get("reconcile-inbound")
+  @UseGuards(CronSecretGuard)
+  runInboundReconcile() {
+    return this.whatsapp.reconcilePendingWork();
+  }
 
   /** Vercel Cron: remind workspace owners to refresh expiring Meta API tokens. */
   @Get("whatsapp-token-reminders")
