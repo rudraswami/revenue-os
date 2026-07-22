@@ -174,9 +174,12 @@ export function WhatsAppAssistantZone() {
       ]);
       if (previous) {
         const { businessProfile: _bp, ...rest } = patch;
+        const defined = Object.fromEntries(
+          Object.entries(rest).filter(([, v]) => v !== undefined),
+        );
         queryClient.setQueryData<IntelligenceWorkspaceSettings>(["intelligence-settings"], {
           ...previous,
-          ...rest,
+          ...defined,
         });
       }
       return { previous };

@@ -160,10 +160,18 @@ export class OrganizationsService {
     const settings = (org.settings ?? {}) as Record<string, unknown>;
     const current = resolveIntelligenceSettings(settings, org.name);
 
-    if (patch.automationPreset === "responsive") {
+    // class-transformer sets ALL decorated DTO properties as own properties,
+    // even when absent from the request body — they become `undefined`. Spreading
+    // `{ ...current, ...patch }` would override saved values with `undefined`,
+    // e.g. resetting replyAutonomy to the default "assist" on every preset change.
+    // Strip undefined values so only explicitly-sent fields override current.
+    const cleanPatch = Object.fromEntries(
+      Object.entries(patch).filter(([, v]) => v !== undefined),
+    ) as typeof patch;
+
+    if (cleanPatch.automationPreset === "responsive") {
       const health = await this.knowledgeRetrieval.getHealth(user.organizationId);
-      // Also count quickAnswers being submitted in the same request.
-      const incomingQaCount = patch.businessProfile?.quickAnswers?.length ?? 0;
+      const incomingQaCount = cleanPatch.businessProfile?.quickAnswers?.length ?? 0;
       if (!health.readyForResponsivePreset && incomingQaCount === 0) {
         throw new BadRequestException(
           "Upload and index Business Knowledge before enabling the Responsive preset.",
@@ -171,31 +179,30 @@ export class OrganizationsService {
       }
     }
 
-    if (patch.replyAutonomy === "auto_guarded") {
+    if (cleanPatch.replyAutonomy === "auto_guarded") {
       await this.entitlements.assertPlanAtLeast(user.organizationId, "growth");
     }
 
-    const mergedProfile = patch.businessProfile
+    const mergedProfile = cleanPatch.businessProfile
       ? {
           ...current.businessProfile,
-          ...patch.businessProfile,
-          voice: { ...current.businessProfile?.voice, ...patch.businessProfile.voice },
-          language: { ...current.businessProfile?.language, ...patch.businessProfile.language },
+          ...cleanPatch.businessProfile,
+          voice: { ...current.businessProfile?.voice, ...cleanPatch.businessProfile.voice },
+          language: { ...current.businessProfile?.language, ...cleanPatch.businessProfile.language },
           escalation: {
             ...current.businessProfile?.escalation,
-            ...patch.businessProfile.escalation,
+            ...cleanPatch.businessProfile.escalation,
           },
           closeActions: {
             ...current.businessProfile?.closeActions,
-            ...patch.businessProfile.closeActions,
+            ...cleanPatch.businessProfile.closeActions,
           },
           greetingVariants: {
             ...current.businessProfile?.greetingVariants,
-            ...patch.businessProfile.greetingVariants,
+            ...cleanPatch.businessProfile.greetingVariants,
           },
-          // quickAnswers are full-replace (not merged) — the UI sends the whole list.
           quickAnswers:
-            patch.businessProfile.quickAnswers ??
+            cleanPatch.businessProfile.quickAnswers ??
             current.businessProfile?.quickAnswers ??
             [],
         }
@@ -204,7 +211,7 @@ export class OrganizationsService {
       {
         intelligence: {
           ...current,
-          ...patch,
+          ...cleanPatch,
           businessProfile: mergedProfile,
         },
       },
