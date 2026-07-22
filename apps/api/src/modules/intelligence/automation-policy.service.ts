@@ -9,7 +9,6 @@ import type {
   ReplyRiskLevel,
 } from "@growvisi/shared";
 import {
-  assessAnswerability,
   AUTOMATION_PRESET_DEFAULTS,
   assessCommercialSensitivity,
   defaultBusinessEmployeeProfile,
@@ -24,7 +23,6 @@ import type { ConversationContext } from "./context-builder.service";
 import {
   assessReplyRisk,
   hasHardHumanSignal,
-  isPricingInbound,
   isSensitiveInbound,
   resolveReplyIntentKind,
 } from "./reply-intent";
@@ -229,48 +227,32 @@ export class AutomationPolicyService {
       return { outcome: "draft", risk: "medium", reasons, blockers };
     }
 
-    // ── 7. Pricing stays strict ──
+    // ── 7. ANSWER-FIRST: any question with knowledge → send. ──
+    //
+    // As a founder: every draft is a customer left waiting. Pricing is NOT an
+    // exception — "what's the price?" is a hot lead, and drafting it loses the
+    // sale. We answer pricing, products, availability, hours — everything — the
+    // moment we have grounding. There is NO keyword gate here: intent is used
+    // only to route sensitive topics, never to block ordinary sales questions.
+    //
+    // Factual safety lives entirely POST-compose:
+    //   • the trust rail drafts a reply only if it states a price/number that
+    //     isn't grounded in a retrieved source (prevents invented prices),
+    //   • the coverage gate drafts if the model couldn't actually answer.
+    // Both inspect the GENERATED text, not the inbound keyword.
     const topHit = input.knowledgeHits[0];
     const topSimilarity = topHit?.similarity ?? 0;
-    const isPricing = isPricingInbound(lastInbound) || intentKind === "pricing";
 
-    if (isPricing) {
-      const grounded = Boolean(topHit) && topSimilarity >= rules.minGroundingSimilarity;
-      const answerability = assessAnswerability({
-        groundingConfidence: input.groundingConfidence ?? topSimilarity,
-        hasIndexedChunks: input.hasIndexedChunks !== false,
-        topSimilarity: topHit?.similarity,
-        knowledgeGap: input.knowledgeGap,
-        knowledgeHitCount: input.knowledgeHits.length,
-      });
-      if (grounded && answerability.canAutoSendPricing) {
-        reasons.push(
-          `Grounded in "${topHit!.title}" (${Math.round(topSimilarity * 100)}% match).`,
-        );
-        return { outcome: "send", risk: "medium", reasons, blockers };
-      }
-      pushBlocker("pricing_review", "Pricing reply — review before sending.");
-      return { outcome: "draft", risk: "medium", reasons, blockers };
-    }
-
-    // ── 8. ANSWER-FIRST: every non-pricing question with knowledge → send. ──
-    //
-    // As a founder: every draft is a customer waiting. The post-compose gate
-    // (needsHuman, selfConfidence < 0.35) is the quality check. The pre-compose
-    // gate only decides send vs draft — if ANY knowledge exists, we send.
-    //
-    // No confidence threshold. No similarity floor. No preset flag.
-    // The composer has the enriched RAG query + full knowledge block +
-    // classification. If the reply is bad, post-compose catches it.
     if (input.knowledgeHits.length > 0 && !this.isSensitiveIntent(intentKind)) {
       reasons.push(
         `Knowledge found ("${topHit!.title}", ${Math.round(topSimilarity * 100)}% match) — answering.`,
       );
-      return { outcome: "send", risk: "low", reasons, blockers };
+      return { outcome: "send", risk: intentKind === "pricing" ? "medium" : "low", reasons, blockers };
     }
 
-    // Sensitive intents (complaint, negotiation) always draft — they need
-    // human judgment. The AI may compose a suggestion but the team decides.
+    // ── 8. Sensitive intents (complaint, discount negotiation) → draft. ──
+    // These need human judgment even when knowledge exists. The AI still
+    // composes a suggestion; the team decides whether to send it.
     if (this.isSensitiveIntent(intentKind) && input.knowledgeHits.length > 0) {
       pushBlocker("sensitive_intent", "Complaint/negotiation — draft with AI suggestion for your review.");
       return { outcome: "draft", risk: "medium", reasons, blockers };

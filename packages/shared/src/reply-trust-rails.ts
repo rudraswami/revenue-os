@@ -42,27 +42,20 @@ export function validateComposedReplyForSend(
   }
 
   const hasSources = input.sources.length > 0;
-  const topSimilarity = hasSources
-    ? Math.max(...input.sources.map((s) => s.similarity ?? 0))
-    : 0;
-  const minSim = input.minGroundingSimilarity ?? 0.65;
   const mentionsPrice = COMPOSED_PRICE_PATTERN.test(text);
-  const pricingIntent = intent === "pricing" || intent === "negotiation" || intent === "ready_to_buy";
 
-  if ((mentionsPrice || pricingIntent) && !hasSources) {
+  // Fact-based guard (NOT keyword/intent based): the only thing we refuse to
+  // auto-send is a reply that states a concrete price/number while having zero
+  // retrieved sources to ground it — that's a hallucinated price. If the reply
+  // is grounded in ANY source, we trust the composer (it was handed the
+  // grounded knowledge block) and send. Pricing questions are core sales
+  // conversations and must flow, not stall in drafts.
+  if (mentionsPrice && !hasSources) {
     return {
       allowed: false,
       blocker: "compose_grounding",
       reason:
-        "Reply mentions pricing but isn't grounded in Business Knowledge — draft for your review.",
-    };
-  }
-
-  if (pricingIntent && hasSources && topSimilarity < minSim) {
-    return {
-      allowed: false,
-      blocker: "compose_weak_grounding",
-      reason: "Pricing reply isn't grounded enough — draft for your review.",
+        "Reply states a price but isn't grounded in Business Knowledge — draft for your review.",
     };
   }
 

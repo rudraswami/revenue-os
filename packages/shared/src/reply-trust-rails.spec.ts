@@ -35,6 +35,29 @@ describe("validateComposedReplyForSend", () => {
     ).toBe(true);
   });
 
+  it("allows grounded pricing even at lower similarity (fact-based, not threshold-based)", () => {
+    expect(
+      validateComposedReplyForSend({
+        text: "Our Starter plan is ₹999/mo.",
+        sources: [{ similarity: 0.42 }],
+        isFastPath: false,
+        intentKind: "pricing",
+        minGroundingSimilarity: 0.7,
+      }).allowed,
+    ).toBe(true);
+  });
+
+  it("allows a pricing-intent reply that states no concrete price without sources", () => {
+    expect(
+      validateComposedReplyForSend({
+        text: "Great question! Could you tell me how many users you need so I can share the right plan?",
+        sources: [],
+        isFastPath: false,
+        intentKind: "pricing",
+      }).allowed,
+    ).toBe(true);
+  });
+
   it("allows courtesy LLM replies without KB", () => {
     expect(
       validateComposedReplyForSend({

@@ -79,7 +79,37 @@ describe("AutomationPolicyService", () => {
     expect(result.outcome).toBe("send");
   });
 
-  it("pricing question with no knowledge → draft for review", () => {
+  it("pricing question WITH knowledge → sends (answer-first, no keyword block)", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "What is your pricing for 10 users?" }),
+      classification: {
+        stage: "QUALIFIED",
+        confidence: 0.8,
+        intent: "Pricing",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "pricing",
+          title: "Pricing Plans",
+          content: "Starter ₹999/mo for up to 10 users.",
+          similarity: 0.72,
+          citation: "Pricing Plans",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("send");
+  });
+
+  it("pricing question with NO knowledge → warm holding draft (never a fabricated price)", () => {
     const result = service.evaluate({
       settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
       ctx: baseCtx({ lastInbound: "What is your pricing for 10 users?" }),
@@ -97,7 +127,7 @@ describe("AutomationPolicyService", () => {
       humanHandling: false,
     });
     expect(result.outcome).toBe("draft");
-    expect(result.blockers).toContain("pricing_review");
+    expect(result.blockers).toContain("no_knowledge");
   });
 
   it("human for sensitive inbound", () => {

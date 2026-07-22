@@ -22,8 +22,8 @@ function hit(
 }
 
 describe("knowledge-retrieval", () => {
-  it("routes pricing intents to pricing + product categories", () => {
-    expect(resolveRetrievalCategories("pricing")).toEqual(["pricing", "product"]);
+  it("routes pricing intents to pricing + product + services categories", () => {
+    expect(resolveRetrievalCategories("pricing")).toEqual(["pricing", "product", "services"]);
     expect(resolveRetrievalCategories("complaint")).toEqual(["policy", "faq"]);
     expect(resolveRetrievalCategories("greeting")).toBeUndefined();
   });
@@ -89,7 +89,7 @@ describe("knowledge-retrieval", () => {
     });
     expect(result.missingTopics).toEqual(["pricing or packages"]);
     expect(result.groundingConfidence).toBe(0);
-    expect(result.categoriesUsed).toEqual(["pricing", "product"]);
+    expect(result.categoriesUsed).toEqual(["pricing", "product", "services"]);
   });
 
   it("scores gap risk from chunk coverage", () => {
