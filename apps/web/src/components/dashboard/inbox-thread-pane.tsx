@@ -1639,6 +1639,11 @@ function InboxThreadPaneInner({
                   <InboxReplyDecision decision={replyDecision} />
                 </div>
               )}
+              {replyDecision?.mode === "draft" && !!thread.pendingDraft?.suggestion && (
+                <div className="mb-2">
+                  <InboxReplyDecision decision={replyDecision} hasDraft />
+                </div>
+              )}
               <InboxComposer
                 draft={draft}
                 onDraftChange={(text) => {

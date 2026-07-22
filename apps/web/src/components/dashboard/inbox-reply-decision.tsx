@@ -4,6 +4,36 @@ import type { ReplyDecision } from "@growvisi/shared";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
 import { cn } from "@/lib/utils";
 
+/**
+ * Concise, user-facing explanation for why a turn became a draft instead of an
+ * auto-send. Keyed by the blocker codes emitted in reply-policy.service.ts /
+ * automation-policy.service.ts. Falls back to the server-provided reason text.
+ */
+const DRAFT_BLOCKER_LABELS: Record<string, string> = {
+  auto_send_plan: "Auto-send needs the Growth plan.",
+  kb_not_indexed: "No Business Knowledge indexed yet — add docs to let Growvisi auto-answer.",
+  knowledge_gap: "No matching doc for this question.",
+  not_grounded: "No Business Knowledge match for this.",
+  weak_grounding: "Knowledge match too weak to send automatically.",
+  low_answerability: "Not confident the docs fully answer this.",
+  low_confidence: "AI isn't confident enough to send on its own.",
+  pricing_review: "Pricing reply — needs your review.",
+  deal_stage: "Deal stage — commercial replies stay with you.",
+  discount_authority: "Discounts need owner approval.",
+  high_stakes: "High-stakes message — drafted for your review.",
+  post_sale_commercial: "Deal is closed — review before sending.",
+  win_back_commercial: "Win-back — review before sending.",
+  velocity_guard: "Auto-send paused briefly (too many auto-replies).",
+  loop_guard: "Auto-send paused to avoid a reply loop.",
+};
+
+function primaryDraftReason(decision: ReplyDecision): string | null {
+  const code = decision.blockers?.find((c) => DRAFT_BLOCKER_LABELS[c]);
+  if (code) return DRAFT_BLOCKER_LABELS[code];
+  // Fall back to the first server reason that reads like a blocker (has a dash/period).
+  return decision.reasons?.[decision.reasons.length - 1] ?? decision.reasons?.[0] ?? null;
+}
+
 export function InboxReplyDecision({
   decision,
   hasDraft,
@@ -25,6 +55,22 @@ export function InboxReplyDecision({
         )}
       >
         <p className="font-semibold text-accent">{copy.replyAutoSentTitle}</p>
+      </div>
+    );
+  }
+
+  if (decision.mode === "draft" && hasDraft) {
+    const reason = primaryDraftReason(decision);
+    if (!reason) return null;
+    return (
+      <div
+        className={cn(
+          "rounded-xl border border-warning/25 bg-warning/5 px-3 py-2 text-xs text-foreground",
+          className,
+        )}
+      >
+        <p className="font-semibold text-warning">Drafted for your review</p>
+        <p className="mt-0.5 text-muted-foreground">{reason}</p>
       </div>
     );
   }
