@@ -126,6 +126,60 @@ export class ReplySendService {
       };
     }
 
+    // Coverage gate: the composer returns a structured answer contract. Only
+    // auto-send when the model self-reports it fully answered with adequate
+    // confidence and no human is needed. Otherwise the composed text is still a
+    // strong draft — persist it for one-tap human review instead of sending a
+    // half-answer. Fast-path courtesy replies have no contract, so they pass.
+    const coverage = this.evaluateAnswerContract(composed);
+    if (coverage.block) {
+      const downgraded: ReplyDecision = {
+        ...opts.replyDecision,
+        mode: "draft",
+        risk: "medium",
+        reasons: [coverage.reason, ...opts.replyDecision.reasons].slice(0, 5),
+        blockers: [
+          ...(opts.replyDecision.blockers ?? []),
+          coverage.blocker,
+        ].filter((b, i, arr) => arr.indexOf(b) === i),
+        autoEligible: false,
+        evaluatedAt: new Date().toISOString(),
+      };
+
+      await this.replyPolicy.persistDecision(organizationId, conversationId, downgraded);
+      await this.suggestReply.storeComposedDraft(
+        organizationId,
+        conversationId,
+        {
+          suggestion: composed.suggestion,
+          sources: composed.sources,
+          aiRunId: composed.aiRunId,
+        },
+        downgraded,
+      );
+
+      this.realtime.emitInboxUpdated(organizationId, conversationId);
+      this.logger.log(
+        `Coverage gate held auto-send for ${conversationId}: ${coverage.blocker}`,
+      );
+
+      void this.learning.recordTrustRailBlock({
+        organizationId,
+        conversationId,
+        aiRunId: composed.aiRunId ?? opts.aiRunId,
+        blocker: coverage.blocker,
+        reason: coverage.reason,
+        intentKind,
+      });
+
+      return {
+        sent: false,
+        drafted: true,
+        reason: coverage.reason,
+        blocker: coverage.blocker,
+      };
+    }
+
     const waMessageId = await this.whatsapp.sendText(
       conversation.whatsappAccount,
       conversation.contactPhone,
@@ -208,6 +262,46 @@ export class ReplySendService {
       content: composed.suggestion,
       aiRunId: composed.aiRunId,
     };
+  }
+
+  /**
+   * Decide whether the composed reply is complete enough to auto-send, based on
+   * the model's structured self-report. Conservative by design: if the model
+   * says it needs a human or didn't answer everything, we hold for review.
+   */
+  private evaluateAnswerContract(composed: {
+    answeredEverything?: boolean;
+    selfConfidence?: number;
+    needsHuman?: boolean;
+  }): { block: boolean; reason: string; blocker: string } {
+    const pass = { block: false, reason: "", blocker: "" };
+
+    if (composed.needsHuman === true) {
+      return {
+        block: true,
+        reason: "AI flagged this needs a human — draft ready for review.",
+        blocker: "needs_human",
+      };
+    }
+    if (composed.answeredEverything === false) {
+      return {
+        block: true,
+        reason: "AI could not fully answer — draft ready for review.",
+        blocker: "incomplete_answer",
+      };
+    }
+    if (
+      typeof composed.selfConfidence === "number" &&
+      composed.selfConfidence < 0.5
+    ) {
+      return {
+        block: true,
+        reason: "AI confidence below auto-send threshold — draft ready for review.",
+        blocker: "low_self_confidence",
+      };
+    }
+
+    return pass;
   }
 
   private readAutomationPreset(

@@ -472,10 +472,11 @@ export function resolveBusinessEmployeeProfile(
 }
 
 export const DEFAULT_INTELLIGENCE_SETTINGS: IntelligenceWorkspaceSettings = {
-  // Guarded auto-send by default: the AI answers customers directly when it is
-  // confident and grounded, and falls back to a draft/human otherwise. Auto-send
-  // still requires Growth+ (plan gate) and passes every safety/grounding rail,
-  // so lower plans continue to draft-only until they upgrade.
-  replyAutonomy: "auto_guarded",
+  // Draft-first by default (product non-negotiable: Growvisi never auto-replies
+  // customers out of the box, and onboarding stays soft). The team reviews and
+  // sends every reply from the Inbox. Auto-send (auto_guarded) is a deliberate
+  // opt-in in Automations — and when enabled it now passes the coverage gate,
+  // trust rails, grounding checks, and the Growth+ plan gate before sending.
+  replyAutonomy: "assist",
   automationPreset: "balanced",
 };

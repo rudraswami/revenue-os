@@ -104,6 +104,51 @@ export class SuggestReplyService {
     }
   }
 
+  /**
+   * Persist an already-composed reply as the pending draft without re-running
+   * the LLM. Used when auto-send is downgraded (trust/coverage gate) but the
+   * generated text is still a strong, human-reviewable draft.
+   */
+  async storeComposedDraft(
+    organizationId: string,
+    conversationId: string,
+    composed: {
+      suggestion: string;
+      sources: DraftReplyResult["sources"];
+      aiRunId?: string;
+    },
+    decision?: ReplyDecision,
+  ): Promise<void> {
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId },
+      select: { metadata: true },
+    });
+    if (!conversation) return;
+
+    const meta =
+      conversation.metadata && typeof conversation.metadata === "object"
+        ? (conversation.metadata as Record<string, unknown>)
+        : {};
+
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        metadata: {
+          ...meta,
+          pendingDraft: {
+            suggestion: composed.suggestion,
+            sources: composed.sources,
+            aiRunId: composed.aiRunId,
+            createdAt: new Date().toISOString(),
+            decision: decision ?? meta.replyDecision,
+          },
+        } as object,
+      },
+    });
+
+    this.realtime.emitInboxUpdated(organizationId, conversationId);
+  }
+
   private async storeFallbackDraft(
     organizationId: string,
     conversationId: string,

@@ -35,6 +35,19 @@ export interface ComposedReply {
   usedRag: boolean;
   aiRunId: string;
   fastPath?: boolean;
+  /** Model self-report from the structured answer contract (undefined for fast path). */
+  answeredEverything?: boolean;
+  selfConfidence?: number;
+  needsHuman?: boolean;
+  unresolved?: string[];
+}
+
+interface ReplyContract {
+  reply: string;
+  answeredEverything?: boolean;
+  confidence?: number;
+  needsHuman?: boolean;
+  unresolved?: string[];
 }
 
 export interface ComposeReplyInput {
@@ -146,13 +159,23 @@ export class ReplyComposerService {
     const sentiment = classification?.sentiment;
     const stage = ctx.lead.stage;
     const greeting = isSimpleGreeting(ctx.lastInbound);
-    const model = this.config.get<string>("AI_CHAT_MODEL") ?? "gpt-4o-mini";
+    // Model tiering: high-stakes routes (negotiation, complaint, low-confidence
+    // "complex" path) get a stronger reasoning model; everything else stays on
+    // the fast, cheap default to keep response latency low.
+    const routePath = input.pipelineContext?.executionRoute?.path;
+    const useStrongModel =
+      routePath === "complex" ||
+      intentKind === "negotiation" ||
+      intentKind === "complaint";
+    const model = useStrongModel
+      ? this.config.get<string>("AI_CHAT_MODEL_COMPLEX") ?? "gpt-4o"
+      : this.config.get<string>("AI_CHAT_MODEL") ?? "gpt-4o-mini";
     const started = Date.now();
     const risk = input.decision?.risk ?? (input.knowledgeGap ? "high" : "medium");
-    // Courtesy replies stay tiny; real questions get room to answer completely
-    // (multi-part pricing/delivery/EMI answers were being truncated at 150).
+    // Structured JSON contract adds a small wrapper; keep enough headroom so the
+    // reply text itself is never truncated (multi-part pricing/EMI answers need room).
     const maxTokens =
-      intentKind === "greeting" || intentKind === "thanks" ? 90 : 450;
+      intentKind === "greeting" || intentKind === "thanks" ? 160 : 520;
 
     const aiRun = await this.prisma.aiRun.create({
       data: {
@@ -192,6 +215,7 @@ export class ReplyComposerService {
             model,
             temperature: risk === "low" ? 0.35 : 0.4,
             max_tokens: maxTokens,
+            response_format: { type: "json_object" },
             messages: [
               {
                 role: "system",
@@ -238,7 +262,13 @@ export class ReplyComposerService {
         throw new BadRequestException(body.error?.message ?? "Could not generate a suggestion.");
       }
 
-      const suggestion = body.choices?.[0]?.message?.content?.trim();
+      const raw = body.choices?.[0]?.message?.content?.trim();
+      if (!raw) {
+        throw new BadRequestException("No suggestion returned.");
+      }
+
+      const contract = this.parseReplyContract(raw);
+      const suggestion = contract.reply.trim();
       if (!suggestion) {
         throw new BadRequestException("No suggestion returned.");
       }
@@ -262,6 +292,10 @@ export class ReplyComposerService {
             usedRag: hits.length > 0,
             risk,
             intentKind,
+            answeredEverything: contract.answeredEverything,
+            selfConfidence: contract.confidence,
+            needsHuman: contract.needsHuman,
+            unresolved: contract.unresolved,
           } as object,
           inputTokens: body.usage?.prompt_tokens,
           outputTokens: body.usage?.completion_tokens,
@@ -288,6 +322,10 @@ export class ReplyComposerService {
         sources,
         usedRag: hits.length > 0,
         aiRunId: aiRun.id,
+        answeredEverything: contract.answeredEverything,
+        selfConfidence: contract.confidence,
+        needsHuman: contract.needsHuman,
+        unresolved: contract.unresolved,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -296,6 +334,47 @@ export class ReplyComposerService {
         data: { status: "FAILED", error: message, completedAt: new Date() },
       });
       throw error;
+    }
+  }
+
+  /**
+   * Parse the model's structured answer contract. The compose call uses JSON
+   * mode, so this normally succeeds; if the model ever returns plain text we
+   * degrade gracefully and treat the whole payload as the reply (no blocking).
+   */
+  private parseReplyContract(raw: string): ReplyContract {
+    const clamp01 = (n: unknown): number | undefined => {
+      const v = typeof n === "number" ? n : Number(n);
+      if (!Number.isFinite(v)) return undefined;
+      return Math.min(1, Math.max(0, v));
+    };
+
+    try {
+      const json = JSON.parse(raw) as Record<string, unknown>;
+      const reply =
+        typeof json.reply === "string" && json.reply.trim().length > 0
+          ? json.reply
+          : typeof json.message === "string"
+            ? json.message
+            : "";
+      if (!reply.trim()) {
+        return { reply: raw };
+      }
+      const unresolved = Array.isArray(json.unresolved)
+        ? json.unresolved
+            .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+            .slice(0, 5)
+        : undefined;
+      return {
+        reply,
+        answeredEverything:
+          typeof json.answeredEverything === "boolean" ? json.answeredEverything : undefined,
+        confidence: clamp01(json.confidence),
+        needsHuman: typeof json.needsHuman === "boolean" ? json.needsHuman : undefined,
+        unresolved,
+      };
+    } catch {
+      return { reply: raw };
     }
   }
 
@@ -433,6 +512,7 @@ export class ReplyComposerService {
       opts.memoryBlock ? `Customer memory:\n${opts.memoryBlock}` : "",
       opts.customerCardBlock ? `Customer card:\n${opts.customerCardBlock}` : "",
       closeActions ?? "",
+      'Respond with ONLY a JSON object (no markdown, no code fences) shaped exactly: {"reply": string, "answeredEverything": boolean, "unresolved": string[], "confidence": number, "needsHuman": boolean}. "reply" is the exact WhatsApp message to send to the customer (natural text, no JSON). "answeredEverything" is true only if you fully answered every question the customer asked using the business knowledge above (courtesy/greeting replies count as true). "unresolved" lists any questions you could NOT answer from the knowledge. "confidence" is 0-1 for how well "reply" resolves the customer\'s message. "needsHuman" is true only if a human must handle this (e.g. sensitive complaint, legal, or a promise you cannot make).',
     ]
       .filter(Boolean)
       .join("\n\n");
