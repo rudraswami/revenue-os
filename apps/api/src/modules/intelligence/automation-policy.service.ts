@@ -246,14 +246,13 @@ export class AutomationPolicyService {
       return { outcome: "draft", risk, reasons, blockers };
     }
 
+    // knowledgeGap is informational — it signals a topic gap (e.g. pricing
+    // question without a pricing doc) but must NOT block the answer path.
+    // The composer re-retrieves with a richer query and may find relevant
+    // chunks from other categories. The post-compose coverage gate
+    // (needsHuman, selfConfidence) is the real quality arbiter.
     if (input.knowledgeGap) {
-      pushBlocker("knowledge_gap", "No matching pricing doc — draft or add to Business Knowledge.");
-      return this.withAck(profile, blockers, {
-        outcome: "draft",
-        risk: "medium",
-        reasons,
-        blockers,
-      });
+      reasons.push("Topic gap detected — composer will answer from available knowledge.");
     }
 
     const discountBlocked =

@@ -513,7 +513,7 @@ export class AiClassifyService {
     const retrieval = await this.knowledge.retrieveDetailed({
       organizationId: data.organizationId,
       query: ctx.ragQuery,
-      limit: 4,
+      limit: 6,
       intentKind: opts.preRoute.intentKind,
       lastInbound: ctx.lastInbound,
       quickAnswers: opts.businessProfile.quickAnswers,
@@ -754,7 +754,7 @@ export class AiClassifyService {
     const retrieval = await this.knowledge.retrieveDetailed({
       organizationId: data.organizationId,
       query: ctx.ragQuery,
-      limit: 4,
+      limit: 6,
       intentKind: opts.preRoute.intentKind,
       lastInbound: ctx.lastInbound,
     });

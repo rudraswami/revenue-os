@@ -77,7 +77,7 @@ export class ReplyPolicyService {
 
     if (input.knowledgeGap) {
       reasons.push(
-        "No pricing docs matched — reply will ask clarifying questions (no invented prices).",
+        "Topic gap detected — answering from available knowledge; specific facts will be verified.",
       );
     }
 

@@ -79,7 +79,7 @@ describe("AutomationPolicyService", () => {
     expect(result.outcome).toBe("send");
   });
 
-  it("drafts pricing without knowledge on balanced", () => {
+  it("knowledgeGap is informational — does not block on its own", () => {
     const result = service.evaluate({
       settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
       ctx: baseCtx({ lastInbound: "What is your pricing for 10 users?" }),
@@ -96,8 +96,9 @@ describe("AutomationPolicyService", () => {
       executionPath: "standard",
       humanHandling: false,
     });
-    expect(result.outcome).toBe("draft");
-    expect(result.blockers).toContain("knowledge_gap");
+    // knowledgeGap no longer forces draft; the no-knowledge path below
+    // handles it with a holding reply instead.
+    expect(result.reasons.join(" ")).toContain("Topic gap");
   });
 
   it("human for sensitive inbound", () => {

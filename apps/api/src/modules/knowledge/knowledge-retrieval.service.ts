@@ -163,10 +163,15 @@ export class KnowledgeRetrievalService {
     // Hybrid retrieval: vector search + keyword search (pg_trgm) in parallel.
     // Keyword search catches exact product names and acronyms that embeddings
     // miss, while vector search handles semantic similarity.
+    //
+    // Category routing is used for RANKING only, never filtering. Filtering by
+    // category killed recall: a regex-based pre-classify intent guess like
+    // "pricing" (because the word "plan" appeared) would exclude FAQ/general
+    // chunks that actually contain the answer. Search everything, rank later.
     const [rowSets, keywordRows] = await Promise.all([
       Promise.all(
         queries.map((q) =>
-          this.embed.searchDetailed(input.organizationId, q, limit, categoriesUsed),
+          this.embed.searchDetailed(input.organizationId, q, limit),
         ),
       ),
       this.embed.keywordSearch(input.organizationId, input.query, 5),

@@ -106,18 +106,38 @@ export class ReplyComposerService {
       playbookForRelationshipPhase(ctx.workingMemory.relationshipPhase),
     ].join(" ");
 
+    // Always re-retrieve with the enriched post-classify query. The classify
+    // step retrieves with raw `ctx.ragQuery` (message + memory) BEFORE
+    // customerNeeds/replyBrief exist. The compose query uses
+    // `buildRagQuery(classification)` which decomposes multi-part questions and
+    // includes entities — producing materially different embeddings that find
+    // chunks the pre-classify pass missed. Merge with pipeline hits so we keep
+    // any lucky early matches AND add newly found chunks.
     let hits: KnowledgeHit[] = input.pipelineContext?.knowledgeHits ?? [];
-    if (hits.length === 0 && !input.pipelineContext) {
+    {
       const ragQuery = buildRagQuery(ctx.lastInbound, classification);
       const retrieval = await this.knowledge.retrieveDetailed({
         organizationId: input.organizationId,
         query: ragQuery,
-        limit: 5,
+        limit: 6,
         intentKind,
         lastInbound: ctx.lastInbound,
         customerNeeds: classification?.customerNeeds,
       });
-      hits = retrieval.hits;
+
+      // Merge: keep existing pipeline hits, add any new chunks from the enriched
+      // query, dedup by chunkId keeping the higher similarity.
+      const byChunk = new Map<string, KnowledgeHit>();
+      for (const h of hits) byChunk.set(h.chunkId, h);
+      for (const h of retrieval.hits) {
+        const existing = byChunk.get(h.chunkId);
+        if (!existing || h.similarity > existing.similarity) {
+          byChunk.set(h.chunkId, h);
+        }
+      }
+      hits = Array.from(byChunk.values())
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 8);
     }
     spans?.measure("compose_rag_ms", "compose_start");
 
@@ -551,9 +571,7 @@ export class ReplyComposerService {
       "Never invent prices, discounts, or policies. Use business knowledge when present.",
       'ANSWER-FIRST: Always answer the customer directly and helpfully. Use the business knowledge above for specific facts (prices, policies, timings). If one specific detail genuinely is not in the knowledge, still give a useful answer about what the business offers and then offer to confirm the exact detail — e.g. "…I\'ll confirm the exact figure for you." NEVER reply with a bare "our team will get back to you" that has no substance, and NEVER invent facts.',
       businessProfileBlock,
-      opts.knowledgeGap
-        ? "No pricing docs matched — ask clarifying questions only."
-        : "",
+      "",
       opts.knowledgeBlock
         ? `## Business Knowledge\n\n${opts.knowledgeBlock}`
         : "",

@@ -288,7 +288,11 @@ export class KnowledgeEmbedService {
       take,
     );
 
-    return rows.filter((r) => r.similarity > 0.35);
+    // 0.25 floor: informal/Hindi/paraphrased messages routinely score 0.28-0.34
+    // against English knowledge chunks. The old 0.35 floor silently dropped
+    // them, making the AI "not understand" semantically similar questions.
+    // Post-retrieval ranking + the policy RELEVANCE_FLOOR (0.32) handle quality.
+    return rows.filter((r) => r.similarity > 0.25);
   }
 
   /**
