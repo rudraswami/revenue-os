@@ -94,7 +94,7 @@ describe("ExecutionRouterService", () => {
     expect(route.path).toBe("human");
   });
 
-  it("upgrades to human when classification requires human", () => {
+  it("upgrades to human when requiresHuman comes with a hard signal (owner-only)", () => {
     const pre = router.routePreClassify(ctx("What packages do you offer?"));
     const refined = router.refineAfterClassify(pre, {
       stage: "QUALIFIED",
@@ -103,7 +103,21 @@ describe("ExecutionRouterService", () => {
       sentiment: "neutral",
       suggestedActions: [],
       requiresHuman: true,
+      requiresOwner: true,
     }, ctx("What packages do you offer?"));
     expect(refined.path).toBe("human");
+  });
+
+  it("keeps ordinary questions on the answer path even when LLM flags requiresHuman", () => {
+    const pre = router.routePreClassify(ctx("Explain us what exactly solutions you provide"));
+    const refined = router.refineAfterClassify(pre, {
+      stage: "QUALIFIED",
+      confidence: 0.8,
+      intent: "Product inquiry",
+      sentiment: "neutral",
+      suggestedActions: [],
+      requiresHuman: true,
+    }, ctx("Explain us what exactly solutions you provide"));
+    expect(refined.path).not.toBe("human");
   });
 });

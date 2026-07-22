@@ -640,6 +640,60 @@ describe("AutomationPolicyService", () => {
     expect(result.outcome).toBe("send");
   });
 
+  it("regression: advisory requiresHuman with knowledge still answers (screenshot bug)", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "Explain us what exactly solutions you provide" }),
+      classification: {
+        stage: "QUALIFIED",
+        confidence: 0.7,
+        intent: "Product inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        // LLM misfires on "too complex" — must NOT override knowledge.
+        requiresHuman: true,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "product",
+          title: "What Growvisi Does",
+          content: "Growvisi is a WhatsApp revenue platform for Indian SMBs.",
+          similarity: 0.52,
+          citation: "What Growvisi Does",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+      hasIndexedChunks: true,
+      groundingConfidence: 0.52,
+    });
+    expect(result.outcome).toBe("send");
+    expect(result.blockers).not.toContain("needs_human");
+  });
+
+  it("hard signal (explicit human request) still hands off before knowledge", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "I want to speak to a manager" }),
+      classification: {
+        stage: "QUALIFIED",
+        confidence: 0.8,
+        intent: "Human request",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: true,
+      },
+      knowledgeHits: [],
+      knowledgeGap: false,
+      executionPath: "human",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("human");
+  });
+
   it("answer-first: no knowledge → drafts with a generic holding acknowledgment", () => {
     const result = service.evaluate({
       settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },

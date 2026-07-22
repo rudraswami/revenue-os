@@ -42,6 +42,31 @@ export function isPricingInbound(text: string | null | undefined): boolean {
   return PRICING_INBOUND_PATTERN.test((text ?? "").trim());
 }
 
+/**
+ * Whether this turn has a HARD human signal — an explicit, verifiable reason a
+ * person must reply (customer asked for a human, sensitive topic, owner-only,
+ * trust recovery, or apology needed).
+ *
+ * The classify LLM's bare `requiresHuman` flag is deliberately NOT a hard
+ * signal: it fires on "request is too complex" and routinely misfires on
+ * ordinary product questions. Policy treats it as advisory — knowledge is
+ * consulted first, and the post-compose gate catches anything truly unsafe.
+ */
+export function hasHardHumanSignal(
+  lastInbound: string | null | undefined,
+  classification?: Pick<
+    AiClassificationResult,
+    "requiresOwner" | "recoveryMode" | "apologyRequired"
+  > | null,
+): boolean {
+  if (isSensitiveInbound(lastInbound)) return true;
+  return Boolean(
+    classification?.requiresOwner ||
+      classification?.recoveryMode ||
+      classification?.apologyRequired,
+  );
+}
+
 export interface AssessReplyRiskInput {
   lastInbound?: string | null;
   requiresHuman?: boolean;

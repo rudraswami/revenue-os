@@ -23,6 +23,7 @@ import {
 import type { ConversationContext } from "./context-builder.service";
 import {
   assessReplyRisk,
+  hasHardHumanSignal,
   isPricingInbound,
   isSensitiveInbound,
   resolveReplyIntentKind,
@@ -89,7 +90,36 @@ export class AutomationPolicyService {
       return { outcome: "human", risk, reasons, blockers };
     }
 
-    if (input.executionPath === "human" || input.classification.requiresHuman) {
+    // Intent first, knowledge second, reply third. Only a HARD human signal
+    // (explicit "talk to a person", sensitive topic, owner-only, recovery)
+    // hands off before knowledge is consulted. The classify LLM's bare
+    // `requiresHuman` flag is advisory — it misfires on ordinary product
+    // questions and must never override an answerable, knowledge-grounded turn.
+    const hardHumanSignal = hasHardHumanSignal(lastInbound, input.classification);
+
+    if (input.executionPath === "human" && hardHumanSignal) {
+      pushBlocker("needs_human", "Customer needs a person — your team should reply.");
+      return this.withAck(profile, blockers, {
+        outcome: "human",
+        risk: "high",
+        reasons,
+        blockers,
+      });
+    }
+
+    if (
+      input.classification.requiresHuman &&
+      !hardHumanSignal &&
+      input.knowledgeHits.length > 0
+    ) {
+      reasons.push(
+        "AI flagged human review, but relevant Business Knowledge exists — answering from knowledge.",
+      );
+    } else if (input.classification.requiresHuman && !hardHumanSignal) {
+      // Advisory flag with no knowledge to answer from → draft (holding reply
+      // handled by the no-knowledge path below keeps the customer engaged).
+      reasons.push("AI suggested human review — continuing with guarded evaluation.");
+    } else if (input.classification.requiresHuman) {
       pushBlocker("needs_human", "Customer needs a person — your team should reply.");
       return this.withAck(profile, blockers, {
         outcome: "human",

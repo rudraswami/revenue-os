@@ -10,6 +10,7 @@ import type {
 } from "@growvisi/shared";
 import { HOT_LEAD_SCORE_THRESHOLD, detectMissingTopics } from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
+import { hasHardHumanSignal } from "./reply-intent";
 import { ReplyPolicyService } from "./reply-policy.service";
 
 export interface ClassificationPlanInput {
@@ -98,7 +99,16 @@ export class ActionPlannerService {
       groundingConfidence: input.groundingConfidence,
     });
 
-    if (result.requiresHuman && !input.lockHandoff) {
+    // "Customer needs you" banner + assignment only for genuine handoffs: a
+    // hard human signal (explicit human request, sensitive, owner-only,
+    // recovery) AND the AI is not already sending a real reply. The LLM's bare
+    // requiresHuman flag must not spam the team while Growvisi answers.
+    const genuineHandoff =
+      result.requiresHuman &&
+      replyDecision.mode !== "send" &&
+      hasHardHumanSignal(ctx.lastInbound, result);
+
+    if (genuineHandoff && !input.lockHandoff) {
       actions.push({
         type: "conversation.set_handoff",
         executor: "growvisi",

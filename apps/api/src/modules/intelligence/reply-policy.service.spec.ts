@@ -67,7 +67,24 @@ describe("ReplyPolicyService", () => {
     expect(decision.mode).toBe("draft");
   });
 
-  it("drafts when customer needs a human", () => {
+  it("drafts when customer explicitly asks for a human (hard signal)", () => {
+    const decision = service.evaluate(
+      baseInput({
+        ctx: {
+          ...baseInput().ctx,
+          lastInbound: "I want to speak to a manager please",
+        },
+        classification: {
+          ...baseInput().classification,
+          requiresHuman: true,
+        },
+        executionPath: "human",
+      }),
+    );
+    expect(decision.mode).toBe("draft");
+  });
+
+  it("advisory requiresHuman without a hard signal does not block a courtesy send", () => {
     const decision = service.evaluate(
       baseInput({
         classification: {
@@ -77,7 +94,7 @@ describe("ReplyPolicyService", () => {
         executionPath: "human",
       }),
     );
-    expect(decision.mode).toBe("draft");
+    expect(decision.mode).toBe("send");
   });
 
   it("drafts on refund in latest message", () => {

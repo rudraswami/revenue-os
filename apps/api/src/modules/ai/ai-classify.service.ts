@@ -1151,7 +1151,7 @@ Return JSON with these keys:
 - intent: short intent phrase (e.g. "Pricing inquiry", "Ready to buy", "Complaint")
 - sentiment: "positive" | "neutral" | "negative"
 - suggestedActions: array of 1-3 concrete next steps for the sales team
-- requiresHuman: true if customer asks for a person, is angry, payment dispute, or request is too complex
+- requiresHuman: true ONLY if the customer explicitly asks for a person/manager, is angry or upset, or raises a payment/legal/refund dispute. Ordinary questions about products, services, features, pricing, or how things work are NEVER requiresHuman — the AI answers those from business knowledge.
 - summary: 1-2 sentence summary of what happened in this conversation so far
 - tags: array of 1-4 short tags that describe this lead (e.g. "high-intent", "price-sensitive", "returning-customer", "urgent", "bulk-order")
 - nextAction: the single most important thing the sales rep should do right now (e.g. "Send pricing PDF", "Call within 2 hours", "Follow up on delivery status")
@@ -1175,7 +1175,8 @@ Current pipeline stage: ${currentStage}.${contextBlock}${feedbackBlock}`,
           ],
         }),
       },
-      { timeoutMs: 25_000, attempts: 3, baseDelayMs: 600 },
+      // Keep the customer wait short: one retry max, tighter per-attempt cap.
+      { timeoutMs: 15_000, attempts: 2, baseDelayMs: 400 },
     );
 
     const body = (await res.json()) as {

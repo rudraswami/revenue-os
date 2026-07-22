@@ -4,6 +4,7 @@ import { isSimpleGreeting, isSimpleThanks } from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
 import { FastReplyService } from "./fast-reply.service";
 import {
+  hasHardHumanSignal,
   isPricingInbound,
   isSensitiveInbound,
   resolveReplyIntentKind,
@@ -66,7 +67,10 @@ export class ExecutionRouterService {
     result: AiClassificationResult,
     ctx: ConversationContext,
   ): ExecutionRoute {
-    if (result.requiresHuman) {
+    // Only a hard signal (explicit human request, sensitive topic, owner-only,
+    // recovery) routes to the human path. The LLM's bare requiresHuman flag is
+    // advisory — ordinary questions stay on the answer path and knowledge decides.
+    if (result.requiresHuman && hasHardHumanSignal(ctx.lastInbound, result)) {
       return this.route("human", pre.intentKind, "Classification requires human", result.confidence, "high");
     }
 
