@@ -402,8 +402,9 @@ export function defaultBusinessEmployeeProfile(businessName: string): BusinessEm
     },
     acknowledgments: {
       sensitive_topic: `Thanks for reaching out. Someone from ${biz} will reply shortly.`,
-      needs_human: `Got it — a teammate from ${biz} will get back to you soon.`,
-      knowledge_gap: `Thanks for your question. We're checking the details and will reply shortly.`,
+      needs_human: `Got it — a teammate from ${biz} will get back to you soon. Meanwhile, feel free to share any more details so we can help faster.`,
+      knowledge_gap: `Great question! Let me get you the exact details — I'll confirm and reply shortly.`,
+      no_match: `Thanks for reaching out! I'd love to help. Could you share a little more about what you're looking for so I can point you in the right direction?`,
     },
     greetingVariants: {
       firstContact: [

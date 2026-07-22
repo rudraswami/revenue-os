@@ -170,8 +170,11 @@ export class ReplyPolicyService {
       },
     });
 
+    const blockerSummary = decision.blockers?.length
+      ? decision.blockers.join(",")
+      : "none";
     this.logger.log(
-      `Reply policy ${conversationId}: mode=${decision.mode} risk=${decision.risk} confidence=${decision.confidence}`,
+      `Reply policy ${conversationId}: mode=${decision.mode} risk=${decision.risk} confidence=${decision.confidence} blockers=[${blockerSummary}]`,
     );
   }
 

@@ -32,6 +32,8 @@ RULES:
 - For pricing, always include currency (₹) and any conditions/validity
 - For services/products, include what's included, pricing if available, duration, availability
 - Each item should be self-contained — an AI reading just that item should understand the full context
+- Break the page into as many distinct, specific items as the content supports (aim for 2-6). Prefer several focused items over one long dump — this makes retrieval far more accurate.
+- Phrase content so it directly answers likely customer questions (what, how much, how long, where, how to buy/book)
 - ALWAYS return at least one item if the page describes what the business does or sells
 
 Respond with a JSON array. Example:
@@ -57,8 +59,12 @@ export class ContentStructureService {
   constructor(private readonly config: ConfigService) {}
 
   /**
-   * Process multiple crawled pages in batches, extracting structured
-   * knowledge items using GPT-4o-mini for cost efficiency.
+   * Extract structured knowledge one page at a time so every page gets full
+   * model attention and clean source attribution. Any page the LLM can't turn
+   * into structured items — but that still has real content — gets a heuristic
+   * fallback item, so no crawled page is ever silently dropped. This is the
+   * core accuracy lever: a complete KB is what lets the AI answer most
+   * questions instead of deferring.
    */
   async extractFromPages(pages: CrawledPage[]): Promise<ExtractedItem[]> {
     const apiKey = this.config.get<string>("OPENAI_API_KEY");
@@ -69,17 +75,24 @@ export class ContentStructureService {
 
     const allItems: ExtractedItem[] = [];
 
-    // Process pages in batches of 3 to avoid token limits
-    const batches = this.batchPages(pages, 3);
-
-    for (const batch of batches) {
+    // One page per LLM call: best comprehensiveness + correct source URLs.
+    for (const page of pages) {
+      let pageItems: ExtractedItem[] = [];
       try {
-        const items = await this.extractBatch(apiKey, batch);
-        allItems.push(...items);
+        pageItems = await this.extractBatch(apiKey, [page]);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`Extraction batch failed: ${msg}`);
+        this.logger.warn(`Extraction failed for ${page.url}: ${msg}`);
       }
+
+      // Guarantee coverage: if the LLM produced nothing usable for a page that
+      // still has real content, keep a heuristic item so it stays retrievable.
+      if (pageItems.length === 0) {
+        const fallback = this.buildFallbackItems([page]);
+        pageItems = fallback;
+      }
+
+      allItems.push(...pageItems);
     }
 
     return this.deduplicateItems(allItems);
