@@ -125,6 +125,23 @@ export function InboxComposer({
     if (file) onAttachFile?.(file);
   }
 
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    if (!onAttachFile || sendDisabled || sendPending || attachment) return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file" && item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          e.preventDefault();
+          onAttachFile(file);
+          return;
+        }
+      }
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (showSlashMenu && e.key === "Escape") {
       e.preventDefault();
@@ -308,6 +325,7 @@ export function InboxComposer({
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           disabled={sendPending || sendDisabled}
           className={cn(
             "block w-full resize-none border-0 bg-transparent px-4 py-3 text-sm leading-relaxed text-foreground",

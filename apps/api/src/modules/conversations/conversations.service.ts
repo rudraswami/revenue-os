@@ -797,12 +797,40 @@ export class ConversationsService {
   }
 
   async markRead(user: JwtPayload, id: string) {
-    const result = await this.prisma.conversation.updateMany({
+    const conversation = await this.prisma.conversation.findFirst({
       where: { id, organizationId: user.organizationId },
-      data: { unreadCount: 0 },
+      include: { whatsappAccount: true },
     });
-    if (result.count === 0) throw new NotFoundException("Conversation not found");
+    if (!conversation) throw new NotFoundException("Conversation not found");
+
+    if (conversation.unreadCount > 0) {
+      await this.prisma.conversation.update({
+        where: { id },
+        data: { unreadCount: 0 },
+      });
+      // Best-effort WhatsApp read receipt (blue ticks) — never blocks or
+      // fails the response. Only fires when there was something unread.
+      void this.sendWhatsappReadReceipt(conversation).catch(() => undefined);
+    }
+
     return { ok: true };
+  }
+
+  private async sendWhatsappReadReceipt(conversation: {
+    id: string;
+    whatsappAccount: { isActive: boolean } & Record<string, unknown>;
+  }): Promise<void> {
+    if (!conversation.whatsappAccount?.isActive) return;
+    const lastInbound = await this.prisma.message.findFirst({
+      where: { conversationId: conversation.id, direction: "INBOUND" },
+      orderBy: { createdAt: "desc" },
+      select: { waMessageId: true },
+    });
+    if (!lastInbound?.waMessageId) return;
+    await this.whatsapp.markRead(
+      conversation.whatsappAccount as never,
+      lastInbound.waMessageId,
+    );
   }
 
   async sendMessage(

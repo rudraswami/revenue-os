@@ -185,6 +185,47 @@ export class WhatsappMessagingService {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  /**
+   * Send a WhatsApp read receipt (blue ticks) for the customer's latest
+   * inbound message. Best-effort: this never throws so it cannot break the
+   * inbox "mark read" flow. Meta only shows blue ticks if the customer has
+   * read receipts enabled on their device.
+   */
+  async markRead(account: WhatsappAccountRow, waMessageId: string): Promise<void> {
+    if (!account.isActive || !waMessageId) return;
+
+    try {
+      const token = decryptSecret(account.accessTokenEnc);
+      const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+      const res = await fetchWithTimeout(
+        `https://graph.facebook.com/${version}/${account.phoneNumberId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            status: "read",
+            message_id: waMessageId,
+          }),
+        },
+        10_000,
+      );
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        this.logger.debug(
+          `Meta mark_as_read failed: ${data.error?.message ?? res.status}`,
+        );
+      }
+    } catch (e) {
+      this.logger.debug(`Meta mark_as_read error: ${(e as Error).message}`);
+    }
+  }
+
   async fetchMedia(
     account: WhatsappAccountRow,
     mediaId: string,

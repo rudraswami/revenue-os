@@ -1,13 +1,19 @@
 "use client";
 
-import { Smile } from "lucide-react";
+import { Search, Smile } from "lucide-react";
+import { useMemo, useState } from "react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useConversationsCopy } from "@/lib/i18n/conversations-copy";
-import { INBOX_EMOJI_GROUPS } from "@/lib/inbox-emoji";
+import {
+  INBOX_EMOJI_CATEGORIES,
+  loadRecentEmojis,
+  pushRecentEmoji,
+  searchInboxEmojis,
+} from "@/lib/inbox-emoji";
 import { cn } from "@/lib/utils";
 
 export function InboxEmojiPicker({
@@ -20,10 +26,28 @@ export function InboxEmojiPicker({
   className?: string;
 }) {
   const copy = useConversationsCopy();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [recents, setRecents] = useState<string[]>([]);
+
+  const searchResults = useMemo(() => searchInboxEmojis(query), [query]);
+
+  function handlePick(emoji: string) {
+    onPick(emoji);
+    setRecents(pushRecentEmoji(emoji));
+  }
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) {
+      setRecents(loadRecentEmojis());
+      setQuery("");
+    }
+  }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
         <button
           type="button"
           className={cn(
@@ -35,28 +59,94 @@ export function InboxEmojiPicker({
         >
           <Smile className="h-4 w-4" />
         </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 p-2">
-        {INBOX_EMOJI_GROUPS.map((group) => (
-          <div key={group.label} className="mb-2 last:mb-0">
-            <p className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {group.label}
-            </p>
-            <div className="grid grid-cols-5 gap-0.5">
-              {group.emojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-lg hover:bg-muted"
-                  onClick={() => onPick(emoji)}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 p-0">
+        <div className="border-b border-border/60 p-2">
+          <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-background px-2.5 py-1.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={copy.emojiSearchPlaceholder}
+              className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
+            />
           </div>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </div>
+
+        <div className="max-h-64 overflow-y-auto p-2 custom-scrollbar">
+          {query ? (
+            searchResults.length > 0 ? (
+              <div className="grid grid-cols-6 gap-0.5">
+                {searchResults.map((item) => (
+                  <EmojiButton
+                    key={item.char}
+                    emoji={item.char}
+                    onPick={handlePick}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="px-1 py-6 text-center text-xs text-muted-foreground">
+                {copy.emojiNoResults}
+              </p>
+            )
+          ) : (
+            <>
+              {recents.length > 0 && (
+                <EmojiGroup label={copy.emojiRecent}>
+                  {recents.map((char) => (
+                    <EmojiButton key={`recent-${char}`} emoji={char} onPick={handlePick} />
+                  ))}
+                </EmojiGroup>
+              )}
+              {INBOX_EMOJI_CATEGORIES.map((group) => (
+                <EmojiGroup key={group.label} label={group.label}>
+                  {group.items.map((item) => (
+                    <EmojiButton key={item.char} emoji={item.char} onPick={handlePick} />
+                  ))}
+                </EmojiGroup>
+              ))}
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function EmojiGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mb-2 last:mb-0">
+      <p className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <div className="grid grid-cols-6 gap-0.5">{children}</div>
+    </div>
+  );
+}
+
+function EmojiButton({
+  emoji,
+  onPick,
+}: {
+  emoji: string;
+  onPick: (emoji: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="flex h-9 w-9 items-center justify-center rounded-lg text-lg hover:bg-muted"
+      onClick={() => onPick(emoji)}
+    >
+      {emoji}
+    </button>
   );
 }

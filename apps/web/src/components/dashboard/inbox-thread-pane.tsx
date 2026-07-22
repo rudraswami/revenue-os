@@ -1,8 +1,17 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Download, ExternalLink } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  ExternalLink,
+  Search,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRealtime } from "@/components/realtime/realtime-provider";
 import { Button } from "@/components/ui/button";
@@ -99,6 +108,8 @@ interface Message {
   status: string;
   sentByAi?: boolean;
   errorMessage?: string | null;
+  waMessageId?: string | null;
+  payload?: { context?: { id?: string } | null } | null;
 }
 
 interface ConversationDetail {
@@ -213,6 +224,16 @@ function InboxThreadPaneInner({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasOlderOverride, setHasOlderOverride] = useState<boolean | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const restoreScrollRef = useRef<{ height: number; top: number } | null>(null);
+  const unreadDividerRef = useRef<{ convId: string; count: number } | null>(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchMatchIndex, setSearchMatchIndex] = useState(0);
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const threadOpenMarkRef = useRef<string | null>(null);
   const threadOpenStartedRef = useRef<Record<string, number>>({});
@@ -389,12 +410,62 @@ function InboxThreadPaneInner({
   });
 
   const lastMsgId = thread?.messages[thread.messages.length - 1]?.id;
+  const prevConvForScrollRef = useRef<string | null>(null);
+  const messageCount = thread?.messages.length ?? 0;
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({
-      behavior: scrollSmoothRef.current ? "smooth" : "auto",
-    });
+    const c = scrollContainerRef.current;
+    const isConvSwitch = prevConvForScrollRef.current !== conversationId;
+    prevConvForScrollRef.current = conversationId;
+    const nearBottom =
+      !c || c.scrollHeight - c.scrollTop - c.clientHeight < 240;
+    // Jump to newest on conversation open or the user's own send; otherwise
+    // only follow when they're already near the bottom, so reading history is
+    // never interrupted by an incoming message.
+    if (isConvSwitch || scrollSmoothRef.current || nearBottom) {
+      bottomRef.current?.scrollIntoView({
+        behavior: scrollSmoothRef.current ? "smooth" : "auto",
+      });
+      setShowJumpToLatest(false);
+    }
     scrollSmoothRef.current = false;
   }, [lastMsgId, conversationId]);
+
+  // Preserve the viewport when older messages are prepended (no jump).
+  useLayoutEffect(() => {
+    const restore = restoreScrollRef.current;
+    const c = scrollContainerRef.current;
+    if (!restore || !c) return;
+    c.scrollTop = c.scrollHeight - restore.height + restore.top;
+    restoreScrollRef.current = null;
+  }, [messageCount]);
+
+  function handleThreadScroll() {
+    const c = scrollContainerRef.current;
+    if (!c) return;
+    const distance = c.scrollHeight - c.scrollTop - c.clientHeight;
+    setShowJumpToLatest(distance > 240);
+  }
+
+  function jumpToLatest() {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowJumpToLatest(false);
+  }
+
+  function jumpToMessage(messageId: string) {
+    const el = messageRefs.current[messageId];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightMessageId(messageId);
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightMessageId(null), 1600);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     saveInboxDraft(conversationId, { text: draft, meta: draftMeta });
@@ -914,6 +985,8 @@ function InboxThreadPaneInner({
         `/conversations/${conversationId}/messages?before=${encodeURIComponent(oldest)}`,
         { token: token ?? undefined },
       );
+      const c = scrollContainerRef.current;
+      if (c) restoreScrollRef.current = { height: c.scrollHeight, top: c.scrollTop };
       prependOlderMessages(queryClient, conversationId, res.messages, res.hasMore);
       setHasOlderOverride(res.hasMore);
     } catch (e) {
@@ -1071,6 +1144,77 @@ function InboxThreadPaneInner({
     return inbound.map((m) => m.content).join("\n");
   })();
 
+  // Capture the unread count once per conversation (before mark-read zeroes it)
+  // so we can render a "new messages" divider at the right position.
+  if (unreadDividerRef.current?.convId !== conversationId) {
+    unreadDividerRef.current = { convId: conversationId, count: thread.unreadCount ?? 0 };
+  }
+  const initialUnread = unreadDividerRef.current?.count ?? 0;
+  const unreadDividerBeforeId = (() => {
+    if (initialUnread <= 0) return null;
+    let seen = 0;
+    for (let i = thread.messages.length - 1; i >= 0; i--) {
+      if (thread.messages[i].direction === "INBOUND") {
+        seen += 1;
+        if (seen === initialUnread) return thread.messages[i].id;
+      }
+    }
+    return null;
+  })();
+
+  // Map WhatsApp message ids so a reply's `context.id` can resolve to the
+  // original message we render (enables the quoted preview + jump-to-source).
+  const messagesByWaId = new Map<string, Message>();
+  for (const m of thread.messages) {
+    if (m.waMessageId) messagesByWaId.set(m.waMessageId, m);
+  }
+  const quotedMessageFor = (m: Message): Message | null => {
+    const ctxId = m.payload?.context?.id;
+    if (!ctxId) return null;
+    return messagesByWaId.get(ctxId) ?? null;
+  };
+
+  // In-thread search over loaded messages (client-side, highlight + jump).
+  const threadMessages = thread.messages;
+  const searchQ = searchQuery.trim().toLowerCase();
+  const searchMatchIds =
+    searchOpen && searchQ
+      ? threadMessages
+          .filter((m) =>
+            (getCopyableMessageText(m.content) ?? m.content ?? "")
+              .toLowerCase()
+              .includes(searchQ),
+          )
+          .map((m) => m.id)
+      : [];
+  const activeSearchId = searchMatchIds[searchMatchIndex] ?? null;
+  const searchMatchSet = new Set(searchMatchIds);
+
+  function goToSearchMatch(index: number) {
+    if (searchMatchIds.length === 0) return;
+    const wrapped = (index + searchMatchIds.length) % searchMatchIds.length;
+    setSearchMatchIndex(wrapped);
+    const id = searchMatchIds[wrapped];
+    if (id) jumpToMessage(id);
+  }
+
+  function handleSearchQueryChange(value: string) {
+    setSearchQuery(value);
+    setSearchMatchIndex(0);
+    const q = value.trim().toLowerCase();
+    if (!q) return;
+    const firstId = threadMessages.find((m) =>
+      (getCopyableMessageText(m.content) ?? m.content ?? "").toLowerCase().includes(q),
+    )?.id;
+    if (firstId) requestAnimationFrame(() => jumpToMessage(firstId));
+  }
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchMatchIndex(0);
+  }
+
   return (
     <>
       <div className="flex min-h-0 flex-1 min-w-0">
@@ -1193,6 +1337,21 @@ function InboxThreadPaneInner({
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className={cn(
+                    "h-8 w-8 text-muted-foreground",
+                    searchOpen && "bg-muted text-foreground",
+                  )}
+                  aria-label={copy.searchInConversation}
+                  title={copy.searchInConversation}
+                  aria-pressed={searchOpen}
+                  onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
                   className="h-8 w-8 text-muted-foreground"
                   aria-label={copy.exportConversation}
                   title={copy.exportConversation}
@@ -1299,7 +1458,69 @@ function InboxThreadPaneInner({
             />
           </div>
 
-          <div className="conversation-thread-bg flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 custom-scrollbar lg:px-6">
+          <div className="relative flex min-h-0 flex-1 flex-col">
+          {searchOpen && (
+            <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-card px-3 py-2 lg:px-5">
+              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <input
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearchQueryChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    closeSearch();
+                  } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    goToSearchMatch(searchMatchIndex + (e.shiftKey ? -1 : 1));
+                  }
+                }}
+                placeholder={copy.searchInConversation}
+                className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
+              />
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {searchQ
+                  ? searchMatchIds.length > 0
+                    ? `${searchMatchIndex + 1}/${searchMatchIds.length}`
+                    : copy.searchNoMatches
+                  : ""}
+              </span>
+              <div className="flex shrink-0 items-center">
+                <button
+                  type="button"
+                  disabled={searchMatchIds.length === 0}
+                  onClick={() => goToSearchMatch(searchMatchIndex - 1)}
+                  aria-label={copy.searchPrev}
+                  className="rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  disabled={searchMatchIds.length === 0}
+                  onClick={() => goToSearchMatch(searchMatchIndex + 1)}
+                  aria-label={copy.searchNext}
+                  className="rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={closeSearch}
+                  aria-label={copy.searchClose}
+                  className="ml-1 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleThreadScroll}
+            className="conversation-thread-bg flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 custom-scrollbar lg:px-6"
+          >
             <div className="mx-auto mt-auto flex w-full max-w-3xl flex-col gap-2.5">
               {hasOlderMessages && (
                 <div className="flex justify-center pb-1">
@@ -1318,18 +1539,36 @@ function InboxThreadPaneInner({
               {thread.messages.map((m) => {
                 const copyableText = getCopyableMessageText(m.content);
                 const pinText = copyableText ?? m.content?.trim() ?? null;
-                const canQuote =
-                  m.direction === "INBOUND" && canSend && !windowClosed && !!m.content;
+                const canQuote = canSend && !windowClosed && !!m.content;
                 const canPin = !!thread.lead?.id && canSend && !!pinText && !/^\[[^\]]+\]$/.test(pinText);
                 const canFollowUp = !!thread.lead?.id && canSend && !!pinText;
+                const quoted = quotedMessageFor(m);
                 return (
+                <Fragment key={m.id}>
+                {unreadDividerBeforeId === m.id && (
+                  <div className="flex items-center gap-3 py-1.5" aria-label={copy.newMessages}>
+                    <div className="h-px flex-1 bg-accent/25" />
+                    <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent">
+                      {copy.newMessages}
+                    </span>
+                    <div className="h-px flex-1 bg-accent/25" />
+                  </div>
+                )}
                 <div
-                  key={m.id}
+                  ref={(el) => {
+                    messageRefs.current[m.id] = el;
+                  }}
                   className={cn(
-                    "group relative max-w-[88%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm",
+                    "group relative max-w-[88%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm transition-shadow",
                     m.direction === "OUTBOUND"
                       ? "ml-auto rounded-br-md border border-success/30 bg-whatsapp-green text-foreground"
                       : "mr-auto rounded-bl-md border border-border/70 bg-card text-foreground",
+                    (highlightMessageId === m.id || activeSearchId === m.id) &&
+                      "ring-2 ring-accent ring-offset-1",
+                    searchMatchSet.has(m.id) &&
+                      activeSearchId !== m.id &&
+                      highlightMessageId !== m.id &&
+                      "ring-1 ring-warning/50",
                   )}
                 >
                   <InboxMessageActions
@@ -1350,6 +1589,31 @@ function InboxThreadPaneInner({
                         : undefined
                     }
                   />
+                  {quoted && (
+                    <button
+                      type="button"
+                      onClick={() => jumpToMessage(quoted.id)}
+                      className={cn(
+                        "mb-1.5 flex w-full items-stretch gap-2 rounded-lg border-l-2 py-1 pl-2 pr-2 text-left transition hover:brightness-95",
+                        m.direction === "OUTBOUND"
+                          ? "border-success/60 bg-success/10"
+                          : "border-accent/50 bg-accent/5",
+                      )}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-accent">
+                          {quoted.direction === "OUTBOUND"
+                            ? copy.replyingToYou
+                            : thread.contactName ?? thread.contactPhone}
+                        </span>
+                        <span className="line-clamp-2 text-xs text-muted-foreground">
+                          {getCopyableMessageText(quoted.content) ??
+                            quoted.content ??
+                            copy.replyingToAttachment}
+                        </span>
+                      </span>
+                    </button>
+                  )}
                   <InboxMessageBody
                     conversationId={thread.id}
                     messageId={m.id}
@@ -1396,10 +1660,23 @@ function InboxThreadPaneInner({
                       </div>
                     )}
                 </div>
+                </Fragment>
               );
               })}
               <div ref={bottomRef} />
             </div>
+          </div>
+          {showJumpToLatest && (
+            <button
+              type="button"
+              onClick={jumpToLatest}
+              aria-label={copy.jumpToLatest}
+              title={copy.jumpToLatest}
+              className="absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground shadow-lg transition hover:bg-muted active:scale-95"
+            >
+              <ArrowDown className="h-5 w-5" />
+            </button>
+          )}
           </div>
 
           <div className="shrink-0 border-t border-border/80 bg-card px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-6">
