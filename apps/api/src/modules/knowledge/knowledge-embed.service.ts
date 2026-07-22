@@ -5,6 +5,10 @@ import { fetchWithRetry } from "../../common/http/fetch-with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 
 const CHUNK_SIZE = 900;
+// ~15% overlap so a fact split across a chunk boundary (e.g. a price and its
+// condition, or a policy and its exception) still appears intact in at least
+// one chunk. Retrieval quality was suffering from hard, overlap-free cuts.
+const CHUNK_OVERLAP = 150;
 
 @Injectable()
 export class KnowledgeEmbedService {
@@ -39,7 +43,16 @@ export class KnowledgeEmbedService {
       }
     }
     if (current) chunks.push(current);
-    return chunks;
+
+    // Add a trailing slice of the previous chunk to the start of each chunk so
+    // context that straddles a boundary is not lost. Skipped for a single chunk.
+    if (chunks.length <= 1) return chunks;
+    return chunks.map((chunk, i) => {
+      if (i === 0) return chunk;
+      const prev = chunks[i - 1];
+      const overlap = prev.slice(Math.max(0, prev.length - CHUNK_OVERLAP));
+      return `${overlap}\n\n${chunk}`;
+    });
   }
 
   async markEmbedFailed(documentId: string, reason?: string) {

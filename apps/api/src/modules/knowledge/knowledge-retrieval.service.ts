@@ -23,6 +23,41 @@ export interface RetrieveKnowledgeInput {
 }
 
 const CHUNK_CACHE_TTL_MS = 60_000;
+const MAX_RETRIEVAL_QUERIES = 3;
+
+/**
+ * Build the set of retrieval queries: the primary query plus up to two distinct
+ * customer needs that aren't already covered by it. Kept small so the parallel
+ * fan-out stays cheap.
+ */
+export function buildRetrievalQueries(
+  primary: string,
+  customerNeeds?: string[],
+): string[] {
+  const queries: string[] = [];
+  const seen = new Set<string>();
+  const push = (q: string | null | undefined) => {
+    const trimmed = q?.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    queries.push(trimmed);
+  };
+
+  push(primary);
+  const primaryLower = primary.trim().toLowerCase();
+  for (const need of customerNeeds ?? []) {
+    if (queries.length >= MAX_RETRIEVAL_QUERIES) break;
+    const trimmed = need?.trim();
+    if (!trimmed || trimmed.length < 3) continue;
+    // Skip needs already contained in the primary query to avoid duplicate lookups.
+    if (primaryLower.includes(trimmed.toLowerCase())) continue;
+    push(trimmed);
+  }
+
+  return queries.length > 0 ? queries : [primary || "customer inquiry"];
+}
 
 @Injectable()
 export class KnowledgeRetrievalService {
@@ -73,15 +108,37 @@ export class KnowledgeRetrievalService {
 
     const limit = input.limit ?? 5;
     const minSimilarity = input.minSimilarity ?? 0.2;
-    const rows = await this.embed.searchDetailed(
-      input.organizationId,
-      input.query,
-      limit,
-      categoriesUsed,
+
+    // Multi-query: search the raw message plus each distinct customer need in
+    // parallel, then merge. This surfaces evidence for every part of a multi-part
+    // question ("price AND delivery AND EMI") that a single embedding misses.
+    // Queries run concurrently, so latency stays close to a single lookup.
+    const queries = buildRetrievalQueries(input.query, input.customerNeeds);
+
+    const rowSets = await Promise.all(
+      queries.map((q) =>
+        this.embed.searchDetailed(input.organizationId, q, limit, categoriesUsed),
+      ),
     );
 
-    const hits: KnowledgeHit[] = rows
+    // Dedup by chunk, keeping the strongest similarity across all queries.
+    const bestByChunk = new Map<
+      string,
+      Awaited<ReturnType<KnowledgeEmbedService["searchDetailed"]>>[number]
+    >();
+    for (const rows of rowSets) {
+      for (const r of rows) {
+        const existing = bestByChunk.get(r.chunkId);
+        if (!existing || r.similarity > existing.similarity) {
+          bestByChunk.set(r.chunkId, r);
+        }
+      }
+    }
+
+    const hits: KnowledgeHit[] = Array.from(bestByChunk.values())
       .filter((r) => r.similarity >= minSimilarity)
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit)
       .map((r) => ({
         chunkId: r.chunkId,
         documentId: r.documentId,

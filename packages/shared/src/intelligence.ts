@@ -191,7 +191,10 @@ export const AUTOMATION_PRESET_DEFAULTS: Record<
   balanced: {
     autoSendGreetings: true,
     autoSendFaqWhenGrounded: true,
-    autoSendPricingWhenGrounded: false,
+    // Grounded pricing can auto-send — the answerability gate still requires a
+    // strong match (score >= 0.68 and top similarity >= 0.7), so weak pricing
+    // matches keep going to draft for human review.
+    autoSendPricingWhenGrounded: true,
     minClassifyConfidence: 0.55,
     minGroundingSimilarity: 0.7,
     humanForStages: ["NEGOTIATION", "PROPOSAL"],
@@ -469,6 +472,10 @@ export function resolveBusinessEmployeeProfile(
 }
 
 export const DEFAULT_INTELLIGENCE_SETTINGS: IntelligenceWorkspaceSettings = {
-  replyAutonomy: "assist",
+  // Guarded auto-send by default: the AI answers customers directly when it is
+  // confident and grounded, and falls back to a draft/human otherwise. Auto-send
+  // still requires Growth+ (plan gate) and passes every safety/grounding rail,
+  // so lower plans continue to draft-only until they upgrade.
+  replyAutonomy: "auto_guarded",
   automationPreset: "balanced",
 };

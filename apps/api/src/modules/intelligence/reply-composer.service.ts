@@ -16,7 +16,7 @@ import {
   playbookForRelationshipPhase,
   resolveReplyIntentKind,
 } from "./reply-intent";
-import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
+import { fetchWithRetry, fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -149,7 +149,10 @@ export class ReplyComposerService {
     const model = this.config.get<string>("AI_CHAT_MODEL") ?? "gpt-4o-mini";
     const started = Date.now();
     const risk = input.decision?.risk ?? (input.knowledgeGap ? "high" : "medium");
-    const maxTokens = intentKind === "greeting" || intentKind === "thanks" ? 80 : 150;
+    // Courtesy replies stay tiny; real questions get room to answer completely
+    // (multi-part pricing/delivery/EMI answers were being truncated at 150).
+    const maxTokens =
+      intentKind === "greeting" || intentKind === "thanks" ? 90 : 450;
 
     const aiRun = await this.prisma.aiRun.create({
       data: {
@@ -175,7 +178,9 @@ export class ReplyComposerService {
     spans?.mark("compose_llm_start");
 
     try {
-      const res = await fetchWithTimeout(
+      // Retry transient OpenAI failures — generating the text has no side effect
+      // (the actual WhatsApp send happens later in reply-send), so retries are safe.
+      const res = await fetchWithRetry(
         "https://api.openai.com/v1/chat/completions",
         {
           method: "POST",
@@ -220,7 +225,7 @@ export class ReplyComposerService {
             ],
           }),
         },
-        25_000,
+        { attempts: 2, timeoutMs: 25_000, baseDelayMs: 400 },
       );
 
       const body = (await res.json()) as {
@@ -332,7 +337,7 @@ export class ReplyComposerService {
 
   private recentTranscript(ctx: ConversationContext): string {
     return ctx.messages
-      .slice(-6)
+      .slice(-12)
       .map((m) => {
         const who =
           m.direction === "INBOUND"
@@ -385,8 +390,8 @@ export class ReplyComposerService {
       ...voiceLines,
       languageInstruction,
       opts.autoSend
-        ? "This goes out automatically on WhatsApp — sound like a strong rep, not a bot. 1–3 sentences max."
-        : "A teammate will review before sending.",
+        ? "This goes out automatically on WhatsApp — write like a sharp, experienced sales rep, not a bot. Fully answer every part of the customer's question using the business knowledge below. Be complete but concise: keep it skimmable with short lines or a few bullets, and don't pad. If something genuinely isn't covered, answer what you can and ask one focused clarifying question."
+        : "A teammate will review before sending. Draft the strongest possible complete answer so it can be sent as-is.",
       opts.greeting
         ? "Do not say 'Hello again' or 'nice to hear from you' if the thread already has messages."
         : "",
