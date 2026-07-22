@@ -149,6 +149,31 @@ class BusinessProfilePatchDto {
   greetingVariants?: BusinessGreetingVariantsDto;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  businessHours?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  paymentMethods?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  socialLinks?: string;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => QuickAnswerDto)

@@ -417,6 +417,7 @@ export class AiClassifyService {
       const intelligenceSettings = resolveIntelligenceSettings(orgSettings, org?.name ?? "our team");
       const businessName = org?.name ?? "our team";
       const businessProfile = intelligenceSettings.businessProfile!;
+      const businessContext = ContextBuilderService.extractBusinessContext(orgSettings);
 
       const preRoute = this.executionRouter.routePreClassify(ctx);
 
@@ -477,6 +478,7 @@ export class AiClassifyService {
         spans,
         aiRunId,
         correlationId,
+        businessContext,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -501,6 +503,7 @@ export class AiClassifyService {
       spans: PipelineSpans;
       aiRunId: string;
       correlationId: string;
+      businessContext?: import("../intelligence/pipeline-context").BusinessContext;
     },
   ) {
     const model = this.config.get<string>("AI_CLASSIFY_MODEL") ?? "gpt-4o-mini";
@@ -520,7 +523,7 @@ export class AiClassifyService {
 
     const businessContext = this.knowledge.formatForPrompt(
       knowledgeHits,
-      320,
+      800,
       retrieval.categoriesUsed,
     );
     const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);
@@ -619,6 +622,7 @@ export class AiClassifyService {
       intelligenceSettings: opts.intelligenceSettings,
       hasIndexedChunks: retrieval.hasIndexedChunks,
       groundingConfidence: retrieval.groundingConfidence,
+      businessContext: opts.businessContext,
     };
 
     const { actions, replyDecision } = this.planner.buildFromClassification({
@@ -757,7 +761,7 @@ export class AiClassifyService {
     const knowledgeHits = retrieval.hits;
     const businessContext = this.knowledge.formatForPrompt(
       knowledgeHits,
-      320,
+      800,
       retrieval.categoriesUsed,
     );
     const memoryBlock = this.contextBuilder.formatObservedMemoryBlock(ctx.observedMemory);

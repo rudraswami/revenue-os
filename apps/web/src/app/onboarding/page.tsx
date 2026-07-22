@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { ActivationSuccess } from "@/components/onboarding/activation-success";
 import { ConnectionProgress } from "@/components/onboarding/connection-progress";
+import { OnboardingKnowledge } from "@/components/onboarding/onboarding-knowledge";
 import { OnboardingStepper } from "@/components/onboarding/onboarding-stepper";
 import { OnboardingWelcome } from "@/components/onboarding/onboarding-welcome";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import { trackActivation } from "@/lib/activation-analytics";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
-type Screen = "welcome" | "connect" | "connecting" | "success";
+type Screen = "welcome" | "connect" | "connecting" | "knowledge" | "success";
 
 function OnboardingPageContent() {
   const { t } = useI18n();
@@ -58,15 +59,14 @@ function OnboardingPageContent() {
 
   useEffect(() => {
     if (!whatsappConnected) return;
-    // Never yank UI away while Meta popup / complete API is still running.
     if (esInFlight) return;
     patchOnboarding({
       whatsappConnected: true,
       firstMessageReceived: false,
-      // Activation complete only after first inbound (Success first-win coach).
       complete: false,
     });
-    setScreen("success");
+    // Go to knowledge step instead of success
+    setScreen("knowledge");
     connectPhaseRef.current = "done";
     setConnectPhase("done");
   }, [whatsappConnected, esInFlight, patchOnboarding]);
@@ -106,7 +106,9 @@ function OnboardingPageContent() {
   }, [screen, connectMounted]);
 
   const activeScreen: Screen =
-    whatsappConnected && !esInFlight ? "success" : screen;
+    whatsappConnected && !esInFlight
+      ? (screen === "knowledge" || screen === "success" ? screen : "knowledge")
+      : screen;
 
   const stepperSteps = [
     {
@@ -118,8 +120,14 @@ function OnboardingPageContent() {
     {
       id: "connect",
       label: t("onboardingActivation.stepConnect"),
-      done: activeScreen === "success",
+      done: activeScreen === "knowledge" || activeScreen === "success",
       current: activeScreen === "connect" || activeScreen === "connecting",
+    },
+    {
+      id: "knowledge",
+      label: "Knowledge",
+      done: activeScreen === "success",
+      current: activeScreen === "knowledge",
     },
     {
       id: "ready",
@@ -131,6 +139,7 @@ function OnboardingPageContent() {
 
   const hideConnectUi =
     activeScreen === "connecting" ||
+    activeScreen === "knowledge" ||
     activeScreen === "success" ||
     activeScreen === "welcome";
 
@@ -213,6 +222,21 @@ function OnboardingPageContent() {
                   {t("onboardingActivation.connectSub")}
                 </p>
               </div>
+            </motion.div>
+          )}
+
+          {activeScreen === "knowledge" && (
+            <motion.div
+              key="knowledge"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <OnboardingKnowledge
+                onContinue={() => setScreen("success")}
+                onSkip={() => setScreen("success")}
+              />
             </motion.div>
           )}
 

@@ -22,6 +22,8 @@ import { ApiKeysSettingsCard } from "@/components/settings/api-keys-settings-car
 import { AssignmentRulesCard } from "@/components/settings/assignment-rules-card";
 import { BillingSettingsCard } from "@/components/settings/billing-settings-card";
 import { BusinessContextCard } from "@/components/settings/business-context-card";
+import { BusinessProfileCard } from "@/components/settings/business-profile-card";
+import { WebsiteImportCard } from "@/components/settings/website-import-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
@@ -177,6 +179,20 @@ function SettingsTabContent({
       return (
         <div className="space-y-5">
           <IntelligenceTabHeader />
+
+          <SettingsSection
+            title="Business profile"
+            description="Core info your AI always knows — hours, location, payment methods."
+          >
+            <BusinessProfileCard />
+          </SettingsSection>
+
+          <SettingsSection
+            title="Website import"
+            description="Scan your website to auto-extract products, pricing, FAQs, and more."
+          >
+            <WebsiteImportCard />
+          </SettingsSection>
 
           <SettingsSection
             title="Business knowledge"

@@ -198,6 +198,39 @@ export class ContextBuilderService {
     };
   }
 
+  /**
+   * Extract structured business profile fields from org settings JSON.
+   * Returns fields like hours, address, payment methods for prompt injection.
+   */
+  static extractBusinessContext(settings: Record<string, unknown> | null | undefined): {
+    hours: string | null;
+    address: string | null;
+    paymentMethods: string | null;
+    socialLinks: string | null;
+    phone: string | null;
+  } {
+    if (!settings || typeof settings !== "object") {
+      return { hours: null, address: null, paymentMethods: null, socialLinks: null, phone: null };
+    }
+
+    // Fields live in intelligence.businessProfile after the settings merge
+    const intelligence = settings.intelligence as Record<string, unknown> | undefined;
+    const profile = intelligence?.businessProfile as Record<string, unknown> | undefined;
+    const source = profile ?? settings;
+
+    const str = (key: string): string | null => {
+      const v = source[key];
+      return typeof v === "string" && v.trim().length > 0 ? v.trim() : null;
+    };
+    return {
+      hours: str("businessHours"),
+      address: str("address"),
+      paymentMethods: str("paymentMethods"),
+      socialLinks: str("socialLinks"),
+      phone: str("phone"),
+    };
+  }
+
   formatObservedMemoryBlock(memory: ConversationContext["observedMemory"]): string {
     if (memory.length === 0) return "";
     return memory

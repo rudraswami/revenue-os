@@ -129,7 +129,7 @@ export class ReplyComposerService {
       const fallback = await this.knowledge.fallbackDocuments(input.organizationId, 3);
       if (fallback.length > 0) {
         knowledgeBlock = fallback
-          .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 800)}`)
+          .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 1500)}`)
           .join("\n\n");
       }
     }
@@ -247,6 +247,7 @@ export class ReplyComposerService {
                   businessProfile,
                   classification: classification ?? undefined,
                   threadSummary,
+                  businessContext: input.pipelineContext?.businessContext,
                 }),
               },
               {
@@ -436,6 +437,27 @@ export class ReplyComposerService {
       .join("\n");
   }
 
+  /** Structured org profile for the system prompt — hours, location, etc. */
+  private buildBusinessProfileBlock(opts: {
+    businessName?: string | null;
+    businessContext?: {
+      hours?: string | null;
+      address?: string | null;
+      paymentMethods?: string | null;
+      socialLinks?: string | null;
+      phone?: string | null;
+    } | null;
+  }): string {
+    const lines = [`## Business Profile`, `Business: ${opts.businessName ?? "this business"}`];
+    const ctx = opts.businessContext;
+    if (ctx?.hours) lines.push(`Hours: ${ctx.hours}`);
+    if (ctx?.address) lines.push(`Location: ${ctx.address}`);
+    if (ctx?.paymentMethods) lines.push(`Payment: ${ctx.paymentMethods}`);
+    if (ctx?.socialLinks) lines.push(`Social: ${ctx.socialLinks}`);
+    if (ctx?.phone) lines.push(`Phone: ${ctx.phone}`);
+    return lines.length > 2 ? lines.join("\n") : "";
+  }
+
   private systemPrompt(opts: {
     knowledgeBlock: string;
     memoryBlock: string;
@@ -458,6 +480,14 @@ export class ReplyComposerService {
     businessProfile: BusinessEmployeeProfile;
     classification?: AiClassificationResult;
     threadSummary?: string;
+    /** Structured org context (hours, address, etc.) from context-builder. */
+    businessContext?: {
+      hours?: string | null;
+      address?: string | null;
+      paymentMethods?: string | null;
+      socialLinks?: string | null;
+      phone?: string | null;
+    } | null;
   }): string {
     const voiceLines = buildVoiceInstructions(opts.businessProfile);
     const languageLine = resolveComposeLanguageInstruction(
@@ -471,6 +501,11 @@ export class ReplyComposerService {
         : languageLine;
     const closeActions = buildCloseActionsBlock(opts.businessProfile, opts.intentKind);
     const escalation = opts.businessProfile.escalation;
+
+    const businessProfileBlock = this.buildBusinessProfileBlock({
+      businessName: opts.businessName,
+      businessContext: opts.businessContext,
+    });
 
     return [
       `You are the WhatsApp sales assistant for ${opts.businessName ?? "this business"}. Indian SMB tone: warm, clear, professional.`,
@@ -514,15 +549,26 @@ export class ReplyComposerService {
         ? "Never promise discounts or price cuts — escalate discount requests to the team."
         : "",
       "Never invent prices, discounts, or policies. Use business knowledge when present.",
+      'IMPORTANT: If you cannot find the answer in the business knowledge above, say something like "I\'ll check with the team and get back to you" or "Let me confirm that for you." NEVER make up information.',
+      businessProfileBlock,
       opts.knowledgeGap
         ? "No pricing docs matched — ask clarifying questions only."
         : "",
       opts.knowledgeBlock
-        ? `Business knowledge:\n\n${opts.knowledgeBlock}`
+        ? `## Business Knowledge\n\n${opts.knowledgeBlock}`
         : "",
       opts.memoryBlock ? `Customer memory:\n${opts.memoryBlock}` : "",
       opts.customerCardBlock ? `Customer card:\n${opts.customerCardBlock}` : "",
       closeActions ?? "",
+      `## Example Replies
+Customer: "What is the price of X?"
+Good reply: "Hi! [Product X] is priced at ₹[price]. Would you like to know more about it or place an order?"
+
+Customer: "Are you open on Sunday?"
+Good reply: "Hi! We're open [hours]. Feel free to visit us at [location] or I can help you right here on WhatsApp!"
+
+Customer: "I want to return my order"
+Good reply: "I understand. Let me connect you with our team to assist with the return. Could you share your order details?"`,
       'Respond with ONLY a JSON object (no markdown, no code fences) shaped exactly: {"reply": string, "answeredEverything": boolean, "unresolved": string[], "confidence": number, "needsHuman": boolean}. "reply" is the exact WhatsApp message to send to the customer (natural text, no JSON). "answeredEverything" is true only if you fully answered every question the customer asked using the business knowledge above (courtesy/greeting replies count as true). "unresolved" lists any questions you could NOT answer from the knowledge. "confidence" is 0-1 for how well "reply" resolves the customer\'s message. "needsHuman" is true only if a human must handle this (e.g. sensitive complaint, legal, or a promise you cannot make).',
     ]
       .filter(Boolean)

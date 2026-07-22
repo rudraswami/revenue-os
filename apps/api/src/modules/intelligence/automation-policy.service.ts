@@ -43,6 +43,8 @@ export interface AutomationPolicyInput {
   hasIndexedChunks?: boolean;
   /** 0–1 from retrieval pipeline */
   groundingConfidence?: number;
+  /** Total active KB documents for the org — used for adaptive confidence thresholds. */
+  totalKbDocs?: number;
 }
 
 export interface AutomationPolicyResult {
@@ -234,8 +236,15 @@ export class AutomationPolicyService {
     }
 
     const topHit = input.knowledgeHits[0];
+    // Adaptive thresholds: orgs with a healthy KB get lower confidence
+    // requirements because we have richer context to generate from.
+    const kbHealthy = input.knowledgeHits.length >= 3 || (input.totalKbDocs ?? 0) >= 10;
+    const adaptedGroundingSimilarity = kbHealthy
+      ? Math.max(rules.minGroundingSimilarity - 0.10, 0.40)
+      : rules.minGroundingSimilarity;
+
     const grounded =
-      topHit && topHit.similarity >= rules.minGroundingSimilarity;
+      topHit && topHit.similarity >= adaptedGroundingSimilarity;
     const answerability = assessAnswerability({
       groundingConfidence: input.groundingConfidence ?? topHit?.similarity ?? 0,
       hasIndexedChunks: input.hasIndexedChunks !== false,
@@ -244,13 +253,21 @@ export class AutomationPolicyService {
       knowledgeHitCount: input.knowledgeHits.length,
     });
 
+    // Trust the LLM's self-assessment: if classification confidence is high
+    // enough, don't block on weak_grounding alone — the reply-send coverage
+    // gate (selfConfidence, answeredEverything, needsHuman) will still catch
+    // genuinely bad replies post-compose. Healthy KBs get a lower bar.
+    const llmOverrideThreshold = kbHealthy ? 0.65 : 0.75;
+    const llmConfidenceOverridesGrounding =
+      input.classification.confidence >= llmOverrideThreshold && input.knowledgeHits.length > 0;
+
     if (!isCourtesy && answerability.reason && !answerability.canAutoSendFaq) {
       if (!input.hasIndexedChunks) {
         // kb_not_indexed already handled above
       } else if (input.knowledgeGap || input.knowledgeHits.length === 0) {
         pushBlocker("low_answerability", answerability.reason);
         return { outcome: "draft", risk: "medium", reasons, blockers };
-      } else if (answerability.score < rules.minGroundingSimilarity) {
+      } else if (answerability.score < adaptedGroundingSimilarity && !llmConfidenceOverridesGrounding) {
         pushBlocker("weak_grounding", "Draft for your review.");
         return { outcome: "draft", risk, reasons, blockers };
       }
@@ -280,10 +297,11 @@ export class AutomationPolicyService {
     // threshold). The reply-send coverage gate will still block if the
     // composer can't fully answer (answeredEverything=false, needsHuman, or
     // selfConfidence < 0.5), so this is a safe expansion.
+    const confidenceThreshold = kbHealthy ? 0.65 : 0.80;
     if (
       rules.autoSendFaqWhenGrounded &&
       input.knowledgeHits.length > 0 &&
-      input.classification.confidence >= 0.8 &&
+      input.classification.confidence >= confidenceThreshold &&
       answerability.score >= 0.4 &&
       !this.isSensitiveIntent(intentKind)
     ) {

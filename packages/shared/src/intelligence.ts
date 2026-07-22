@@ -9,6 +9,9 @@ export const KNOWLEDGE_CATEGORIES = [
   "policy",
   "faq",
   "product",
+  "about",
+  "services",
+  "contact",
 ] as const;
 
 export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[number];
@@ -170,6 +173,12 @@ export type BusinessEmployeeProfilePatch = {
   courtesyTemplates?: Partial<BusinessCourtesyTemplates>;
   /** Full replace on save — the whole quick answers list. */
   quickAnswers?: QuickAnswer[];
+  /** Structured business info always injected into AI context. */
+  businessHours?: string;
+  address?: string;
+  paymentMethods?: string;
+  phone?: string;
+  socialLinks?: string;
 };
 
 export type IntelligenceWorkspaceSettingsPatch = Partial<
@@ -187,7 +196,7 @@ export const AUTOMATION_PRESET_DEFAULTS: Record<
     autoSendFaqWhenGrounded: false,
     autoSendPricingWhenGrounded: false,
     minClassifyConfidence: 0.6,
-    minGroundingSimilarity: 0.75,
+    minGroundingSimilarity: 0.60,
     humanForStages: ["NEGOTIATION", "PROPOSAL"],
   },
   balanced: {
@@ -198,7 +207,7 @@ export const AUTOMATION_PRESET_DEFAULTS: Record<
     // matches keep going to draft for human review.
     autoSendPricingWhenGrounded: true,
     minClassifyConfidence: 0.55,
-    minGroundingSimilarity: 0.7,
+    minGroundingSimilarity: 0.55,
     humanForStages: ["NEGOTIATION", "PROPOSAL"],
   },
   responsive: {
@@ -206,7 +215,7 @@ export const AUTOMATION_PRESET_DEFAULTS: Record<
     autoSendFaqWhenGrounded: true,
     autoSendPricingWhenGrounded: true,
     minClassifyConfidence: 0.5,
-    minGroundingSimilarity: 0.65,
+    minGroundingSimilarity: 0.50,
     humanForStages: ["PROPOSAL"],
   },
 };
@@ -302,6 +311,12 @@ export interface BusinessEmployeeProfile {
   courtesyTemplates: BusinessCourtesyTemplates;
   /** Structured FAQ/price pairs — deterministic auto-answers without uploads. */
   quickAnswers: QuickAnswer[];
+  /** Always-in-context structured business info. */
+  businessHours?: string;
+  address?: string;
+  paymentMethods?: string;
+  phone?: string;
+  socialLinks?: string;
 }
 
 const MAX_STRING = 500;
@@ -523,6 +538,11 @@ export function normalizeBusinessEmployeeProfile(
         defaults.courtesyTemplates.checking,
     },
     quickAnswers: normalizeQuickAnswers(input.quickAnswers),
+    businessHours: trimString(input.businessHours, 200),
+    address: trimString(input.address, 300),
+    paymentMethods: trimString(input.paymentMethods, 200),
+    phone: trimString(input.phone, 20),
+    socialLinks: trimString(input.socialLinks, 500),
   };
 }
 

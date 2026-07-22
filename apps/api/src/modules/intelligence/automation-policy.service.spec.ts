@@ -441,7 +441,7 @@ describe("AutomationPolicyService", () => {
     expect(result.blockers).toContain("kb_not_indexed");
   });
 
-  it("auto-sends via classification-confident path when LLM confidence is high with moderate KB match", () => {
+  it("auto-sends via KB grounding when similarity meets the lowered threshold", () => {
     const result = service.evaluate({
       settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
       ctx: baseCtx({ lastInbound: "Do you deliver to Andheri?" }),
@@ -469,6 +469,75 @@ describe("AutomationPolicyService", () => {
       humanHandling: false,
       hasIndexedChunks: true,
       groundingConfidence: 0.55,
+    });
+    expect(result.outcome).toBe("send");
+    expect(result.reasons.join(" ")).toContain("Delivery areas");
+  });
+
+  it("auto-sends via classification-confident path when LLM confidence is high but below grounding threshold", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "Do you deliver to Andheri?" }),
+      classification: {
+        stage: "NEW",
+        confidence: 0.88,
+        intent: "Delivery inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "faq",
+          title: "Delivery areas",
+          content: "We deliver across Mumbai including Andheri, Bandra, Juhu",
+          similarity: 0.42,
+          citation: "Delivery areas",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+      hasIndexedChunks: true,
+      groundingConfidence: 0.42,
+    });
+    expect(result.outcome).toBe("send");
+    expect(result.reasons.join(" ")).toContain("confident");
+  });
+
+  it("uses adaptive threshold — healthy KB lowers confidence requirement", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({ lastInbound: "What colors do you have?" }),
+      classification: {
+        stage: "NEW",
+        confidence: 0.70,
+        intent: "Product inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "product",
+          title: "Colors",
+          content: "Available in red, blue, green",
+          similarity: 0.42,
+          citation: "Colors",
+        },
+        { chunkId: "c2", documentId: "d2", category: "product", title: "Sizes", content: "S, M, L", similarity: 0.40, citation: "Sizes" },
+        { chunkId: "c3", documentId: "d3", category: "product", title: "Materials", content: "Cotton, Poly", similarity: 0.38, citation: "Materials" },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+      hasIndexedChunks: true,
+      groundingConfidence: 0.42,
+      totalKbDocs: 12,
     });
     expect(result.outcome).toBe("send");
     expect(result.reasons.join(" ")).toContain("confident");

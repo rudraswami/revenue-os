@@ -252,6 +252,7 @@ model Organization {
   campaigns          Campaign[]
   automationLogs     AutomationLog[]
   trackingLinks      TrackingLink[]
+  websiteImports     WebsiteImport[]
   agencyClients      AgencyClient[] @relation("AgencyOrg")
   clientOfAgency     AgencyClient?  @relation("ClientOrg")
 
@@ -637,14 +638,61 @@ model KnowledgeDocument {
   sourceUrl      String?
   rawContent     String?
   status         String   @default("pending")
+  importId       String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   chunks       KnowledgeChunk[]
+  import       WebsiteImport?    @relation(fields: [importId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
+  @@index([importId])
   @@map("knowledge_documents")
+}
+
+// ─── Website Knowledge Import ────────────────────────────────────────────────
+
+model WebsiteImport {
+  id             String   @id @default(cuid())
+  organizationId String
+  url            String
+  status         String   @default("crawling")
+  pagesFound     Int      @default(0)
+  pagesCrawled   Int      @default(0)
+  itemsExtracted Int      @default(0)
+  itemsApproved  Int      @default(0)
+  error          String?
+  crawlMeta      Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  completedAt    DateTime?
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        WebsiteImportItem[]
+  documents    KnowledgeDocument[]
+
+  @@index([organizationId])
+  @@map("website_imports")
+}
+
+model WebsiteImportItem {
+  id        String   @id @default(cuid())
+  importId  String
+  pageUrl   String
+  category  String   @default("general")
+  title     String
+  content   String
+  confidence Float   @default(0)
+  status    String   @default("pending")
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  import WebsiteImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([importId])
+  @@index([importId, status])
+  @@map("website_import_items")
 }
 
 model KnowledgeChunk {
@@ -652,7 +700,7 @@ model KnowledgeChunk {
   documentId String
   content    String
   metadata   Json                         @default("{}")
-  embedding  Unsupported("vector(1536)")?
+  embedding  Unsupported("vector(3072)")?
   createdAt  DateTime                     @default(now())
 
   document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)

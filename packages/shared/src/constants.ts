@@ -20,6 +20,7 @@ export const JOB_TYPES = {
   CRON_FOLLOWUP_ORG: "cron-followup-org",
   CRON_STALE_DEAL_ORG: "cron-stale-deal-org",
   CRON_TOKEN_REFRESH_ORG: "cron-token-refresh-org",
+  WEBSITE_IMPORT: "website-import",
 } as const;
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
@@ -43,6 +44,7 @@ export const DOMAIN_EVENTS = {
   CONVERSATION_AI_HANDOFF: "conversation.ai.handoff",
   CONVERSATION_AI_CORRECTION: "conversation.ai.correction",
   KNOWLEDGE_DOCUMENT_UPDATED: "knowledge.document.updated",
+  KNOWLEDGE_IMPORT_COMPLETED: "knowledge.import.completed",
   AUTOMATION_TRIGGERED: "automation.triggered",
 } as const;
 

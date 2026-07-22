@@ -151,7 +151,7 @@ export class KnowledgeRetrievalService {
       });
     }
 
-    const limit = input.limit ?? 5;
+    const limit = input.limit ?? 8;
     const minSimilarity = input.minSimilarity ?? 0.2;
 
     // Multi-query: search the raw message plus each distinct customer need in
@@ -160,11 +160,17 @@ export class KnowledgeRetrievalService {
     // Queries run concurrently, so latency stays close to a single lookup.
     const queries = buildRetrievalQueries(input.query, input.customerNeeds);
 
-    const rowSets = await Promise.all(
-      queries.map((q) =>
-        this.embed.searchDetailed(input.organizationId, q, limit, categoriesUsed),
+    // Hybrid retrieval: vector search + keyword search (pg_trgm) in parallel.
+    // Keyword search catches exact product names and acronyms that embeddings
+    // miss, while vector search handles semantic similarity.
+    const [rowSets, keywordRows] = await Promise.all([
+      Promise.all(
+        queries.map((q) =>
+          this.embed.searchDetailed(input.organizationId, q, limit, categoriesUsed),
+        ),
       ),
-    );
+      this.embed.keywordSearch(input.organizationId, input.query, 5),
+    ]);
 
     // Dedup by chunk, keeping the strongest similarity across all queries.
     const bestByChunk = new Map<
@@ -177,6 +183,17 @@ export class KnowledgeRetrievalService {
         if (!existing || r.similarity > existing.similarity) {
           bestByChunk.set(r.chunkId, r);
         }
+      }
+    }
+
+    // Merge keyword hits: boost score slightly to reflect exact-match value,
+    // but don't let keyword-only hits outrank strong semantic matches.
+    for (const kr of keywordRows) {
+      if (!bestByChunk.has(kr.chunkId) && kr.similarity >= 0.15) {
+        bestByChunk.set(kr.chunkId, {
+          ...kr,
+          similarity: Math.min(kr.similarity * 0.7 + 0.2, 0.75),
+        });
       }
     }
 
@@ -214,7 +231,7 @@ export class KnowledgeRetrievalService {
 
   formatForPrompt(
     hits: KnowledgeHit[],
-    maxChunkLen = 320,
+    maxChunkLen = 1200,
     preferredCategories?: KnowledgeCategory[],
   ): string {
     if (hits.length === 0) return "";

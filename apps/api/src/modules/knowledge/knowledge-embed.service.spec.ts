@@ -34,7 +34,7 @@ describe("KnowledgeEmbedService", () => {
   });
 
   it("splits long paragraphs into chunks", () => {
-    const chunks = service.splitIntoChunks("a".repeat(1200));
+    const chunks = service.splitIntoChunks("a".repeat(2000));
     expect(chunks.length).toBeGreaterThan(1);
   });
 

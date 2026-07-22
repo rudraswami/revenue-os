@@ -205,6 +205,21 @@ export class OrganizationsService {
             cleanPatch.businessProfile.quickAnswers ??
             current.businessProfile?.quickAnswers ??
             [],
+          businessHours:
+            cleanPatch.businessProfile.businessHours ??
+            current.businessProfile?.businessHours,
+          address:
+            cleanPatch.businessProfile.address ??
+            current.businessProfile?.address,
+          paymentMethods:
+            cleanPatch.businessProfile.paymentMethods ??
+            current.businessProfile?.paymentMethods,
+          phone:
+            cleanPatch.businessProfile.phone ??
+            current.businessProfile?.phone,
+          socialLinks:
+            cleanPatch.businessProfile.socialLinks ??
+            current.businessProfile?.socialLinks,
         }
       : current.businessProfile;
     const next = resolveIntelligenceSettings(

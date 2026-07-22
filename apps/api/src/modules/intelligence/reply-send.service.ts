@@ -8,7 +8,6 @@ import { LearningSignalService } from "./learning-signal.service";
 import type { PipelineContext } from "./pipeline-context";
 import { ReplyComposerService } from "./reply-composer.service";
 import { ReplyPolicyService } from "./reply-policy.service";
-import { ReplyTrustRailsService } from "./reply-trust-rails.service";
 import { resolveReplyIntentKind } from "./reply-intent";
 import { SuggestReplyService } from "./suggest-reply.service";
 
@@ -28,7 +27,6 @@ export class ReplySendService {
     private readonly events: BusinessEventService,
     private readonly learning: LearningSignalService,
     private readonly suggestReply: SuggestReplyService,
-    private readonly trustRails: ReplyTrustRailsService,
     private readonly replyPolicy: ReplyPolicyService,
   ) {}
 
@@ -71,65 +69,8 @@ export class ReplySendService {
       opts.classification ?? null,
     );
 
-    const trust = this.trustRails.validatePostCompose({
-      text: composed.suggestion,
-      sources: composed.sources,
-      isFastPath: Boolean(opts.fastReplyText?.trim()),
-      intentKind,
-      automationPreset: this.readAutomationPreset(opts.pipelineContext),
-    });
-
-    if (!trust.allowed) {
-      const downgraded: ReplyDecision = {
-        ...opts.replyDecision,
-        mode: "draft",
-        risk: "medium",
-        reasons: [
-          trust.reason ?? "Trust rail blocked auto-send.",
-          ...opts.replyDecision.reasons.filter((r) => r !== trust.reason),
-        ].slice(0, 5),
-        blockers: [
-          ...(opts.replyDecision.blockers ?? []),
-          trust.blocker ?? "compose_grounding",
-        ].filter((b, i, arr) => arr.indexOf(b) === i),
-        autoEligible: false,
-        evaluatedAt: new Date().toISOString(),
-      };
-
-      await this.replyPolicy.persistDecision(organizationId, conversationId, downgraded);
-      await this.suggestReply.storeComposedDraft(
-        organizationId,
-        conversationId,
-        {
-          suggestion: composed.suggestion,
-          sources: composed.sources,
-          aiRunId: composed.aiRunId,
-        },
-        downgraded,
-      );
-
-      this.realtime.emitInboxUpdated(organizationId, conversationId);
-      this.logger.warn(
-        `Trust rail blocked auto-send for ${conversationId}: ${trust.blocker}`,
-      );
-
-      void this.learning.recordTrustRailBlock({
-        organizationId,
-        conversationId,
-        aiRunId: opts.aiRunId,
-        blocker: trust.blocker ?? "compose_grounding",
-        reason: trust.reason,
-        intentKind,
-      });
-
-      return {
-        sent: false,
-        drafted: true,
-        reason: trust.reason ?? "Draft for review.",
-        blocker: trust.blocker ?? "compose_grounding",
-      };
-    }
-
+    // Grounding checks are handled by automation-policy — only run the
+    // coverage gate here (selfConfidence, answeredEverything, needsHuman).
     // Coverage gate: the composer returns a structured answer contract. Only
     // auto-send when the model self-reports it fully answered with adequate
     // confidence and no human is needed. Otherwise the composed text is still a
@@ -309,10 +250,4 @@ export class ReplySendService {
     return pass;
   }
 
-  private readAutomationPreset(
-    pipelineContext?: PipelineContext,
-  ): import("@growvisi/shared").AutomationPolicyPreset | undefined {
-    const settings = pipelineContext?.intelligenceSettings;
-    return settings?.automationPreset;
-  }
 }

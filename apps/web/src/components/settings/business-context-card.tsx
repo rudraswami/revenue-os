@@ -38,6 +38,9 @@ const CATEGORY_LABELS: Record<string, string> = {
   policy: "Policies",
   faq: "FAQs",
   product: "Product catalog",
+  about: "About",
+  services: "Services",
+  contact: "Contact",
 };
 
 interface KnowledgeDoc {

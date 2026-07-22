@@ -4,11 +4,11 @@ import { randomBytes } from "crypto";
 import { fetchWithRetry } from "../../common/http/fetch-with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
 
-const CHUNK_SIZE = 900;
-// ~15% overlap so a fact split across a chunk boundary (e.g. a price and its
+const CHUNK_SIZE = 1500;
+// ~17% overlap so a fact split across a chunk boundary (e.g. a price and its
 // condition, or a policy and its exception) still appears intact in at least
 // one chunk. Retrieval quality was suffering from hard, overlap-free cuts.
-const CHUNK_OVERLAP = 150;
+const CHUNK_OVERLAP = 250;
 
 @Injectable()
 export class KnowledgeEmbedService {
@@ -23,29 +23,20 @@ export class KnowledgeEmbedService {
     const normalized = text.replace(/\r\n/g, "\n").trim();
     if (!normalized) return [];
 
-    const paragraphs = normalized.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
-    const chunks: string[] = [];
-    let current = "";
+    // Step 1: split on markdown headers to get structural sections
+    const sections = this.splitOnHeaders(normalized);
 
-    for (const para of paragraphs) {
-      if (`${current}\n\n${para}`.length <= CHUNK_SIZE) {
-        current = current ? `${current}\n\n${para}` : para;
+    const chunks: string[] = [];
+    for (const section of sections) {
+      if (section.length <= CHUNK_SIZE) {
+        chunks.push(section);
       } else {
-        if (current) chunks.push(current);
-        if (para.length <= CHUNK_SIZE) {
-          current = para;
-        } else {
-          for (let i = 0; i < para.length; i += CHUNK_SIZE) {
-            chunks.push(para.slice(i, i + CHUNK_SIZE));
-          }
-          current = "";
-        }
+        // Step 2: split oversized sections at paragraph boundaries
+        const subChunks = this.splitAtParagraphs(section);
+        chunks.push(...subChunks);
       }
     }
-    if (current) chunks.push(current);
 
-    // Add a trailing slice of the previous chunk to the start of each chunk so
-    // context that straddles a boundary is not lost. Skipped for a single chunk.
     if (chunks.length <= 1) return chunks;
     return chunks.map((chunk, i) => {
       if (i === 0) return chunk;
@@ -53,6 +44,104 @@ export class KnowledgeEmbedService {
       const overlap = prev.slice(Math.max(0, prev.length - CHUNK_OVERLAP));
       return `${overlap}\n\n${chunk}`;
     });
+  }
+
+  /** Split text on `## ` / `### ` headers, keeping each header with its body. */
+  private splitOnHeaders(text: string): string[] {
+    const parts = text.split(/(?=\n#{2,3} )/);
+    return parts.map((p) => p.trim()).filter(Boolean);
+  }
+
+  /**
+   * Split a section at paragraph boundaries (`\n\n`), keeping Q&A pairs and
+   * bulleted list runs together. Falls back to sentence splitting for
+   * paragraphs that still exceed CHUNK_SIZE.
+   */
+  private splitAtParagraphs(section: string): string[] {
+    const paragraphs = section.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+    const merged = this.mergeQaAndListBlocks(paragraphs);
+
+    const chunks: string[] = [];
+    let current = "";
+
+    for (const block of merged) {
+      if (`${current}\n\n${block}`.length <= CHUNK_SIZE) {
+        current = current ? `${current}\n\n${block}` : block;
+      } else {
+        if (current) chunks.push(current);
+        if (block.length <= CHUNK_SIZE) {
+          current = block;
+        } else {
+          // Step 3: split at sentence boundaries as last resort
+          chunks.push(...this.splitAtSentences(block));
+          current = "";
+        }
+      }
+    }
+    if (current) chunks.push(current);
+    return chunks;
+  }
+
+  /**
+   * Merge consecutive Q:/A: lines and bulleted list items so they aren't
+   * split across chunks.
+   */
+  private mergeQaAndListBlocks(paragraphs: string[]): string[] {
+    const merged: string[] = [];
+    let pendingQa = "";
+
+    for (const para of paragraphs) {
+      const isQa = /^[QA]:/m.test(para);
+      const isBullet = /^[-*•]\s/m.test(para);
+
+      if (isQa) {
+        pendingQa = pendingQa ? `${pendingQa}\n\n${para}` : para;
+        // Flush when we see an A: (complete pair)
+        if (/^A:/m.test(para) && pendingQa.length > 0) {
+          merged.push(pendingQa);
+          pendingQa = "";
+        }
+      } else {
+        if (pendingQa) {
+          merged.push(pendingQa);
+          pendingQa = "";
+        }
+        // Attach bullet lines to the previous block if it was also bullets
+        if (isBullet && merged.length > 0 && /^[-*•]\s/m.test(merged[merged.length - 1])) {
+          merged[merged.length - 1] += `\n\n${para}`;
+        } else {
+          merged.push(para);
+        }
+      }
+    }
+    if (pendingQa) merged.push(pendingQa);
+    return merged;
+  }
+
+  /** Split a long text block at sentence boundaries (`. `, `? `, `! `). */
+  private splitAtSentences(text: string): string[] {
+    const sentences = text.split(/(?<=[.?!])\s+/);
+    const chunks: string[] = [];
+    let current = "";
+
+    for (const sentence of sentences) {
+      if (sentence.length > CHUNK_SIZE) {
+        if (current) chunks.push(current);
+        for (let i = 0; i < sentence.length; i += CHUNK_SIZE) {
+          chunks.push(sentence.slice(i, i + CHUNK_SIZE));
+        }
+        current = "";
+        continue;
+      }
+      if (`${current} ${sentence}`.length <= CHUNK_SIZE) {
+        current = current ? `${current} ${sentence}` : sentence;
+      } else {
+        if (current) chunks.push(current);
+        current = sentence;
+      }
+    }
+    if (current) chunks.push(current);
+    return chunks;
   }
 
   async markEmbedFailed(documentId: string, reason?: string) {
@@ -97,7 +186,7 @@ export class KnowledgeEmbedService {
       const pieces = this.splitIntoChunks(doc.rawContent);
       await this.prisma.knowledgeChunk.deleteMany({ where: { documentId } });
 
-      const model = this.config.get<string>("AI_EMBEDDING_MODEL") ?? "text-embedding-3-small";
+      const model = this.config.get<string>("AI_EMBEDDING_MODEL") ?? "text-embedding-3-large";
       let indexed = 0;
 
       for (const content of pieces) {
@@ -159,12 +248,12 @@ export class KnowledgeEmbedService {
     const apiKey = this.config.get<string>("OPENAI_API_KEY");
     if (!apiKey || !query.trim()) return [];
 
-    const model = this.config.get<string>("AI_EMBEDDING_MODEL") ?? "text-embedding-3-small";
+    const model = this.config.get<string>("AI_EMBEDDING_MODEL") ?? "text-embedding-3-large";
     const vector = await this.createEmbedding(apiKey, model, query.trim());
     if (!vector) return [];
 
     const vectorLiteral = `[${vector.join(",")}]`;
-    const take = Math.min(Math.max(limit, 1), 8);
+    const take = Math.min(Math.max(limit, 1), 15);
 
     const categoryFilter =
       categories && categories.length > 0
@@ -199,7 +288,59 @@ export class KnowledgeEmbedService {
       take,
     );
 
-    return rows.filter((r) => r.similarity > 0.2);
+    return rows.filter((r) => r.similarity > 0.35);
+  }
+
+  /**
+   * Keyword search using pg_trgm similarity — complements vector search for
+   * exact product names, acronyms, and specific terms that embeddings miss.
+   */
+  async keywordSearch(
+    organizationId: string,
+    query: string,
+    limit = 5,
+  ): Promise<Array<{
+    chunkId: string;
+    documentId: string;
+    content: string;
+    title: string;
+    similarity: number;
+    category: string;
+  }>> {
+    if (!query.trim()) return [];
+
+    const take = Math.min(Math.max(limit, 1), 10);
+
+    try {
+      const rows = await this.prisma.$queryRawUnsafe<
+        Array<{
+          chunkId: string;
+          documentId: string;
+          content: string;
+          title: string;
+          similarity: number;
+          category: string;
+        }>
+      >(
+        `SELECT kc.id AS "chunkId", kd.id AS "documentId", kc.content, kd.title,
+          COALESCE(kc.metadata->>'category', kd.category, 'general') AS category,
+          similarity(kc.content, $1) AS similarity
+        FROM knowledge_chunks kc
+        INNER JOIN knowledge_documents kd ON kd.id = kc."documentId"
+        WHERE kd."organizationId" = $2
+          AND kd.status IN ('active', 'indexed', 'pending')
+          AND kc.content % $1
+        ORDER BY similarity DESC
+        LIMIT $3`,
+        query.trim(),
+        organizationId,
+        take,
+      );
+      return rows;
+    } catch {
+      // pg_trgm not available — graceful fallback
+      return [];
+    }
   }
 
   async chunkCount(documentId: string): Promise<number> {
