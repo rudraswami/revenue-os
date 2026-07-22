@@ -79,6 +79,9 @@
   --bento-mint: #ecfdf5;
   --bento-blue: #e8f0ff;
   --whatsapp: #128c7e;
+  /* Meta / Facebook brand (connect CTAs only) */
+  --meta-blue: #1877f2;
+  --meta-blue-hover: #166fe0;
   /* Data-viz / campaign accent (violet) */
   --viz-violet: #7c3aed;
   /* Elevation shadow tint (r g b) */
@@ -163,6 +166,8 @@
   --color-bento-mint: var(--bento-mint);
   --color-bento-blue: var(--bento-blue);
   --color-whatsapp: var(--whatsapp);
+  --color-meta-blue: var(--meta-blue);
+  --color-meta-blue-hover: var(--meta-blue-hover);
 
   /* Growvisi DS v1 semantic utilities (bg-surface-panel, text-text-secondary…) */
   --color-surface-base: var(--surface-base);
@@ -732,6 +737,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 .bg-whatsapp-header {
   background: #075e54;
+}
+
+.bg-meta-blue {
+  background-color: var(--meta-blue);
+}
+.hover\:bg-meta-blue-hover:hover {
+  background-color: var(--meta-blue-hover);
+}
+.text-meta-blue {
+  color: var(--meta-blue);
+}
+.bg-meta-blue-subtle {
+  background-color: color-mix(in srgb, var(--meta-blue) 15%, transparent);
 }
 
 @keyframes typing-bounce {

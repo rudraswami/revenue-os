@@ -1,9 +1,8 @@
 "use client";
 
-import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowDown,
   ArrowLeft,
   ChevronDown,
   ChevronUp,
@@ -28,9 +27,6 @@ import { useConversationsCopy, type InboxListFilter } from "@/lib/i18n/conversat
 import { InboxAiPanel, type InboxAiContext } from "@/components/dashboard/inbox-ai-panel";
 import type { AssignmentExplain } from "@/lib/assignment-explain";
 import { trackCoaching } from "@/lib/coaching-analytics";
-import { InboxMessageBody } from "@/components/dashboard/inbox-message-body";
-import { InboxMessageActions } from "@/components/dashboard/inbox-message-actions";
-import { InboxMessageStatus } from "@/components/dashboard/inbox-message-status";
 import { InboxImageLightbox } from "@/components/dashboard/inbox-image-lightbox";
 import { InboxHandoffPackageDialog } from "@/components/dashboard/inbox-handoff-package-dialog";
 import { InboxFollowUpDialog } from "@/components/dashboard/inbox-follow-up-dialog";
@@ -104,6 +100,10 @@ import {
   type FollowUpPreset,
 } from "@/lib/inbox-follow-up-task";
 import { InboxInternalNotes } from "@/components/dashboard/inbox-internal-notes";
+import {
+  InboxVirtualizedThread,
+  type InboxVirtualizedThreadHandle,
+} from "@/components/dashboard/inbox-virtualized-thread";
 
 interface Message {
   id: string;
@@ -230,13 +230,9 @@ function InboxThreadPaneInner({
   const [wonPrompt, setWonPrompt] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasOlderOverride, setHasOlderOverride] = useState<boolean | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const restoreScrollRef = useRef<{ height: number; top: number } | null>(null);
+  const threadVirtualRef = useRef<InboxVirtualizedThreadHandle>(null);
   const unreadDividerRef = useRef<{ convId: string; count: number } | null>(null);
   const draftDirtyRef = useRef(false);
-  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
-  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -422,55 +418,15 @@ function InboxThreadPaneInner({
   });
 
   const lastMsgId = thread?.messages[thread.messages.length - 1]?.id;
-  const prevConvForScrollRef = useRef<string | null>(null);
-  const messageCount = thread?.messages.length ?? 0;
 
-  useEffect(() => {
-    const c = scrollContainerRef.current;
-    const isConvSwitch = prevConvForScrollRef.current !== conversationId;
-    prevConvForScrollRef.current = conversationId;
-    const nearBottom =
-      !c || c.scrollHeight - c.scrollTop - c.clientHeight < 240;
-    // Jump to newest on conversation open or the user's own send; otherwise
-    // only follow when they're already near the bottom, so reading history is
-    // never interrupted by an incoming message.
-    if (isConvSwitch || scrollSmoothRef.current || nearBottom) {
-      bottomRef.current?.scrollIntoView({
-        behavior: scrollSmoothRef.current ? "smooth" : "auto",
-      });
-      setShowJumpToLatest(false);
-    }
-    scrollSmoothRef.current = false;
-  }, [lastMsgId, conversationId]);
-
-  // Preserve the viewport when older messages are prepended (no jump).
-  useLayoutEffect(() => {
-    const restore = restoreScrollRef.current;
-    const c = scrollContainerRef.current;
-    if (!restore || !c) return;
-    c.scrollTop = c.scrollHeight - restore.height + restore.top;
-    restoreScrollRef.current = null;
-  }, [messageCount]);
-
-  function handleThreadScroll() {
-    const c = scrollContainerRef.current;
-    if (!c) return;
-    const distance = c.scrollHeight - c.scrollTop - c.clientHeight;
-    setShowJumpToLatest(distance > 240);
-  }
-
-  function jumpToLatest() {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    setShowJumpToLatest(false);
-  }
-
-  function jumpToMessage(messageId: string) {
-    const el = messageRefs.current[messageId];
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  function highlightMessage(messageId: string) {
     setHighlightMessageId(messageId);
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     highlightTimerRef.current = setTimeout(() => setHighlightMessageId(null), 1600);
+  }
+
+  function jumpToMessage(messageId: string) {
+    threadVirtualRef.current?.jumpToMessage(messageId);
   }
 
   useEffect(() => {
@@ -700,7 +656,11 @@ function InboxThreadPaneInner({
   const followUpMutation = useMutation({
     mutationFn: ({ preset, excerpt }: { preset: FollowUpPreset; excerpt: string | null }) => {
       const leadId = thread?.lead?.id;
-      if (!leadId) throw new Error("No lead linked to this conversation.");
+      if (!leadId) {
+        throw new Error(
+          "This conversation needs a pipeline lead before you can schedule a follow-up.",
+        );
+      }
       const contact = thread?.contactName ?? thread?.contactPhone ?? "contact";
       return apiFetch("/tasks", {
         method: "POST",
@@ -1037,8 +997,6 @@ function InboxThreadPaneInner({
         `/conversations/${conversationId}/messages?before=${encodeURIComponent(oldest)}`,
         { token: token ?? undefined },
       );
-      const c = scrollContainerRef.current;
-      if (c) restoreScrollRef.current = { height: c.scrollHeight, top: c.scrollTop };
       prependOlderMessages(queryClient, conversationId, res.messages, res.hasMore);
       setHasOlderOverride(res.hasMore);
     } catch (e) {
@@ -1604,169 +1562,39 @@ function InboxThreadPaneInner({
               </div>
             </div>
           )}
-          <div
-            ref={scrollContainerRef}
-            onScroll={handleThreadScroll}
-            className="conversation-thread-bg flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 custom-scrollbar lg:px-6"
-          >
-            <div className="mx-auto mt-auto flex w-full max-w-3xl flex-col gap-2.5">
-              {hasOlderMessages && (
-                <div className="flex justify-center pb-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs text-muted-foreground"
-                    disabled={loadingOlder}
-                    onClick={() => void loadOlderMessages()}
-                  >
-                    {loadingOlder ? "Loading…" : "Load older messages"}
-                  </Button>
-                </div>
-              )}
-              {thread.messages.map((m) => {
-                const copyableText = getCopyableMessageText(m.content);
-                const pinText = copyableText ?? m.content?.trim() ?? null;
-                const canQuote = canSend && !windowClosed && !!m.content;
-                const canPin = !!thread.lead?.id && canSend && !!pinText && !/^\[[^\]]+\]$/.test(pinText);
-                const canFollowUp = !!thread.lead?.id && canSend && !!pinText;
-                const quoted = quotedMessageFor(m);
-                return (
-                <Fragment key={m.id}>
-                {unreadDividerBeforeId === m.id && (
-                  <div className="flex items-center gap-3 py-1.5" aria-label={copy.newMessages}>
-                    <div className="h-px flex-1 bg-accent/25" />
-                    <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent">
-                      {copy.newMessages}
-                    </span>
-                    <div className="h-px flex-1 bg-accent/25" />
-                  </div>
-                )}
-                <div
-                  ref={(el) => {
-                    messageRefs.current[m.id] = el;
-                  }}
-                  className={cn(
-                    "group relative max-w-[88%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm transition-shadow",
-                    m.direction === "OUTBOUND"
-                      ? "ml-auto rounded-br-md border border-success/30 bg-whatsapp-green text-foreground"
-                      : "mr-auto rounded-bl-md border border-border/70 bg-card text-foreground",
-                    (highlightMessageId === m.id || activeSearchId === m.id) &&
-                      "ring-2 ring-accent ring-offset-1",
-                    searchMatchSet.has(m.id) &&
-                      activeSearchId !== m.id &&
-                      highlightMessageId !== m.id &&
-                      "ring-1 ring-warning/50",
-                  )}
-                >
-                  <InboxMessageActions
-                    canQuote={canQuote}
-                    canCopy={!!copyableText}
-                    canPin={canPin}
-                    onQuote={
-                      canQuote
-                        ? () => quoteInboundMessage(m.content, m.id)
-                        : undefined
-                    }
-                    onCopy={
-                      copyableText ? () => void copyMessageText(m.content) : undefined
-                    }
-                    onPin={canPin ? () => pinMessage(m.content) : undefined}
-                    canFollowUp={canFollowUp}
-                    onFollowUp={
-                      canFollowUp
-                        ? () => openFollowUp(copyableText ?? m.content)
-                        : undefined
-                    }
-                  />
-                  {quoted && (
-                    <button
-                      type="button"
-                      onClick={() => jumpToMessage(quoted.id)}
-                      className={cn(
-                        "mb-1.5 flex w-full items-stretch gap-2 rounded-lg border-l-2 py-1 pl-2 pr-2 text-left transition hover:brightness-95",
-                        m.direction === "OUTBOUND"
-                          ? "border-success/60 bg-success/10"
-                          : "border-accent/50 bg-accent/5",
-                      )}
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-accent">
-                          {quoted.direction === "OUTBOUND"
-                            ? copy.replyingToYou
-                            : thread.contactName ?? thread.contactPhone}
-                        </span>
-                        <span className="line-clamp-2 text-xs text-muted-foreground">
-                          {getCopyableMessageText(quoted.content) ??
-                            quoted.content ??
-                            copy.replyingToAttachment}
-                        </span>
-                      </span>
-                    </button>
-                  )}
-                  <InboxMessageBody
-                    conversationId={thread.id}
-                    messageId={m.id}
-                    type={m.type ?? "TEXT"}
-                    content={m.content}
-                    onImageOpen={setLightboxMessageId}
-                  />
-                  <p
-                    className={cn(
-                      "mt-1 flex items-center gap-1.5 text-xs",
-                      m.direction === "OUTBOUND" ? "text-success" : "text-muted-foreground",
-                    )}
-                  >
-                    {m.sentByAi && m.direction === "OUTBOUND" && (
-                      <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
-                        AI
-                      </span>
-                    )}
-                    <span>
-                      {new Date(m.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    {m.direction === "OUTBOUND" && (
-                      <InboxMessageStatus status={m.status} />
-                    )}
-                  </p>
-                  {m.direction === "OUTBOUND" &&
-                    (m.status ?? "").toUpperCase() === "FAILED" && (
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-destructive">
-                        <span className="font-medium">
-                          {m.errorMessage?.trim() || copy.messageFailed}
-                        </span>
-                        {canRetryMessage(m) && (
-                          <button
-                            type="button"
-                            className="font-semibold underline underline-offset-2 hover:no-underline"
-                            onClick={() => retryFailedMessage(m)}
-                          >
-                            {copy.messageRetry}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                </div>
-                </Fragment>
-              );
-              })}
-              <div ref={bottomRef} />
-            </div>
-          </div>
-          {showJumpToLatest && (
-            <button
-              type="button"
-              onClick={jumpToLatest}
-              aria-label={copy.jumpToLatest}
-              title={copy.jumpToLatest}
-              className="absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground shadow-lg transition hover:bg-muted active:scale-95"
-            >
-              <ArrowDown className="h-5 w-5" />
-            </button>
-          )}
+          <InboxVirtualizedThread
+            ref={threadVirtualRef}
+            conversationId={thread.id}
+            contactLabel={thread.contactName ?? thread.contactPhone}
+            messages={thread.messages}
+            hasOlderMessages={hasOlderMessages}
+            loadingOlder={loadingOlder}
+            onLoadOlder={() => void loadOlderMessages()}
+            unreadDividerBeforeId={unreadDividerBeforeId}
+            unreadDividerLabel={copy.newMessages}
+            highlightMessageId={highlightMessageId}
+            activeSearchId={activeSearchId}
+            searchMatchSet={searchMatchSet}
+            canSend={canSend}
+            windowClosed={windowClosed}
+            hasLead={!!thread.lead?.id}
+            messageFailedLabel={copy.messageFailed}
+            messageRetryLabel={copy.messageRetry}
+            replyingToYouLabel={copy.replyingToYou}
+            replyingToAttachmentLabel={copy.replyingToAttachment}
+            jumpToLatestLabel={copy.jumpToLatest}
+            lastMsgId={lastMsgId}
+            scrollSmoothRef={scrollSmoothRef}
+            onImageOpen={setLightboxMessageId}
+            onHighlightMessage={highlightMessage}
+            quotedMessageFor={quotedMessageFor}
+            onQuote={quoteInboundMessage}
+            onCopy={(content) => void copyMessageText(content)}
+            onPin={pinMessage}
+            onFollowUp={openFollowUp}
+            onRetry={retryFailedMessage}
+            canRetryMessage={canRetryMessage}
+          />
           </div>
 
           <div className="shrink-0 border-t border-border/80 bg-card px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-6">

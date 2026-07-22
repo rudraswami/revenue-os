@@ -193,8 +193,8 @@ export class ConversationsController {
   }
 
   @Get("capabilities")
-  capabilities() {
-    return this.conversations.getCapabilities();
+  capabilities(@CurrentUser() user: JwtPayload) {
+    return this.conversations.getCapabilities(user);
   }
 
   @Get("metrics/sla")

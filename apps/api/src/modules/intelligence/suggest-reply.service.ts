@@ -22,7 +22,7 @@ export interface DraftReplyResult {
     citation: string;
   }>;
   usedRag: boolean;
-  aiRunId: string;
+  aiRunId?: string;
   decision?: ReplyDecision;
 }
 
@@ -189,7 +189,6 @@ export class SuggestReplyService {
         suggestion: FALLBACK_DRAFT_TEXT,
         sources: [],
         usedRag: false,
-        aiRunId: "",
         decision,
       };
     } catch (err) {

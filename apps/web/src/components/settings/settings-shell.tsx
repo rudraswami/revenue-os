@@ -457,6 +457,8 @@ export function SettingsShell() {
         <div className="lg:hidden">
           <div
             ref={mobileNavRef}
+            role="tablist"
+            aria-label="Settings sections"
             className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar scroll-smooth"
           >
             {visibleTabs.map((tab) => {
@@ -466,6 +468,8 @@ export function SettingsShell() {
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={active}
                   data-tab-id={tab.id}
                   onClick={() => selectTab(tab.id)}
                   className={cn(

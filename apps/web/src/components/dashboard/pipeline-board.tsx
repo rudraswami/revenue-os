@@ -279,7 +279,7 @@ export function PipelineBoard({
   return (
     <div>
       <p className="mb-4 text-xs text-muted-foreground md:hidden">
-        Use the stage dropdown on each card.
+        Swipe horizontally to see all stages — or use the stage dropdown on each card.
       </p>
       <p className="mb-4 hidden text-xs text-muted-foreground md:block">
         Drag cards between columns — AI scoring and automations keep stages in sync.

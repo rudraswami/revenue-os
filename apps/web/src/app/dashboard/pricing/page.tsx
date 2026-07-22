@@ -62,7 +62,15 @@ export default function PricingPage() {
     if (!checkoutOpened) return;
     const refreshBilling = () => invalidateWorkspaceShellCache();
     window.addEventListener("focus", refreshBilling);
-    return () => window.removeEventListener("focus", refreshBilling);
+    const interval = window.setInterval(refreshBilling, 5_000);
+    const stopPolling = window.setTimeout(() => {
+      window.clearInterval(interval);
+    }, 120_000);
+    return () => {
+      window.removeEventListener("focus", refreshBilling);
+      window.clearInterval(interval);
+      window.clearTimeout(stopPolling);
+    };
   }, [checkoutOpened]);
 
   useEffect(() => {

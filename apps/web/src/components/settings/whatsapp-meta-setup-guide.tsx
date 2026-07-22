@@ -38,7 +38,7 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
       <Button
         asChild
         size="lg"
-        className="h-12 w-full gap-2 rounded-xl bg-[#1877F2] text-sm font-semibold hover:bg-[#166FE0]"
+        className="h-12 w-full gap-2 rounded-xl bg-meta-blue text-sm font-semibold hover:bg-meta-blue-hover"
       >
         <a href={metaApiSetupUrl} target="_blank" rel="noopener noreferrer">
           Open Meta API Setup
@@ -48,7 +48,7 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <div className="border-b border-border bg-background px-4 py-3">
-          <p className="text-xs font-semibold text-[#1877F2]">Where to find your token</p>
+          <p className="text-xs font-semibold text-meta-blue">Where to find your token</p>
         </div>
 
         <div className="space-y-0 divide-y divide-border/80 p-4">
@@ -57,7 +57,7 @@ export function WhatsappMetaSetupGuide({ metaApiSetupUrl }: { metaApiSetupUrl: s
               <span
                 className={
                   step.highlight
-                    ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1877F2] text-xs font-bold text-white"
+                    ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-meta-blue text-xs font-bold text-white"
                     : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
                 }
               >

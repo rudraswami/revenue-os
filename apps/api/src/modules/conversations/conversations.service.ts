@@ -54,13 +54,19 @@ export class ConversationsService {
     private readonly serverCache: ServerCacheService,
   ) {}
 
-  getCapabilities() {
+  async getCapabilities(user: JwtPayload) {
+    return this.getCapabilitiesForOrg(user.organizationId);
+  }
+
+  private async getCapabilitiesForOrg(organizationId: string) {
     const aiOn = !!this.config.get<string>("OPENAI_API_KEY");
+    const access = await this.entitlements.getAccess(organizationId);
+    const aiEntitled = aiOn && access.hasAccess;
     return {
       /** Primary: classify inbound threads for pipeline & insights */
-      aiClassification: aiOn,
+      aiClassification: aiEntitled,
       /** Optional: human takeover reply draft in dashboard */
-      aiSuggestReply: aiOn,
+      aiSuggestReply: aiEntitled,
       /** We ingest via webhooks; outbound send is optional human takeover only */
       primaryUseCase: "conversation_intelligence" as const,
     };
@@ -952,7 +958,7 @@ export class ConversationsService {
       payload: { conversationId, content: text },
     });
 
-    if (opts?.draftText?.trim()) {
+    if (opts?.draftText?.trim() && opts.aiRunId?.trim()) {
       void this.learningSignals.recordDraftFeedback({
         organizationId: user.organizationId,
         conversationId,

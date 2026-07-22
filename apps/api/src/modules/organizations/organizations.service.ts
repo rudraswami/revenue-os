@@ -722,7 +722,7 @@ export class OrganizationsService {
       ? await this.whatsappAccounts.getConnectionHealthForOrganization(user.organizationId)
       : undefined;
 
-    const capabilities = this.getConversationCapabilities();
+    const capabilities = await this.getConversationCapabilities(user.organizationId);
 
     let paymentIntegration: Awaited<ReturnType<OrganizationsService["getPaymentIntegration"]>> | undefined;
     if (user.role === "OWNER" || user.role === "ADMIN") {
@@ -744,11 +744,13 @@ export class OrganizationsService {
     };
   }
 
-  private getConversationCapabilities() {
+  private async getConversationCapabilities(organizationId: string) {
     const aiOn = !!this.config.get<string>("OPENAI_API_KEY");
+    const access = await this.entitlements.getAccess(organizationId);
+    const aiEntitled = aiOn && access.hasAccess;
     return {
-      aiClassification: aiOn,
-      aiSuggestReply: aiOn,
+      aiClassification: aiEntitled,
+      aiSuggestReply: aiEntitled,
       primaryUseCase: "conversation_intelligence" as const,
     };
   }

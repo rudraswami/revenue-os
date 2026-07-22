@@ -35,9 +35,9 @@ const SUGGESTIONS = ["Pricing", "Policy", "FAQs", "Catalog"] as const;
 const CATEGORY_LABELS: Record<string, string> = {
   general: "General",
   pricing: "Pricing",
-  policy: "Policy",
-  faq: "FAQ",
-  product: "Product",
+  policy: "Policies",
+  faq: "FAQs",
+  product: "Product catalog",
 };
 
 interface KnowledgeDoc {

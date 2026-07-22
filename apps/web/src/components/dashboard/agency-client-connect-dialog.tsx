@@ -175,7 +175,7 @@ export function AgencyClientConnectDialog({
                   <WhatsappConnectPathPicker value={connectPath} onChange={setConnectPath} />
 
                   <Button
-                    className="h-11 w-full gap-2 bg-[#1877F2] hover:bg-[#166FE0]"
+                    className="h-11 w-full gap-2 bg-meta-blue hover:bg-meta-blue-hover"
                     disabled={busy}
                     onClick={() => void handleFacebookConnect()}
                   >

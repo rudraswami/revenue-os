@@ -653,7 +653,7 @@ function GreetingBubble({
       type="button"
       disabled={disabled}
       onClick={onEdit}
-      className="rounded-xl border border-border/60 bg-[#ece5dd]/30 p-3 text-left transition hover:border-accent/30 hover:bg-bento-mint/20 disabled:opacity-60"
+      className="rounded-xl border border-border/60 bg-muted/30 p-3 text-left transition hover:border-accent/30 hover:bg-bento-mint/20 disabled:opacity-60"
     >
       <p className="mb-2 text-[11px] font-medium text-muted-foreground">{label}</p>
       <div className="rounded-2xl rounded-tl-sm bg-card px-3 py-2 text-sm leading-relaxed text-foreground shadow-sm">
