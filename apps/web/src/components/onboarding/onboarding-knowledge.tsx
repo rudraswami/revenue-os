@@ -172,7 +172,7 @@ export function OnboardingKnowledge({
           </div>
           <h2 className="display-lg text-foreground">Teach your AI about your business</h2>
           <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-            Enter your website URL and we'll auto-extract your products, pricing, FAQs, and more —
+            Enter your website URL and we&apos;ll auto-extract your products, pricing, FAQs, and more —
             so your AI can answer customer questions instantly.
           </p>
 
@@ -210,7 +210,7 @@ export function OnboardingKnowledge({
               onSkip();
             }}
           >
-            I'll add knowledge later
+            I&apos;ll add knowledge later
           </button>
         </motion.div>
       )}
@@ -271,7 +271,7 @@ export function OnboardingKnowledge({
               {importData.siteName ? ` from ${importData.siteName}` : ""}
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              We've pre-selected the most relevant items. Review and approve them for your AI.
+              We&apos;ve pre-selected the most relevant items. Review and approve them for your AI.
             </p>
           </div>
 
@@ -346,7 +346,7 @@ export function OnboardingKnowledge({
                 onSkip();
               }}
             >
-              Skip for now — I'll review later in Settings
+              Skip for now — I&apos;ll review later in Settings
             </button>
           </div>
         </motion.div>

@@ -264,7 +264,7 @@ export function WebsiteImportCard() {
             <div>
               <h3 className="text-sm font-semibold text-foreground">Import from Website</h3>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Enter your website URL — we'll extract products, pricing, FAQs, and more for your AI to answer customer questions.
+                Enter your website URL — we&apos;ll extract products, pricing, FAQs, and more for your AI to answer customer questions.
               </p>
             </div>
           </div>
