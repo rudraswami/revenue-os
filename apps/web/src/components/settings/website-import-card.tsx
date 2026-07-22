@@ -128,7 +128,7 @@ export function WebsiteImportCard() {
 
   const startMutation = useMutation({
     mutationFn: (importUrl: string) =>
-      apiFetch<WebsiteImportData>("/knowledge/imports", {
+      apiFetch<{ id: string; status: string }>("/knowledge/imports", {
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({ url: importUrl }),
@@ -136,17 +136,8 @@ export function WebsiteImportCard() {
     onSuccess: (result) => {
       setActiveImportId(result.id);
       setUrl("");
+      setPhase("importing");
       void queryClient.invalidateQueries({ queryKey: ["website-imports"] });
-      // Pipeline runs synchronously — result already has items
-      const pending = result.items?.filter((i) => i.status === "pending") ?? [];
-      if (pending.length > 0) {
-        setPhase("review");
-        const highConf = pending.filter((i) => i.confidence >= 0.6).map((i) => i.id);
-        setSelectedItems(new Set(highConf));
-      } else {
-        setPhase("idle");
-        toastError("Could not extract knowledge from this website. Try a different URL.");
-      }
     },
     onError: (err) => toastError(toUserMessage(err, "Could not start import")),
   });
@@ -196,26 +187,36 @@ export function WebsiteImportCard() {
   });
 
   const resyncMutation = useMutation({
-    mutationFn: (importId: string) =>
-      apiFetch(`/knowledge/imports/${importId}/resync`, {
+    mutationFn: (resyncImportId: string) =>
+      apiFetch<{ id: string; status: string }>(`/knowledge/imports/${resyncImportId}/resync`, {
         method: "POST",
         token: token ?? undefined,
       }),
-    onSuccess: (_, importId) => {
-      setActiveImportId(importId);
+    onSuccess: (result) => {
+      setActiveImportId(result.id);
       setPhase("importing");
       void queryClient.invalidateQueries({ queryKey: ["website-imports"] });
     },
+    onError: (err) => toastError(toUserMessage(err, "Could not resync")),
   });
 
-  // Auto-transition when viewing a past import (clicked from list)
-  if (activeImport && !startMutation.isPending) {
-    if (activeImport.status === "review" && phase === "importing") {
-      setPhase("review");
-      const highConf = activeImport.items
-        .filter((i) => i.status === "pending" && i.confidence >= 0.6)
-        .map((i) => i.id);
-      setSelectedItems(new Set(highConf));
+  // Auto-transition when polled status changes
+  if (activeImport && phase === "importing") {
+    if (activeImport.status === "review") {
+      const pending = activeImport.items.filter((i) => i.status === "pending");
+      if (pending.length > 0) {
+        setPhase("review");
+        setSelectedItems(new Set(pending.filter((i) => i.confidence >= 0.6).map((i) => i.id)));
+      } else {
+        setPhase("idle");
+        setActiveImportId(null);
+        toastError("Could not extract knowledge from this website. Try a different URL.");
+      }
+    }
+    if (activeImport.status === "failed") {
+      setPhase("idle");
+      setActiveImportId(null);
+      toastError(activeImport.error ?? "Import failed. Please try again.");
     }
   }
 
@@ -277,7 +278,7 @@ export function WebsiteImportCard() {
   return (
     <div className="space-y-4">
       {/* URL Input */}
-      {phase === "idle" && !startMutation.isPending && (
+      {phase === "idle" && (
         <div className="space-y-4 rounded-2xl border border-border/70 bg-gradient-to-b from-accent/[0.03] to-card p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
@@ -370,8 +371,8 @@ export function WebsiteImportCard() {
         </div>
       )}
 
-      {/* Scanning Progress — shown while mutation is pending */}
-      {startMutation.isPending && (
+      {/* Scanning Progress — shown while import is running in background */}
+      {phase === "importing" && (
         <div className="space-y-4 rounded-2xl border border-accent/20 bg-gradient-to-b from-accent/[0.04] to-card p-6">
           <div className="flex items-center gap-3">
             <div className="relative flex h-12 w-12 items-center justify-center">
@@ -380,10 +381,14 @@ export function WebsiteImportCard() {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">
-                Scanning your website...
+                {activeImport?.status === "extracting"
+                  ? "Extracting knowledge..."
+                  : "Scanning your website..."}
               </h3>
               <p className="text-xs text-muted-foreground">
-                Finding products, pricing, FAQs, and more
+                {activeImport?.status === "extracting"
+                  ? `Processing ${activeImport?.pagesCrawled ?? 0} pages`
+                  : `Found ${activeImport?.pagesFound ?? 0} pages so far`}
               </p>
             </div>
           </div>
@@ -392,14 +397,24 @@ export function WebsiteImportCard() {
             <div className="h-1.5 overflow-hidden rounded-full bg-accent/10">
               <div
                 className="h-full animate-pulse rounded-full bg-accent transition-all duration-500"
-                style={{ width: "60%" }}
+                style={{ width: activeImport?.status === "extracting" ? "70%" : "40%" }}
               />
             </div>
           </div>
 
-          <p className="text-center text-xs text-muted-foreground">
-            This usually takes 30-60 seconds
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">Usually takes 30-60 seconds</p>
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setPhase("idle");
+                setActiveImportId(null);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 

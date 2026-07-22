@@ -4,9 +4,12 @@ import { DOMAIN_EVENTS } from "@growvisi/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { BusinessEventService } from "../events/business-event.service";
+import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { WebsiteCrawlService } from "./website-crawl.service";
 import { ContentStructureService } from "./content-structure.service";
 import { KnowledgeService } from "./knowledge.service";
+
+const STALE_IMPORT_MS = 3 * 60 * 1000; // 3 minutes — auto-expire stuck imports
 
 @Injectable()
 export class WebsiteImportService {
@@ -27,7 +30,7 @@ export class WebsiteImportService {
     const cleanUrl = url.trim();
     this.validateUrl(cleanUrl);
 
-    // Don't allow multiple concurrent imports
+    // Auto-expire stuck imports older than STALE_IMPORT_MS
     const active = await this.prisma.websiteImport.findFirst({
       where: {
         organizationId: user.organizationId,
@@ -35,9 +38,18 @@ export class WebsiteImportService {
       },
     });
     if (active) {
-      throw new BadRequestException(
-        "An import is already in progress. Wait for it to finish or cancel it.",
-      );
+      const ageMs = Date.now() - active.createdAt.getTime();
+      if (ageMs > STALE_IMPORT_MS) {
+        this.logger.warn(`[Import ${active.id}] Auto-expiring stale import (${Math.round(ageMs / 1000)}s old)`);
+        await this.prisma.websiteImport.update({
+          where: { id: active.id },
+          data: { status: "failed", error: "Timed out", completedAt: new Date() },
+        });
+      } else {
+        throw new BadRequestException(
+          "An import is already in progress. Please wait a moment for it to finish.",
+        );
+      }
     }
 
     const imp = await this.prisma.websiteImport.create({
@@ -48,11 +60,13 @@ export class WebsiteImportService {
       },
     });
 
-    // Run pipeline synchronously — serverless kills background work (void/waitUntil)
-    // before the crawl + extraction can complete. Awaiting ensures it finishes.
-    await this.runImportPipeline(imp.id, user.organizationId, cleanUrl);
+    // Run pipeline in background via waitUntil (Vercel) or detached promise.
+    // The frontend polls GET /imports/:id until status changes.
+    deferBackgroundTask(() =>
+      this.runImportPipeline(imp.id, user.organizationId, cleanUrl),
+    );
 
-    return this.getImport(user, imp.id);
+    return { id: imp.id, url: imp.url, status: imp.status, createdAt: imp.createdAt };
   }
 
   private validateUrl(url: string): void {
@@ -86,6 +100,20 @@ export class WebsiteImportService {
       },
     });
     if (!imp) throw new NotFoundException("Import not found");
+
+    // Auto-expire stuck imports when polled
+    if (
+      (imp.status === "crawling" || imp.status === "extracting") &&
+      Date.now() - imp.createdAt.getTime() > STALE_IMPORT_MS
+    ) {
+      await this.prisma.websiteImport.update({
+        where: { id: imp.id },
+        data: { status: "failed", error: "Import timed out. Please try again.", completedAt: new Date() },
+      });
+      imp.status = "failed";
+      imp.error = "Import timed out. Please try again.";
+    }
+
     return this.formatImport(imp);
   }
 
@@ -276,9 +304,11 @@ export class WebsiteImportService {
       },
     });
 
-    await this.runImportPipeline(importId, user.organizationId, imp.url);
+    deferBackgroundTask(() =>
+      this.runImportPipeline(importId, user.organizationId, imp.url),
+    );
 
-    return this.getImport(user, importId);
+    return { id: importId, status: "crawling" };
   }
 
   /** Cancel an in-progress import. */
