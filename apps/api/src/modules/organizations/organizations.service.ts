@@ -19,7 +19,6 @@ import {
   listIndustryHandbookOptions,
   mergeIndustryHandbookProfile,
   resetHandbookDerivedProfile,
-  profileHasHandbookPollution,
 } from "@growvisi/shared";
 import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics, buildPostActivationCoaching } from "@growvisi/shared";
 import { AuthService } from "../auth/auth.service";
@@ -31,6 +30,7 @@ import { EmailService } from "../auth/email.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 import { KnowledgeRetrievalService } from "../knowledge/knowledge-retrieval.service";
 import { KnowledgeService } from "../knowledge/knowledge.service";
+import { CustomIndustryRepairService } from "../knowledge/custom-industry-repair.service";
 import { ServerCacheService } from "../server-cache/server-cache.service";
 import {
   SERVER_CACHE_TTL,
@@ -88,8 +88,6 @@ function normalizeTemplates(raw: unknown): ReplyTemplate[] {
 
 @Injectable()
 export class OrganizationsService {
-  private readonly customRepairChecked = new Set<string>();
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
@@ -101,6 +99,7 @@ export class OrganizationsService {
     private readonly whatsappAccounts: WhatsappAccountsService,
     private readonly knowledgeRetrieval: KnowledgeRetrievalService,
     private readonly knowledge: KnowledgeService,
+    private readonly customIndustryRepair: CustomIndustryRepairService,
     private readonly serverCache: ServerCacheService,
   ) {}
 
@@ -166,11 +165,7 @@ export class OrganizationsService {
     handbookDocsPurged: number;
     pricingDocsRenormalized: number;
   }> {
-    if (this.customRepairChecked.has(organizationId)) {
-      return { profileRepaired: false, handbookDocsPurged: 0, pricingDocsRenormalized: 0 };
-    }
-    this.customRepairChecked.add(organizationId);
-    return this.repairCustomIndustryWorkspace(organizationId);
+    return this.customIndustryRepair.repairIfNeeded(organizationId);
   }
 
   async repairCustomIndustryWorkspace(organizationId: string): Promise<{
@@ -178,63 +173,7 @@ export class OrganizationsService {
     handbookDocsPurged: number;
     pricingDocsRenormalized: number;
   }> {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { settings: true, name: true },
-    });
-    if (!org) {
-      return { profileRepaired: false, handbookDocsPurged: 0, pricingDocsRenormalized: 0 };
-    }
-
-    const settings = (org.settings ?? {}) as Record<string, unknown>;
-    const current = resolveIntelligenceSettings(settings, org.name);
-    if (current.industryId !== CUSTOM_INDUSTRY_ID) {
-      return { profileRepaired: false, handbookDocsPurged: 0, pricingDocsRenormalized: 0 };
-    }
-
-    const handbookDocsPurged = await this.knowledge.purgeIndustryHandbookDocuments(
-      organizationId,
-    );
-    const pricingDocsRenormalized =
-      await this.knowledge.renormalizePricingDocuments(organizationId);
-
-    const profilePolluted =
-      current.businessProfile &&
-      profileHasHandbookPollution(current.businessProfile);
-
-    if (!profilePolluted && handbookDocsPurged === 0 && pricingDocsRenormalized === 0) {
-      return { profileRepaired: false, handbookDocsPurged, pricingDocsRenormalized };
-    }
-
-    let profileRepaired = false;
-    if (profilePolluted && current.businessProfile) {
-      const resetProfile = resetHandbookDerivedProfile(org.name, current.businessProfile);
-      const next = resolveIntelligenceSettings(
-        {
-          intelligence: {
-            ...current,
-            businessProfile: resetProfile,
-          },
-        },
-        org.name,
-      );
-      await this.prisma.organization.update({
-        where: { id: organizationId },
-        data: {
-          settings: {
-            ...settings,
-            intelligence: next,
-          } as object,
-        },
-      });
-      profileRepaired = true;
-    }
-
-    if (handbookDocsPurged > 0 || pricingDocsRenormalized > 0) {
-      this.knowledgeRetrieval.invalidateChunkCountCache(organizationId);
-    }
-
-    return { profileRepaired, handbookDocsPurged, pricingDocsRenormalized };
+    return this.customIndustryRepair.repair(organizationId);
   }
 
   async updateIntelligenceSettings(
