@@ -270,6 +270,15 @@ export class AgencyService {
     };
   }
 
+  async quickConnectClient(
+    user: JwtPayload,
+    clientOrganizationId: string,
+    dto: { accessToken: string; phoneNumberId?: string; wabaId?: string },
+  ) {
+    await this.assertAgencyAccessToClient(user, clientOrganizationId);
+    return this.whatsappAccounts.quickConnectForOrganization(clientOrganizationId, dto);
+  }
+
   async completeClientEmbeddedSignup(
     user: JwtPayload,
     clientOrganizationId: string,

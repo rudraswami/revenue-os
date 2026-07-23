@@ -170,7 +170,7 @@ export class EmbeddedSignupService {
 
     const organizationId = opts?.targetOrganizationId ?? user.organizationId;
     const phoneNumberId = input.phoneNumberId.trim();
-    const wabaId = input.wabaId.trim();
+    const clientWabaId = input.wabaId.trim();
 
     if (input.finishEvent === "FINISH_ONLY_WABA" || !phoneNumberId) {
       throw new BadRequestException(
@@ -205,6 +205,11 @@ export class EmbeddedSignupService {
       );
     }
     const tokenToStore = longLived ?? exchanged;
+    const wabaId = await this.accounts.resolveWabaIdForPhone(
+      phoneNumberId,
+      tokenToStore,
+      clientWabaId,
+    );
     await this.subscribeWebhooks(wabaId, tokenToStore);
     await this.tryRegisterPhone(phoneNumberId, tokenToStore);
 

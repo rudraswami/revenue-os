@@ -37,7 +37,7 @@ import {
 } from "@/components/dashboard/agency-connection-badge";
 import { AgencyClientConnectDialog } from "@/components/dashboard/agency-client-connect-dialog";
 import { AgencyClientRenameDialog } from "@/components/dashboard/agency-client-rename-dialog";
-import { AgencyClientInviteDialog } from "@/components/dashboard/agency-client-invite-dialog";
+import { AgencyClientRemoveDialog } from "@/components/dashboard/agency-client-remove-dialog";
 import { AgencyBillingExplainer } from "@/components/dashboard/agency-billing-explainer";
 import {
   AgencyClientLifecycleChips,
@@ -121,6 +121,7 @@ export default function AgencyPage() {
   const [connectClient, setConnectClient] = useState<AgencyClientRow | null>(null);
   const [renameClient, setRenameClient] = useState<AgencyClientRow | null>(null);
   const [inviteClient, setInviteClient] = useState<AgencyClientRow | null>(null);
+  const [removeClient, setRemoveClient] = useState<AgencyClientRow | null>(null);
   const qc = useQueryClient();
 
   const { data: status, isLoading: statusLoading, isError: statusError, refetch: refetchStatus } =
@@ -257,8 +258,14 @@ export default function AgencyPage() {
   }
 
   function handleRemove(client: AgencyClientRow) {
-    if (!window.confirm(t("agency.removeConfirm"))) return;
-    removeMutation.mutate(client.organizationId);
+    setRemoveClient(client);
+  }
+
+  function confirmRemove() {
+    if (!removeClient) return;
+    removeMutation.mutate(removeClient.organizationId, {
+      onSuccess: () => setRemoveClient(null),
+    });
   }
 
   const loading = statusLoading || (status?.isAgency && healthLoading);
@@ -622,6 +629,13 @@ export default function AgencyPage() {
                       <div className="min-w-0">
                         <p className="font-semibold">{c.displayName}</p>
                         <AgencyConnectionBadge status={c.connectionStatus} className="mt-1" />
+                        <AgencyClientLifecycleChips
+                          lifecycle={{
+                            ownerStatus: c.ownerStatus,
+                            trialUrgency: c.trialUrgency,
+                            isPaid: c.isPaid,
+                          }}
+                        />
                         {c.needsReconnect && (
                           <p className="mt-1.5 text-xs text-destructive">{t("agency.tokenNeedsRefresh")}</p>
                         )}
@@ -658,6 +672,32 @@ export default function AgencyPage() {
                           {c.needsReconnect || c.connectionStatus === "token"
                             ? t("agency.reconnectMeta")
                             : t("agency.connectMeta")}
+                        </Button>
+                      )}
+                      {(c.ownerStatus === "needs_owner" || c.ownerStatus === "invite_pending") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1.5 rounded-xl"
+                          onClick={() => handleInvite(c)}
+                        >
+                          <Mail className="h-3.5 w-3.5" />
+                          {c.ownerStatus === "invite_pending"
+                            ? t("agency.attentionResendInvite")
+                            : t("agency.inviteOwner")}
+                        </Button>
+                      )}
+                      {c.trialUrgency === "expired" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1.5 rounded-xl"
+                          disabled={switchingId === c.organizationId}
+                          onClick={() =>
+                            void switchToClient(c.organizationId, "/dashboard/pricing")
+                          }
+                        >
+                          {t("agency.attentionTrialExpired")}
                         </Button>
                       )}
                       <Button
@@ -777,6 +817,18 @@ export default function AgencyPage() {
               email,
             })
           }
+        />
+      )}
+
+      {removeClient && (
+        <AgencyClientRemoveDialog
+          clientName={removeClient.displayName}
+          open={!!removeClient}
+          loading={removeMutation.isPending}
+          onOpenChange={(open) => {
+            if (!open) setRemoveClient(null);
+          }}
+          onConfirm={confirmRemove}
         />
       )}
     </div>

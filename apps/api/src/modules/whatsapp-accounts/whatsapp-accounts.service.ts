@@ -1528,6 +1528,31 @@ export class WhatsappAccountsService {
     return undefined;
   }
 
+  /**
+   * After Embedded Signup code exchange, resolve the canonical WABA for a phone.
+   * Meta postMessage waba_id can disagree with Graph — prefer token-derived WABA.
+   */
+  async resolveWabaIdForPhone(
+    phoneNumberId: string,
+    accessToken: string,
+    fallbackWabaId?: string,
+  ): Promise<string> {
+    const resolved = await this.resolveWabaForPhone(phoneNumberId, accessToken);
+    const fallback = fallbackWabaId?.trim();
+    const wabaId = resolved ?? fallback;
+    if (!wabaId) {
+      throw new BadRequestException(
+        "Could not determine WhatsApp Business Account ID. Copy WhatsApp Business Account ID from Meta API Setup and paste it in the WABA ID field.",
+      );
+    }
+    if (resolved && fallback && resolved !== fallback) {
+      this.logger.warn(
+        `WABA mismatch for phone=${phoneNumberId}: client sent ${fallback}, resolved ${resolved} — using resolved`,
+      );
+    }
+    return wabaId;
+  }
+
   private async listPhonesForWaba(
     wabaId: string,
     accessToken: string,
