@@ -36,6 +36,14 @@ import {
   type AgencyConnectionStatus,
 } from "@/components/dashboard/agency-connection-badge";
 import { AgencyClientConnectDialog } from "@/components/dashboard/agency-client-connect-dialog";
+import { AgencyClientRenameDialog } from "@/components/dashboard/agency-client-rename-dialog";
+import { AgencyClientInviteDialog } from "@/components/dashboard/agency-client-invite-dialog";
+import { AgencyBillingExplainer } from "@/components/dashboard/agency-billing-explainer";
+import {
+  AgencyClientLifecycleChips,
+  type AgencyClientOwnerStatus,
+  type AgencyClientTrialUrgency,
+} from "@/components/dashboard/agency-client-lifecycle-chips";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +72,9 @@ interface AgencyClientRow {
   planId: string;
   subscriptionStatus: string;
   trialEndsAt: string | null;
+  ownerStatus: AgencyClientOwnerStatus;
+  trialUrgency: AgencyClientTrialUrgency;
+  isPaid: boolean;
 }
 
 interface AgencyHealthSummary {
@@ -90,7 +101,9 @@ function clientNeedsAttention(c: AgencyClientRow): boolean {
     c.needsReconnect ||
     c.connectionStatus === "token" ||
     c.connectionStatus === "setup" ||
-    c.connectionStatus === "disconnected"
+    c.connectionStatus === "disconnected" ||
+    c.ownerStatus === "needs_owner" ||
+    c.trialUrgency === "expired"
   );
 }
 
@@ -106,6 +119,8 @@ export default function AgencyPage() {
   const [clientName, setClientName] = useState("");
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [connectClient, setConnectClient] = useState<AgencyClientRow | null>(null);
+  const [renameClient, setRenameClient] = useState<AgencyClientRow | null>(null);
+  const [inviteClient, setInviteClient] = useState<AgencyClientRow | null>(null);
   const qc = useQueryClient();
 
   const { data: status, isLoading: statusLoading, isError: statusError, refetch: refetchStatus } =
@@ -174,6 +189,7 @@ export default function AgencyPage() {
     onSuccess: (_data, vars) => {
       trackAgencyPartner("agency_client_renamed", { organizationId: vars.organizationId });
       toast.success(t("agency.renameSaved"));
+      setRenameClient(null);
       invalidateAgencyQueries(qc);
     },
     onError: (e) => toast.error(toUserMessage(e, t("agency.actionFailed"))),
@@ -203,6 +219,8 @@ export default function AgencyPage() {
     onSuccess: (_data, vars) => {
       trackAgencyPartner("agency_invite_owner", { organizationId: vars.organizationId });
       toast.success(t("agency.inviteSent"));
+      setInviteClient(null);
+      invalidateAgencyQueries(qc);
     },
     onError: (e) => toast.error(toUserMessage(e, t("agency.actionFailed"))),
   });
@@ -231,15 +249,11 @@ export default function AgencyPage() {
   }
 
   function handleRename(client: AgencyClientRow) {
-    const next = window.prompt(t("agency.rename"), client.displayName);
-    if (!next?.trim() || next.trim() === client.displayName) return;
-    renameMutation.mutate({ organizationId: client.organizationId, displayName: next.trim() });
+    setRenameClient(client);
   }
 
   function handleInvite(client: AgencyClientRow) {
-    const email = window.prompt(t("agency.inviteOwnerHint"));
-    if (!email?.trim()) return;
-    inviteMutation.mutate({ organizationId: client.organizationId, email: email.trim() });
+    setInviteClient(client);
   }
 
   function handleRemove(client: AgencyClientRow) {
@@ -291,7 +305,7 @@ export default function AgencyPage() {
           <span className="inline-flex rounded-full border border-border bg-background px-2 py-0.5 text-xs font-semibold text-foreground/80">
             {formatMessage(t("agency.planChip"), { plan: planDisplayName(c.planId, t) })}
           </span>
-          {c.trialEndsAt && c.planId === "trial" && (
+          {c.trialEndsAt && c.planId === "trial" && c.trialUrgency === "none" && (
             <span className="text-xs text-muted-foreground">
               {formatMessage(t("agency.trialEnds"), {
                 date: new Date(c.trialEndsAt).toLocaleDateString(),
@@ -299,6 +313,14 @@ export default function AgencyPage() {
             </span>
           )}
         </div>
+
+        <AgencyClientLifecycleChips
+          lifecycle={{
+            ownerStatus: c.ownerStatus,
+            trialUrgency: c.trialUrgency,
+            isPaid: c.isPaid,
+          }}
+        />
 
         {c.whatsappConnected && (
           <div className="mt-3">
@@ -514,6 +536,8 @@ export default function AgencyPage() {
             </p>
           </div>
 
+          <AgencyBillingExplainer />
+
           <div className="mb-6 rounded-2xl border border-border bg-background px-4 py-3.5 sm:px-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
@@ -719,6 +743,40 @@ export default function AgencyPage() {
           onOpenChange={(open) => {
             if (!open) setConnectClient(null);
           }}
+        />
+      )}
+
+      {renameClient && (
+        <AgencyClientRenameDialog
+          clientName={renameClient.displayName}
+          open={!!renameClient}
+          loading={renameMutation.isPending}
+          onOpenChange={(open) => {
+            if (!open) setRenameClient(null);
+          }}
+          onConfirm={(displayName) =>
+            renameMutation.mutate({
+              organizationId: renameClient.organizationId,
+              displayName,
+            })
+          }
+        />
+      )}
+
+      {inviteClient && (
+        <AgencyClientInviteDialog
+          clientName={inviteClient.displayName}
+          open={!!inviteClient}
+          loading={inviteMutation.isPending}
+          onOpenChange={(open) => {
+            if (!open) setInviteClient(null);
+          }}
+          onConfirm={(email) =>
+            inviteMutation.mutate({
+              organizationId: inviteClient.organizationId,
+              email,
+            })
+          }
         />
       )}
     </div>

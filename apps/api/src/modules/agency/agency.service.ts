@@ -16,6 +16,13 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmbeddedSignupService } from "../whatsapp-accounts/embedded-signup.service";
 import { WhatsappAccountsService } from "../whatsapp-accounts/whatsapp-accounts.service";
 import { ServerCacheService } from "../server-cache/server-cache.service";
+import {
+  isPaidSubscription,
+  resolveOwnerStatus,
+  resolveTrialUrgency,
+  type AgencyClientOwnerStatus,
+  type AgencyClientTrialUrgency,
+} from "./agency-client-lifecycle";
 
 export interface AgencyClientRow {
   id: string;
@@ -36,6 +43,9 @@ export interface AgencyClientRow {
   planId: string;
   subscriptionStatus: string;
   trialEndsAt: string | null;
+  ownerStatus: AgencyClientOwnerStatus;
+  trialUrgency: AgencyClientTrialUrgency;
+  isPaid: boolean;
 }
 
 @Injectable()
@@ -129,6 +139,8 @@ export class AgencyService {
       handoffGroups,
       pipelineGroups,
       openLeadGroups,
+      ownerMemberGroups,
+      pendingOwnerInvites,
       waSummaries,
     ] = await Promise.all([
       this.prisma.whatsappAccount.groupBy({
@@ -163,6 +175,19 @@ export class AgencyService {
         where: { organizationId: { in: orgIds }, stage: { notIn: ["WON", "LOST"] } },
         _count: { _all: true },
       }),
+      this.prisma.organizationMember.findMany({
+        where: { organizationId: { in: orgIds }, role: "OWNER" },
+        select: { organizationId: true },
+      }),
+      this.prisma.organizationInvite.findMany({
+        where: {
+          organizationId: { in: orgIds },
+          role: "OWNER",
+          acceptedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { organizationId: true },
+      }),
       Promise.all(
         orgIds.map(async (orgId) => ({
           orgId,
@@ -180,16 +205,21 @@ export class AgencyService {
       pipelineGroups.map((g) => [g.organizationId, g._sum.valueCents ?? 0]),
     );
     const openLeadByOrg = new Map(openLeadGroups.map((g) => [g.organizationId, g._count._all]));
+    const hasOwnerByOrg = new Set(ownerMemberGroups.map((m) => m.organizationId));
+    const pendingOwnerInviteByOrg = new Set(pendingOwnerInvites.map((i) => i.organizationId));
     const waSummaryByOrg = new Map(waSummaries.map((s) => [s.orgId, s.summary]));
 
     return links.map((link) => {
       const orgId = link.clientOrganizationId;
       const waSummary = waSummaryByOrg.get(orgId)!;
       const sub = link.client.subscription;
-      const trialEndsAt =
+      const trialEndsAtDate =
         sub?.planId === "trial" && sub.createdAt
-          ? new Date(sub.createdAt.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString()
+          ? new Date(sub.createdAt.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
           : null;
+      const trialEndsAt = trialEndsAtDate?.toISOString() ?? null;
+      const planId = sub?.planId ?? "trial";
+      const subscriptionStatus = sub?.status ?? "TRIALING";
 
       return {
         id: link.id,
@@ -206,9 +236,15 @@ export class AgencyService {
         goLiveProgressPct: waSummary.goLiveProgressPct,
         displayPhoneNumber: waSummary.displayPhoneNumber,
         needsReconnect: waSummary.tokenNeedsRefresh || waSummary.connectionStatus === "token",
-        planId: sub?.planId ?? "trial",
-        subscriptionStatus: sub?.status ?? "TRIALING",
+        planId,
+        subscriptionStatus,
         trialEndsAt,
+        ownerStatus: resolveOwnerStatus(
+          hasOwnerByOrg.has(orgId),
+          pendingOwnerInviteByOrg.has(orgId),
+        ),
+        trialUrgency: resolveTrialUrgency(planId, trialEndsAtDate),
+        isPaid: isPaidSubscription(planId, subscriptionStatus),
       };
     });
   }
