@@ -8,6 +8,10 @@ import type {
 import {
   buildRetrievalResult,
   computeGapRiskScore,
+  handbookDocumentSourceUrl,
+  isCustomIndustryId,
+  isIndustryHandbookId,
+  KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK,
   matchQuickAnswers,
   rankKnowledgeHits,
   resolveRetrievalCategories,
@@ -38,6 +42,12 @@ export interface RetrieveKnowledgeInput {
 
 const CHUNK_CACHE_TTL_MS = 60_000;
 const MAX_RETRIEVAL_QUERIES = 3;
+const INDUSTRY_POLICY_CACHE_TTL_MS = 60_000;
+
+interface IndustryKnowledgePolicy {
+  excludeAllHandbook: boolean;
+  allowedHandbookSourceUrl?: string;
+}
 
 /** Defensively count stored Quick Answers from an org's settings JSON. */
 function countQuickAnswers(settings: unknown): number {
@@ -87,6 +97,12 @@ export function buildRetrievalQueries(
 @Injectable()
 export class KnowledgeRetrievalService {
   private readonly chunkCountCache = new Map<string, { count: number; at: number }>();
+  private readonly industryPolicyCache = new Map<
+    string,
+    { policy: IndustryKnowledgePolicy; at: number }
+  >();
+  /** One lazy purge per process for custom workspaces with stale handbook docs. */
+  private readonly purgedHandbookOrgs = new Set<string>();
 
   constructor(
     private readonly embed: KnowledgeEmbedService,
@@ -95,6 +111,75 @@ export class KnowledgeRetrievalService {
 
   invalidateChunkCountCache(organizationId: string): void {
     this.chunkCountCache.delete(organizationId);
+    this.industryPolicyCache.delete(organizationId);
+    this.purgedHandbookOrgs.delete(organizationId);
+  }
+
+  private async resolveIndustryKnowledgePolicy(
+    organizationId: string,
+  ): Promise<IndustryKnowledgePolicy> {
+    const cached = this.industryPolicyCache.get(organizationId);
+    if (cached && Date.now() - cached.at < INDUSTRY_POLICY_CACHE_TTL_MS) {
+      return cached.policy;
+    }
+
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true },
+    });
+    const intelligence = (org?.settings as Record<string, unknown> | null)?.intelligence;
+    const industryId =
+      intelligence && typeof intelligence === "object"
+        ? (intelligence as Record<string, unknown>).industryId
+        : undefined;
+
+    let policy: IndustryKnowledgePolicy;
+    if (typeof industryId === "string" && isIndustryHandbookId(industryId)) {
+      policy = {
+        excludeAllHandbook: false,
+        allowedHandbookSourceUrl: handbookDocumentSourceUrl(industryId),
+      };
+    } else {
+      policy = { excludeAllHandbook: true };
+    }
+
+    this.industryPolicyCache.set(organizationId, { policy, at: Date.now() });
+    return policy;
+  }
+
+  private async filterHitsByIndustryPolicy(
+    hits: KnowledgeHit[],
+    policy: IndustryKnowledgePolicy,
+  ): Promise<KnowledgeHit[]> {
+    if (hits.length === 0) return hits;
+
+    const docIds = [...new Set(hits.map((h) => h.documentId))];
+    const docs = await this.prisma.knowledgeDocument.findMany({
+      where: { id: { in: docIds } },
+      select: { id: true, sourceType: true, sourceUrl: true },
+    });
+    const docMap = new Map(docs.map((d) => [d.id, d]));
+
+    return hits.filter((h) => {
+      const doc = docMap.get(h.documentId);
+      if (!doc || doc.sourceType !== KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK) return true;
+      if (policy.excludeAllHandbook) return false;
+      return doc.sourceUrl === policy.allowedHandbookSourceUrl;
+    });
+  }
+
+  private async maybePurgeStaleHandbookDocs(
+    organizationId: string,
+    policy: IndustryKnowledgePolicy,
+  ): Promise<void> {
+    if (!policy.excludeAllHandbook || this.purgedHandbookOrgs.has(organizationId)) return;
+    this.purgedHandbookOrgs.add(organizationId);
+    const result = await this.prisma.knowledgeDocument.deleteMany({
+      where: { organizationId, sourceType: KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK },
+    });
+    if (result.count > 0) {
+      this.invalidateChunkCountCache(organizationId);
+    }
   }
 
   async hasIndexedChunks(organizationId: string): Promise<boolean> {
@@ -116,6 +201,9 @@ export class KnowledgeRetrievalService {
   }
 
   async retrieveDetailed(input: RetrieveKnowledgeInput): Promise<RetrievalResult> {
+    const industryPolicy = await this.resolveIndustryKnowledgePolicy(input.organizationId);
+    await this.maybePurgeStaleHandbookDocs(input.organizationId, industryPolicy);
+
     const categoriesUsed =
       input.categories ?? resolveRetrievalCategories(input.intentKind);
     const hasChunks = await this.hasIndexedChunks(input.organizationId);
@@ -227,7 +315,8 @@ export class KnowledgeRetrievalService {
       }));
 
     // Curated quick answers first (authoritative), then fill with embedding hits.
-    const hits = [...quickHits, ...embeddingHits].slice(0, limit + quickHits.length);
+    const mergedHits = [...quickHits, ...embeddingHits].slice(0, limit + quickHits.length);
+    const hits = await this.filterHitsByIndustryPolicy(mergedHits, industryPolicy);
 
     return buildRetrievalResult({
       hits,
@@ -257,12 +346,29 @@ export class KnowledgeRetrievalService {
   }
 
   async fallbackDocuments(organizationId: string, limit = 3) {
-    return this.prisma.knowledgeDocument.findMany({
-      where: { organizationId, status: { in: ["active", "indexed"] } },
+    const industryPolicy = await this.resolveIndustryKnowledgePolicy(organizationId);
+    const docs = await this.prisma.knowledgeDocument.findMany({
+      where: {
+        organizationId,
+        status: { in: ["active", "indexed"] },
+        ...(industryPolicy.excludeAllHandbook
+          ? { NOT: { sourceType: KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK } }
+          : {}),
+      },
       orderBy: { updatedAt: "desc" },
-      take: limit,
-      select: { id: true, title: true, rawContent: true, category: true },
+      take: limit * 3,
+      select: { id: true, title: true, rawContent: true, category: true, sourceType: true, sourceUrl: true },
     });
+
+    const filtered = industryPolicy.excludeAllHandbook
+      ? docs.filter((d) => d.sourceType !== KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK)
+      : docs.filter(
+          (d) =>
+            d.sourceType !== KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK ||
+            d.sourceUrl === industryPolicy.allowedHandbookSourceUrl,
+        );
+
+    return filtered.slice(0, limit).map(({ sourceType: _s, sourceUrl: _u, ...rest }) => rest);
   }
 
   async getHealth(organizationId: string): Promise<KnowledgeHealthSummary> {

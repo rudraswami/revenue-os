@@ -56,6 +56,23 @@ describe("knowledge-retrieval", () => {
     ).toEqual([]);
   });
 
+  it("does not flag pricing gap for bare plan amounts without ₹", () => {
+    expect(
+      detectMissingTopics({
+        intentKind: "pricing",
+        lastInbound: "Solo plan price?",
+        hits: [
+          hit({
+            category: "pricing",
+            similarity: 0.7,
+            content: "Solo Plan: 999\nTeam Plan: 2599",
+          }),
+        ],
+        hasIndexedChunks: true,
+      }),
+    ).toEqual([]);
+  });
+
   it("matches common cost typos on inbound for general intent", () => {
     expect(
       detectMissingTopics({

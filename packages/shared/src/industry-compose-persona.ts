@@ -135,7 +135,9 @@ export function resolveIndustryComposePersona(
   const handbookId =
     input.industryId && isIndustryHandbookId(input.industryId)
       ? input.industryId
-      : inferIndustryIdFromProfile(input.profile);
+      : isCustomIndustryId(input.industryId ?? "")
+        ? undefined
+        : inferIndustryIdFromProfile(input.profile);
 
   const handbookPersona = handbookId
     ? personaFromHandbook(handbookId, businessName)

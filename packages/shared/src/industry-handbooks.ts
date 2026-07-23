@@ -372,3 +372,67 @@ export function mergeIndustryHandbookProfile(
     },
   };
 }
+
+export const KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK = "industry_handbook";
+
+/** Stable sourceUrl tag for handbook seed documents — used for RAG filtering. */
+export function handbookDocumentSourceUrl(industryId: IndustryHandbookId): string {
+  return `handbook:${industryId}`;
+}
+
+export function parseHandbookDocumentSourceUrl(
+  sourceUrl: string | null | undefined,
+): IndustryHandbookId | null {
+  if (!sourceUrl?.startsWith("handbook:")) return null;
+  const id = sourceUrl.slice("handbook:".length);
+  return isIndustryHandbookId(id) ? id : null;
+}
+
+/**
+ * Reset handbook-derived Employee Handbook fields when switching to custom/other.
+ * Preserves user-authored composePersona, quickAnswers, and business facts.
+ */
+export function resetHandbookDerivedProfile(
+  businessName: string,
+  current: BusinessEmployeeProfile,
+): BusinessEmployeeProfile {
+  const defaults = base(businessName);
+  return {
+    ...current,
+    escalation: { ...defaults.escalation },
+    acknowledgments: { ...defaults.acknowledgments },
+    greetingVariants: {
+      firstContact: [...defaults.greetingVariants.firstContact],
+      returning: [...defaults.greetingVariants.returning],
+    },
+    courtesyTemplates: {
+      thanks: [...defaults.courtesyTemplates.thanks],
+      checking: defaults.courtesyTemplates.checking,
+    },
+  };
+}
+
+const HANDBOOK_ESCALATION_CONTACTS = new Set(
+  Object.keys({
+    "clinic reception": "clinic",
+    "admissions counsellor": "coaching",
+    "design coordinator": "interior_design",
+    "sales executive": "real_estate",
+    "restaurant manager": "restaurant",
+    "front desk": "salon",
+  } satisfies Record<string, IndustryHandbookId>),
+);
+
+/** True when Employee Handbook fields still carry a prior vertical template. */
+export function profileHasHandbookPollution(profile: BusinessEmployeeProfile): boolean {
+  const thanksText = (profile.courtesyTemplates?.thanks ?? []).join(" ");
+  if (/doctor|patient|appointments or reports|medical advice/i.test(thanksText)) {
+    return true;
+  }
+  const sensitive = profile.acknowledgments?.sensitive_topic ?? "";
+  if (/medical advice|reception team will get back/i.test(sensitive)) {
+    return true;
+  }
+  const contact = profile.escalation?.contactName?.trim().toLowerCase();
+  return Boolean(contact && HANDBOOK_ESCALATION_CONTACTS.has(contact));
+}

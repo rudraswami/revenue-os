@@ -38,6 +38,7 @@ import { withTimeout } from "../../common/utils/with-timeout";
 import { JobsService } from "../jobs/jobs.service";
 import { LearningSignalService } from "../intelligence/learning-signal.service";
 import { QueryRewriteService } from "../knowledge/query-rewrite.service";
+import { OrganizationsService } from "../organizations/organizations.service";
 
 export interface ClassifyJobData {
   organizationId: string;
@@ -104,6 +105,7 @@ export class AiClassifyService {
     private readonly jobs: JobsService,
     private readonly queryRewrite: QueryRewriteService,
     private readonly learningSignals: LearningSignalService,
+    private readonly organizations: OrganizationsService,
     @InjectQueue(QUEUES.AI_CLASSIFY) private readonly classifyQueue: Queue,
   ) {}
 
@@ -387,6 +389,7 @@ export class AiClassifyService {
 
     try {
       await this.entitlements.assertHasAccess(data.organizationId);
+      await this.organizations.repairCustomIndustryWorkspaceIfNeeded(data.organizationId);
 
       const apiKey = this.config.get<string>("OPENAI_API_KEY");
       if (!apiKey) {

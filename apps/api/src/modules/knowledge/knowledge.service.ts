@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import type { JwtPayload, KnowledgeCategory } from "@growvisi/shared";
-import { DOMAIN_EVENTS, JOB_TYPES, QUEUES } from "@growvisi/shared";
+import { DOMAIN_EVENTS, JOB_TYPES, KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK, QUEUES, normalizeInrPricingInContent } from "@growvisi/shared";
 import { EntitlementsService } from "../billing/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { BusinessEventService } from "../events/business-event.service";
@@ -11,6 +11,15 @@ import { KnowledgeRetrievalService } from "./knowledge-retrieval.service";
 import { useBackgroundWorkers } from "../../config/workers";
 import { withTimeout } from "../../common/utils/with-timeout";
 import { JobsService } from "../jobs/jobs.service";
+
+function prepareKnowledgeContent(content: string, category?: string): string {
+  const trimmed = content.trim();
+  if (!trimmed) return trimmed;
+  if (category === "pricing" || /\bplan\b/i.test(trimmed)) {
+    return normalizeInrPricingInContent(trimmed);
+  }
+  return trimmed;
+}
 
 @Injectable()
 export class KnowledgeService {
@@ -64,11 +73,12 @@ export class KnowledgeService {
     options?: { sourceType?: string; sourceUrl?: string | null },
   ) {
     await this.entitlements.assertHasAccess(user.organizationId);
+    const prepared = prepareKnowledgeContent(content, category);
     const doc = await this.prisma.knowledgeDocument.create({
       data: {
         organizationId: user.organizationId,
         title: title.trim(),
-        rawContent: content.trim(),
+        rawContent: prepared,
         category,
         sourceType: options?.sourceType ?? "manual",
         sourceUrl: options?.sourceUrl ?? null,
@@ -117,11 +127,17 @@ export class KnowledgeService {
     });
     if (!existing) throw new NotFoundException("Document not found");
 
+    const category = patch.category ?? existing.category;
+    const prepared =
+      patch.content !== undefined
+        ? prepareKnowledgeContent(patch.content, category)
+        : undefined;
+
     const doc = await this.prisma.knowledgeDocument.update({
       where: { id },
       data: {
         title: patch.title?.trim() ?? undefined,
-        rawContent: patch.content?.trim() ?? undefined,
+        rawContent: prepared,
         category: patch.category ?? undefined,
         status: "pending",
       },
@@ -214,6 +230,58 @@ export class KnowledgeService {
   async health(user: JwtPayload) {
     await this.entitlements.assertHasAccess(user.organizationId);
     return this.retrieval.getHealth(user.organizationId);
+  }
+
+  /**
+   * Remove all industry handbook seed documents for a workspace.
+   * Called when switching to custom/other or before applying a new handbook.
+   */
+  async purgeIndustryHandbookDocuments(organizationId: string): Promise<number> {
+    const result = await this.prisma.knowledgeDocument.deleteMany({
+      where: { organizationId, sourceType: KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK },
+    });
+    if (result.count > 0) {
+      this.retrieval.invalidateChunkCountCache(organizationId);
+    }
+    return result.count;
+  }
+
+  /**
+   * Re-apply INR normalization on pricing docs and re-embed so gap detection
+   * and compose grounding see ₹ amounts (fixes crawls like "Solo Plan: 999").
+   */
+  async renormalizePricingDocuments(organizationId: string): Promise<number> {
+    const docs = await this.prisma.knowledgeDocument.findMany({
+      where: {
+        organizationId,
+        OR: [
+          { category: "pricing" },
+          { title: { contains: "pricing", mode: "insensitive" } },
+          { title: { contains: "plan", mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, rawContent: true, category: true, title: true },
+    });
+
+    let updated = 0;
+    for (const doc of docs) {
+      const raw = doc.rawContent ?? "";
+      if (!raw.trim()) continue;
+      const normalized = prepareKnowledgeContent(raw, doc.category);
+      if (normalized === raw) continue;
+
+      await this.prisma.knowledgeDocument.update({
+        where: { id: doc.id },
+        data: { rawContent: normalized, status: "pending" },
+      });
+      await this.scheduleEmbed(doc.id, organizationId);
+      updated += 1;
+    }
+
+    if (updated > 0) {
+      this.retrieval.invalidateChunkCountCache(organizationId);
+    }
+    return updated;
   }
 
   /**

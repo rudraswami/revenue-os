@@ -1,4 +1,5 @@
 import type { KnowledgeCategory, KnowledgeHit } from "./intelligence";
+import { corpusHasPricingSignals } from "./knowledge-pricing";
 
 /** Intent kinds used to route knowledge category filters. */
 export type RetrievalIntentKind =
@@ -80,10 +81,6 @@ function hasCategory(hits: KnowledgeHit[], category: KnowledgeCategory): boolean
 
 function corpusMatches(text: string, pattern: RegExp): boolean {
   return pattern.test(text);
-}
-
-function corpusHasPricingSignals(corpus: string): boolean {
-  return /₹|rs\.?\s*\d|\d+\s*\/\s*mo|per month|\/month|rate card/i.test(corpus);
 }
 
 /** Topic-aware gap detection — intent-first; defers keyword checks when KB already grounds pricing. */

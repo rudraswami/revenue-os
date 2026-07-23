@@ -7,7 +7,12 @@ import {
   listIndustryHandbooks,
   listIndustryHandbookOptions,
   mergeIndustryHandbookProfile,
+  resetHandbookDerivedProfile,
+  profileHasHandbookPollution,
+  handbookDocumentSourceUrl,
+  parseHandbookDocumentSourceUrl,
 } from "./industry-handbooks";
+import { defaultBusinessEmployeeProfile } from "./intelligence";
 
 describe("industry-handbooks", () => {
   it("lists all industries", () => {
@@ -41,5 +46,24 @@ describe("industry-handbooks", () => {
       expect(handbook.composePersona.identity).toContain("{businessName}");
       expect(handbook.composePersona.guardrails.length).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it("tags handbook documents with stable sourceUrl", () => {
+    expect(handbookDocumentSourceUrl("clinic")).toBe("handbook:clinic");
+    expect(parseHandbookDocumentSourceUrl("handbook:salon")).toBe("salon");
+    expect(parseHandbookDocumentSourceUrl(null)).toBeNull();
+  });
+
+  it("resets handbook-derived profile fields for custom industry", () => {
+    const polluted = mergeIndustryHandbookProfile("Acme", "clinic");
+    const clean = resetHandbookDerivedProfile("Acme", polluted);
+    expect(clean.courtesyTemplates.thanks[0]).not.toContain("doctor");
+    expect(clean.escalation.contactName).toBe("our team");
+  });
+
+  it("detects handbook pollution on custom workspaces", () => {
+    const polluted = mergeIndustryHandbookProfile("Acme", "coaching");
+    expect(profileHasHandbookPollution(polluted)).toBe(true);
+    expect(profileHasHandbookPollution(defaultBusinessEmployeeProfile("Acme"))).toBe(false);
   });
 });

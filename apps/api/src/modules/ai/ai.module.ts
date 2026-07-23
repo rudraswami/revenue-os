@@ -8,6 +8,7 @@ import { WebhooksModule } from "../webhooks/webhooks.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { IntelligenceModule } from "../intelligence/intelligence.module";
 import { KnowledgeModule } from "../knowledge/knowledge.module";
+import { OrganizationsModule } from "../organizations/organizations.module";
 import { AiClassifyService } from "./ai-classify.service";
 import { AiClassifyProcessor } from "./processors/ai-classify.processor";
 import { useBackgroundWorkers } from "../../config/workers";
@@ -22,6 +23,7 @@ const registerProcessors = useBackgroundWorkers();
     WebhooksModule,
     IntelligenceModule,
     KnowledgeModule,
+    OrganizationsModule,
     AutomationsModule,
     BillingModule,
   ],

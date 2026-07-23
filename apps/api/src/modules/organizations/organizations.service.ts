@@ -13,9 +13,13 @@ import {
   CUSTOM_INDUSTRY_ID,
   getDefaultCustomComposePersona,
   getIndustryHandbook,
+  handbookDocumentSourceUrl,
   isWorkspaceIndustryId,
+  KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK,
   listIndustryHandbookOptions,
   mergeIndustryHandbookProfile,
+  resetHandbookDerivedProfile,
+  profileHasHandbookPollution,
 } from "@growvisi/shared";
 import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics, buildPostActivationCoaching } from "@growvisi/shared";
 import { AuthService } from "../auth/auth.service";
@@ -84,6 +88,8 @@ function normalizeTemplates(raw: unknown): ReplyTemplate[] {
 
 @Injectable()
 export class OrganizationsService {
+  private readonly customRepairChecked = new Set<string>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
@@ -140,6 +146,8 @@ export class OrganizationsService {
   }
 
   async getIntelligenceSettings(user: JwtPayload) {
+    await this.repairCustomIndustryWorkspaceIfNeeded(user.organizationId);
+
     const org = await this.prisma.organization.findUnique({
       where: { id: user.organizationId },
       select: { settings: true, name: true },
@@ -147,6 +155,86 @@ export class OrganizationsService {
     if (!org) throw new NotFoundException("Organization not found");
     const settings = (org.settings ?? {}) as Record<string, unknown>;
     return resolveIntelligenceSettings(settings, org.name);
+  }
+
+  /**
+   * One-time repair for custom/B2B workspaces polluted by prior handbook testing:
+   * stale courtesy templates, wrong escalation role, and indexed handbook seed docs.
+   */
+  async repairCustomIndustryWorkspaceIfNeeded(organizationId: string): Promise<{
+    profileRepaired: boolean;
+    handbookDocsPurged: number;
+    pricingDocsRenormalized: number;
+  }> {
+    if (this.customRepairChecked.has(organizationId)) {
+      return { profileRepaired: false, handbookDocsPurged: 0, pricingDocsRenormalized: 0 };
+    }
+    this.customRepairChecked.add(organizationId);
+    return this.repairCustomIndustryWorkspace(organizationId);
+  }
+
+  async repairCustomIndustryWorkspace(organizationId: string): Promise<{
+    profileRepaired: boolean;
+    handbookDocsPurged: number;
+    pricingDocsRenormalized: number;
+  }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true, name: true },
+    });
+    if (!org) {
+      return { profileRepaired: false, handbookDocsPurged: 0, pricingDocsRenormalized: 0 };
+    }
+
+    const settings = (org.settings ?? {}) as Record<string, unknown>;
+    const current = resolveIntelligenceSettings(settings, org.name);
+    if (current.industryId !== CUSTOM_INDUSTRY_ID) {
+      return { profileRepaired: false, handbookDocsPurged: 0, pricingDocsRenormalized: 0 };
+    }
+
+    const handbookDocsPurged = await this.knowledge.purgeIndustryHandbookDocuments(
+      organizationId,
+    );
+    const pricingDocsRenormalized =
+      await this.knowledge.renormalizePricingDocuments(organizationId);
+
+    const profilePolluted =
+      current.businessProfile &&
+      profileHasHandbookPollution(current.businessProfile);
+
+    if (!profilePolluted && handbookDocsPurged === 0 && pricingDocsRenormalized === 0) {
+      return { profileRepaired: false, handbookDocsPurged, pricingDocsRenormalized };
+    }
+
+    let profileRepaired = false;
+    if (profilePolluted && current.businessProfile) {
+      const resetProfile = resetHandbookDerivedProfile(org.name, current.businessProfile);
+      const next = resolveIntelligenceSettings(
+        {
+          intelligence: {
+            ...current,
+            businessProfile: resetProfile,
+          },
+        },
+        org.name,
+      );
+      await this.prisma.organization.update({
+        where: { id: organizationId },
+        data: {
+          settings: {
+            ...settings,
+            intelligence: next,
+          } as object,
+        },
+      });
+      profileRepaired = true;
+    }
+
+    if (handbookDocsPurged > 0 || pricingDocsRenormalized > 0) {
+      this.knowledgeRetrieval.invalidateChunkCountCache(organizationId);
+    }
+
+    return { profileRepaired, handbookDocsPurged, pricingDocsRenormalized };
   }
 
   async updateIntelligenceSettings(
@@ -283,12 +371,16 @@ export class OrganizationsService {
     const current = resolveIntelligenceSettings(settings, org.name);
 
     if (industryId === CUSTOM_INDUSTRY_ID) {
+      const resetProfile = resetHandbookDerivedProfile(
+        org.name,
+        current.businessProfile!,
+      );
       const businessProfile = {
-        ...current.businessProfile!,
+        ...resetProfile,
         composePersona:
           current.businessProfile?.composePersona?.identity?.trim()
             ? current.businessProfile.composePersona
-            : getDefaultCustomComposePersona(org.name),
+            : getDefaultCustomComposePersona(org.name, current.customIndustryLabel),
       };
 
       const next = resolveIntelligenceSettings(
@@ -300,6 +392,10 @@ export class OrganizationsService {
           },
         },
         org.name,
+      );
+
+      const purgedDocs = await this.knowledge.purgeIndustryHandbookDocuments(
+        user.organizationId,
       );
 
       await this.prisma.organization.update({
@@ -316,8 +412,11 @@ export class OrganizationsService {
         intelligence: next,
         industryId: CUSTOM_INDUSTRY_ID,
         knowledgeDocsCreated: 0,
+        knowledgeDocsPurged: purgedDocs,
         message:
-          "Set up your custom business persona below — describe how your AI should sound and what rules it must follow.",
+          purgedDocs > 0
+            ? `Custom industry saved. Removed ${purgedDocs} outdated industry template doc(s) from Business Knowledge.`
+            : "Set up your custom business persona below — describe how your AI should sound and what rules it must follow.",
       };
     }
 
@@ -352,22 +451,20 @@ export class OrganizationsService {
       },
     });
 
+    const purgedDocs = await this.knowledge.purgeIndustryHandbookDocuments(
+      user.organizationId,
+    );
+
     let knowledgeDocsCreated = 0;
     if (opts?.seedKnowledge !== false) {
       for (const seed of handbook.knowledgeSeeds) {
-        const existing = await this.prisma.knowledgeDocument.findFirst({
-          where: {
-            organizationId: user.organizationId,
-            title: seed.title,
-          },
-        });
-        if (existing) continue;
         const doc = await this.prisma.knowledgeDocument.create({
           data: {
             organizationId: user.organizationId,
             title: seed.title,
             category: seed.category,
-            sourceType: "industry_handbook",
+            sourceType: KNOWLEDGE_SOURCE_INDUSTRY_HANDBOOK,
+            sourceUrl: handbookDocumentSourceUrl(industryId),
             rawContent: seed.content,
             status: "pending",
           },
@@ -375,7 +472,7 @@ export class OrganizationsService {
         await this.knowledge.scheduleDocumentEmbed(doc.id, user.organizationId);
         knowledgeDocsCreated += 1;
       }
-      if (knowledgeDocsCreated > 0) {
+      if (knowledgeDocsCreated > 0 || purgedDocs > 0) {
         this.knowledgeRetrieval.invalidateChunkCountCache(user.organizationId);
       }
     }
@@ -384,9 +481,12 @@ export class OrganizationsService {
       intelligence: next,
       industryId,
       knowledgeDocsCreated,
+      knowledgeDocsPurged: purgedDocs,
       message:
         knowledgeDocsCreated > 0
-          ? `Applied ${handbook.label} handbook. ${knowledgeDocsCreated} knowledge doc(s) queued for indexing.`
+          ? `Applied ${handbook.label} handbook. ${knowledgeDocsCreated} knowledge doc(s) queued for indexing.${
+              purgedDocs > 0 ? ` Removed ${purgedDocs} outdated template doc(s).` : ""
+            }`
           : `Applied ${handbook.label} employee handbook.`,
     };
   }
