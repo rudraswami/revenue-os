@@ -60,11 +60,15 @@ export class InternalCronController {
     return this.digest.runDailyDigestJob();
   }
 
-  /** Vercel Cron: send WhatsApp campaigns scheduled for now or earlier. */
+  /** Vercel Cron: send due scheduled campaigns and recover stuck RUNNING sends. */
   @Get("scheduled-campaigns")
   @UseGuards(CronSecretGuard)
-  runScheduledCampaigns() {
-    return this.campaigns.processDueScheduledCampaigns();
+  async runScheduledCampaigns() {
+    const [scheduled, recovery] = await Promise.all([
+      this.campaigns.processDueScheduledCampaigns(),
+      this.campaigns.recoverStuckRunningCampaigns(),
+    ]);
+    return { scheduled, recovery };
   }
 
   /** Weekly purge of processed webhook events and completed AI runs (90d TTL). */

@@ -20,6 +20,14 @@ import {
   loadOptedOutPhones,
   recipientStatusForOptOut,
 } from "./campaign-recipient-opt-out";
+import {
+  CAMPAIGN_RECOVERY_KICK_DEBOUNCE_MS,
+  isCampaignSendStuck,
+  isCampaignSendStalled,
+  shouldChainCampaignSendInvocation,
+  STUCK_CAMPAIGN_RECOVERY_AFTER_MS,
+  useVercelWaitUntilCampaignSend,
+} from "./campaign-send-runtime";
 
 const SEND_BATCH_SIZE = 25;
 const SEND_MESSAGE_DELAY_MS = 100;
@@ -28,6 +36,9 @@ const SEND_BATCH_PAUSE_MS = 250;
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/** Debounce stuck-send recovery kicks from progress polling (per warm instance). */
+const campaignRecoveryKickAt = new Map<string, number>();
 
 export interface AudienceFilter {
   stages?: LeadStage[];
@@ -285,6 +296,8 @@ export class CampaignsService {
     if (!campaign) throw new NotFoundException();
 
     const stats = await aggregateCampaignRecipientStats(this.prisma, id);
+    this.maybeRecoverStuckSend(user.organizationId, id, campaign, stats.pending);
+
     return {
       ...campaign,
       ...recipientStatsToProgress(campaign.totalRecipients, stats),
@@ -641,6 +654,40 @@ export class CampaignsService {
     return { processed: results.length, results };
   }
 
+  /**
+   * Re-kick RUNNING campaigns whose background send never started or stalled.
+   * Called from the scheduled-campaigns cron (daily) and progress polling.
+   */
+  async recoverStuckRunningCampaigns(limit = 10) {
+    const cutoff = new Date(Date.now() - STUCK_CAMPAIGN_RECOVERY_AFTER_MS);
+    const stuck = await this.prisma.campaign.findMany({
+      where: {
+        status: "RUNNING",
+        updatedAt: { lt: cutoff },
+      },
+      orderBy: { updatedAt: "asc" },
+      take: limit,
+      select: { id: true, organizationId: true, updatedAt: true },
+    });
+
+    const results: Array<{ id: string; pending: number }> = [];
+
+    for (const campaign of stuck) {
+      const pending = await this.prisma.campaignRecipient.count({
+        where: { campaignId: campaign.id, status: "PENDING" },
+      });
+      if (pending === 0) {
+        await this.finalizeCampaignIfDone(campaign.organizationId, campaign.id);
+        continue;
+      }
+      if (!isCampaignSendStalled(pending, campaign.updatedAt)) continue;
+      this.kickCampaignSend(campaign.organizationId, campaign.id, "cron-recovery");
+      results.push({ id: campaign.id, pending });
+    }
+
+    return { recovered: results.length, results };
+  }
+
   /** Claim RUNNING and enqueue background batched send. */
   async startSend(organizationId: string, id: string) {
     const campaign = await this.prisma.campaign.findFirst({
@@ -706,9 +753,15 @@ export class CampaignsService {
       }
     }
 
-    // Serverless with QStash: chunk into per-batch jobs so a large campaign
-    // never runs as one long `waitUntil` invocation. Each batch chains the
-    // next via `enqueueNextSendBatch`.
+    // Vercel: user-initiated sends use waitUntil (reliable, no QStash callback
+    // chain). Large sends chunk across multiple waitUntil invocations inside
+    // `runSendUntilDone`. QStash stays enabled for other job types.
+    if (useVercelWaitUntilCampaignSend()) {
+      deferBackgroundTask(run);
+      return;
+    }
+
+    // Non-Vercel serverless with QStash: per-batch durable jobs.
     if (this.jobs.durable) {
       await this.enqueueNextSendBatch(organizationId, campaignId);
       return;
@@ -786,9 +839,15 @@ export class CampaignsService {
   async runSendUntilDone(organizationId: string, campaignId: string) {
     try {
       let hasMore = true;
+      let batchesProcessed = 0;
       while (hasMore) {
         hasMore = !(await this.processSendBatch(organizationId, campaignId));
+        batchesProcessed += 1;
         if (hasMore) await sleep(SEND_BATCH_PAUSE_MS);
+        if (shouldChainCampaignSendInvocation(batchesProcessed, hasMore)) {
+          deferBackgroundTask(() => this.runSendUntilDone(organizationId, campaignId));
+          return;
+        }
       }
       await this.finalizeCampaignIfDone(organizationId, campaignId);
     } catch (err) {
@@ -921,6 +980,45 @@ export class CampaignsService {
         },
       });
     }
+  }
+
+  private kickCampaignSend(
+    organizationId: string,
+    campaignId: string,
+    reason: "cron-recovery" | "progress-poll",
+  ): void {
+    this.logger.warn(`Re-kicking campaign send ${campaignId} (${reason})`);
+    deferBackgroundTask(() => this.runSendUntilDone(organizationId, campaignId));
+  }
+
+  private maybeRecoverStuckSend(
+    organizationId: string,
+    campaignId: string,
+    campaign: {
+      status: string;
+      startedAt: Date | null;
+      sentCount: number;
+      failedCount: number;
+    },
+    pendingRecipients: number,
+  ): void {
+    if (campaign.status !== "RUNNING") return;
+    if (
+      !isCampaignSendStuck(
+        campaign.startedAt,
+        pendingRecipients,
+        campaign.sentCount,
+        campaign.failedCount,
+      )
+    ) {
+      return;
+    }
+
+    const lastKick = campaignRecoveryKickAt.get(campaignId) ?? 0;
+    if (Date.now() - lastKick < CAMPAIGN_RECOVERY_KICK_DEBOUNCE_MS) return;
+
+    campaignRecoveryKickAt.set(campaignId, Date.now());
+    this.kickCampaignSend(organizationId, campaignId, "progress-poll");
   }
 
   private async finalizeCampaignIfDone(organizationId: string, campaignId: string) {

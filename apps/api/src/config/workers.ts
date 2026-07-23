@@ -1,6 +1,6 @@
 /**
  * BullMQ processor registration — local/dev worker host only.
- * Vercel API: QStash durable jobs (JobsModule); Redis powers ServerCache only.
+ * Vercel API: campaign sends use waitUntil; QStash handles other durable jobs.
  */
 export type ProcessRole = "api" | "worker";
 
