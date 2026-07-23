@@ -43,10 +43,10 @@ export function QuickAnswersEditor({
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-foreground">Quick answers</p>
+          <p className="text-sm font-semibold text-foreground">AI quick answers</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Add your common questions and exact replies. Growvisi auto-answers
-            strong matches and drafts the rest — no document upload needed.
+            Exact Q&amp;A pairs Growvisi can auto-send when confident — separate from team shortcuts
+            in Settings and from uploaded knowledge docs.
           </p>
         </div>
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
@@ -57,8 +57,7 @@ export function QuickAnswersEditor({
       {value.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-center">
           <p className="text-sm text-muted-foreground">
-            No quick answers yet. Add your first FAQ or price so Growvisi can
-            answer it instantly.
+            No AI quick answers yet. Add a common question and the exact reply Growvisi should use.
           </p>
         </div>
       ) : (

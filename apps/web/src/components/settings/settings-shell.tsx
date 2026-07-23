@@ -27,7 +27,7 @@ import { WebsiteImportCard } from "@/components/settings/website-import-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { ProfileSettingsCard } from "@/components/settings/profile-settings-card";
 import { ReplyTemplatesCard } from "@/components/settings/reply-templates-card";
-import { IndustryTemplateCard } from "@/components/settings/industry-template-card";
+import { IndustryPersonaSettingsSection } from "@/components/settings/industry-persona-settings-section";
 import { IntelligenceTabHeader } from "@/components/settings/intelligence-tab-header";
 import { SettingsCollapsibleSection } from "@/components/settings/settings-collapsible-section";
 import { SettingsTabTransition } from "@/components/settings/settings-tab-transition";
@@ -202,17 +202,18 @@ function SettingsTabContent({
           </SettingsSection>
 
           <SettingsSection
-            title="Quick replies"
-            description="Shortcuts your team picks in Conversations."
+            title="Team reply shortcuts"
+            description="Saved snippets your team inserts in Conversations — not sent by AI automatically."
           >
             <ReplyTemplatesCard embedded />
           </SettingsSection>
 
           <SettingsCollapsibleSection
-            title="Industry starter"
-            description="Optional — seed sample docs for your sector."
+            id="industry-setup"
+            title="Industry & AI persona"
+            description="Optional sector starter docs and how Growvisi sounds for your business."
           >
-            <IndustryTemplateCard />
+            <IndustryPersonaSettingsSection />
           </SettingsCollapsibleSection>
         </div>
       );

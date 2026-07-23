@@ -46,9 +46,9 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
     onSuccess: (res) => {
       queryClient.setQueryData(["reply-templates"], res);
       setEditing(null);
-      success("Quick replies saved");
+      success("Team reply shortcuts saved");
     },
-    onError: (e) => toastError(toUserMessage(e, "Could not save quick replies.")),
+    onError: (e) => toastError(toUserMessage(e, "Could not save team reply shortcuts.")),
   });
 
   function updateTemplate(id: string, patch: Partial<ReplyTemplate>) {
@@ -76,9 +76,9 @@ export function ReplyTemplatesCard({ embedded = false }: { embedded?: boolean })
     <div className="space-y-3">
       {!embedded && (
         <div>
-          <p className="text-sm font-semibold">Quick reply templates</p>
+          <p className="text-sm font-semibold">Team reply shortcuts</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Saved per workspace — pick them in Conversations when replying.
+            Snippets your team picks in Conversations — not sent automatically by AI.
           </p>
         </div>
       )}

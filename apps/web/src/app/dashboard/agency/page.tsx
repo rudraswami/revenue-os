@@ -37,6 +37,7 @@ import {
 } from "@/components/dashboard/agency-connection-badge";
 import { AgencyClientConnectDialog } from "@/components/dashboard/agency-client-connect-dialog";
 import { AgencyClientRenameDialog } from "@/components/dashboard/agency-client-rename-dialog";
+import { AgencyClientInviteDialog } from "@/components/dashboard/agency-client-invite-dialog";
 import { AgencyClientRemoveDialog } from "@/components/dashboard/agency-client-remove-dialog";
 import { AgencyBillingExplainer } from "@/components/dashboard/agency-billing-explainer";
 import {
@@ -136,7 +137,7 @@ export default function AgencyPage() {
     enabled: !!token && !!status?.isAgency,
   });
 
-  const clients = health?.clients ?? [];
+  const clients = useMemo(() => health?.clients ?? [], [health?.clients]);
 
   useEffect(() => {
     if (statusLoading) return;

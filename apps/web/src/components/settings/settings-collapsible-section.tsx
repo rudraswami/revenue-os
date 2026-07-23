@@ -9,16 +9,21 @@ export function SettingsCollapsibleSection({
   description,
   children,
   defaultOpen = false,
+  id,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   defaultOpen?: boolean;
+  id?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border/80 bg-card elev-1">
+    <section
+      id={id}
+      className="overflow-hidden rounded-2xl border border-border/80 bg-card elev-1 scroll-mt-24"
+    >
       <button
         type="button"
         className="flex w-full items-start justify-between gap-3 px-5 py-4 text-left transition-colors duration-200 hover:bg-muted/20"

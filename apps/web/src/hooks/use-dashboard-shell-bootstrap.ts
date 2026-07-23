@@ -42,14 +42,16 @@ export function useDashboardShellBootstrap() {
     },
   });
 
+  const { isError, refetch } = query;
+
   // After proactive refresh replaces an expired JWT, recover from a failed bootstrap refetch.
   const lastRecoveryTokenRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!token || !query.isError) return;
+    if (!token || !isError) return;
     if (lastRecoveryTokenRef.current === token) return;
     lastRecoveryTokenRef.current = token;
-    void query.refetch();
-  }, [token, query.isError, query.refetch]);
+    void refetch();
+  }, [token, isError, refetch]);
 
   return query;
 }

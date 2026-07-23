@@ -518,7 +518,7 @@ export const messages = {
         },
         intelligence: {
           label: "AI & replies",
-          description: "Business knowledge and quick replies for your team.",
+          description: "What Growvisi knows — docs, business facts, team shortcuts, and industry setup.",
         },
         growth: {
           label: "Growth & attribution",
@@ -878,8 +878,8 @@ export const messages = {
       emojiSearchPlaceholder: "Search emoji",
       emojiNoResults: "No emoji found",
       emojiRecent: "Recent",
-      quickRepliesTitle: "Quick replies",
-      quickRepliesHint: "Workspace templates — tap to insert into your draft.",
+      quickRepliesTitle: "Team shortcuts",
+      quickRepliesHint: "Saved snippets — tap to insert into your draft (not sent by AI).",
       quickRepliesSearch: "Search templates…",
       quickRepliesEmpty: "No templates match.",
       quickRepliesMore: "More",
@@ -1528,7 +1528,7 @@ export const messages = {
         },
         intelligence: {
           label: "AI और रिप्लाई",
-          description: "बिज़नेस नॉलेज और टीम के लिए क्विक रिप्लाई।",
+          description: "Growvisi क्या जानता है — दस्तावेज़, बिज़नेस विवरण, टीम शॉर्टकट और इंडस्ट्री सेटअप।",
         },
         growth: {
           label: "ग्रोथ और एट्रिब्यूशन",
@@ -1887,8 +1887,8 @@ export const messages = {
       emojiSearchPlaceholder: "इमोजी खोजें",
       emojiNoResults: "कोई इमोजी नहीं मिली",
       emojiRecent: "हाल के",
-      quickRepliesTitle: "त्वरित जवाब",
-      quickRepliesHint: "वर्कस्पेस टेम्पलेट — ड्राफ्ट में डालने के लिए टैप करें।",
+      quickRepliesTitle: "टीम शॉर्टकट",
+      quickRepliesHint: "सेव किए गए स्निपेट — ड्राफ्ट में डालें (AI स्वचालित नहीं भेजता)।",
       quickRepliesSearch: "टेम्पलेट खोजें…",
       quickRepliesEmpty: "कोई टेम्पलेट नहीं मिला।",
       quickRepliesMore: "और",

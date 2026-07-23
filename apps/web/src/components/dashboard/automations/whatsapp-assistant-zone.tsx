@@ -25,8 +25,7 @@ import { AssistantTrustPanel } from "@/components/dashboard/automations/assistan
 import { AutonomyModeIcon } from "@/components/dashboard/automations/autonomy-mode-icons";
 import { ConversationPreview } from "@/components/dashboard/automations/conversation-preview";
 import { QuickAnswersEditor } from "@/components/dashboard/automations/quick-answers-editor";
-import { IndustryHandbookPicker } from "@/components/dashboard/industry-handbook-picker";
-import { AiPersonaEditor } from "@/components/dashboard/automations/ai-persona-editor";
+import { IntelligenceIndustrySetupLink } from "@/components/settings/intelligence-setup-link";
 import { KnowledgeSettingsLink } from "@/components/settings/knowledge-settings-link";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
@@ -567,7 +566,7 @@ export function WhatsAppAssistantZone() {
             <Settings2 className="h-4 w-4 text-muted-foreground" aria-hidden />
             <div>
               <p className="text-sm font-semibold text-foreground">Advanced</p>
-              <p className="text-xs text-muted-foreground">Industry templates, escalation &amp; close actions</p>
+              <p className="text-xs text-muted-foreground">Escalation, discounts &amp; close actions</p>
             </div>
           </div>
           <ChevronDown
@@ -577,20 +576,7 @@ export function WhatsAppAssistantZone() {
 
         {advancedOpen && draft ? (
           <div className="space-y-5 border-t border-border/60 px-5 pb-5 pt-4">
-            <IndustryHandbookPicker
-              canManage={canManage}
-              currentIndustryId={data?.industryId}
-              settings={data}
-              businessName={organization?.name ?? "your business"}
-              token={token}
-            />
-
-            <AiPersonaEditor
-              canManage={canManage}
-              token={token}
-              settings={data}
-              businessName={organization?.name ?? "our team"}
-            />
+            <IntelligenceIndustrySetupLink />
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1.5">
