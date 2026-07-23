@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Headers, Post, Req } from "@nestjs/common";
+import { BadRequestException, Controller, Get, Headers, Post, Req } from "@nestjs/common";
 import type { RawBodyRequest } from "@nestjs/common";
 import { SkipThrottle } from "@nestjs/throttler";
 import type { Request } from "express";
@@ -12,6 +12,16 @@ export class RazorpayWebhookController {
     private readonly billing: BillingService,
     private readonly razorpay: RazorpayService,
   ) {}
+
+  @Get()
+  health() {
+    return {
+      ok: true,
+      service: "growvisi-razorpay-webhook",
+      method: "POST",
+      note: "Razorpay delivers subscription events via POST with X-Razorpay-Signature.",
+    };
+  }
 
   @Post()
   async handle(

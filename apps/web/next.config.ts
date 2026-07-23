@@ -27,12 +27,19 @@ const facebookConnectHosts = [
   "https://*.fbcdn.net",
 ].join(" ");
 
+const razorpayHosts = [
+  "https://checkout.razorpay.com",
+  "https://api.razorpay.com",
+  "https://razorpay.com",
+].join(" ");
+
 const connectSrc = [
   "'self'",
   apiOrigin,
   wsOrigin,
   wsScheme,
   facebookConnectHosts,
+  razorpayHosts,
   isDev ? "http://localhost:4000 http://127.0.0.1:4000 ws://localhost:4000 ws://127.0.0.1:4000" : "",
 ]
   .filter(Boolean)
@@ -41,12 +48,12 @@ const connectSrc = [
 const csp = [
   "default-src 'self'",
   // Next.js injects inline bootstrap scripts; FB SDK is loaded from connect.facebook.net.
-  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""} https://connect.facebook.net`,
+  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""} https://connect.facebook.net https://checkout.razorpay.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   `connect-src ${connectSrc}`,
-  "frame-src 'self' https://www.facebook.com https://web.facebook.com https://business.facebook.com https://staticxx.facebook.com https://connect.facebook.net",
+  "frame-src 'self' https://www.facebook.com https://web.facebook.com https://business.facebook.com https://staticxx.facebook.com https://connect.facebook.net https://api.razorpay.com https://checkout.razorpay.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   // FB Login popup may POST back to facebook.com during OAuth handoff

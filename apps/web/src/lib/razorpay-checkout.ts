@@ -49,7 +49,7 @@ export async function openRazorpaySubscriptionCheckout(
     subscription_id: session.subscriptionId,
     name: "Growvisi",
     description: `${session.planName} — ₹${session.priceInr.toLocaleString("en-IN")}/mo`,
-    image: "https://www.growvisi.in/icon-192.png",
+    image: "https://www.growvisi.in/brand/growvisi-mark.png",
     prefill: {
       name: session.customerName?.trim() || undefined,
       email: session.customerEmail,
