@@ -76,6 +76,14 @@ export class RazorpayService implements OnModuleInit {
     return this.config.get<string>(plan.razorpayPlanEnvKey)?.trim() || null;
   }
 
+  getKeyId(): string | null {
+    return this.keyId() ?? null;
+  }
+
+  async fetchSubscription(subscriptionId: string): Promise<RazorpaySubscription> {
+    return this.request<RazorpaySubscription>("GET", `/subscriptions/${subscriptionId}`);
+  }
+
   async createSubscription(opts: {
     planId: GrowvisiPlanId;
     organizationId: string;
@@ -112,13 +120,13 @@ export class RazorpayService implements OnModuleInit {
     };
 
     const subscription = await this.request<RazorpaySubscription>("POST", "/subscriptions", body);
-    if (!subscription.short_url) {
-      throw new BadRequestException("Razorpay did not return a checkout URL.");
+    if (!subscription.id) {
+      throw new BadRequestException("Razorpay did not return a subscription id.");
     }
 
     return {
       subscriptionId: subscription.id,
-      checkoutUrl: subscription.short_url,
+      checkoutUrl: subscription.short_url ?? "",
       customerId,
     };
   }
@@ -130,6 +138,24 @@ export class RazorpayService implements OnModuleInit {
       `/subscriptions/${razorpaySubscriptionId}/cancel`,
       { cancel_at_cycle_end: 1 },
     );
+  }
+
+  /** Cancel immediately — used before replacing with a new checkout subscription. */
+  async cancelSubscriptionImmediately(razorpaySubscriptionId: string) {
+    return this.request<RazorpaySubscription>(
+      "POST",
+      `/subscriptions/${razorpaySubscriptionId}/cancel`,
+      { cancel_at_cycle_end: 0 },
+    );
+  }
+
+  /** Switch plan on an authenticated/active Razorpay subscription. */
+  async changeSubscriptionPlan(razorpaySubscriptionId: string, newRazorpayPlanId: string) {
+    return this.request<RazorpaySubscription>("PATCH", `/subscriptions/${razorpaySubscriptionId}`, {
+      plan_id: newRazorpayPlanId,
+      schedule_change_at: "now",
+      customer_notify: 1,
+    });
   }
 
   verifyWebhookSignature(body: string, signature: string | undefined): boolean {

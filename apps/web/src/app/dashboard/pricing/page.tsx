@@ -8,7 +8,8 @@ import { UsageMeterCard } from "@/components/dashboard/usage-meter-card";
 import { UpgradeFrictionBanner } from "@/components/dashboard/upgrade-friction-banner";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { PricingPlansGrid } from "@/components/pricing/pricing-plans-grid";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { runBillingCheckout } from "@/lib/billing-checkout";
+import { toUserMessage } from "@/lib/api-client";
 import { EnterpriseCallout } from "@/components/marketing/enterprise-callout";
 import { PRICING_FOOTNOTES } from "@/lib/pricing-plans";
 import { useToast } from "@/components/ui/toast";
@@ -84,21 +85,18 @@ export default function PricingPage() {
 
   const checkoutMutation = useMutation({
     mutationFn: (planId: string) =>
-      apiFetch<{ checkoutUrl: string }>("/billing/checkout", {
-        method: "POST",
-        token: token ?? undefined,
-        body: JSON.stringify({ planId }),
+      runBillingCheckout(planId, token ?? undefined, {
+        onPlanChange: (message) => {
+          success(message);
+          invalidateWorkspaceShellCache();
+        },
+        onPaymentSuccess: () => {
+          setCheckoutOpened(true);
+          success(t("toast.checkoutOpened"));
+          invalidateWorkspaceShellCache();
+        },
       }),
     onMutate: (planId) => setCheckoutPlan(planId),
-    onSuccess: (res) => {
-      const opened = window.open(res.checkoutUrl, "_blank", "noopener,noreferrer");
-      if (!opened) {
-        window.location.href = res.checkoutUrl;
-      } else {
-        setCheckoutOpened(true);
-        success(t("toast.checkoutOpened"));
-      }
-    },
     onSettled: () => setCheckoutPlan(null),
   });
 
@@ -124,8 +122,8 @@ export default function PricingPage() {
           className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/25 bg-bento-mint/40 px-4 py-3 text-sm"
         >
           <p>
-            <strong>Razorpay opened in a new tab.</strong> Complete payment there, then return here —
-            your plan updates in a few seconds.
+            <strong>Complete payment in the Razorpay window.</strong> Your plan updates in a few
+            seconds after success.
           </p>
           <button
             type="button"
@@ -196,6 +194,7 @@ export default function PricingPage() {
       <PricingPlansGrid
         variant="app"
         currentPlanId={data?.planId}
+        subscriptionStatus={data?.status}
         highlightPlanId={planParam ?? data?.friction?.suggestedPlan ?? undefined}
         razorpayConfigured={data?.razorpayConfigured ?? false}
         checkoutPlanId={checkoutPlan}

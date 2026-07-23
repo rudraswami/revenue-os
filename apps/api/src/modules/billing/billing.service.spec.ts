@@ -16,9 +16,15 @@ describe("BillingService.createCheckout", () => {
     isConfigured: jest.fn(),
     createSubscription: jest.fn(),
     planIdFor: jest.fn(() => "plan_test"),
+    changeSubscriptionPlan: jest.fn(),
+    cancelSubscriptionImmediately: jest.fn(),
+    fetchSubscription: jest.fn(),
+    getKeyId: jest.fn(() => "rzp_test_key"),
   } as unknown as RazorpayService;
 
-  const entitlements = {} as EntitlementsService;
+  const entitlements = {
+    invalidateAccessCache: jest.fn(),
+  } as unknown as EntitlementsService;
   const audit = { log: jest.fn() } as unknown as AuditService;
 
   const service = new BillingService(prisma, razorpay, entitlements, audit);
@@ -32,6 +38,7 @@ describe("BillingService.createCheckout", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.subscription.update as jest.Mock) = jest.fn().mockResolvedValue({});
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({
       email: "owner@test.com",
       name: "Owner",
@@ -43,14 +50,31 @@ describe("BillingService.createCheckout", () => {
     });
   });
 
-  it("blocks checkout when subscription is already ACTIVE", async () => {
+  it("blocks checkout when already on the same ACTIVE plan", async () => {
     (prisma.subscription.findUnique as jest.Mock).mockResolvedValue({
       organizationId: "org_1",
       planId: "growth",
       status: "ACTIVE",
+      razorpaySubscriptionId: "sub_existing",
     });
 
-    await expect(service.createCheckout(owner, "pro")).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.createCheckout(owner, "growth")).rejects.toBeInstanceOf(BadRequestException);
+    expect(razorpay.createSubscription).not.toHaveBeenCalled();
+  });
+
+  it("changes plan when ACTIVE on a different tier", async () => {
+    (prisma.subscription.findUnique as jest.Mock).mockResolvedValue({
+      organizationId: "org_1",
+      planId: "starter",
+      status: "ACTIVE",
+      razorpaySubscriptionId: "sub_existing",
+    });
+    (razorpay as unknown as { changeSubscriptionPlan: jest.Mock }).changeSubscriptionPlan =
+      jest.fn().mockResolvedValue({ id: "sub_existing" });
+    (prisma.subscription.update as jest.Mock) = jest.fn().mockResolvedValue({});
+
+    const result = await service.createCheckout(owner, "growth");
+    expect(result.planChange).toBe(true);
     expect(razorpay.createSubscription).not.toHaveBeenCalled();
   });
 
@@ -62,7 +86,8 @@ describe("BillingService.createCheckout", () => {
     });
 
     const result = await service.createCheckout(owner, "starter");
-    expect(result.checkoutUrl).toContain("https://");
+    expect(result.subscriptionId).toBe("sub_1");
+    expect(result.razorpayKeyId).toBeTruthy();
     expect(razorpay.createSubscription).toHaveBeenCalled();
   });
 });

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 type PricingPlansGridProps = {
   variant: "marketing" | "app";
   currentPlanId?: string;
+  subscriptionStatus?: string;
   /** Suggested plan from capacity friction deep-link. */
   highlightPlanId?: string;
   razorpayConfigured?: boolean;
@@ -20,6 +21,7 @@ type PricingPlansGridProps = {
 export function PricingPlansGrid({
   variant,
   currentPlanId,
+  subscriptionStatus,
   highlightPlanId,
   razorpayConfigured = true,
   checkoutPlanId,
@@ -121,6 +123,13 @@ export function PricingPlansGrid({
                   "Current plan"
                 ) : !razorpayConfigured ? (
                   "Unavailable"
+                ) : variant === "app" &&
+                  subscriptionStatus === "ACTIVE" &&
+                  currentPlanId &&
+                  currentPlanId !== "trial" ? (
+                  <>
+                    Switch plan <ExternalLink className="h-3.5 w-3.5" />
+                  </>
                 ) : (
                   <>
                     Upgrade <ExternalLink className="h-3.5 w-3.5" />

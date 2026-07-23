@@ -5,7 +5,8 @@ import { CreditCard, ExternalLink } from "lucide-react";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError, toUserMessage } from "@/lib/api-client";
+import { runBillingCheckout } from "@/lib/billing-checkout";
+import { toUserMessage } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useShellBilling } from "@/hooks/use-shell-cached-query";
@@ -48,20 +49,17 @@ export function BillingSettingsCard() {
 
   const checkoutMutation = useMutation({
     mutationFn: (planId: string) =>
-      apiFetch<{ checkoutUrl: string }>("/billing/checkout", {
-        method: "POST",
-        token: token ?? undefined,
-        body: JSON.stringify({ planId }),
+      runBillingCheckout(planId, token ?? undefined, {
+        onPlanChange: (message) => {
+          success(message);
+          invalidateWorkspaceShellCache(qc);
+        },
+        onPaymentSuccess: () => {
+          success(t("toast.checkoutOpened"));
+          invalidateWorkspaceShellCache(qc);
+        },
       }),
     onMutate: (planId) => setCheckoutPlan(planId),
-    onSuccess: (res) => {
-      const opened = window.open(res.checkoutUrl, "_blank", "noopener,noreferrer");
-      if (!opened) {
-        window.location.href = res.checkoutUrl;
-      } else {
-        success(t("toast.checkoutOpened"));
-      }
-    },
     onError: () => toastError(t("toast.actionFailed")),
     onSettled: () => setCheckoutPlan(null),
   });

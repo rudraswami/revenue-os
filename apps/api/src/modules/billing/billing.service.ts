@@ -68,11 +68,64 @@ export class BillingService {
     });
 
     if (existing?.status === "ACTIVE") {
-      throw new BadRequestException({
-        message:
-          "You already have an active subscription. Manage your plan in Settings → Billing.",
-        code: "SUBSCRIPTION_ALREADY_ACTIVE",
-      });
+      if (existing.planId === planId) {
+        throw new BadRequestException({
+          message:
+            "You are already on this plan. Manage billing in Settings → Billing.",
+          code: "SUBSCRIPTION_ALREADY_ACTIVE",
+        });
+      }
+
+      const newRazorpayPlanId = this.razorpay.planIdFor(planId as GrowvisiPlanId);
+      if (!newRazorpayPlanId) {
+        throw new BadRequestException(`Plan ${planId} is not configured yet.`);
+      }
+
+      if (existing.razorpaySubscriptionId) {
+        try {
+          await this.razorpay.changeSubscriptionPlan(
+            existing.razorpaySubscriptionId,
+            newRazorpayPlanId,
+          );
+          await this.prisma.subscription.update({
+            where: { organizationId: user.organizationId },
+            data: { planId, razorpayPlanId: newRazorpayPlanId },
+          });
+          await this.entitlements.invalidateAccessCache(user.organizationId);
+          return {
+            planChange: true,
+            subscriptionId: existing.razorpaySubscriptionId,
+            message: `Your plan is now ${GROWVISI_PLANS[planId as GrowvisiPlanId].name}.`,
+          };
+        } catch {
+          await this.razorpay.cancelSubscriptionImmediately(existing.razorpaySubscriptionId);
+          await this.prisma.subscription.update({
+            where: { organizationId: user.organizationId },
+            data: {
+              status: "TRIALING",
+              planId: "trial",
+              razorpaySubscriptionId: null,
+              razorpayPlanId: null,
+            },
+          });
+          await this.entitlements.invalidateAccessCache(user.organizationId);
+        }
+      }
+    }
+
+    if (
+      existing?.razorpaySubscriptionId &&
+      existing.status !== "ACTIVE"
+    ) {
+      try {
+        const remote = await this.razorpay.fetchSubscription(existing.razorpaySubscriptionId);
+        const remoteStatus = (remote.status ?? "").toLowerCase();
+        if (remoteStatus === "created" || remoteStatus === "authenticated") {
+          await this.razorpay.cancelSubscriptionImmediately(existing.razorpaySubscriptionId);
+        }
+      } catch {
+        // Best effort — always create a fresh subscription below.
+      }
     }
 
     const checkout = await this.razorpay.createSubscription({
@@ -105,9 +158,20 @@ export class BillingService {
       },
     });
 
+    const paidPlan = GROWVISI_PLANS[planId as GrowvisiPlanId];
+    const razorpayKeyId = this.razorpay.getKeyId();
+    if (!razorpayKeyId) {
+      throw new BadRequestException("Razorpay is not configured on this deployment.");
+    }
+
     return {
-      checkoutUrl: checkout.checkoutUrl,
       subscriptionId: checkout.subscriptionId,
+      razorpayKeyId,
+      planId,
+      planName: paidPlan.name,
+      priceInr: paidPlan.priceInr,
+      customerEmail: dbUser.email,
+      customerName: dbUser.name,
     };
   }
 
