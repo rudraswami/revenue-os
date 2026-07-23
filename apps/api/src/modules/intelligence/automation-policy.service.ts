@@ -258,27 +258,18 @@ export class AutomationPolicyService {
       return { outcome: "draft", risk: "medium", reasons, blockers };
     }
 
-    // ── 9. No knowledge → warm holding message ──
+    // ── 9. No knowledge → draft only (no auto holding message). ──
     if (input.knowledgeHits.length === 0) {
-      pushBlocker("no_knowledge", "No matching Business Knowledge — sending a helpful holding reply.");
+      pushBlocker("no_knowledge", "No matching Business Knowledge — draft for your review.");
     } else {
-      pushBlocker("weak_grounding", "Knowledge match too weak for sensitive topic — sending a helpful holding reply.");
+      pushBlocker("weak_grounding", "Knowledge match too weak — draft for your review.");
     }
     return {
       outcome: "draft",
       risk,
       reasons,
       blockers,
-      acknowledgment: this.genericHoldingMessage(profile),
     };
-  }
-
-  /** Warm, generic customer-facing reply when we have no knowledge to ground on. */
-  private genericHoldingMessage(profile: BusinessEmployeeProfile): string {
-    const configured =
-      profile.acknowledgments["no_match"] ?? profile.acknowledgments["general"];
-    if (configured?.trim()) return configured.trim();
-    return "Thanks for reaching out! I'd love to help you with this. Could you share a little more about what you're looking for? I'll get you the details right away.";
   }
 
   private isSensitiveIntent(intentKind: string): boolean {

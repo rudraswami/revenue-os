@@ -209,7 +209,8 @@ export class ActionPlannerService {
         replyDecision.acknowledgmentText &&
         input.workspaceAutonomy === "auto_guarded" &&
         input.autoSendPlanOk &&
-        input.withinReplyWindow
+        input.withinReplyWindow &&
+        !replyDecision.blockers?.includes("no_knowledge")
       ) {
         actions.push({
           type: "reply.send",

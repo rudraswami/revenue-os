@@ -10,7 +10,7 @@ const COMMERCIAL_INTENT_KINDS = new Set([
 ]);
 
 const PRICING_INBOUND_PATTERN =
-  /pric|cost|fee|rate|package|plan|₹|rs\.?\s*\d|discount|quote|emi|payment|how much/i;
+  /pric|prise|cost|fee|rate|package|plan|₹|rs\.?\s*\d|discount|quote|emi|payment|how much|kitna|rate card/i;
 
 export interface AssessCommercialSensitivityInput {
   relationshipPhase: RelationshipPhase;

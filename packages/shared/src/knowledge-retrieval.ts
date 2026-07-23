@@ -36,7 +36,7 @@ export interface DetectMissingTopicsInput {
 }
 
 const PRICING_TOPIC_PATTERN =
-  /pric|cost|fee|rate|package|plan|₹|rs\.?\s*\d|discount|quote|emi|payment|how much/i;
+  /pric|prise|cost|fee|rate|package|plan|₹|rs\.?\s*\d|discount|quote|emi|payment|how much|kitna|rate card/i;
 const POLICY_TOPIC_PATTERN =
   /refund|return policy|warranty|guarantee|complaint|cancel|exchange/i;
 const DELIVERY_TOPIC_PATTERN = /deliver|shipping|dispatch|timeline|turnaround/i;
@@ -82,7 +82,11 @@ function corpusMatches(text: string, pattern: RegExp): boolean {
   return pattern.test(text);
 }
 
-/** Topic-aware gap detection — extends beyond pricing-only checks. */
+function corpusHasPricingSignals(corpus: string): boolean {
+  return /₹|rs\.?\s*\d|\d+\s*\/\s*mo|per month|\/month|rate card/i.test(corpus);
+}
+
+/** Topic-aware gap detection — intent-first; defers keyword checks when KB already grounds pricing. */
 export function detectMissingTopics(input: DetectMissingTopicsInput): string[] {
   if (input.hasIndexedChunks === false) return [];
 
@@ -91,19 +95,27 @@ export function detectMissingTopics(input: DetectMissingTopicsInput): string[] {
   const inbound = `${input.lastInbound ?? ""}`;
   const needs = input.customerNeeds ?? [];
 
-  const needsPricing =
+  const intentPricing =
     input.intentKind === "pricing" ||
     input.intentKind === "negotiation" ||
-    input.intentKind === "ready_to_buy" ||
-    PRICING_TOPIC_PATTERN.test(inbound) ||
-    needs.some((n) => PRICING_TOPIC_PATTERN.test(n));
+    input.intentKind === "ready_to_buy";
 
-  if (
-    needsPricing &&
-    (input.hits.length === 0 ||
-      (!hasCategory(input.hits, "pricing") && !corpusMatches(corpus, PRICING_TOPIC_PATTERN)))
-  ) {
-    topics.push("pricing or packages");
+  const needsPricing =
+    intentPricing ||
+    (input.intentKind === "general" &&
+      (PRICING_TOPIC_PATTERN.test(inbound) ||
+        needs.some((n) => PRICING_TOPIC_PATTERN.test(n))));
+
+  if (needsPricing) {
+    const hasPricingGrounding =
+      input.hits.length > 0 &&
+      (hasCategory(input.hits, "pricing") ||
+        corpusMatches(corpus, PRICING_TOPIC_PATTERN) ||
+        corpusHasPricingSignals(corpus));
+
+    if (!hasPricingGrounding) {
+      topics.push("pricing or packages");
+    }
   }
 
   const needsPolicy =

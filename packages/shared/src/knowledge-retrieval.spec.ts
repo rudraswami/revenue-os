@@ -39,6 +39,34 @@ describe("knowledge-retrieval", () => {
     ).toEqual(["pricing or packages"]);
   });
 
+  it("does not flag pricing gap when hits contain rupee amounts in general category", () => {
+    expect(
+      detectMissingTopics({
+        intentKind: "pricing",
+        lastInbound: "kitna cost hai?",
+        hits: [
+          hit({
+            category: "general",
+            similarity: 0.68,
+            content: "Starter plan ₹999 per month, Growth ₹2999 per month",
+          }),
+        ],
+        hasIndexedChunks: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it("matches common cost typos on inbound for general intent", () => {
+    expect(
+      detectMissingTopics({
+        intentKind: "general",
+        lastInbound: "what is the prise?",
+        hits: [],
+        hasIndexedChunks: true,
+      }),
+    ).toEqual(["pricing or packages"]);
+  });
+
   it("detects policy gap for complaints", () => {
     expect(
       detectMissingTopics({

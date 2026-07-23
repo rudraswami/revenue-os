@@ -133,7 +133,12 @@ export class ReplySendService {
     // citation requirement.
     const trustCheck = this.trustRails.validatePostCompose({
       text: composed.suggestion,
-      sources: composed.sources,
+      sources:
+        composed.sources.length > 0
+          ? composed.sources
+          : (opts.pipelineContext?.knowledgeHits ?? []).map((h) => ({
+              similarity: h.similarity,
+            })),
       isFastPath: !!composed.fastPath,
       intentKind,
     });

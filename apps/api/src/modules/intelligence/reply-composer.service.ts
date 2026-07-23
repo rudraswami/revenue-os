@@ -160,6 +160,18 @@ export class ReplyComposerService {
         knowledgeBlock = fallback
           .map((d) => `### ${d.title}\n${(d.rawContent ?? "").slice(0, 1500)}`)
           .join("\n\n");
+        const fallbackHits: KnowledgeHit[] = fallback.map((d) => ({
+          chunkId: `fallback:${d.id}`,
+          documentId: d.id,
+          title: d.title,
+          content: (d.rawContent ?? "").slice(0, 1500),
+          similarity: 0.55,
+          category: d.category ?? "general",
+          citation: `${d.title} (recent doc)`,
+        }));
+        const byChunk = new Map(hits.map((h) => [h.chunkId, h]));
+        for (const h of fallbackHits) byChunk.set(h.chunkId, h);
+        hits = Array.from(byChunk.values());
       }
     }
 

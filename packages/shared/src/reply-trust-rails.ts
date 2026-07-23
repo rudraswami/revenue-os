@@ -1,7 +1,11 @@
 /** Post-compose checks before WhatsApp auto-send (Phase 5 trust rails). */
 
-const COMPOSED_PRICE_PATTERN =
-  /₹|rs\.?\s*\d{2,}|\d{1,2},\d{3}|\d+\s*\/\s*mo|per month|\/month|price is|costs? /i;
+/**
+ * Concrete monetary claims only — not the words "cost" or "price" in prose.
+ * Blocks auto-send when the model states ₹/Rs amounts without any retrieved source.
+ */
+export const GROUNDED_PRICE_CLAIM_PATTERN =
+  /₹\s*[\d,]+|rs\.?\s*[\d,]{2,}|\b\d{1,2},\d{3}\b|\b\d{3,}\s*(?:\/\s*mo|per\s*month)\b/i;
 
 const COURTESY_INTENTS = new Set(["greeting", "thanks", "ack", "test_checkin"]);
 
@@ -18,6 +22,13 @@ export interface ComposedReplyTrustResult {
   allowed: boolean;
   blocker?: string;
   reason?: string;
+}
+
+/** @deprecated Use GROUNDED_PRICE_CLAIM_PATTERN — kept for tests referencing old name. */
+export const COMPOSED_PRICE_PATTERN = GROUNDED_PRICE_CLAIM_PATTERN;
+
+export function replyStatesConcretePrice(text: string): boolean {
+  return GROUNDED_PRICE_CLAIM_PATTERN.test(text.trim());
 }
 
 export function validateComposedReplyForSend(
@@ -42,15 +53,11 @@ export function validateComposedReplyForSend(
   }
 
   const hasSources = input.sources.length > 0;
-  const mentionsPrice = COMPOSED_PRICE_PATTERN.test(text);
+  const statesConcretePrice = replyStatesConcretePrice(text);
 
-  // Fact-based guard (NOT keyword/intent based): the only thing we refuse to
-  // auto-send is a reply that states a concrete price/number while having zero
-  // retrieved sources to ground it — that's a hallucinated price. If the reply
-  // is grounded in ANY source, we trust the composer (it was handed the
-  // grounded knowledge block) and send. Pricing questions are core sales
-  // conversations and must flow, not stall in drafts.
-  if (mentionsPrice && !hasSources) {
+  // Only block invented ₹/Rs amounts — not pricing-intent replies that defer
+  // ("I'll confirm the cost") or use the word cost without a number.
+  if (statesConcretePrice && !hasSources) {
     return {
       allowed: false,
       blocker: "compose_grounding",

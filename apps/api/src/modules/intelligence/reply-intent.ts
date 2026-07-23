@@ -22,7 +22,7 @@ export const SENSITIVE_INBOUND_PATTERN =
   /refund|complaint|angry|furious|legal|lawyer|cancel\s+order|fraud|chargeback|sue|police|speak\s+to\s+(a\s+)?(human|person|manager|agent)/i;
 
 export const PRICING_INBOUND_PATTERN =
-  /pric|cost|fee|rate|package|plan|₹|rs\.?\s*\d|discount|quote|emi|payment|how much/i;
+  /pric|prise|cost|fee|rate|package|plan|₹|rs\.?\s*\d|discount|quote|emi|payment|how much|kitna|rate card/i;
 
 const TEST_MSG = /^(test(ing)?|hello\s*test|hi\s*test)[\s!.?]*$/i;
 const THANKS_MSG = /^(thanks?|thank\s*you|thx|dhanyavaad|shukriya)[\s!.?]*$/i;

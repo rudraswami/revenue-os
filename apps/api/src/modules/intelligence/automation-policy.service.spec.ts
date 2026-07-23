@@ -723,7 +723,7 @@ describe("AutomationPolicyService", () => {
     expect(result.outcome).toBe("human");
   });
 
-  it("answer-first: no knowledge → drafts with a generic holding acknowledgment", () => {
+  it("answer-first: no knowledge → draft only (no holding auto-send)", () => {
     const result = service.evaluate({
       settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
       ctx: baseCtx({ lastInbound: "Do you offer gift wrapping?" }),
@@ -743,7 +743,7 @@ describe("AutomationPolicyService", () => {
       groundingConfidence: 0,
     });
     expect(result.outcome).toBe("draft");
-    expect(result.acknowledgment).toBeTruthy();
+    expect(result.acknowledgment).toBeUndefined();
     expect(result.blockers).toContain("no_knowledge");
   });
 });

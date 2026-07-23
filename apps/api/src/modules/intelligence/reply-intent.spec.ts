@@ -49,6 +49,8 @@ describe("reply-intent", () => {
     expect(isSensitiveInbound("speak to a manager")).toBe(true);
     expect(isSensitiveInbound("What is the price?")).toBe(false);
     expect(isPricingInbound("What is the price for 5 users?")).toBe(true);
+    expect(isPricingInbound("kitna cost hai?")).toBe(true);
+    expect(isPricingInbound("what is the prise?")).toBe(true);
     expect(isPricingInbound("Hello")).toBe(false);
   });
 

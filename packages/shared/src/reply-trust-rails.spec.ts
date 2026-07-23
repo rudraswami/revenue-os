@@ -47,15 +47,25 @@ describe("validateComposedReplyForSend", () => {
     ).toBe(true);
   });
 
-  it("allows a pricing-intent reply that states no concrete price without sources", () => {
+  it("allows pricing-intent reply that mentions cost without a concrete price", () => {
     expect(
       validateComposedReplyForSend({
-        text: "Great question! Could you tell me how many users you need so I can share the right plan?",
+        text: "Great question — I'll confirm the exact cost for your setup and message you back.",
         sources: [],
         isFastPath: false,
         intentKind: "pricing",
       }).allowed,
     ).toBe(true);
+  });
+
+  it("blocks only concrete rupee amounts without sources", () => {
+    const result = validateComposedReplyForSend({
+      text: "The cost depends on your requirements.",
+      sources: [],
+      isFastPath: false,
+      intentKind: "pricing",
+    });
+    expect(result.allowed).toBe(true);
   });
 
   it("allows courtesy LLM replies without KB", () => {
