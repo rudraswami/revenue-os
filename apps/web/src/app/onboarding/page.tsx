@@ -65,8 +65,8 @@ function OnboardingPageContent() {
       firstMessageReceived: false,
       complete: false,
     });
-    // Go to knowledge step instead of success
-    setScreen("knowledge");
+    // Existing connection (e.g. agency handoff) — land on knowledge, not success.
+    setScreen((prev) => (prev === "success" ? prev : "knowledge"));
     connectPhaseRef.current = "done";
     setConnectPhase("done");
   }, [whatsappConnected, esInFlight, patchOnboarding]);
@@ -89,7 +89,8 @@ function OnboardingPageContent() {
     } else if (phase === "error" || phase === "idle") {
       setScreen("connect");
     } else if (phase === "done") {
-      setScreen("success");
+      // Knowledge before the live/summary screen — do not skip to success.
+      setScreen("knowledge");
     }
   }
 
