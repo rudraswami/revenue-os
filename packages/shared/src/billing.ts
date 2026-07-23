@@ -36,6 +36,9 @@ export const PAID_PLAN_IDS = ["starter", "growth", "pro"] as const satisfies rea
 
 export const TRIAL_DAYS = 14;
 
+/** Grace window when renewal webhook is delayed but Razorpay still shows ACTIVE. */
+export const PAID_RENEWAL_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
+
 export interface PlanLimits {
   whatsappNumbers: number;
   teamMembers: number;
@@ -87,6 +90,7 @@ export interface SubscriptionAccessInput {
   status: string;
   createdAt: Date;
   currentPeriodEnd?: Date | null;
+  cancelAtPeriodEnd?: boolean;
 }
 
 export interface SubscriptionAccess {
@@ -106,18 +110,41 @@ export function resolveSubscriptionAccess(input: SubscriptionAccessInput): Subsc
   const trialEndsAt = new Date(input.createdAt);
   trialEndsAt.setUTCDate(trialEndsAt.getUTCDate() + TRIAL_DAYS);
 
+  const now = Date.now();
   const isPaidActive = input.status === "ACTIVE";
   const onTrial = input.status === "TRIALING" && planId === "trial";
-  const trialExpired = onTrial && Date.now() > trialEndsAt.getTime();
+  const trialExpired = onTrial && now > trialEndsAt.getTime();
+  const paidPlan = planId !== "trial";
+  const periodEndMs = input.currentPeriodEnd?.getTime() ?? null;
+  const withinPaidPeriod = paidPlan && periodEndMs != null && now < periodEndMs;
+
+  const paidPeriodLapsed =
+    paidPlan &&
+    periodEndMs != null &&
+    now > periodEndMs + PAID_RENEWAL_GRACE_MS;
+
+  const paidActiveAccess = isPaidActive && paidPlan && !paidPeriodLapsed;
+
+  // Webhook may mark CANCELED before current_period_end — honor paid-through date.
+  const canceledEarlyWithPaidTime = input.status === "CANCELED" && withinPaidPeriod;
+
+  const hasAccess =
+    paidActiveAccess ||
+    (isPaidActive && !paidPlan) ||
+    (onTrial && !trialExpired) ||
+    canceledEarlyWithPaidTime;
+
   const requiresUpgrade =
-    trialExpired || input.status === "PAST_DUE" || input.status === "CANCELED";
+    trialExpired ||
+    input.status === "PAST_DUE" ||
+    (input.status === "CANCELED" && !withinPaidPeriod);
 
   return {
     planId,
     limits: PLAN_LIMITS[planId],
     trialEndsAt: onTrial ? trialEndsAt.toISOString() : null,
     trialExpired,
-    hasAccess: isPaidActive || (onTrial && !trialExpired),
+    hasAccess,
     requiresUpgrade,
     status: input.status,
   };

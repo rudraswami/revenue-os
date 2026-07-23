@@ -95,6 +95,11 @@ export default function PricingPage() {
           success(t("toast.checkoutOpened"));
           invalidateWorkspaceShellCache();
         },
+        onPaymentRetry: (message) => {
+          setCheckoutOpened(true);
+          success(message);
+          invalidateWorkspaceShellCache();
+        },
       }),
     onMutate: (planId) => setCheckoutPlan(planId),
     onSettled: () => setCheckoutPlan(null),

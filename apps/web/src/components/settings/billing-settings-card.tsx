@@ -14,6 +14,23 @@ import { invalidateWorkspaceShellCache } from "@/lib/session-query-cache";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
+const PLAN_RANK: Record<string, number> = { trial: 0, starter: 1, growth: 2, pro: 3 };
+
+function planButtonLabel(
+  currentPlanId: string | undefined,
+  targetPlanId: string,
+  status: string | undefined,
+): string {
+  if (status === "ACTIVE" && currentPlanId && currentPlanId !== "trial") {
+    const current = PLAN_RANK[currentPlanId] ?? 0;
+    const target = PLAN_RANK[targetPlanId] ?? 0;
+    if (target > current) return "Upgrade";
+    if (target < current) return "Downgrade";
+    return "Switch plan";
+  }
+  return "Upgrade";
+}
+
 interface BillingStatus {
   planId: string;
   planName: string;
@@ -21,6 +38,7 @@ interface BillingStatus {
   cancelAtPeriodEnd?: boolean;
   currentPeriodEnd: string | null;
   razorpayConfigured: boolean;
+  razorpaySubscriptionLinked?: boolean;
   usage?: { whatsappNumbers: number; teamMembers: number; monthlyLeads: number };
   limits?: { whatsappNumbers: number; teamMembers: number; monthlyLeads: number };
   entitlements?: {
@@ -58,6 +76,10 @@ export function BillingSettingsCard() {
           success(t("toast.checkoutOpened"));
           invalidateWorkspaceShellCache(qc);
         },
+        onPaymentRetry: (message) => {
+          success(message);
+          invalidateWorkspaceShellCache(qc);
+        },
       }),
     onMutate: (planId) => setCheckoutPlan(planId),
     onError: () => toastError(t("toast.actionFailed")),
@@ -78,9 +100,20 @@ export function BillingSettingsCard() {
 
   const canCancel =
     data?.razorpayConfigured &&
+    data?.razorpaySubscriptionLinked &&
     data.status === "ACTIVE" &&
     data.planId !== "trial" &&
     !data.cancelAtPeriodEnd;
+
+  const showPastDueRetry =
+    data?.status === "PAST_DUE" &&
+    data?.razorpaySubscriptionLinked &&
+    data?.razorpayConfigured;
+
+  const showManualBillingNote =
+    data?.status === "ACTIVE" &&
+    data.planId !== "trial" &&
+    data.razorpaySubscriptionLinked === false;
 
   const statusLabel =
     data?.status === "ACTIVE"
@@ -148,6 +181,39 @@ export function BillingSettingsCard() {
             </p>
           )}
 
+          {showPastDueRetry && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3">
+              <p className="text-sm font-semibold text-destructive">Payment failed</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Retry payment with Razorpay to restore access to Inbox, Pipeline, and campaigns.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="accent"
+                className="mt-3 rounded-lg text-xs"
+                disabled={checkoutMutation.isPending}
+                onClick={() => checkoutMutation.mutate(data.planId)}
+              >
+                {checkoutMutation.isPending ? (
+                  <GrowvisiSpinner size="xs" />
+                ) : (
+                  "Retry payment"
+                )}
+              </Button>
+            </div>
+          )}
+
+          {showManualBillingNote && (
+            <p className="text-xs text-muted-foreground rounded-lg px-3 py-2 border border-border/80 bg-card">
+              This workspace was upgraded manually. To change or cancel billing, email{" "}
+              <a href="mailto:it@growvisi.com" className="font-medium text-accent hover:underline">
+                it@growvisi.com
+              </a>
+              .
+            </p>
+          )}
+
           <div className="grid gap-2 sm:grid-cols-3">
             {(data?.plans ?? []).map((plan) => {
               const isCurrent = data?.planId === plan.id;
@@ -184,7 +250,8 @@ export function BillingSettingsCard() {
                       "Current plan"
                     ) : (
                       <>
-                        Upgrade <ExternalLink className="ml-1 h-3 w-3" />
+                        {planButtonLabel(data?.planId, plan.id, data?.status)}{" "}
+                        <ExternalLink className="ml-1 h-3 w-3" />
                       </>
                     )}
                   </Button>

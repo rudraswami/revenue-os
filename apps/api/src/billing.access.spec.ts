@@ -1,4 +1,4 @@
-import { resolveSubscriptionAccess, TRIAL_DAYS } from "@growvisi/shared";
+import { PAID_RENEWAL_GRACE_MS, resolveSubscriptionAccess, TRIAL_DAYS } from "@growvisi/shared";
 
 describe("resolveSubscriptionAccess", () => {
   it("grants access during active trial", () => {
@@ -34,5 +34,66 @@ describe("resolveSubscriptionAccess", () => {
     });
     expect(access.hasAccess).toBe(true);
     expect(access.limits.teamMembers).toBe(5);
+  });
+
+  it("keeps access when canceled early but current period has not ended", () => {
+    const currentPeriodEnd = new Date();
+    currentPeriodEnd.setUTCDate(currentPeriodEnd.getUTCDate() + 10);
+    const access = resolveSubscriptionAccess({
+      planId: "growth",
+      status: "CANCELED",
+      createdAt: new Date(),
+      currentPeriodEnd,
+    });
+    expect(access.hasAccess).toBe(true);
+    expect(access.requiresUpgrade).toBe(false);
+  });
+
+  it("blocks access when canceled and paid period has ended", () => {
+    const currentPeriodEnd = new Date();
+    currentPeriodEnd.setUTCDate(currentPeriodEnd.getUTCDate() - 1);
+    const access = resolveSubscriptionAccess({
+      planId: "growth",
+      status: "CANCELED",
+      createdAt: new Date(),
+      currentPeriodEnd,
+    });
+    expect(access.hasAccess).toBe(false);
+    expect(access.requiresUpgrade).toBe(true);
+  });
+
+  it("grants short grace when ACTIVE past currentPeriodEnd (renewal webhook delay)", () => {
+    const currentPeriodEnd = new Date(Date.now() - PAID_RENEWAL_GRACE_MS / 2);
+    const access = resolveSubscriptionAccess({
+      planId: "pro",
+      status: "ACTIVE",
+      createdAt: new Date(),
+      currentPeriodEnd,
+    });
+    expect(access.hasAccess).toBe(true);
+  });
+
+  it("blocks access when ACTIVE grace window has elapsed", () => {
+    const currentPeriodEnd = new Date(Date.now() - PAID_RENEWAL_GRACE_MS - 1_000);
+    const access = resolveSubscriptionAccess({
+      planId: "pro",
+      status: "ACTIVE",
+      createdAt: new Date(),
+      currentPeriodEnd,
+    });
+    expect(access.hasAccess).toBe(false);
+  });
+
+  it("blocks access for PAST_DUE even within paid period", () => {
+    const currentPeriodEnd = new Date();
+    currentPeriodEnd.setUTCDate(currentPeriodEnd.getUTCDate() + 5);
+    const access = resolveSubscriptionAccess({
+      planId: "starter",
+      status: "PAST_DUE",
+      createdAt: new Date(),
+      currentPeriodEnd,
+    });
+    expect(access.hasAccess).toBe(false);
+    expect(access.requiresUpgrade).toBe(true);
   });
 });

@@ -34,6 +34,7 @@ export class BillingService {
       cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
       currentPeriodEnd: sub?.currentPeriodEnd ?? null,
       razorpayConfigured: this.razorpay.isCheckoutReady(),
+      razorpaySubscriptionLinked: !!sub?.razorpaySubscriptionId,
       plans: this.razorpay.planCatalog(),
       entitlements: snapshot.access,
       usage: snapshot.usage,
@@ -98,19 +99,30 @@ export class BillingService {
             message: `Your plan is now ${GROWVISI_PLANS[planId as GrowvisiPlanId].name}.`,
           };
         } catch {
-          await this.razorpay.cancelSubscriptionImmediately(existing.razorpaySubscriptionId);
-          await this.prisma.subscription.update({
-            where: { organizationId: user.organizationId },
-            data: {
-              status: "TRIALING",
-              planId: "trial",
-              razorpaySubscriptionId: null,
-              razorpayPlanId: null,
-            },
-          });
-          await this.entitlements.invalidateAccessCache(user.organizationId);
+          throw new BadRequestException(
+            "Could not change your plan right now. Your current subscription is unchanged — try again in a few minutes or contact it@growvisi.com.",
+          );
         }
       }
+    }
+
+    if (existing?.status === "PAST_DUE" && existing.razorpaySubscriptionId) {
+      const razorpayKeyId = this.razorpay.getKeyId();
+      if (!razorpayKeyId) {
+        throw new BadRequestException("Razorpay is not configured on this deployment.");
+      }
+      const paidPlan = GROWVISI_PLANS[(existing.planId as GrowvisiPlanId) ?? planId as GrowvisiPlanId];
+      return {
+        subscriptionId: existing.razorpaySubscriptionId,
+        razorpayKeyId,
+        planId: existing.planId,
+        planName: paidPlan.name,
+        priceInr: paidPlan.priceInr,
+        customerEmail: dbUser.email,
+        customerName: dbUser.name,
+        paymentRetry: true,
+        message: "Complete payment in Razorpay to restore your subscription.",
+      };
     }
 
     if (

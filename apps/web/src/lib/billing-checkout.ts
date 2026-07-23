@@ -10,6 +10,7 @@ export interface BillingCheckoutResponse {
   customerEmail?: string;
   customerName?: string | null;
   planChange?: boolean;
+  paymentRetry?: boolean;
   message?: string;
 }
 
@@ -19,6 +20,7 @@ export async function runBillingCheckout(
   callbacks: {
     onPlanChange: (message: string) => void;
     onPaymentSuccess: () => void;
+    onPaymentRetry?: (message: string) => void;
   },
 ): Promise<void> {
   const res = await apiFetch<BillingCheckoutResponse>("/billing/checkout", {
@@ -30,6 +32,10 @@ export async function runBillingCheckout(
   if (res.planChange) {
     callbacks.onPlanChange(res.message ?? "Plan updated.");
     return;
+  }
+
+  if (res.paymentRetry) {
+    callbacks.onPaymentRetry?.(res.message ?? "Complete payment to restore access.");
   }
 
   if (

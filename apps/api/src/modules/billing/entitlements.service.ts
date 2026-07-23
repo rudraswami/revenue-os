@@ -153,6 +153,7 @@ export class EntitlementsService {
       status: sub.status,
       createdAt: sub.createdAt,
       currentPeriodEnd: sub.currentPeriodEnd,
+      cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
     };
     return {
       access: resolveSubscriptionAccess(input),

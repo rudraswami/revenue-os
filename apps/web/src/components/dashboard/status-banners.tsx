@@ -38,8 +38,7 @@ export function TrialExpiredBanner() {
           <div>
             <p className="text-sm font-semibold">Payment failed — access paused</p>
             <p className="mt-0.5 text-xs opacity-90">
-              Update your Razorpay payment method in Settings to restore Inbox, Pipeline, and
-              campaigns.
+              Retry payment in Settings → Billing to restore Inbox, Pipeline, and campaigns.
             </p>
           </div>
         </div>

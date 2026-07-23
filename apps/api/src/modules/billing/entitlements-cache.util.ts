@@ -7,6 +7,7 @@ export type CachedEntitlementsInput = {
   status: string;
   createdAt: string;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd?: boolean;
 };
 
 export function toCachedEntitlementsInput(input: SubscriptionAccessInput): CachedEntitlementsInput {
@@ -15,6 +16,7 @@ export function toCachedEntitlementsInput(input: SubscriptionAccessInput): Cache
     status: input.status,
     createdAt: input.createdAt.toISOString(),
     currentPeriodEnd: input.currentPeriodEnd ? input.currentPeriodEnd.toISOString() : null,
+    cancelAtPeriodEnd: input.cancelAtPeriodEnd ?? false,
   };
 }
 
@@ -24,6 +26,7 @@ export function resolveCachedEntitlements(cached: CachedEntitlementsInput): Subs
     status: cached.status,
     createdAt: new Date(cached.createdAt),
     currentPeriodEnd: cached.currentPeriodEnd ? new Date(cached.currentPeriodEnd) : null,
+    cancelAtPeriodEnd: cached.cancelAtPeriodEnd,
   });
 }
 
