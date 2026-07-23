@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { handleRealtimeEvent, type RealtimeRefreshPayload } from "@/lib/realtime-event-handler";
+import { isGrowvisiProductionHost, resolveWsBaseUrl } from "@/lib/growvisi-host";
 import { organizationIdFromStore, useAuthStore } from "@/stores/auth-store";
 import { subscribeSupabaseOrgChannel, supabaseRealtimeEnabled } from "@/lib/supabase-realtime";
 import { bindRealtimeSocket } from "@/lib/realtime-typing";
@@ -19,19 +20,17 @@ export function useRealtime() {
 }
 
 function wsBaseUrl(): string {
-  const raw = (process.env.NEXT_PUBLIC_WS_URL ?? "http://127.0.0.1:4000")
-    .replace(/\\r\\n/g, "")
-    .replace(/[\r\n]+/g, "")
-    .trim();
-  return raw.replace(/\/$/, "");
+  return resolveWsBaseUrl();
 }
 
 /** Socket.IO when API runs with native WebSocket (local / dedicated host). */
 function socketRealtimeEnabled(): boolean {
   if (process.env.NEXT_PUBLIC_REALTIME_ENABLED === "false") return false;
   if (process.env.NEXT_PUBLIC_REALTIME_ENABLED === "true") return true;
+  const host = typeof window !== "undefined" ? window.location.hostname : null;
+  if (host && isGrowvisiProductionHost(host)) return false;
   const base = wsBaseUrl();
-  return !base.includes("growvisi.in") && !base.includes("vercel.app");
+  return !base.includes("vercel.app");
 }
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {

@@ -9,7 +9,8 @@ const webDir = path.join(__dirname, "..", "apps", "web");
 const DOMAIN = {
   WEB: "https://www.growvisi.in",
   API: "https://api.growvisi.in",
-  CORS: "https://growvisi.in,https://www.growvisi.in",
+  CORS:
+    "https://growvisi.in,https://www.growvisi.in,https://growvisi.com,https://www.growvisi.com",
   COOKIE: ".growvisi.in",
 };
 

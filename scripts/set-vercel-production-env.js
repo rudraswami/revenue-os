@@ -86,11 +86,12 @@ const env = mergeEnv();
 
 // Never auto-generate secrets — only push values present locally (skip empty).
 
-// Production constants (growvisi.in)
+// Production constants (growvisi.in primary; .com parallel — see docs/DUAL-DOMAIN-SETUP.md)
 const DOMAIN = {
   WEB: "https://www.growvisi.in",
   API: "https://api.growvisi.in",
-  CORS: "https://growvisi.in,https://www.growvisi.in",
+  CORS:
+    "https://growvisi.in,https://www.growvisi.in,https://growvisi.com,https://www.growvisi.com",
   COOKIE: ".growvisi.in",
 };
 

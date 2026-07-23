@@ -1,16 +1,8 @@
 import type { ShellBootstrapResponse } from "@/lib/shell-bootstrap";
+import { resolveApiBaseUrl } from "@/lib/growvisi-host";
 
 const REFRESH_COOKIE = "growvisi_rt";
 const SESSION_COOKIE = "growvisi-session";
-
-function apiBase(): string {
-  const raw = (
-    process.env.NEXT_PUBLIC_API_URL ||
-    process.env.API_URL ||
-    "http://127.0.0.1:4000/api/v1"
-  ).replace(/\/$/, "");
-  return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
-}
 
 /**
  * Server-side shell bootstrap for dashboard RSC (P2).
@@ -18,11 +10,12 @@ function apiBase(): string {
  */
 export async function fetchShellBootstrapServer(
   cookieHeader: string | null | undefined,
+  requestHost?: string | null,
 ): Promise<ShellBootstrapResponse | null> {
   if (!cookieHeader?.includes(`${SESSION_COOKIE}=1`)) return null;
   if (!cookieHeader.includes(`${REFRESH_COOKIE}=`)) return null;
 
-  const api = apiBase();
+  const api = resolveApiBaseUrl(requestHost);
 
   // Streamed (non-blocking) from the dashboard layout — must never reject, or a
   // slow/broken API would break the page instead of letting the client cache +

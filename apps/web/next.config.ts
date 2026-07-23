@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import path from "path";
+import { GROWVISI_API_URL, GROWVISI_API_URL_COM } from "@growvisi/shared";
 
 function originOf(value: string | undefined): string | null {
   if (!value) return null;
@@ -36,8 +37,12 @@ const razorpayHosts = [
 const connectSrc = [
   "'self'",
   apiOrigin,
+  GROWVISI_API_URL,
+  GROWVISI_API_URL_COM,
   wsOrigin,
   wsScheme,
+  "wss://api.growvisi.in",
+  "wss://api.growvisi.com",
   facebookConnectHosts,
   razorpayHosts,
   isDev ? "http://localhost:4000 http://127.0.0.1:4000 ws://localhost:4000 ws://127.0.0.1:4000" : "",

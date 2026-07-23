@@ -1,5 +1,3 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
 import {
   GROWVISI_CORS_ORIGINS,
   GROWVISI_PRIMARY_TLD,
@@ -13,52 +11,52 @@ import {
 
 describe("parseGrowvisiHostname", () => {
   it("recognizes .in hosts", () => {
-    assert.equal(parseGrowvisiHostname("www.growvisi.in"), "in");
-    assert.equal(parseGrowvisiHostname("growvisi.in"), "in");
-    assert.equal(parseGrowvisiHostname("api.growvisi.in"), "in");
+    expect(parseGrowvisiHostname("www.growvisi.in")).toBe("in");
+    expect(parseGrowvisiHostname("growvisi.in")).toBe("in");
+    expect(parseGrowvisiHostname("api.growvisi.in")).toBe("in");
   });
 
   it("recognizes .com hosts", () => {
-    assert.equal(parseGrowvisiHostname("www.growvisi.com"), "com");
-    assert.equal(parseGrowvisiHostname("growvisi.com"), "com");
-    assert.equal(parseGrowvisiHostname("api.growvisi.com"), "com");
+    expect(parseGrowvisiHostname("www.growvisi.com")).toBe("com");
+    expect(parseGrowvisiHostname("growvisi.com")).toBe("com");
+    expect(parseGrowvisiHostname("api.growvisi.com")).toBe("com");
   });
 
   it("returns null for unknown hosts", () => {
-    assert.equal(parseGrowvisiHostname("localhost"), null);
-    assert.equal(parseGrowvisiHostname("revenue-os-web.vercel.app"), null);
+    expect(parseGrowvisiHostname("localhost")).toBeNull();
+    expect(parseGrowvisiHostname("revenue-os-web.vercel.app")).toBeNull();
   });
 });
 
 describe("parseGrowvisiOrigin", () => {
   it("parses origin URLs", () => {
-    assert.equal(parseGrowvisiOrigin("https://www.growvisi.com/dashboard"), "com");
-    assert.equal(parseGrowvisiOrigin("https://growvisi.in/login"), "in");
+    expect(parseGrowvisiOrigin("https://www.growvisi.com/dashboard")).toBe("com");
+    expect(parseGrowvisiOrigin("https://growvisi.in/login")).toBe("in");
   });
 });
 
 describe("resolveGrowvisiApiV1Url", () => {
   it("maps host to matching API origin", () => {
-    assert.equal(resolveGrowvisiApiV1Url("www.growvisi.com"), "https://api.growvisi.com/api/v1");
-    assert.equal(resolveGrowvisiApiV1Url("www.growvisi.in"), "https://api.growvisi.in/api/v1");
+    expect(resolveGrowvisiApiV1Url("www.growvisi.com")).toBe("https://api.growvisi.com/api/v1");
+    expect(resolveGrowvisiApiV1Url("www.growvisi.in")).toBe("https://api.growvisi.in/api/v1");
   });
 
   it("falls back to primary TLD", () => {
-    assert.equal(resolveGrowvisiApiV1Url("localhost"), "https://api.growvisi.in/api/v1");
-    assert.equal(resolveGrowvisiTld("localhost"), GROWVISI_PRIMARY_TLD);
+    expect(resolveGrowvisiApiV1Url("localhost")).toBe("https://api.growvisi.in/api/v1");
+    expect(resolveGrowvisiTld("localhost")).toBe(GROWVISI_PRIMARY_TLD);
   });
 });
 
 describe("resolveGrowvisiCookieDomain", () => {
   it("returns per-TLD cookie domain", () => {
-    assert.equal(resolveGrowvisiCookieDomain("www.growvisi.com"), growvisiCookieDomain("com"));
-    assert.equal(resolveGrowvisiCookieDomain("www.growvisi.in"), growvisiCookieDomain("in"));
+    expect(resolveGrowvisiCookieDomain("www.growvisi.com")).toBe(growvisiCookieDomain("com"));
+    expect(resolveGrowvisiCookieDomain("www.growvisi.in")).toBe(growvisiCookieDomain("in"));
   });
 });
 
 describe("GROWVISI_CORS_ORIGINS", () => {
   it("includes both TLD apex and www", () => {
-    assert.match(GROWVISI_CORS_ORIGINS, /growvisi\.in/);
-    assert.match(GROWVISI_CORS_ORIGINS, /growvisi\.com/);
+    expect(GROWVISI_CORS_ORIGINS).toMatch(/growvisi\.in/);
+    expect(GROWVISI_CORS_ORIGINS).toMatch(/growvisi\.com/);
   });
 });

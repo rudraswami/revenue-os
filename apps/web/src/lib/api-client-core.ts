@@ -2,11 +2,10 @@
 
 import { resolveApiBaseUrl } from "@/lib/growvisi-host";
 
-function resolveApiBase(): string {
+/** Resolved at call time so .in and .com hosts hit the matching API origin. */
+export function getApiUrl(): string {
   return resolveApiBaseUrl();
 }
-
-export const API_URL = resolveApiBase();
 
 export const CUSTOMER_NETWORK_ERROR =
   "We couldn't reach Growvisi. Check your internet connection and try again, or email it@growvisi.com.";
@@ -22,7 +21,7 @@ const REQUEST_TIMEOUT_MS = 20_000;
 function logNetworkFailure(path: string, cause: unknown) {
   if (process.env.NODE_ENV === "development") {
     console.error(`[growvisi-api] Network error on ${path}`, cause);
-    console.info(`[growvisi-api] Base URL: ${API_URL}`);
+    console.info(`[growvisi-api] Base URL: ${getApiUrl()}`);
   }
 }
 
@@ -88,7 +87,7 @@ export async function rawFetchForAuth<T>(path: string, options: AuthFetchOptions
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    res = await fetch(`${getApiUrl()}${path}`, {
       ...fetchOptions,
       headers,
       credentials,

@@ -1,6 +1,6 @@
 import {
   ApiError,
-  API_URL,
+  getApiUrl,
   CUSTOMER_NETWORK_ERROR,
   CUSTOMER_SERVICE_ERROR,
   CUSTOMER_TIMEOUT_ERROR,
@@ -11,7 +11,7 @@ import { useAuthStore } from "@/stores/auth-store";
 
 export {
   ApiError,
-  API_URL,
+  getApiUrl,
   CUSTOMER_NETWORK_ERROR,
   CUSTOMER_SERVICE_ERROR,
   CUSTOMER_TIMEOUT_ERROR,
@@ -153,7 +153,7 @@ async function authedBlob(path: string, token?: string): Promise<Blob> {
   const doFetch = (bearer?: string) => {
     const headers = new Headers();
     if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
-    return fetch(`${API_URL}${path}`, { headers, credentials: "include" });
+    return fetch(`${getApiUrl()}${path}`, { headers, credentials: "include" });
   };
 
   let res = await doFetch(authToken);
