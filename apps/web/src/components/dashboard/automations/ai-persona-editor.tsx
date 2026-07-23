@@ -8,7 +8,6 @@ import {
   type IntelligenceWorkspaceSettingsPatch,
 } from "@growvisi/shared";
 import { apiFetch } from "@/lib/api-client";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 
 function guardrailsToText(guardrails?: string[]): string {
@@ -125,6 +124,9 @@ export function AiPersonaEditor({
 
   if (!draft) return null;
 
+  // Custom/other industry setup lives in IndustryHandbookPicker — avoid duplicate forms.
+  if (isCustom) return null;
+
   const updateDraft = (partial: Partial<PersonaDraft>) => {
     const next = { ...draft, ...partial };
     setDraft(next);
@@ -136,23 +138,9 @@ export function AiPersonaEditor({
       <div>
         <p className="text-xs font-semibold text-foreground">AI persona</p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          {isCustom
-            ? "Describe how your AI should represent your business on WhatsApp."
-            : "Optional — override the industry template persona for your business."}
+          Optional — override the industry template persona for your business.
         </p>
       </div>
-
-      {isCustom ? (
-        <label className="block space-y-1.5">
-          <span className="text-xs font-medium text-foreground">Your business type</span>
-          <Input
-            disabled={!canManage || saveMutation.isPending}
-            value={draft.customIndustryLabel}
-            onChange={(e) => updateDraft({ customIndustryLabel: e.target.value })}
-            placeholder="e.g. E-commerce, Legal services, IT consultancy"
-          />
-        </label>
-      ) : null}
 
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-foreground">Who is the AI?</span>

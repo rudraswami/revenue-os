@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -72,6 +73,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<KnowledgeDoc | null>(null);
 
   const { data: docs, isLoading, isError: docsError, refetch: refetchDocs } = useQuery({
     queryKey: ["knowledge-documents"],
@@ -147,7 +149,12 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
         method: "DELETE",
         token: token ?? undefined,
       }),
-    onSuccess: invalidateKnowledge,
+    onSuccess: () => {
+      setConfirmDeleteDoc(null);
+      invalidateKnowledge();
+      success("Document deleted.");
+    },
+    onError: (err) => toastError(toUserMessage(err, "Could not delete document.")),
   });
 
   function handleUploadFile(file: File) {
@@ -444,7 +451,7 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
                       aria-label={`Delete ${doc.title}`}
                       disabled={deleteMutation.isPending}
-                      onClick={() => deleteMutation.mutate(doc.id)}
+                      onClick={() => setConfirmDeleteDoc(doc)}
                       >
                         {pendingDeleteId === doc.id ? (
                           <GrowvisiSpinner size="xs" />
@@ -460,6 +467,27 @@ export function BusinessContextCard({ embedded = false }: { embedded?: boolean }
           ))}
         </ul>
       )}
+
+      <AlertDialog
+        open={!!confirmDeleteDoc}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) setConfirmDeleteDoc(null);
+        }}
+        title={confirmDeleteDoc ? `Delete "${confirmDeleteDoc.title}"?` : "Delete document?"}
+        description={
+          confirmDeleteDoc ? (
+            <>
+              This removes the document and its AI search index. Auto-reply will no longer use this
+              content. This cannot be undone.
+            </>
+          ) : undefined
+        }
+        confirmLabel="Delete document"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (confirmDeleteDoc) deleteMutation.mutate(confirmDeleteDoc.id);
+        }}
+      />
     </div>
   );
 }

@@ -571,6 +571,8 @@ export function WhatsAppAssistantZone() {
             <IndustryHandbookPicker
               canManage={canManage}
               currentIndustryId={data?.industryId}
+              settings={data}
+              businessName={organization?.name ?? "your business"}
               token={token}
             />
 

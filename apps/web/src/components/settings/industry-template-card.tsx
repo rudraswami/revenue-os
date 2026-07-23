@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/auth-store";
 export function IndustryTemplateCard() {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
+  const businessName = useAuthStore((s) => s.organization?.name) ?? "your business";
   const canManage = canManageCampaigns(role);
 
   const { data } = useQuery({
@@ -25,6 +26,8 @@ export function IndustryTemplateCard() {
     <IndustryHandbookPicker
       canManage={canManage}
       currentIndustryId={data?.industryId}
+      settings={data}
+      businessName={businessName}
       token={token}
       showHeading={false}
     />
