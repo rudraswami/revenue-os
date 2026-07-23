@@ -205,7 +205,13 @@ export class AutomationPolicyService {
       return { outcome: "draft", risk: "medium", reasons, blockers };
     }
 
+    // ── 5. Deal stage gate — skip when listing standard prices from grounded KB. ──
+    const groundedCatalogReply =
+      input.knowledgeHits.length > 0 &&
+      (intentKind === "pricing" || intentKind === "product_info");
+
     if (
+      !groundedCatalogReply &&
       shouldApplyDealStageGate({
         stage,
         humanForStages: rules.humanForStages,
@@ -218,10 +224,9 @@ export class AutomationPolicyService {
       return { outcome: "draft", risk, reasons, blockers };
     }
 
-    // ── 6. Discount requests need owner approval ──
+    // ── 6. Discount requests need owner approval (message must ask for a discount). ──
     const discountBlocked =
-      profile.discountAuthority.mode === "none" &&
-      (intentKind === "negotiation" || isDiscountNegotiationMessage(lastInbound));
+      profile.discountAuthority.mode === "none" && isDiscountNegotiationMessage(lastInbound);
     if (discountBlocked) {
       pushBlocker("discount_authority", "Discounts need owner approval — draft for review.");
       return { outcome: "draft", risk: "medium", reasons, blockers };

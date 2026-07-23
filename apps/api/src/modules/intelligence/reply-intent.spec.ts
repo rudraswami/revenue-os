@@ -146,5 +146,20 @@ describe("reply-intent", () => {
       expect(resolveReplyIntentKind("What is the price of this product?", null)).toBe("pricing");
       expect(resolveReplyIntentKind("I want a refund for this product", null)).toBe("complaint");
     });
+
+    it("does not treat NEGOTIATION deal stage alone as discount negotiation", () => {
+      expect(
+        resolveReplyIntentKind("What are the plans available?", {
+          intent: "Product inquiry",
+          stage: "NEGOTIATION",
+        } as never),
+      ).toBe("pricing");
+      expect(
+        resolveReplyIntentKind("Can you give 15% discount?", {
+          intent: "Negotiation",
+          stage: "NEGOTIATION",
+        } as never),
+      ).toBe("negotiation");
+    });
   });
 });

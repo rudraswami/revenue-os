@@ -290,6 +290,49 @@ describe("AutomationPolicyService", () => {
     expect(result.blockers).toContain("discount_authority");
   });
 
+  it("plan listing on NEGOTIATION stage with knowledge → sends (not discount block)", () => {
+    const result = service.evaluate({
+      settings: { ...DEFAULT_INTELLIGENCE_SETTINGS, replyAutonomy: "auto_guarded" },
+      ctx: baseCtx({
+        lastInbound: "What are the plans available?",
+        lead: {
+          id: "l1",
+          stage: "NEGOTIATION",
+          score: 70,
+          displayName: "Test",
+          phone: "91",
+          profile: {},
+          aiEnabled: true,
+        },
+      }),
+      classification: {
+        stage: "NEGOTIATION",
+        confidence: 0.85,
+        intent: "Pricing inquiry",
+        sentiment: "neutral",
+        suggestedActions: [],
+        requiresHuman: false,
+      },
+      knowledgeHits: [
+        {
+          chunkId: "c1",
+          documentId: "d1",
+          category: "pricing",
+          title: "Plans",
+          content: "Starter ₹999, Growth ₹2999, Pro ₹5999",
+          similarity: 0.82,
+          citation: "Plans",
+        },
+      ],
+      knowledgeGap: false,
+      executionPath: "standard",
+      humanHandling: false,
+    });
+    expect(result.outcome).toBe("send");
+    expect(result.blockers).not.toContain("discount_authority");
+    expect(result.blockers).not.toContain("deal_stage");
+  });
+
   it("human for requiresOwner judgment", () => {
     const result = service.evaluate({
       settings: DEFAULT_INTELLIGENCE_SETTINGS,

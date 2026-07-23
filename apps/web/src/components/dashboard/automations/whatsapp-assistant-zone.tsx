@@ -45,6 +45,7 @@ type ProfileDraft = {
   language: NonNullable<BusinessEmployeeProfile["language"]>;
   escalation: NonNullable<BusinessEmployeeProfile["escalation"]>;
   closeActions: NonNullable<BusinessEmployeeProfile["closeActions"]>;
+  discountAuthority: NonNullable<BusinessEmployeeProfile["discountAuthority"]>;
   firstContactText: string;
   returningText: string;
   quickAnswers: QuickAnswer[];
@@ -56,6 +57,7 @@ function profileToDraft(profile: BusinessEmployeeProfile): ProfileDraft {
     language: { ...profile.language },
     escalation: { ...profile.escalation },
     closeActions: { ...profile.closeActions },
+    discountAuthority: { ...profile.discountAuthority },
     firstContactText: profile.greetingVariants.firstContact.join("\n"),
     returningText: profile.greetingVariants.returning.join("\n"),
     quickAnswers: profile.quickAnswers ?? [],
@@ -82,6 +84,13 @@ function draftToPatch(draft: ProfileDraft): BusinessEmployeeProfilePatch {
       paymentLink: draft.closeActions.paymentLink || undefined,
       bookingUrl: draft.closeActions.bookingUrl || undefined,
       callNumber: draft.closeActions.callNumber || undefined,
+    },
+    discountAuthority: {
+      mode: draft.discountAuthority.mode,
+      maxPercent:
+        draft.discountAuthority.mode === "preset_max" && draft.discountAuthority.maxPercent
+          ? draft.discountAuthority.maxPercent
+          : undefined,
     },
     greetingVariants: {
       firstContact: linesToGreetings(draft.firstContactText),
@@ -606,6 +615,52 @@ export function WhatsAppAssistantZone() {
                   placeholder="+91 98765 43210"
                 />
               </label>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-medium text-foreground">Discount policy</p>
+              <p className="mb-3 text-[11px] text-muted-foreground">
+                When a customer asks for a discount, Growvisi drafts for you unless you allow a
+                preset maximum here. Listing plans and standard prices is never blocked by this.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-1.5">
+                  <span className="text-[11px] text-muted-foreground">Discount authority</span>
+                  <Select
+                    disabled={!canManage || profileMutation.isPending}
+                    value={draft.discountAuthority.mode}
+                    onChange={(e) => {
+                      const mode = e.target.value as "none" | "preset_max";
+                      updateDraft("discountAuthority", {
+                        mode,
+                        maxPercent: mode === "preset_max" ? draft.discountAuthority.maxPercent ?? 10 : undefined,
+                      });
+                    }}
+                  >
+                    <option value="none">No discounts — I approve manually</option>
+                    <option value="preset_max">AI may offer up to a preset %</option>
+                  </Select>
+                </label>
+                {draft.discountAuthority.mode === "preset_max" ? (
+                  <label className="block space-y-1.5">
+                    <span className="text-[11px] text-muted-foreground">Maximum discount (%)</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      disabled={!canManage || profileMutation.isPending}
+                      value={draft.discountAuthority.maxPercent ?? 10}
+                      onChange={(e) => {
+                        const n = Number.parseInt(e.target.value, 10);
+                        updateDraft("discountAuthority", {
+                          ...draft.discountAuthority,
+                          maxPercent: Number.isFinite(n) ? Math.min(50, Math.max(1, n)) : 10,
+                        });
+                      }}
+                    />
+                  </label>
+                ) : null}
+              </div>
             </div>
 
             <div>

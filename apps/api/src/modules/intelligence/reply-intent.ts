@@ -1,5 +1,5 @@
-import type { AiClassificationResult, LeadStage, ReplyRiskLevel } from "@growvisi/shared";
-import { buildJudgmentRagQuery, isSimpleGreeting } from "@growvisi/shared";
+import type { AiClassificationResult, ReplyRiskLevel } from "@growvisi/shared";
+import { buildJudgmentRagQuery, isDiscountNegotiationMessage, isSimpleGreeting } from "@growvisi/shared";
 
 export type ReplyIntentKind =
   | "greeting"
@@ -103,12 +103,13 @@ export function resolveReplyIntentKind(
     return "complaint";
   }
 
-  const stage = classification?.stage as LeadStage | undefined;
-  if (
-    stage === "NEGOTIATION" ||
-    /negotiat|discount|counter/i.test(intentText) ||
-    (/negotiat|discount/i.test(msg) && isPricingInbound(msg))
-  ) {
+  const intentTextLower = intentText.toLowerCase();
+  const negotiationFromMessage =
+    isDiscountNegotiationMessage(msg) ||
+    /negotiat|discount|counter/i.test(intentTextLower) ||
+    (/negotiat|discount/i.test(msg) && isPricingInbound(msg));
+
+  if (negotiationFromMessage) {
     return "negotiation";
   }
 

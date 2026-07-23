@@ -661,7 +661,10 @@ export class ReplyComposerService {
         : "",
       opts.businessProfile.discountAuthority.mode === "none"
         ? "You cannot offer discounts. If the customer asks for one, say you'll check with the team."
-        : "",
+        : opts.businessProfile.discountAuthority.mode === "preset_max" &&
+            opts.businessProfile.discountAuthority.maxPercent
+          ? `You may offer at most ${opts.businessProfile.discountAuthority.maxPercent}% discount when the customer negotiates — never more. Standard list prices from knowledge are always fine to share.`
+          : "",
 
       `## How to answer
 1. ALWAYS answer the question directly using the business knowledge below. Lead with the answer.
