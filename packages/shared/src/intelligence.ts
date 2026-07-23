@@ -427,7 +427,6 @@ export function defaultBusinessEmployeeProfile(businessName: string): BusinessEm
       register: "casual",
       useFirstName: true,
       emoji: "sparingly",
-      signOff: `— Team ${biz}`,
     },
     language: {
       default: "hinglish",
@@ -442,25 +441,25 @@ export function defaultBusinessEmployeeProfile(businessName: string): BusinessEm
       mode: "none",
     },
     acknowledgments: {
-      sensitive_topic: `Thanks for your message. I'll make sure the right person from ${biz} gets back to you shortly.`,
-      needs_human: `Got it! Let me connect you with someone from our team who can help best. In the meantime, feel free to share any details so we're ready to assist.`,
-      knowledge_gap: `Good question! Let me check the details and get back to you shortly.`,
-      no_match: `Hi! I'd love to help — could you tell me a bit more about what you're looking for?`,
+      sensitive_topic: `Got it — I'll have someone from ${biz} follow up with you shortly.`,
+      needs_human: `Sure! I'll connect you with our team. Share any details here so we're ready to help.`,
+      knowledge_gap: `Good question — let me confirm the exact details and get back to you.`,
+      no_match: `Hi! What are you looking for? Happy to help.`,
     },
     greetingVariants: {
       firstContact: [
-        `Hi! Welcome to ${biz} — how can I help you today?`,
-        `Hey! Thanks for reaching out to ${biz}. What are you looking for?`,
+        `Hi! Welcome to ${biz} 👋 What can I help you with?`,
+        `Hey! ${biz} here — bataiye, kya chahiye?`,
       ],
       returning: [
-        "Hi! Good to hear from you. How can I help?",
-        "Hey! What can I help you with today?",
+        "Hi! How can I help today?",
+        "Hey! What can I do for you?",
       ],
     },
     courtesyTemplates: {
       thanks: [
-        "You're welcome! Let me know if there's anything else.",
-        "Happy to help! Feel free to reach out anytime.",
+        "You're welcome! Anything else, just message here.",
+        "Happy to help! Ping us anytime.",
       ],
       checking: `Let me check on that and get back to you shortly.`,
     },

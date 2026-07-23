@@ -8,7 +8,7 @@ describe("BusinessEmployeeProfile", () => {
   it("builds defaults from business name", () => {
     const profile = defaultBusinessEmployeeProfile("Acme Interiors");
     expect(profile.greetingVariants.firstContact[0]).toContain("Acme Interiors");
-    expect(profile.voice.signOff).toContain("Acme Interiors");
+    expect(profile.voice.signOff).toBeUndefined();
     expect(profile.discountAuthority.mode).toBe("none");
   });
 

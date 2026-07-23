@@ -8,6 +8,7 @@ import {
   formatContactName,
   formatCustomerCardBlock,
   formatIndustryComposePersonaBlock,
+  formatWhatsAppReply,
   isSimpleGreeting,
   resolveComposeLanguageInstruction,
   resolveIndustryComposePersona,
@@ -339,7 +340,11 @@ export class ReplyComposerService {
       }
 
       const contract = this.parseReplyContract(raw);
-      const suggestion = contract.reply.trim();
+      const suggestion = formatWhatsAppReply(contract.reply.trim(), {
+        intentKind,
+        inboundText: ctx.lastInbound,
+        autoSend: input.decision?.mode === "send",
+      });
       if (!suggestion) {
         throw new BadRequestException("No suggestion returned.");
       }
@@ -456,6 +461,11 @@ export class ReplyComposerService {
     classification: AiClassificationResult | null,
   ): Promise<ComposedReply> {
     const intentKind = resolveReplyIntentKind(ctx.lastInbound, classification);
+    const formatted = formatWhatsAppReply(suggestion, {
+      intentKind,
+      inboundText: ctx.lastInbound,
+      autoSend: input.decision?.mode === "send",
+    });
     const aiRun = await this.prisma.aiRun.create({
       data: {
         organizationId: input.organizationId,
@@ -470,14 +480,14 @@ export class ReplyComposerService {
           executionPath: "fast",
           auto: !input.manual,
         },
-        output: { suggestion, fastPath: true, intentKind } as object,
+        output: { suggestion: formatted, fastPath: true, intentKind } as object,
         latencyMs: 0,
         completedAt: new Date(),
       },
     });
 
     return {
-      suggestion,
+      suggestion: formatted,
       sources: [],
       usedRag: false,
       aiRunId: aiRun.id,
@@ -593,15 +603,14 @@ export class ReplyComposerService {
         : "A teammate will review before sending. Draft a complete, ready-to-send reply that sounds natural.",
 
       `## How to write on WhatsApp
-- Write like a real person, not a bot. Read your reply out loud — if it sounds like something a friend or helpful colleague would text, it's good.
-- Keep it SHORT. 2-4 lines for simple questions. Max 6-8 lines for detailed answers.
+- Sound like a real person texting — warm, clear, helpful. Read it aloud; if it feels stiff, rewrite.
+- Match the customer's length: 3-word message → 2-4 short lines max. Detailed question → up to 6-8 lines.
 - Use line breaks between thoughts — WhatsApp has no paragraphs.
-- Use *bold* sparingly for key info (prices, product names, timings) — not on every word.
-- Use bullet points (•) only for lists of 3+ items.
-- Start with a warm, natural opener. Use the customer's name if available. Never "Dear Sir/Madam", "Greetings", or "I hope this message finds you well."
-- End with a natural next step — a question or gentle nudge, not a hard sell. Match the customer's energy: if they sent 3 words, don't reply with a wall of text.
-- DO NOT use formal letter formatting, "Regards", "Best wishes", or "Warm regards" at the end.
-- DO NOT use phrases like "Thank you for reaching out", "I appreciate your inquiry", or "We value your interest" — they sound corporate and robotic.`,
+- Use *bold* only for key facts (prices, plan names, timings) — WhatsApp syntax, not **markdown**.
+- Use • bullets only for 3+ items (plans, features, options).
+- Use the customer's name naturally when you have it. Never "Dear Sir/Madam" or "Greetings".
+- End with one natural next step (question or offer) — not a hard sell.
+- Never use: "Thank you for reaching out", "I appreciate your inquiry", "Best regards", "Warm wishes".`,
 
       opts.greeting
         ? "The customer just said hello. Don't say 'Hello again' or 'nice to hear from you' if the thread already has messages."
@@ -667,20 +676,18 @@ export class ReplyComposerService {
 
 Customer: "What do you guys offer?"
 BAD: "Thank you for reaching out. Our team will share the details with you shortly."
-WHY BAD: Sounds robotic. Gives zero information. Customer will leave.
-GOOD: "Hi! We provide digital marketing and automation solutions for businesses. Our main offerings include lead management, WhatsApp automation, and customer engagement tools. Want me to share more about any of these?"
+GOOD: "Hi! We do *interior design + execution* for homes and offices.\n\n• Design consultation\n• 3D layouts\n• Full renovation\n\nKis type ka project soch rahe ho?"
 
 Customer: "kitna cost hai?"
 BAD: "Please share more details so we can provide pricing."
-WHY BAD: Deflects instead of helping. Feels like talking to a machine.
-GOOD: "Hi! Our plans start from ₹999/mo. The right plan depends on your team size and requirements — happy to walk you through the options!"
+GOOD: "Plans *₹999 se start* hote hain — team size ke hisaab se best plan batata hoon. Kitne log use karenge?"
 
 Customer: "I want to return my order"
-GOOD: "I understand! Could you share your order number? I'll get this sorted for you quickly."
+GOOD: "Samajh gaya — order number bhej dena? Jaldi sort karte hain."
 
 Customer: "Do you have any offers?"
-BAD: "Thank you for your interest. Our sales team will reach out to you with the latest offers."
-GOOD: "Yes! We're currently offering a 14-day free trial on all plans. Would you like to try it out?"`,
+BAD: "Our sales team will reach out with the latest offers."
+GOOD: "Haan — abhi *14-day free trial* chal raha hai. Try karna chahenge?"`,
 
       'Respond with ONLY a JSON object (no markdown, no code fences) shaped exactly: {"reply": string, "answeredEverything": boolean, "unresolved": string[], "confidence": number, "needsHuman": boolean}. "reply" is the exact WhatsApp message to send (natural text, no JSON inside). "answeredEverything": true if your reply meaningfully addresses the core question — a helpful answer counts even if one detail needs confirmation. Set false only if you truly could not say anything useful. "unresolved": specific details you could NOT confirm. "confidence": 0-1 how well the reply resolves the message. "needsHuman": true ONLY for sensitive complaints, legal issues, refund disputes, or promises you cannot make.',
     ]

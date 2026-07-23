@@ -1,22 +1,29 @@
 import { Injectable } from "@nestjs/common";
 import type { BusinessEmployeeProfile } from "@growvisi/shared";
-import { defaultBusinessEmployeeProfile, isCourtesyOnlyMessage, isSimpleAck, isSimpleGreeting, isSimpleThanks } from "@growvisi/shared";
+import {
+  defaultBusinessEmployeeProfile,
+  formatWhatsAppReply,
+  isCourtesyOnlyMessage,
+  isSimpleAck,
+  isSimpleGreeting,
+  isSimpleThanks,
+} from "@growvisi/shared";
 import type { ConversationContext } from "./context-builder.service";
 
 /** Legacy fallbacks when profile pools are unexpectedly empty. */
 const LEGACY_GREETING_TEMPLATES = [
-  (biz: string) => `Hi! Thanks for messaging ${biz}. What can we help you with today?`,
-  (biz: string) => `Hello! Welcome to ${biz} — how can we assist you?`,
+  (biz: string) => `Hi! ${biz} here — what can I help you with?`,
+  (biz: string) => `Hey! Welcome to ${biz} 👋 Bataiye, kya chahiye?`,
 ];
 
 const LEGACY_RETURNING_GREETING_TEMPLATES = [
-  () => `Hi! How can we help you today?`,
-  () => `Hello! What would you like to know?`,
+  () => `Hi! How can I help today?`,
+  () => `Hey! What can I do for you?`,
 ];
 
 const LEGACY_THANKS_TEMPLATES = [
-  () => `You're welcome! Let us know if you need anything else.`,
-  () => `Happy to help! Reach out anytime.`,
+  () => `You're welcome! Anything else, just message here.`,
+  () => `Happy to help! Ping us anytime.`,
 ];
 
 @Injectable()
@@ -50,28 +57,39 @@ export class FastReplyService {
 
     if (isSimpleThanks(lastInbound) || isSimpleAck(lastInbound)) {
       const pool = profile.courtesyTemplates.thanks;
-      if (pool.length > 0) {
-        return pool[hash % pool.length];
-      }
-      return LEGACY_THANKS_TEMPLATES[hash % LEGACY_THANKS_TEMPLATES.length]();
+      const text =
+        pool.length > 0
+          ? pool[hash % pool.length]
+          : LEGACY_THANKS_TEMPLATES[hash % LEGACY_THANKS_TEMPLATES.length]();
+      return formatWhatsAppReply(text, { intentKind: "thanks", inboundText: lastInbound, autoSend: true });
     }
 
     if (isSimpleGreeting(lastInbound)) {
       if (returning) {
         const pool = profile.greetingVariants.returning;
-        if (pool.length > 0) {
-          return pool[hash % pool.length];
-        }
-        return LEGACY_RETURNING_GREETING_TEMPLATES[
-          hash % LEGACY_RETURNING_GREETING_TEMPLATES.length
-        ]();
+        const text =
+          pool.length > 0
+            ? pool[hash % pool.length]
+            : LEGACY_RETURNING_GREETING_TEMPLATES[
+                hash % LEGACY_RETURNING_GREETING_TEMPLATES.length
+              ]();
+        return formatWhatsAppReply(text, {
+          intentKind: "greeting",
+          inboundText: lastInbound,
+          autoSend: true,
+        });
       }
 
       const pool = profile.greetingVariants.firstContact;
-      if (pool.length > 0) {
-        return pool[hash % pool.length];
-      }
-      return LEGACY_GREETING_TEMPLATES[hash % LEGACY_GREETING_TEMPLATES.length](biz);
+      const text =
+        pool.length > 0
+          ? pool[hash % pool.length]
+          : LEGACY_GREETING_TEMPLATES[hash % LEGACY_GREETING_TEMPLATES.length](biz);
+      return formatWhatsAppReply(text, {
+        intentKind: "greeting",
+        inboundText: lastInbound,
+        autoSend: true,
+      });
     }
 
     return null;

@@ -59,7 +59,9 @@ export function buildVoiceInstructions(profile: BusinessEmployeeProfile): string
     lines.push("You may use 1 emoji per message if it feels natural — never force them.");
   }
   if (profile.voice.signOff?.trim()) {
-    lines.push(`If the reply is a detailed answer (4+ lines), you may end with: ${profile.voice.signOff.trim()}. For short quick replies, skip the sign-off.`);
+    lines.push(
+      `For longer replies only (5+ lines), you may end with: ${profile.voice.signOff.trim()}. Never use email-style closings like Regards or Best wishes.`,
+    );
   }
   return lines;
 }

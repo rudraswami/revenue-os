@@ -53,7 +53,7 @@ describe("business-profile-compose", () => {
   it("resolves acknowledgment by blocker priority", () => {
     const p = defaultBusinessEmployeeProfile("Co");
     expect(resolveProfileAcknowledgment(p, ["knowledge_gap"])).toMatch(/exact details/i);
-    expect(resolveProfileAcknowledgment(p, ["sensitive_topic"])).toMatch(/reply shortly/i);
+    expect(resolveProfileAcknowledgment(p, ["sensitive_topic"])).toMatch(/follow up with you/i);
   });
 
   it("detects discount negotiation", () => {

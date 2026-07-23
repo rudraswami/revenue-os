@@ -17,6 +17,7 @@ export * from "./events";
 export * from "./intelligence";
 export * from "./reply-guards";
 export * from "./reply-trust-rails";
+export * from "./whatsapp-reply-format";
 export * from "./types";
 export * from "./whatsapp-go-live";
 export * from "./post-activation-coaching";
