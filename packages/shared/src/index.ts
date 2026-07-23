@@ -7,6 +7,7 @@ export * from "./context-window";
 export * from "./classification-judgment";
 export * from "./commercial-sensitivity";
 export * from "./industry-handbooks";
+export * from "./industry-compose-persona";
 export * from "./knowledge-retrieval";
 export * from "./quick-answers";
 export * from "./working-memory";

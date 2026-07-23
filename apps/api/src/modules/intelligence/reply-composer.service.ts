@@ -7,8 +7,10 @@ import {
   defaultBusinessEmployeeProfile,
   formatContactName,
   formatCustomerCardBlock,
+  formatIndustryComposePersonaBlock,
   isSimpleGreeting,
   resolveComposeLanguageInstruction,
+  resolveIndustryComposePersona,
 } from "@growvisi/shared";
 import {
   buildRagQuery,
@@ -23,6 +25,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ContextBuilderService, type ConversationContext } from "./context-builder.service";
 import type { PipelineContext } from "./pipeline-context";
 import type { PipelineSpans } from "./pipeline-spans";
+import { resolveIntelligenceSettings } from "./workspace-intelligence-settings";
 
 export interface ComposedReply {
   suggestion: string;
@@ -167,18 +170,46 @@ export class ReplyComposerService {
     const customerCardBlock = ctx.workingMemory
       ? formatCustomerCardBlock(ctx.workingMemory)
       : "";
-    const businessName =
-      input.pipelineContext?.businessName ??
-      (
-        await this.prisma.organization.findUnique({
-          where: { id: input.organizationId },
-          select: { name: true },
-        })
-      )?.name;
-
-    const businessProfile: BusinessEmployeeProfile =
+    const businessNameFromPipeline = input.pipelineContext?.businessName;
+    let businessName = businessNameFromPipeline;
+    let businessProfile: BusinessEmployeeProfile =
       input.pipelineContext?.businessProfile ??
-      defaultBusinessEmployeeProfile(businessName?.trim() || "our team");
+      defaultBusinessEmployeeProfile("our team");
+    let industryId = input.pipelineContext?.intelligenceSettings?.industryId;
+    let customIndustryLabel = input.pipelineContext?.intelligenceSettings?.customIndustryLabel;
+
+    // Manual "Suggest reply" and other paths without pipelineContext still need
+    // the workspace handbook + employee profile — not generic defaults.
+    if (
+      !input.pipelineContext?.businessProfile ||
+      !businessName ||
+      industryId === undefined
+    ) {
+      const org = await this.prisma.organization.findUnique({
+        where: { id: input.organizationId },
+        select: { name: true, settings: true },
+      });
+      const orgSettings =
+        org?.settings && typeof org.settings === "object"
+          ? (org.settings as Record<string, unknown>)
+          : {};
+      const intelligence = resolveIntelligenceSettings(
+        orgSettings,
+        org?.name ?? "our team",
+      );
+      businessName = businessName ?? org?.name;
+      if (!input.pipelineContext?.businessProfile) {
+        businessProfile =
+          intelligence.businessProfile ??
+          defaultBusinessEmployeeProfile(businessName?.trim() || "our team");
+      }
+      if (industryId === undefined) {
+        industryId = intelligence.industryId;
+      }
+      if (customIndustryLabel === undefined) {
+        customIndustryLabel = intelligence.customIndustryLabel;
+      }
+    }
 
     const rawContactName = ctx.conversation.contactName ?? ctx.lead.displayName ?? "there";
     const contactName = formatContactName(businessProfile, rawContactName);
@@ -274,6 +305,8 @@ export class ReplyComposerService {
                   businessName,
                   contactName,
                   businessProfile,
+                  industryId,
+                  customIndustryLabel,
                   classification: classification ?? undefined,
                   threadSummary,
                   businessContext: input.pipelineContext?.businessContext,
@@ -508,6 +541,8 @@ export class ReplyComposerService {
     businessName?: string | null;
     contactName?: string;
     businessProfile: BusinessEmployeeProfile;
+    industryId?: string;
+    customIndustryLabel?: string;
     classification?: AiClassificationResult;
     threadSummary?: string;
     /** Structured org context (hours, address, etc.) from context-builder. */
@@ -538,13 +573,17 @@ export class ReplyComposerService {
       businessContext: opts.businessContext,
     });
 
-    const industryPersona = this.resolveIndustryPersona(
-      opts.businessProfile,
-      opts.businessName,
+    const industryPersonaBlock = formatIndustryComposePersonaBlock(
+      resolveIndustryComposePersona({
+        industryId: opts.industryId,
+        customIndustryLabel: opts.customIndustryLabel,
+        businessName: opts.businessName?.trim() || "our team",
+        profile: opts.businessProfile,
+      }),
     );
 
     return [
-      industryPersona,
+      industryPersonaBlock,
       ...voiceLines,
       languageInstruction,
 
@@ -647,44 +686,6 @@ GOOD: "Yes! We're currently offering a 14-day free trial on all plans. Would you
     ]
       .filter(Boolean)
       .join("\n\n");
-  }
-
-  /**
-   * Industry-aware opening persona. The handbook `profilePatch` sets voice
-   * register and escalation but never overrides the compose system prompt
-   * identity — this method fills that gap so a clinic sounds like a clinic
-   * and a salon sounds like a salon.
-   */
-  private resolveIndustryPersona(
-    profile: BusinessEmployeeProfile,
-    businessName?: string | null,
-  ): string {
-    const name = businessName ?? "this business";
-    const contact = profile.escalation?.contactName;
-
-    if (profile.voice.register === "professional") {
-      if (contact === "clinic reception") {
-        return `You are the friendly receptionist at ${name}. You help patients with appointments, timings, and reports over WhatsApp. You are warm, patient, and professional. You NEVER give medical advice or diagnoses — always direct health questions to the doctor's visit. Think of yourself as the helpful person at the front desk who makes patients feel welcome.`;
-      }
-      if (contact === "admissions counsellor") {
-        return `You are a helpful admissions counsellor at ${name}. You assist students and parents with course information, batch timings, fees, and the admission process over WhatsApp. You are knowledgeable, encouraging, and patient. You understand that choosing a course is a big decision and you help people make an informed choice without pressure.`;
-      }
-      if (contact === "design coordinator") {
-        return `You are a design consultant at ${name}. You help clients explore interior design options, understand the process, and schedule consultations over WhatsApp. You are creative, professional, and detail-oriented. You understand that home design is personal and you guide clients with care and expertise.`;
-      }
-      if (contact === "sales executive") {
-        return `You are a property advisor at ${name}. You help buyers with project details, configurations, pricing, and site visit scheduling over WhatsApp. You are knowledgeable, trustworthy, and factual. You NEVER overstate availability or invent pricing — you share only verified information and help buyers make confident decisions.`;
-      }
-    }
-
-    if (contact === "front desk" || contact === "restaurant manager") {
-      if (contact === "restaurant manager") {
-        return `You are the friendly host at ${name}. You help customers with menu questions, reservations, and orders over WhatsApp. You are warm, quick, and enthusiastic about the food. Keep it brief and appetizing — people texting a restaurant want fast, helpful replies.`;
-      }
-      return `You are the friendly front desk at ${name}. You help customers with services, bookings, and availability over WhatsApp. You are warm, helpful, and quick to respond. You know the services well and help customers find exactly what they need.`;
-    }
-
-    return `You are a helpful team member at ${name} who handles customer conversations on WhatsApp. You are warm, knowledgeable, and genuinely interested in helping. You answer questions clearly, share relevant information from your knowledge, and guide customers naturally. Think of yourself as the friendly, knowledgeable person customers love chatting with — not a corporate salesperson.`;
   }
 
   private classificationFromProfile(

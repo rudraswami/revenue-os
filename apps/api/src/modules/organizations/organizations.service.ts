@@ -10,9 +10,11 @@ import { Prisma } from "@prisma/client";
 import type { JwtPayload, MembershipRole } from "@growvisi/shared";
 import {
   canInviteRole,
+  CUSTOM_INDUSTRY_ID,
+  getDefaultCustomComposePersona,
   getIndustryHandbook,
-  isIndustryHandbookId,
-  listIndustryHandbooks,
+  isWorkspaceIndustryId,
+  listIndustryHandbookOptions,
   mergeIndustryHandbookProfile,
 } from "@growvisi/shared";
 import { GROWVISI_WEB_URL, activationAllComplete, activationNextMilestone, buildActivationFunnelMetrics, buildPostActivationCoaching } from "@growvisi/shared";
@@ -220,6 +222,19 @@ export class OrganizationsService {
           socialLinks:
             cleanPatch.businessProfile.socialLinks ??
             current.businessProfile?.socialLinks,
+          composePersona:
+            cleanPatch.businessProfile.composePersona === null
+              ? undefined
+              : cleanPatch.businessProfile.composePersona
+                ? {
+                    identity:
+                      cleanPatch.businessProfile.composePersona.identity ??
+                      current.businessProfile?.composePersona?.identity,
+                    guardrails:
+                      cleanPatch.businessProfile.composePersona.guardrails ??
+                      current.businessProfile?.composePersona?.guardrails,
+                  }
+                : current.businessProfile?.composePersona,
         }
       : current.businessProfile;
     const next = resolveIntelligenceSettings(
@@ -245,7 +260,7 @@ export class OrganizationsService {
   }
 
   listIndustryHandbooks() {
-    return listIndustryHandbooks();
+    return listIndustryHandbookOptions();
   }
 
   async applyIndustryHandbook(
@@ -254,7 +269,7 @@ export class OrganizationsService {
     opts?: { seedKnowledge?: boolean },
   ) {
     this.assertAdmin(user);
-    if (!isIndustryHandbookId(industryId)) {
+    if (!isWorkspaceIndustryId(industryId)) {
       throw new BadRequestException("Unknown industry handbook.");
     }
 
@@ -266,18 +281,61 @@ export class OrganizationsService {
 
     const settings = (org.settings ?? {}) as Record<string, unknown>;
     const current = resolveIntelligenceSettings(settings, org.name);
+
+    if (industryId === CUSTOM_INDUSTRY_ID) {
+      const businessProfile = {
+        ...current.businessProfile!,
+        composePersona:
+          current.businessProfile?.composePersona?.identity?.trim()
+            ? current.businessProfile.composePersona
+            : getDefaultCustomComposePersona(org.name),
+      };
+
+      const next = resolveIntelligenceSettings(
+        {
+          intelligence: {
+            ...current,
+            industryId: CUSTOM_INDUSTRY_ID,
+            businessProfile,
+          },
+        },
+        org.name,
+      );
+
+      await this.prisma.organization.update({
+        where: { id: user.organizationId },
+        data: {
+          settings: {
+            ...settings,
+            intelligence: next,
+          } as object,
+        },
+      });
+
+      return {
+        intelligence: next,
+        industryId: CUSTOM_INDUSTRY_ID,
+        knowledgeDocsCreated: 0,
+        message:
+          "Set up your custom business persona below — describe how your AI should sound and what rules it must follow.",
+      };
+    }
+
     const handbook = getIndustryHandbook(industryId);
-    const businessProfile = mergeIndustryHandbookProfile(
+    const mergedProfile = mergeIndustryHandbookProfile(
       org.name,
       industryId,
       current.businessProfile,
     );
+    // Fresh handbook — drop persona override so handbook defaults apply.
+    const { composePersona: _drop, ...businessProfile } = mergedProfile;
 
     const next = resolveIntelligenceSettings(
       {
         intelligence: {
           ...current,
           industryId,
+          customIndustryLabel: undefined,
           businessProfile,
         },
       },

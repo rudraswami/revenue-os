@@ -122,6 +122,20 @@ class QuickAnswerDto {
   category?: "general" | "pricing" | "policy" | "faq" | "product";
 }
 
+class BusinessComposePersonaDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  identity?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(280, { each: true })
+  @ArrayMaxSize(8)
+  guardrails?: string[];
+}
+
 class BusinessProfilePatchDto {
   @IsOptional()
   @ValidateNested()
@@ -179,6 +193,11 @@ class BusinessProfilePatchDto {
   @Type(() => QuickAnswerDto)
   @ArrayMaxSize(50)
   quickAnswers?: QuickAnswerDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BusinessComposePersonaDto)
+  composePersona?: BusinessComposePersonaDto | null;
 }
 
 class UpdateIntelligenceSettingsDto {
@@ -189,6 +208,16 @@ class UpdateIntelligenceSettingsDto {
   @IsOptional()
   @IsEnum(["careful", "balanced", "responsive"])
   automationPreset?: "careful" | "balanced" | "responsive";
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  industryId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  customIndustryLabel?: string;
 
   @IsOptional()
   @ValidateNested()

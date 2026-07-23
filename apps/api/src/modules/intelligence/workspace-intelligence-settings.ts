@@ -5,6 +5,7 @@ import {
   REPLY_AUTONOMY_MODES,
   AUTOMATION_PRESET_DEFAULTS,
   normalizeBusinessEmployeeProfile,
+  normalizeCustomIndustryLabel,
   type AutomationPolicyPreset,
   type BusinessEmployeeProfile,
   type IntelligenceWorkspaceSettings,
@@ -40,7 +41,9 @@ export function normalizeIntelligenceSettings(raw: unknown): IntelligenceWorkspa
       ? input.industryId.trim()
       : undefined;
 
-  return { replyAutonomy, automationPreset, automationRules, safety, industryId };
+  const customIndustryLabel = normalizeCustomIndustryLabel(input.customIndustryLabel);
+
+  return { replyAutonomy, automationPreset, automationRules, safety, industryId, customIndustryLabel };
 }
 
 export function readIntelligenceSettingsFromOrg(

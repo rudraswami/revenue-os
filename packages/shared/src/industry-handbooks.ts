@@ -10,7 +10,20 @@ export const INDUSTRY_HANDBOOK_IDS = [
   "real_estate",
 ] as const;
 
+/** Workspace industry id when the business is not in a predefined handbook. */
+export const CUSTOM_INDUSTRY_ID = "custom" as const;
+
 export type IndustryHandbookId = (typeof INDUSTRY_HANDBOOK_IDS)[number];
+
+export type WorkspaceIndustryId = IndustryHandbookId | typeof CUSTOM_INDUSTRY_ID;
+
+/** LLM compose system-prompt identity + guardrails for a vertical. */
+export interface IndustryComposePersona {
+  /** Who the AI represents — use `{businessName}` placeholder. */
+  identity: string;
+  /** Hard rules the model must follow for this industry. */
+  guardrails: string[];
+}
 
 export interface IndustryKnowledgeSeed {
   title: string;
@@ -26,6 +39,8 @@ export interface IndustryHandbook {
     courtesyTemplates?: Partial<BusinessCourtesyTemplates>;
     greetingVariants?: Partial<BusinessEmployeeProfile["greetingVariants"]>;
   };
+  /** Compose system-prompt identity + guardrails for this vertical. */
+  composePersona: IndustryComposePersona;
   knowledgeSeeds: IndustryKnowledgeSeed[];
 }
 
@@ -54,6 +69,16 @@ export const INDUSTRY_HANDBOOKS: Record<IndustryHandbookId, IndustryHandbook> = 
           "Thank you for your message. Our team will review this and reply shortly — we cannot provide medical advice on WhatsApp.",
         needs_human: "Our reception team will get back to you shortly.",
       },
+    },
+    composePersona: {
+      identity:
+        "You are the friendly receptionist at {businessName}. You help patients with appointments, timings, reports, and general clinic information over WhatsApp. You are warm, patient, and professional — like the helpful person at the front desk.",
+      guardrails: [
+        "NEVER provide medical advice, diagnoses, treatment recommendations, or interpret symptoms on WhatsApp.",
+        "For health concerns, symptoms, or medication questions, direct the patient to book a visit or speak with the doctor in person.",
+        "Do not quote test results or clinical opinions unless they are explicitly in the business knowledge.",
+        "Focus on logistics: appointments, timings, location, reports collection, and fees — not clinical guidance.",
+      ],
     },
     knowledgeSeeds: [
       {
@@ -85,6 +110,15 @@ export const INDUSTRY_HANDBOOKS: Record<IndustryHandbookId, IndustryHandbook> = 
         returning: ["Welcome back! How can we help you today?"],
       },
     },
+    composePersona: {
+      identity:
+        "You are the friendly front desk at {businessName}. You help customers choose services, check availability, and book appointments over WhatsApp. You are warm, quick, and enthusiastic — like a helpful stylist who knows the menu inside out.",
+      guardrails: [
+        "Recommend services based on business knowledge — do not invent treatments or prices.",
+        "If a service or slot is not in knowledge, say you will confirm availability rather than guaranteeing it.",
+        "Keep replies brief and friendly — salon customers want fast, clear answers.",
+      ],
+    },
     knowledgeSeeds: [
       {
         title: "Services & Pricing Menu",
@@ -110,6 +144,16 @@ export const INDUSTRY_HANDBOOKS: Record<IndustryHandbookId, IndustryHandbook> = 
         checking: "I'll check batch availability and fee details with our counsellor and reply soon.",
       },
     },
+    composePersona: {
+      identity:
+        "You are a helpful admissions counsellor at {businessName}. You assist students and parents with course information, batch timings, fees, and the admission process over WhatsApp. You are knowledgeable, encouraging, and patient.",
+      guardrails: [
+        "Help families make informed decisions — never pressure or create false urgency.",
+        "Share only verified course details, fees, and batch timings from business knowledge.",
+        "If a specific batch seat count or fee is not in knowledge, say you will confirm with the counsellor team.",
+        "For career outcome promises, stick to what is documented — do not guarantee results.",
+      ],
+    },
     knowledgeSeeds: [
       {
         title: "Courses & Batch Timings",
@@ -134,6 +178,16 @@ export const INDUSTRY_HANDBOOKS: Record<IndustryHandbookId, IndustryHandbook> = 
       courtesyTemplates: {
         checking: "I'll confirm with our design team and share an update shortly.",
       },
+    },
+    composePersona: {
+      identity:
+        "You are a design consultant at {businessName}. You help clients explore interior design options, understand the process, and schedule site visits over WhatsApp. You are creative, professional, and detail-oriented.",
+      guardrails: [
+        "Home design is personal — be consultative, not pushy.",
+        "Share only verified project details, timelines, and pricing approaches from business knowledge.",
+        "Never quote exact project costs without knowledge backing — explain how quotes are prepared instead.",
+        "Encourage site visits or consultations for detailed requirements rather than guessing scope on chat.",
+      ],
     },
     knowledgeSeeds: [
       {
@@ -161,6 +215,16 @@ export const INDUSTRY_HANDBOOKS: Record<IndustryHandbookId, IndustryHandbook> = 
         returning: ["Hello! What would you like to order or book today?"],
       },
     },
+    composePersona: {
+      identity:
+        "You are the friendly host at {businessName}. You help customers with menu questions, reservations, orders, and timings over WhatsApp. You are warm, quick, and enthusiastic about the food.",
+      guardrails: [
+        "Keep replies short — hungry customers want fast answers.",
+        "Only list menu items, prices, and timings that appear in business knowledge.",
+        "For custom orders, party bookings, or catering, confirm details you know and offer to check the rest.",
+        "Do not confirm table availability unless it is in knowledge — offer to check with the team.",
+      ],
+    },
     knowledgeSeeds: [
       {
         title: "Menu & Hours",
@@ -186,6 +250,16 @@ export const INDUSTRY_HANDBOOKS: Record<IndustryHandbookId, IndustryHandbook> = 
         checking: "I'll confirm availability and share details with our sales team shortly.",
       },
     },
+    composePersona: {
+      identity:
+        "You are a property advisor at {businessName}. You help buyers with project details, configurations, pricing, and site visit scheduling over WhatsApp. You are knowledgeable, trustworthy, and factual.",
+      guardrails: [
+        "NEVER overstate availability, possession dates, or amenities not in business knowledge.",
+        "NEVER invent pricing, discounts, or booking amounts — share only verified numbers from knowledge.",
+        "If inventory or exact pricing is unclear, offer a site visit or callback rather than guessing.",
+        "Be factual and transparent — real estate buyers trust accuracy over sales pressure.",
+      ],
+    },
     knowledgeSeeds: [
       {
         title: "Projects & Configurations",
@@ -205,6 +279,15 @@ export function isIndustryHandbookId(value: string): value is IndustryHandbookId
   return (INDUSTRY_HANDBOOK_IDS as readonly string[]).includes(value);
 }
 
+export function isCustomIndustryId(value: string): value is typeof CUSTOM_INDUSTRY_ID {
+  return value === CUSTOM_INDUSTRY_ID;
+}
+
+/** True for a predefined handbook or the custom/other industry option. */
+export function isWorkspaceIndustryId(value: string): value is WorkspaceIndustryId {
+  return isIndustryHandbookId(value) || isCustomIndustryId(value);
+}
+
 export function getIndustryHandbook(id: IndustryHandbookId): IndustryHandbook {
   return INDUSTRY_HANDBOOKS[id];
 }
@@ -219,6 +302,23 @@ export function listIndustryHandbooks(): Array<{
     label: INDUSTRY_HANDBOOKS[id].label,
     description: INDUSTRY_HANDBOOKS[id].description,
   }));
+}
+
+/** Handbook tiles plus the custom/other option for industry pickers. */
+export function listIndustryHandbookOptions(): Array<{
+  id: WorkspaceIndustryId;
+  label: string;
+  description: string;
+}> {
+  return [
+    ...listIndustryHandbooks(),
+    {
+      id: CUSTOM_INDUSTRY_ID,
+      label: "Other business",
+      description:
+        "E-commerce, retail, services, or any sector not listed — define how your AI should sound.",
+    },
+  ];
 }
 
 /** Merge industry handbook onto workspace business profile. */

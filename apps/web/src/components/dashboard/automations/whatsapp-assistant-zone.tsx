@@ -26,6 +26,7 @@ import { AutonomyModeIcon } from "@/components/dashboard/automations/autonomy-mo
 import { ConversationPreview } from "@/components/dashboard/automations/conversation-preview";
 import { QuickAnswersEditor } from "@/components/dashboard/automations/quick-answers-editor";
 import { IndustryHandbookPicker } from "@/components/dashboard/industry-handbook-picker";
+import { AiPersonaEditor } from "@/components/dashboard/automations/ai-persona-editor";
 import { KnowledgeSettingsLink } from "@/components/settings/knowledge-settings-link";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
@@ -571,6 +572,13 @@ export function WhatsAppAssistantZone() {
               canManage={canManage}
               currentIndustryId={data?.industryId}
               token={token}
+            />
+
+            <AiPersonaEditor
+              canManage={canManage}
+              token={token}
+              settings={data}
+              businessName={organization?.name ?? "our team"}
             />
 
             <div className="grid gap-3 sm:grid-cols-2">

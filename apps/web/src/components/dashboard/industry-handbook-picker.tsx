@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { IntelligenceWorkspaceSettings } from "@growvisi/shared";
+import { CUSTOM_INDUSTRY_ID, type IntelligenceWorkspaceSettings } from "@growvisi/shared";
 import { apiFetch } from "@/lib/api-client";
 import { SelectableTile } from "@/components/ui/selectable-tile";
 import { useToast } from "@/components/ui/toast";
@@ -64,13 +64,16 @@ export function IndustryHandbookPicker({
         <p className="text-xs text-muted-foreground">
           Active:{" "}
           <span className="font-medium text-foreground">
-            {handbooks.find((h) => h.id === currentIndustryId)?.label ?? currentIndustryId}
+            {handbooks.find((h) => h.id === currentIndustryId)?.label ??
+              (currentIndustryId === CUSTOM_INDUSTRY_ID ? "Other business" : currentIndustryId)}
           </span>
         </p>
       ) : pendingId ? (
         <p className="text-xs font-medium text-accent">Seeding starter docs…</p>
       ) : (
-        <p className="text-xs text-muted-foreground">Tap a sector to seed starter docs.</p>
+        <p className="text-xs text-muted-foreground">
+          Tap a sector to apply a template, or choose Other for a custom business.
+        </p>
       )}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {handbooks.map((hb) => (

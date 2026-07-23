@@ -151,13 +151,23 @@ export interface IntelligenceWorkspaceSettings {
   replyAutonomy: ReplyAutonomyMode;
   /** Preset for auto_guarded — careful / balanced / responsive. */
   automationPreset: AutomationPolicyPreset;
-  /** Applied industry employee handbook (optional). */
+  /** Applied industry employee handbook (optional). Use `custom` for other businesses. */
   industryId?: string;
+  /** Display label when industryId is `custom` (e.g. "E-commerce", "Legal services"). */
+  customIndustryLabel?: string;
   /** Optional overrides; merged on top of preset defaults server-side. */
   automationRules?: Partial<AutomationPolicyRules>;
   safety?: Partial<AutomationSafetySettings>;
   /** How Growvisi represents this business — voice, escalation, close actions. */
   businessProfile?: BusinessEmployeeProfile;
+}
+
+/** Optional override for how the AI represents the business in compose prompts. */
+export interface BusinessComposePersonaOverride {
+  /** Who the AI is — may include `{businessName}` placeholder. */
+  identity?: string;
+  /** Non-negotiable rules for this business (max 8). */
+  guardrails?: string[];
 }
 
 /** PATCH body for intelligence settings — nested businessProfile fields are partial. */
@@ -179,6 +189,8 @@ export type BusinessEmployeeProfilePatch = {
   paymentMethods?: string;
   phone?: string;
   socialLinks?: string;
+  /** Override handbook/default AI persona for compose. Set identity to empty to clear. */
+  composePersona?: BusinessComposePersonaOverride | null;
 };
 
 export type IntelligenceWorkspaceSettingsPatch = Partial<
@@ -317,11 +329,20 @@ export interface BusinessEmployeeProfile {
   paymentMethods?: string;
   phone?: string;
   socialLinks?: string;
+  /**
+   * Optional override for AI compose persona. When set, takes priority over the
+   * industry handbook defaults. Used for custom industries and fine-tuning.
+   */
+  composePersona?: BusinessComposePersonaOverride;
 }
 
 const MAX_STRING = 500;
 const MAX_TEMPLATE_ITEMS = 8;
 const MAX_ACK_CODES = 20;
+const MAX_PERSONA_IDENTITY_CHARS = 600;
+const MAX_PERSONA_GUARDRAILS = 8;
+const MAX_PERSONA_GUARDRAIL_CHARS = 280;
+const MAX_CUSTOM_INDUSTRY_LABEL_CHARS = 80;
 
 function trimString(value: unknown, max = MAX_STRING): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -336,6 +357,26 @@ function stringArray(value: unknown, maxItems = MAX_TEMPLATE_ITEMS): string[] {
     .filter((v) => typeof v === "string" && v.trim().length > 0)
     .map((v) => String(v).trim().slice(0, MAX_STRING))
     .slice(0, maxItems);
+}
+
+function normalizeComposePersonaOverride(
+  raw: unknown,
+): BusinessComposePersonaOverride | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const input = raw as Partial<BusinessComposePersonaOverride>;
+  const identity = trimString(input.identity, MAX_PERSONA_IDENTITY_CHARS);
+  const guardrails = stringArray(input.guardrails, MAX_PERSONA_GUARDRAILS).map((g) =>
+    g.slice(0, MAX_PERSONA_GUARDRAIL_CHARS),
+  );
+  if (!identity && guardrails.length === 0) return undefined;
+  return {
+    ...(identity ? { identity } : {}),
+    ...(guardrails.length > 0 ? { guardrails } : {}),
+  };
+}
+
+export function normalizeCustomIndustryLabel(raw: unknown): string | undefined {
+  return trimString(raw, MAX_CUSTOM_INDUSTRY_LABEL_CHARS);
 }
 
 function substituteBusinessName(text: string, businessName: string): string {
@@ -544,6 +585,7 @@ export function normalizeBusinessEmployeeProfile(
     paymentMethods: trimString(input.paymentMethods, 200),
     phone: trimString(input.phone, 20),
     socialLinks: trimString(input.socialLinks, 500),
+    composePersona: normalizeComposePersonaOverride(input.composePersona),
   };
 }
 
