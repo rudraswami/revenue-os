@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Bell,
+  Building2,
   ChevronDown,
   CreditCard,
   HelpCircle,
@@ -17,6 +18,7 @@ import {
   Sparkles,
   UserRound,
   Users,
+  Wifi,
   Zap,
 } from "lucide-react";
 import { SetupHelpPanel } from "@/components/support/setup-help-panel";
@@ -33,8 +35,13 @@ const AUTO_COLLAPSE_MS = 12_000;
 /** Never show a floating assist on these routes (composer / focus surfaces). */
 const HIDE_ASSIST_PATHS = [/^\/dashboard\/inbox(?:\/|$)/];
 
-/** After setup is complete, help FAB only on these surfaces (+ ?assist=help deep-link). */
-const HELP_SURFACE_PATHS = [/^\/dashboard\/connection(?:\/|$)/, /^\/dashboard\/pricing(?:\/|$)/];
+/** Contextual help after setup — plus Home while users are still learning. */
+const HELP_SURFACE_PATHS = [
+  /^\/dashboard\/connection(?:\/|$)/,
+  /^\/dashboard\/pricing(?:\/|$)/,
+  /^\/dashboard\/agency(?:\/|$)/,
+  /^\/dashboard\/automations(?:\/|$)/,
+];
 
 type PanelView = "setup" | "help";
 
@@ -50,11 +57,13 @@ const OPS_STAGE_HINT: Record<string, string> = {
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "trial-ended": CreditCard,
   "trial-ending": CreditCard,
+  "upgrade-after-proof": CreditCard,
   "limit-seats": CreditCard,
   "limit-whatsapp": CreditCard,
   "limit-leads": CreditCard,
   "connect-whatsapp": MessageCircle,
   "token-refresh": AlertTriangle,
+  "webhook-delivery": Wifi,
   "first-inbound": MessageCircle,
   "ai-classify": Sparkles,
   "pipeline-move": Zap,
@@ -64,19 +73,66 @@ const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   "coach-takeover": UserRound,
   "razorpay-webhook": CreditCard,
   "auto-win": CreditCard,
+  "agency-add-client": Building2,
+  "agency-connect": MessageCircle,
+  "agency-reconnect": AlertTriangle,
+  "agency-setup": Wifi,
+  "agency-handoffs": UserRound,
 };
 
+function actionIcon(action: SetupAction) {
+  return ACTION_ICONS[action.id] ?? Settings2;
+}
+
+function trackActionClick(action: SetupAction) {
+  if (action.id.startsWith("coach-")) {
+    trackCoaching("coaching_next_click", { step: action.id.replace("coach-", "") });
+  }
+}
+
+function FeaturedSetupCard({ action }: { action: SetupAction }) {
+  const Icon = actionIcon(action);
+  return (
+    <Link
+      href={action.href}
+      onClick={() => trackActionClick(action)}
+      className={cn(
+        "group mx-2 mt-2 block rounded-xl border p-3.5 transition-colors",
+        action.priority === "critical"
+          ? "border-warning/30 bg-warning/10 hover:bg-warning/15"
+          : "border-accent/25 bg-bento-mint/50 hover:bg-bento-mint",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+            action.priority === "critical" ? "bg-warning/20 text-warning" : "bg-accent text-white",
+          )}
+        >
+          <Icon className="h-4.5 w-4.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-accent">Up next</p>
+          <p className="mt-0.5 text-sm font-bold leading-snug">{action.title}</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{action.description}</p>
+          <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent group-hover:gap-1.5">
+            Continue
+            <ArrowRight className="h-3.5 w-3.5" />
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 function SetupRow({ action }: { action: SetupAction }) {
-  const Icon = ACTION_ICONS[action.id] ?? Settings2;
+  const Icon = actionIcon(action);
   return (
     <li>
       <Link
         href={action.href}
-        onClick={() => {
-          if (action.id.startsWith("coach-")) {
-            trackCoaching("coaching_next_click", { step: action.id.replace("coach-", "") });
-          }
-        }}
+        onClick={() => trackActionClick(action)}
         className={cn(
           "group flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-background",
           action.priority === "critical" && "bg-warning/10 hover:bg-warning/10",
@@ -84,13 +140,13 @@ function SetupRow({ action }: { action: SetupAction }) {
       >
         <div
           className={cn(
-            "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+            "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
             action.priority === "critical"
               ? "bg-warning/15 text-warning"
-              : "bg-bento-mint text-accent group-hover:bg-accent group-hover:text-white",
+              : "bg-muted text-muted-foreground group-hover:bg-bento-mint group-hover:text-accent",
           )}
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-3.5 w-3.5" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-snug">{action.title}</p>
@@ -102,7 +158,34 @@ function SetupRow({ action }: { action: SetupAction }) {
   );
 }
 
+function ActivationProgressBar({
+  completed,
+  total,
+}: {
+  completed: number;
+  total: number;
+}) {
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  return (
+    <div className="mt-2.5">
+      <div className="mb-1 flex items-center justify-between text-[10px] font-medium text-muted-foreground">
+        <span>Activation</span>
+        <span>
+          {completed}/{total} · {pct}%
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-accent transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function isHelpSurfacePath(pathname: string, settingsTab: string | null): boolean {
+  if (pathname === "/dashboard") return true;
   if (HELP_SURFACE_PATHS.some((re) => re.test(pathname))) return true;
   return pathname.startsWith("/dashboard/settings") && settingsTab === "whatsapp";
 }
@@ -120,12 +203,25 @@ export function WorkspaceAssistFab() {
   const helpContext: HelpFabContext = resolveHelpContext(pathname, settingsTab) ?? "general";
 
   useActivationMilestoneTracking();
-  const { actions, criticalCount, totalCount, allComplete, opsStage, isLoading } =
-    usePendingSetupActions();
+  const {
+    actions,
+    criticalCount,
+    totalCount,
+    allComplete,
+    opsStage,
+    isLoading,
+    isAgency,
+    featuredAction,
+    activation,
+  } = usePendingSetupActions();
   const showSetup = !isLoading && !allComplete && totalCount > 0;
-  const stageHint =
-    opsStage && OPS_STAGE_HINT[opsStage] ? OPS_STAGE_HINT[opsStage] : t("setupDock.subtitle");
+  const stageHint = isAgency
+    ? "Portfolio setup and client health"
+    : opsStage && OPS_STAGE_HINT[opsStage]
+      ? OPS_STAGE_HINT[opsStage]
+      : t("setupDock.subtitle");
   const coachAction = actions.find((a) => a.id.startsWith("coach-"));
+  const restActions = featuredAction ? actions.filter((a) => a.id !== featuredAction.id) : actions;
 
   useEffect(() => {
     if (!coachAction) return;
@@ -204,77 +300,91 @@ export function WorkspaceAssistFab() {
       ? t("setupDock.open")
       : t("setupHelp.openHelp");
 
+  const settingsHref = isAgency ? "/dashboard/agency" : "/dashboard/settings?tab=whatsapp";
+  const settingsLabel = isAgency ? "Open agency hub" : t("setupDock.openSettings");
+
   return (
     <div
       className="pointer-events-none fixed bottom-5 right-5 z-[55] flex flex-col items-end gap-2 sm:bottom-6 sm:right-6"
       data-assist-mode={showSetup ? "setup" : "help"}
     >
       {expanded && (
-          <div
-            className="pointer-events-auto w-[min(100vw-2.5rem,380px)] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_60px_rgb(11_28_48/0.16)]"
-            onMouseEnter={() => {
-              if (collapseTimer.current) clearTimeout(collapseTimer.current);
-            }}
-            onMouseLeave={() => {
-              if (expanded && !pinnedRef.current) scheduleCollapse();
-            }}
-          >
-            {view === "setup" && showSetup ? (
-              <>
-                <div className="border-b border-border/80 bg-background px-4 py-3.5">
-                  <p className="text-xs font-medium text-accent">
-                    {t("setupDock.eyebrow")}
-                  </p>
-                  <p className="text-sm font-bold">
-                    {totalCount === 1
-                      ? t("setupDock.stepsOne")
-                      : formatMessage(t("setupDock.stepsMany"), { count: totalCount })}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{stageHint}</p>
-                </div>
-                <ul className="max-h-[min(50vh,320px)] overflow-y-auto p-2 custom-scrollbar">
-                  {actions.map((action) => (
-                    <SetupRow key={action.id} action={action} />
-                  ))}
-                </ul>
-                <div className="flex items-center justify-between gap-2 border-t border-border/80 px-4 py-2.5">
-                  <Link
-                    href="/dashboard/settings?tab=whatsapp"
-                    className="text-xs font-semibold text-accent hover:underline"
-                  >
-                    {t("setupDock.openSettings")}
-                  </Link>
+        <div
+          className="pointer-events-auto w-[min(100vw-2.5rem,380px)] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_60px_rgb(11_28_48/0.16)]"
+          onMouseEnter={() => {
+            if (collapseTimer.current) clearTimeout(collapseTimer.current);
+          }}
+          onMouseLeave={() => {
+            if (expanded && !pinnedRef.current) scheduleCollapse();
+          }}
+        >
+          {view === "setup" && showSetup ? (
+            <>
+              <div className="border-b border-border/80 bg-background px-4 py-3.5">
+                <p className="text-xs font-medium text-accent">{t("setupDock.eyebrow")}</p>
+                <p className="text-sm font-bold">
+                  {totalCount === 1
+                    ? t("setupDock.stepsOne")
+                    : formatMessage(t("setupDock.stepsMany"), { count: totalCount })}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{stageHint}</p>
+                {!isAgency && activation.inActivation ? (
+                  <ActivationProgressBar completed={activation.completed} total={activation.total} />
+                ) : null}
+              </div>
+
+              {featuredAction ? <FeaturedSetupCard action={featuredAction} /> : null}
+
+              {restActions.length > 0 ? (
+                <>
+                  {featuredAction ? (
+                    <p className="px-4 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Also on your list
+                    </p>
+                  ) : null}
+                  <ul className="max-h-[min(40vh,240px)] overflow-y-auto p-2 custom-scrollbar">
+                    {restActions.map((action) => (
+                      <SetupRow key={action.id} action={action} />
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+
+              <div className="flex items-center justify-between gap-2 border-t border-border/80 px-4 py-2.5">
+                <Link href={settingsHref} className="text-xs font-semibold text-accent hover:underline">
+                  {settingsLabel}
+                </Link>
+                <button
+                  type="button"
+                  onClick={openHelp}
+                  className="text-xs font-semibold text-muted-foreground hover:text-accent"
+                >
+                  {t("setupDock.getHelp")}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div>
+              {showSetup && (
+                <div className="flex items-center gap-2 border-b border-border/80 px-3 py-2">
                   <button
                     type="button"
-                    onClick={openHelp}
-                    className="text-xs font-semibold text-muted-foreground hover:text-accent"
+                    onClick={() => setView("setup")}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
-                    {t("setupDock.getHelp")}
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    {t("setupDock.backToSteps")}
                   </button>
                 </div>
-              </>
-            ) : (
-              <div>
-                {showSetup && (
-                  <div className="flex items-center gap-2 border-b border-border/80 px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => setView("setup")}
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <ArrowLeft className="h-3.5 w-3.5" />
-                      {t("setupDock.backToSteps")}
-                    </button>
-                  </div>
-                )}
-                <SetupHelpPanel
-                  context={helpContext}
-                  showHeader={!showSetup}
-                  onClose={showSetup ? undefined : () => setExpanded(false)}
-                />
-              </div>
-            )}
-          </div>
+              )}
+              <SetupHelpPanel
+                context={helpContext}
+                showHeader={!showSetup}
+                onClose={showSetup ? undefined : () => setExpanded(false)}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       <button

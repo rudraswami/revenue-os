@@ -7,6 +7,7 @@ import { AssignmentService } from "../assignments/assignment.service";
 import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { PrismaService } from "../prisma/prisma.service";
+import { ServerCacheService } from "../server-cache/server-cache.service";
 import type { ConversationContext } from "./context-builder.service";
 import type { PipelineContext } from "./pipeline-context";
 import { SuggestReplyService } from "./suggest-reply.service";
@@ -62,6 +63,7 @@ export class ActionExecutorService {
     private readonly webhooks: WebhookDispatchService,
     private readonly suggestReply: SuggestReplyService,
     private readonly replySend: ReplySendService,
+    private readonly serverCache: ServerCacheService,
   ) {}
 
   shouldUpdateStage(
@@ -154,9 +156,11 @@ export class ActionExecutorService {
           aiRunId: opts.aiRunId,
         },
       });
+      void this.serverCache.invalidateOnboarding(organizationId);
       return true;
     }
 
+    void this.serverCache.invalidateOnboarding(organizationId);
     return false;
   }
 

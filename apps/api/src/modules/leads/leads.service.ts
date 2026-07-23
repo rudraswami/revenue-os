@@ -13,6 +13,7 @@ import { WebhookDispatchService } from "../webhooks/webhook-dispatch.service";
 import { AuditService } from "../audit/audit.service";
 import { AutomationsService } from "../automations/automations.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
+import { ServerCacheService } from "../server-cache/server-cache.service";
 import { createdAtFilter, parseMetricsPeriod, type MetricsPeriod } from "../../common/date-range";
 import {
   computePipelineSignals,
@@ -77,6 +78,7 @@ export class LeadsService {
     private readonly audit: AuditService,
     private readonly automations: AutomationsService,
     private readonly realtime: RealtimeGateway,
+    private readonly serverCache: ServerCacheService,
   ) {}
 
   async listByStage(user: JwtPayload, filter?: PipelineFilter, perStageLimit = 40) {
@@ -471,6 +473,8 @@ export class LeadsService {
       toStage: stage,
       changedByUserId: user.sub,
     });
+
+    void this.serverCache.invalidateOnboarding(user.organizationId);
 
     return updated;
   }

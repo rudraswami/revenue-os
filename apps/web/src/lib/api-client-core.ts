@@ -1,12 +1,9 @@
 /** Core fetch + ApiError — no auth refresh (avoids circular imports). */
 
+import { resolveApiBaseUrl } from "@/lib/growvisi-host";
+
 function resolveApiBase(): string {
-  const raw = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000")
-    .replace(/\\r\\n/g, "")
-    .replace(/[\r\n]+/g, "")
-    .trim()
-    .replace(/\/$/, "");
-  return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
+  return resolveApiBaseUrl();
 }
 
 export const API_URL = resolveApiBase();

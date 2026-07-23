@@ -43,19 +43,24 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async register(
     @Body() dto: RegisterDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.register(dto);
-    setRefreshCookie(res, result.refreshToken);
+    setRefreshCookie(res, result.refreshToken, req);
     return result;
   }
 
   @Post("login")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.auth.login(dto);
     if ("accessToken" in result) {
-      setRefreshCookie(res, result.refreshToken);
+      setRefreshCookie(res, result.refreshToken, req);
     }
     return result;
   }
@@ -73,7 +78,7 @@ export class AuthController {
     if (cookieToken) {
       try {
         const result = await this.auth.refresh(cookieToken);
-        setRefreshCookie(res, result.refreshToken);
+        setRefreshCookie(res, result.refreshToken, req);
         return result;
       } catch (err) {
         // Stale cookie after rotation — fall through to body token when different.
@@ -90,7 +95,7 @@ export class AuthController {
     }
 
     const result = await this.auth.refresh(bodyToken);
-    setRefreshCookie(res, result.refreshToken);
+    setRefreshCookie(res, result.refreshToken, req);
     return result;
   }
 
@@ -101,7 +106,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const token = dto.refreshToken?.trim() || readRefreshCookie(req);
-    clearRefreshCookie(res);
+    clearRefreshCookie(res, req);
     if (token) {
       return this.auth.logout(token);
     }
@@ -125,10 +130,11 @@ export class AuthController {
   async switchOrganization(
     @CurrentUser() user: JwtPayload,
     @Body() dto: SwitchOrganizationDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.switchOrganization(user.sub, dto.organizationId);
-    setRefreshCookie(res, result.refreshToken);
+    setRefreshCookie(res, result.refreshToken, req);
     return result;
   }
 
@@ -163,10 +169,11 @@ export class AuthController {
   async deleteAccount(
     @CurrentUser() user: JwtPayload,
     @Body() dto: DeleteAccountDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.deleteAccount(user, dto);
-    clearRefreshCookie(res);
+    clearRefreshCookie(res, req);
     return result;
   }
 }

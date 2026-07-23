@@ -12,6 +12,7 @@ import { deferBackgroundTask } from "../../common/utils/defer-background";
 import { JobsService } from "../jobs/jobs.service";
 import { withTimeout } from "../../common/utils/with-timeout";
 import { PrismaService } from "../prisma/prisma.service";
+import { ServerCacheService } from "../server-cache/server-cache.service";
 
 export interface WhatsappWebhookPayload {
   object: string;
@@ -86,6 +87,7 @@ export class WhatsappService {
     private readonly tracking: TrackingService,
     private readonly webhooks: WebhookDispatchService,
     private readonly businessEvents: BusinessEventService,
+    private readonly serverCache: ServerCacheService,
   ) {}
 
   verifySignature(rawBody: Buffer, signature: string | undefined): boolean {
@@ -757,6 +759,7 @@ export class WhatsappService {
     }
 
     if (!isReaction) {
+      void this.serverCache.invalidateOnboarding(organizationId);
       void attributeInboundCampaignReply(this.prisma, {
         organizationId,
         whatsappAccountId,

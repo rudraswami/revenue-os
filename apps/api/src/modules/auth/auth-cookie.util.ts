@@ -1,4 +1,10 @@
 import type { CookieOptions, Request, Response } from "express";
+import {
+  GROWVISI_PRODUCT_TLDS,
+  growvisiCookieDomain,
+  parseGrowvisiHostname,
+  parseGrowvisiOrigin,
+} from "@growvisi/shared";
 import { sanitizeEnvValue } from "../../config/cors-origins";
 
 export const REFRESH_COOKIE = "growvisi_rt";
@@ -12,7 +18,7 @@ function isProd(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
-/** Sanitized COOKIE_DOMAIN for Set-Cookie (e.g. `.growvisi.in`). */
+/** Sanitized COOKIE_DOMAIN for Set-Cookie (e.g. `.growvisi.in`). Primary TLD fallback. */
 export function cookieDomain(): string | undefined {
   const raw = sanitizeEnvValue(process.env.COOKIE_DOMAIN);
   if (!raw) return undefined;
@@ -24,6 +30,20 @@ export function cookieDomain(): string | undefined {
     );
   }
   return raw;
+}
+
+/** Resolve cookie domain from request Origin/Referer/Host; falls back to COOKIE_DOMAIN env. */
+export function resolveCookieDomainForRequest(req?: Request): string | undefined {
+  if (!req) return cookieDomain();
+
+  const fromOrigin =
+    parseGrowvisiOrigin(req.headers.origin) ?? parseGrowvisiOrigin(req.headers.referer);
+  if (fromOrigin) return growvisiCookieDomain(fromOrigin);
+
+  const fromHost = parseGrowvisiHostname(req.headers.host);
+  if (fromHost) return growvisiCookieDomain(fromHost);
+
+  return cookieDomain();
 }
 
 function refreshMaxAgeMs(): number {
@@ -39,7 +59,7 @@ function refreshMaxAgeMs(): number {
   return Number(match[1]) * (multipliers[match[2]] ?? multipliers.d);
 }
 
-function baseOptions(): CookieOptions {
+function baseOptions(req?: Request): CookieOptions {
   const prod = isProd();
   // www → api.growvisi.in is cross-origin; None+Secure is required for reliable
   // cookie round-trip on credentialed fetch in all major browsers.
@@ -47,17 +67,35 @@ function baseOptions(): CookieOptions {
     httpOnly: true,
     secure: prod,
     sameSite: prod ? "none" : "lax",
-    domain: cookieDomain(),
+    domain: resolveCookieDomainForRequest(req),
     path: COOKIE_PATH,
   };
 }
 
-export function setRefreshCookie(res: Response, token: string): void {
-  res.cookie(REFRESH_COOKIE, token, { ...baseOptions(), maxAge: refreshMaxAgeMs() });
+export function setRefreshCookie(res: Response, token: string, req?: Request): void {
+  res.cookie(REFRESH_COOKIE, token, { ...baseOptions(req), maxAge: refreshMaxAgeMs() });
 }
 
-export function clearRefreshCookie(res: Response): void {
-  res.clearCookie(REFRESH_COOKIE, baseOptions());
+/** Clears refresh cookie for the request TLD and all configured product TLDs. */
+export function clearRefreshCookie(res: Response, req?: Request): void {
+  const primary = baseOptions(req);
+  res.clearCookie(REFRESH_COOKIE, primary);
+
+  const cleared = new Set<string>();
+  if (primary.domain) cleared.add(primary.domain);
+
+  for (const tld of GROWVISI_PRODUCT_TLDS) {
+    const domain = growvisiCookieDomain(tld);
+    if (cleared.has(domain)) continue;
+    cleared.add(domain);
+    res.clearCookie(REFRESH_COOKIE, {
+      httpOnly: true,
+      secure: primary.secure,
+      sameSite: primary.sameSite,
+      domain,
+      path: COOKIE_PATH,
+    });
+  }
 }
 
 export function readRefreshCookie(req: Request): string | undefined {

@@ -13,9 +13,7 @@ import {
 import { HomeRecommendationsPanel } from "@/components/dashboard/home-recommendations-panel";
 import { HomeCampaignRepliesPanel } from "@/components/dashboard/home-campaign-replies-panel";
 import { HomeConnectionHealthBanner } from "@/components/dashboard/home-connection-health-banner";
-import { HomeGoLiveBanner } from "@/components/dashboard/home-go-live-banner";
 import { HomeAgencyPortfolioBanner } from "@/components/dashboard/home-agency-portfolio-banner";
-import { RevenueSetupStrip } from "@/components/dashboard/revenue-setup-strip";
 import { ReturnToWorkBanner } from "@/components/dashboard/return-to-work-banner";
 import { WorkspaceOpsTruthStrip } from "@/components/dashboard/workspace-ops-truth-strip";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
@@ -31,7 +29,6 @@ import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { timeGreeting } from "@/lib/greeting";
 import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
 import { useShellBilling } from "@/hooks/use-shell-cached-query";
-import { useShellOnboardingProgress } from "@/hooks/use-shell-data";
 import { useAuthStore } from "@/stores/auth-store";
 import { canViewTeamAnalytics } from "@/lib/permissions";
 
@@ -146,11 +143,6 @@ export default function DashboardPage() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: onboardingProgress } = useShellOnboardingProgress<{
-    whatsappConnected: boolean;
-    allComplete: boolean;
-  }>();
-
   const { data: billing } = useShellBilling<{
     planId: string;
     entitlements?: { hasAccess: boolean };
@@ -214,11 +206,7 @@ export default function DashboardPage() {
       <HomeAgencyPortfolioBanner />
       <WorkspaceOpsTruthStrip />
       <ReturnToWorkBanner />
-      <HomeGoLiveBanner />
       <HomeConnectionHealthBanner />
-      {onboardingProgress?.whatsappConnected ? (
-        <RevenueSetupStrip hasWhatsapp={onboardingProgress.whatsappConnected} />
-      ) : null}
 
       <HomeCommandCenter
         isLoading={isLoading}

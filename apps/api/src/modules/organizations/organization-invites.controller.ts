@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
+import type { Request } from "express";
 import { IsEmail, IsEnum, IsOptional, IsString } from "class-validator";
 import type { Response } from "express";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
@@ -64,10 +65,11 @@ export class OrganizationInvitesController {
   async accept(
     @CurrentUser() user: JwtPayload,
     @Body() dto: AcceptInviteDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.organizations.acceptInvite(user, dto.token);
-    setRefreshCookie(res, result.refreshToken);
+    setRefreshCookie(res, result.refreshToken, req);
     return result;
   }
 }

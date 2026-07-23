@@ -12,6 +12,7 @@ import {
 import { InboxConversationList } from "@/components/dashboard/inbox-conversation-list";
 import { InboxCommandPalette } from "@/components/dashboard/inbox-command-palette";
 import { InboxKeyboardShortcuts } from "@/components/dashboard/inbox-keyboard-shortcuts";
+import { InboxSetupProgressBar } from "@/components/dashboard/inbox-setup-progress-bar";
 import { InboxThreadPane } from "@/components/dashboard/inbox-thread-pane";
 import { OutboundCompose } from "@/components/dashboard/outbound-compose";
 import { apiFetch } from "@/lib/api-client";
@@ -297,6 +298,9 @@ export default function InboxPage() {
             "md:flex",
           )}
         >
+          <div className="shrink-0 px-3 pt-3">
+            <InboxSetupProgressBar />
+          </div>
           {!selectedId ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-card shadow-sm ring-1 ring-border/80">
