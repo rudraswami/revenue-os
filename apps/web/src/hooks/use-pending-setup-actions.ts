@@ -14,10 +14,8 @@ import {
   useShellConversationCapabilities,
   useShellConnectionHealth,
   useShellOnboardingProgress,
-  useShellPaymentIntegration,
   useShellWhatsappAccounts,
 } from "@/hooks/use-shell-data";
-import { canManageBilling } from "@/lib/permissions";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -26,7 +24,6 @@ export type { SetupAction, SetupActionPriority } from "@/lib/setup-actions";
 export function usePendingSetupActions() {
   const token = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.role);
-  const canManagePayment = canManageBilling(role);
 
   const { data: agencyStatus } = useShellAgencyStatus();
   const isAgency = !!agencyStatus?.isAgency;
@@ -77,8 +74,6 @@ export function usePendingSetupActions() {
     enabled: !isAgency && connected,
   });
 
-  const { data: payment } = useShellPaymentIntegration({ enabled: !isAgency && canManagePayment });
-
   const { data: capabilities } = useShellConversationCapabilities();
 
   const derived = useMemo(() => {
@@ -90,7 +85,6 @@ export function usePendingSetupActions() {
       progress,
       accounts,
       health: health ?? null,
-      payment: payment ?? null,
       capabilities: capabilities ?? { aiClassification: true },
       actor: { role },
     });
@@ -101,7 +95,6 @@ export function usePendingSetupActions() {
     progress,
     accounts,
     health,
-    payment,
     capabilities,
     role,
   ]);

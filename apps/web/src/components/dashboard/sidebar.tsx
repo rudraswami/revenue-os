@@ -329,9 +329,7 @@ function UserAccountMenu({
           <HelpCircle className="h-4 w-4 text-muted-foreground" />
           {t("userMenu.setupGuide")}
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={() => go("/dashboard/settings?tab=whatsapp&assist=help")}
-        >
+        <DropdownMenuItem onSelect={() => go("/dashboard/help")}>
           <Bot className="h-4 w-4 text-muted-foreground" />
           {t("userMenu.help")}
         </DropdownMenuItem>
@@ -470,6 +468,19 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       {userEmail && (
         <div className="space-y-2 border-t border-border/80 p-3">
+          <Link
+            href="/dashboard/help"
+            onClick={() => onNavigate?.()}
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
+              pathname === "/dashboard/help" || pathname.startsWith("/dashboard/help/")
+                ? "border-accent/30 bg-bento-mint text-accent"
+                : "border-border bg-card text-foreground hover:border-accent/20 hover:bg-muted/50",
+            )}
+          >
+            <HelpCircle className="h-4 w-4 shrink-0" />
+            {t("nav.helpSupport")}
+          </Link>
           <ThemeToggle className="w-full" />
           <UserAccountMenu
             userName={displayName}

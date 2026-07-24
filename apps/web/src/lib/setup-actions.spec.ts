@@ -21,7 +21,6 @@ describe("computeSetupActions", () => {
       progress: { ...baseProgress, whatsappConnected: false },
       accounts: [],
       health: null,
-      payment: null,
       capabilities: { aiClassification: true },
       actor: { role: "OWNER" },
     });
@@ -41,7 +40,6 @@ describe("computeSetupActions", () => {
       progress: baseProgress,
       accounts: [{ isActive: true }],
       health: null,
-      payment: null,
       capabilities: { aiClassification: true },
       actor: { role: "AGENT" },
     });
@@ -66,7 +64,6 @@ describe("computeSetupActions", () => {
         ],
         stats: { inboundCount: 0 },
       },
-      payment: null,
       capabilities: { aiClassification: true },
       actor: { role: "OWNER" },
     });
@@ -121,5 +118,19 @@ describe("computeAgencySetupActions", () => {
     });
     assert.equal(result.actions[0]?.id, "agency-connect");
     assert.equal(result.criticalCount, 1);
+  });
+
+  it("ignores setup progress and handoffs for FAB", () => {
+    const result = computeAgencySetupActions({
+      total: 5,
+      live: 3,
+      setup: 2,
+      token: 0,
+      disconnected: 0,
+      handoffs: 4,
+      unreadMessages: 10,
+    });
+    assert.equal(result.actions.length, 0);
+    assert.equal(result.allComplete, true);
   });
 });

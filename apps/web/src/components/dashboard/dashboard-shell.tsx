@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
@@ -12,6 +12,7 @@ import { useDashboardShellBootstrap } from "@/hooks/use-dashboard-shell-bootstra
 import { useDashboardInteractivePerf } from "@/hooks/use-dashboard-interactive-perf";
 import { useRouteTransitionPerf } from "@/hooks/use-route-transition-perf";
 import { DashboardAssistLayer } from "@/components/dashboard/dashboard-assist-layer";
+import { AssistHelpRedirect } from "@/components/dashboard/assist-help-redirect";
 import {
   OnboardingBanner,
   LegacyViewerBanner,
@@ -96,6 +97,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <OnboardingBanner />
           </div>
           {children}
+          <Suspense fallback={null}>
+            <AssistHelpRedirect />
+          </Suspense>
           <DashboardAssistLayer />
         </main>
       </div>

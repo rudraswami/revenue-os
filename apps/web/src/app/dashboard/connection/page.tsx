@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { WhatsappConnectionHealth } from "@/components/settings/whatsapp-connection-health";
 import { Button } from "@/components/ui/button";
@@ -23,11 +23,17 @@ export default function ConnectionPage() {
         description="Live health for your Business number — webhooks, token session, and message ingest."
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 rounded-xl px-2 text-muted-foreground">
           <Link href="/dashboard">
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Home
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 rounded-xl">
+          <Link href="/dashboard/help?context=connection">
+            <Sparkles className="h-3.5 w-3.5 text-accent" />
+            Help & AI for connection
           </Link>
         </Button>
       </div>

@@ -16,6 +16,7 @@ export const messages = {
       campaigns: "Campaigns",
       automations: "Automations",
       settings: "Settings",
+      helpSupport: "Help & AI",
     },
     groups: {
       overview: "Overview",
@@ -766,6 +767,25 @@ export const messages = {
       ctaTeam: "Team settings",
       ctaMetaAgent: "Meta Business Agent (optional)",
     },
+    helpPage: {
+      title: "Help & AI Support",
+      description:
+        "FAQ, AI chat for setup questions, and human support — always here when you need it.",
+      context: {
+        onboarding: {
+          title: "Getting started",
+          hint: "Connect WhatsApp & first steps",
+        },
+        connection: {
+          title: "Connection",
+          hint: "Webhooks, tokens & delivery",
+        },
+        general: {
+          title: "Using Growvisi",
+          hint: "Replies, pipeline & plans",
+        },
+      },
+    },
     setupDock: {
       eyebrow: "Next steps",
       stepsOne: "1 step remaining",
@@ -1026,6 +1046,7 @@ export const messages = {
       campaigns: "अभियान",
       automations: "ऑटोमेशन",
       settings: "सेटिंग्स",
+      helpSupport: "मदद और AI",
     },
     groups: {
       overview: "ओवरव्यू",
@@ -1774,6 +1795,24 @@ export const messages = {
       ctaAutomations: "ऑटोमेशन / डाइजेस्ट",
       ctaTeam: "टीम सेटिंग्स",
       ctaMetaAgent: "Meta Business Agent (वैकल्पिक)",
+    },
+    helpPage: {
+      title: "मदद और AI सपोर्ट",
+      description: "FAQ, सेटअप के लिए AI चैट, और हमारी टीम — जब चाहें यहाँ मिलेगी।",
+      context: {
+        onboarding: {
+          title: "शुरुआत",
+          hint: "WhatsApp कनेक्ट और पहले कदम",
+        },
+        connection: {
+          title: "कनेक्शन",
+          hint: "वेबहुक, टोकन और डिलीवरी",
+        },
+        general: {
+          title: "Growvisi उपयोग",
+          hint: "रिप्लाई, पाइपलाइन और प्लान",
+        },
+      },
     },
     setupDock: {
       eyebrow: "अगले कदम",

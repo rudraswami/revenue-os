@@ -84,7 +84,6 @@ export type SetupActionsInput = {
   progress: OnboardingProgressInput | null | undefined;
   accounts: Array<{ isActive: boolean }> | null | undefined;
   health: ConnectionHealthInput;
-  payment: { hasWebhookSecret: boolean; autoWinOnPayment: boolean } | null | undefined;
   capabilities: { aiClassification: boolean } | null | undefined;
   actor?: SetupActor;
 };
@@ -208,30 +207,6 @@ export function computeAgencySetupActions(summary: AgencyHealthSummary | null | 
     });
   }
 
-  if (summary.setup > 0) {
-    const n = summary.setup;
-    actions.push({
-      id: "agency-setup",
-      title: n === 1 ? "1 client finishing setup" : `${n} clients finishing setup`,
-      description: "Help them receive a test message and see AI classify.",
-      href: "/dashboard/agency",
-      priority: "recommended",
-      order: 10,
-    });
-  }
-
-  if (summary.handoffs > 0) {
-    const n = summary.handoffs;
-    actions.push({
-      id: "agency-handoffs",
-      title: n === 1 ? "1 handoff waiting" : `${n} handoffs across portfolio`,
-      description: "Clients have chats flagged for human follow-up.",
-      href: "/dashboard/agency",
-      priority: "recommended",
-      order: 15,
-    });
-  }
-
   actions.sort((a, b) => a.order - b.order);
   return finalizeSetupActions(actions, null);
 }
@@ -264,7 +239,7 @@ function finalizeSetupActions(actions: SetupAction[], opsStage: string | null, o
 }
 
 export function computeSetupActions(input: SetupActionsInput) {
-  const { billing, progress, accounts, health, payment, capabilities, actor } = input;
+  const { billing, progress, accounts, health, capabilities, actor } = input;
   if (!progress) {
     return emptySetupResult();
   }
@@ -374,60 +349,6 @@ export function computeSetupActions(input: SetupActionsInput) {
     });
   }
 
-  if (progress.coaching?.eligible && progress.coaching.next) {
-    const n = progress.coaching.next;
-    actions.push({
-      id: `coach-${n.id}`,
-      title: n.title,
-      description: n.description,
-      href: n.href,
-      priority: "recommended",
-      order: 14,
-    });
-  }
-
-  if (
-    ent?.hasAccess &&
-    ent.planId === "trial" &&
-    !progress.ops?.paid &&
-    progress.aiClassified &&
-    !trialEnded &&
-    !trialEndsSoon &&
-    (!progress.coaching?.eligible || progress.coaching.allComplete || !progress.coaching.next)
-  ) {
-    actions.push({
-      id: "upgrade-after-proof",
-      title: "Lock in your plan",
-      description: "AI scoring is live — upgrade from ₹999/mo before trial ends.",
-      href: "/dashboard/pricing",
-      priority: "recommended",
-      order: 25,
-    });
-  }
-
-  const onGrowthPlus = ent?.planId === "growth" || ent?.planId === "pro";
-  if (connected && payment && onGrowthPlus && progress.pipelineMoved) {
-    if (!payment.hasWebhookSecret) {
-      actions.push({
-        id: "razorpay-webhook",
-        title: "Connect Razorpay → Won",
-        description: "Auto-mark deals won when payment lands — add webhook in Settings.",
-        href: "/dashboard/settings?tab=growth",
-        priority: "recommended",
-        order: 31,
-      });
-    } else if (!payment.autoWinOnPayment) {
-      actions.push({
-        id: "auto-win",
-        title: "Enable auto-mark Won",
-        description: "Turn on Razorpay payment → Won in Growth settings.",
-        href: "/dashboard/settings?tab=growth",
-        priority: "recommended",
-        order: 32,
-      });
-    }
-  }
-
   const friction = billing?.friction;
   if (friction?.seatsAtLimit && ent?.hasAccess) {
     const plan = friction.suggestedPlan ?? "growth";
@@ -436,7 +357,7 @@ export function computeSetupActions(input: SetupActionsInput) {
       title: "Need more seats",
       description: `Team full (${billing?.usage?.teamMembers ?? "?"}/${billing?.limits?.teamMembers ?? "?"}) — upgrade to invite the next agent.`,
       href: `/dashboard/pricing?plan=${plan}&reason=seats`,
-      priority: "recommended",
+      priority: "critical",
       order: 5,
     });
   }
@@ -447,7 +368,7 @@ export function computeSetupActions(input: SetupActionsInput) {
       title: "Need another WhatsApp line",
       description: `Number slots full (${billing?.usage?.whatsappNumbers ?? "?"}/${billing?.limits?.whatsappNumbers ?? "?"}) — upgrade to connect more.`,
       href: `/dashboard/pricing?plan=${plan}&reason=whatsapp`,
-      priority: "recommended",
+      priority: "critical",
       order: 6,
     });
   }
@@ -458,7 +379,7 @@ export function computeSetupActions(input: SetupActionsInput) {
       title: "Monthly lead cap reached",
       description: `Used ${billing?.usage?.monthlyLeads ?? "?"} of ${billing?.limits?.monthlyLeads ?? "?"} leads — upgrade so new chats keep scoring.`,
       href: `/dashboard/pricing?plan=${plan}&reason=leads`,
-      priority: "recommended",
+      priority: "critical",
       order: 4,
     });
   }
