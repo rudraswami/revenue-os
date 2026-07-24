@@ -378,6 +378,7 @@ export const NAV = {
   contacts: "Contacts",
   tasks: "Tasks",
   campaigns: "Campaigns",
+  templates: "Templates",
   analytics: "Analytics",
   intelligence: "Intelligence",
   automations: "Automations",
@@ -394,6 +395,54 @@ export const EYEBROW = {
   recommendations: "Recommendations",
   workspace: "Workspace",
   setup: "Setup",
+  automate: "Automations",
+} as const;
+
+/** WhatsApp message templates — plain language for campaign setup. */
+export const TEMPLATES = {
+  title: "Templates",
+  description:
+    "Messages you can send to customers who haven't chatted with you yet. WhatsApp reviews each one — usually within a day. Approved templates power Campaigns.",
+  newTemplate: "New template",
+  refresh: "Refresh",
+  refreshSuccess: "Templates updated",
+  yourTemplates: "Your templates",
+  listHint: "Edit a template or use it in a campaign once approved.",
+  emptyTitle: "No templates yet",
+  emptyDescription:
+    "Create a template and we'll send it to WhatsApp for approval. Then use it in Campaigns to reach your pipeline.",
+  emptyAction: "Create template",
+  createTitle: "New template",
+  createDescription: "Pick a starter or write your own. We'll submit it on your business number.",
+  editTitle: "Edit template",
+  sendForApproval: "Send for approval",
+  saveChanges: "Save changes",
+  pendingNote: (n: number) =>
+    `${n} template${n > 1 ? "s" : ""} waiting on WhatsApp review — usually 15 min to 24 hours.`,
+  templateName: "Template name",
+  templateNamePlaceholder: "followup_offer",
+  category: "Type",
+  language: "Language",
+  messageBody: "Message",
+  bodyHint: "Use {{1}}, {{2}} for names or details. Utility types approve faster.",
+  startersLabel: "Start from",
+  startBlank: "Blank message",
+  useInCampaign: "Use in campaign",
+  deleteTemplate: "Delete",
+  loading: "Loading templates…",
+  loadError: "Couldn't load templates",
+  loadErrorHint: "Check your WhatsApp connection in Settings, then try again.",
+  deleteApprovedTitle: "Delete approved template?",
+  deleteTitle: "Delete this template?",
+  deleteApprovedBody: (name: string, lang: string) =>
+    `${name} (${lang}) will be removed from WhatsApp. Active campaigns using it may fail.`,
+  deleteBody: (name: string, lang: string) =>
+    `${name} (${lang}) will be removed from your business number.`,
+  deleteConfirm: "Delete template",
+  rejectedReason: (reason: string) => `WhatsApp said: ${reason}`,
+  categoryUtility: "Utility (faster approval)",
+  categoryMarketing: "Marketing",
+  categoryAuth: "Authentication",
 } as const;
 
 /** Conversations / Inbox — plain language for Indian SMB owners (no “handoff” jargon). */

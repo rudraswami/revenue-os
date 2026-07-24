@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: string;
-  description?: string;
+  description?: ReactNode;
   action?: ReactNode;
   /** Rare orientation only — prefer title + description. Sentence case, not uppercase. */
   eyebrow?: string;
