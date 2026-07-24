@@ -25,6 +25,8 @@ export function formatTemplateRejectionReason(
   return trimmed;
 }
 
+export { humanizeTemplateRejectionReason } from "@growvisi/shared";
+
 /** Count {{n}} placeholders in template body. */
 export function countTemplateVariables(body: string): number {
   const matches = body.match(/\{\{\d+\}\}/g);

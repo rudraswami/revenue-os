@@ -22,9 +22,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
-import { GrowvisiSpinner } from "@/components/ui/loading";
 import { TemplatePreviewBubble } from "@/components/dashboard/template-preview-bubble";
 import { TemplateVariableChips } from "./template-variable-chips";
+import { TemplateDialogBusy } from "./template-dialog-busy";
 import { TEMPLATES } from "@/lib/brand-copy";
 import { cn } from "@/lib/utils";
 
@@ -104,8 +104,15 @@ export function TemplateCreateDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" className="max-h-[min(92vh,760px)]">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!isPending) onOpenChange(next);
+      }}
+    >
+      <DialogContent size="xl" className="relative max-h-[min(92vh,760px)]">
+        {isPending ? <TemplateDialogBusy message={TEMPLATES.submittingToWhatsApp} /> : null}
+
         <DialogHeader>
           <DialogTitle>
             {step === "pick" ? TEMPLATES.createTitle : TEMPLATES.customizeTitle}
@@ -275,12 +282,21 @@ export function TemplateCreateDialog({
             <span />
           )}
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             {step === "customize" && (
-              <Button type="button" disabled={isPending || !canSubmit} onClick={onSubmit}>
-                {isPending ? <GrowvisiSpinner size="sm" className="mr-2" /> : null}
+              <Button
+                type="button"
+                isLoading={isPending}
+                disabled={!canSubmit}
+                onClick={onSubmit}
+              >
                 {TEMPLATES.sendForApproval}
               </Button>
             )}

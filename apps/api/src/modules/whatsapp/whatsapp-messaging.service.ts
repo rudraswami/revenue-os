@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { MessageTemplateCategory, MessageTemplateView } from "@growvisi/shared";
+import { buildTemplateBodyExample } from "@growvisi/shared";
 import { decryptSecret } from "../../common/crypto/token-cipher";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 
@@ -30,11 +31,14 @@ export type CreateMessageTemplateInput = {
   language: string;
   category: MessageTemplateCategory;
   body: string;
+  /** Sample values for {{1}}, {{2}}, … — required by Meta when body has variables. */
+  variableHints?: string[];
 };
 
 export type UpdateMessageTemplateInput = {
   body: string;
   category?: MessageTemplateCategory;
+  variableHints?: string[];
 };
 
 export type DeleteMessageTemplateInput = {
@@ -205,7 +209,8 @@ export class WhatsappMessagingService {
           name: input.name,
           language: input.language,
           category: input.category,
-          components: [{ type: "BODY", text: input.body }],
+          parameter_format: "positional",
+          components: [this.buildBodyComponent(input.body, input.variableHints)],
         }),
       },
     );
@@ -247,7 +252,7 @@ export class WhatsappMessagingService {
     const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
 
     const payload: Record<string, unknown> = {
-      components: [{ type: "BODY", text: input.body }],
+      components: [this.buildBodyComponent(input.body, input.variableHints)],
     };
     if (input.category) payload.category = input.category;
 
@@ -552,5 +557,17 @@ export class WhatsappMessagingService {
     }
 
     return waMessageId;
+  }
+
+  private buildBodyComponent(body: string, variableHints?: string[]) {
+    const component: Record<string, unknown> = {
+      type: "BODY",
+      text: body,
+    };
+    const example = buildTemplateBodyExample(body, variableHints);
+    if (example) {
+      component.example = example;
+    }
+    return component;
   }
 }

@@ -3,6 +3,8 @@ import {
   canDeleteTemplate,
   canEditTemplateBody,
   canEditTemplateCategory,
+  buildTemplateBodyExample,
+  MESSAGE_TEMPLATE_STARTERS,
   resolveAutoProvisionStarterId,
   sanitizeTemplateName,
   templateEditActionLabel,
@@ -48,5 +50,38 @@ describe("message-templates", () => {
     expect(canDeleteTemplate("APPROVED")).toBe(true);
     expect(canDeleteTemplate("PENDING_DELETION")).toBe(false);
     expect(templateEditActionLabel("REJECTED")).toBe("Edit & resubmit");
+  });
+
+  it("builds Meta body_text examples for sequential variables", () => {
+    const example = buildTemplateBodyExample(
+      "Hi {{1}}, your appointment with {{2}} is on {{3}}.",
+      ["Rahul", "Acme Clinic", "Monday 10 AM"],
+    );
+    expect(example).toEqual({
+      body_text: [["Rahul", "Acme Clinic", "Monday 10 AM"]],
+    });
+    expect(buildTemplateBodyExample("No variables here")).toBeUndefined();
+  });
+
+  it("builds examples for every curated starter (Meta requires body_text)", () => {
+    for (const starter of MESSAGE_TEMPLATE_STARTERS) {
+      const validation = validateTemplateBody(starter.body);
+      expect(validation.ok).toBe(true);
+
+      const example = buildTemplateBodyExample(starter.body, starter.variableHints);
+      expect(example).toBeDefined();
+
+      const varCount = countTemplateVariables(starter.body);
+      expect(example!.body_text[0]).toHaveLength(varCount);
+      expect(example!.body_text[0].every((v) => v.trim().length > 0)).toBe(true);
+    }
+  });
+
+  it("builds default examples for custom templates without hints", () => {
+    const body = "Hello {{1}}, your order {{2}} ships tomorrow.";
+    const example = buildTemplateBodyExample(body);
+    expect(example).toEqual({
+      body_text: [["Rahul", "Acme Clinic"]],
+    });
   });
 });

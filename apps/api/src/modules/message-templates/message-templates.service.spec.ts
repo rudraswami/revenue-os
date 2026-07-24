@@ -81,7 +81,13 @@ describe("MessageTemplatesService", () => {
       starterId: "followup_inquiry",
     });
 
-    expect(messaging.createMessageTemplate).toHaveBeenCalled();
+    expect(messaging.createMessageTemplate).toHaveBeenCalledWith(
+      "waba_1",
+      "enc_token",
+      expect.objectContaining({
+        variableHints: ["Customer name", "Business name"],
+      }),
+    );
     expect(templateSync.syncAccountTemplates).toHaveBeenCalledWith("wa_1");
     expect(result.message).toContain("submitted");
   });
@@ -118,7 +124,14 @@ describe("MessageTemplatesService", () => {
       category: "UTILITY",
     });
 
-    expect(messaging.updateMessageTemplate).toHaveBeenCalled();
+    expect(messaging.updateMessageTemplate).toHaveBeenCalledWith(
+      "tpl_1",
+      "enc_token",
+      expect.objectContaining({
+        body: "Hello {{1}}, thanks for contacting {{2}} today.",
+        category: "UTILITY",
+      }),
+    );
     expect(templateSync.syncAccountTemplates).toHaveBeenCalledWith("wa_1");
     expect(result.message).toContain("review");
   });

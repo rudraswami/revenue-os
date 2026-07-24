@@ -155,6 +155,7 @@ export class WhatsappTemplateSyncService {
         language: starter.language,
         category: starter.category,
         body: starter.body,
+        variableHints: starter.variableHints,
       });
       await this.markProvisionAttempted(accountId, metadata, "submitted", name);
       await this.syncAccountTemplates(accountId);

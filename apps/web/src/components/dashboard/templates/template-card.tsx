@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { humanizeTemplateRejectionReason } from "@growvisi/shared";
 import { TemplateStatusBadge, isTemplateSendable } from "./template-status-badge";
 import {
   displayTemplateLanguage,
@@ -106,7 +107,7 @@ export function TemplateCard({
 
       {showRejection && (
         <p className="mt-2 text-xs leading-relaxed text-destructive">
-          {TEMPLATES.rejectedReason(rejection)}
+          {humanizeTemplateRejectionReason(rejection)}
         </p>
       )}
 

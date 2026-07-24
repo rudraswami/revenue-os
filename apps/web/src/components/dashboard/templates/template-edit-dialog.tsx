@@ -19,13 +19,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
-import { GrowvisiSpinner } from "@/components/ui/loading";
 import { TemplatePreviewBubble } from "@/components/dashboard/template-preview-bubble";
 import { TemplateVariableChips } from "./template-variable-chips";
+import { TemplateDialogBusy } from "./template-dialog-busy";
 import {
   displayTemplateLanguage,
   displayTemplateName,
   formatTemplateRejectionReason,
+  humanizeTemplateRejectionReason,
 } from "./template-utils";
 import { TEMPLATES } from "@/lib/brand-copy";
 
@@ -65,12 +66,18 @@ export function TemplateEditDialog({
 
   if (!template) return null;
 
-  const canSubmit =
-    body.trim() && (bodyValidation === null || bodyValidation.ok);
+  const canSubmit = body.trim() && (bodyValidation === null || bodyValidation.ok);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg" className="max-h-[min(92vh,680px)]">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!isPending) onOpenChange(next);
+      }}
+    >
+      <DialogContent size="lg" className="relative max-h-[min(92vh,680px)]">
+        {isPending ? <TemplateDialogBusy message={TEMPLATES.submittingToWhatsApp} /> : null}
+
         <DialogHeader>
           <DialogTitle>{TEMPLATES.editTitle}</DialogTitle>
           <DialogDescription>
@@ -81,8 +88,8 @@ export function TemplateEditDialog({
         <DialogBody className="space-y-4">
           {hint && <p className="text-sm leading-relaxed text-muted-foreground">{hint}</p>}
           {rejection && (
-            <p className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {TEMPLATES.rejectedReason(rejection)}
+            <p className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm leading-relaxed text-destructive">
+              {humanizeTemplateRejectionReason(rejection)}
             </p>
           )}
 
@@ -97,6 +104,7 @@ export function TemplateEditDialog({
                   onChange={(e) => onBodyChange(e.target.value)}
                   rows={6}
                   className="text-sm leading-relaxed"
+                  disabled={isPending}
                 />
                 <TemplateVariableChips body={body} onBodyChange={onBodyChange} />
                 {bodyValidation && !bodyValidation.ok && (
@@ -117,6 +125,7 @@ export function TemplateEditDialog({
                       )
                     }
                     className="h-10 text-sm"
+                    disabled={isPending}
                   >
                     <option value="UTILITY">{TEMPLATES.categoryUtility}</option>
                     <option value="MARKETING">{TEMPLATES.categoryMarketing}</option>
@@ -133,11 +142,20 @@ export function TemplateEditDialog({
         </DialogBody>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isPending}
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
-          <Button type="button" disabled={isPending || !canSubmit} onClick={onSubmit}>
-            {isPending ? <GrowvisiSpinner size="sm" className="mr-2" /> : null}
+          <Button
+            type="button"
+            isLoading={isPending}
+            disabled={!canSubmit}
+            onClick={onSubmit}
+          >
             {TEMPLATES.saveChanges}
           </Button>
         </DialogFooter>

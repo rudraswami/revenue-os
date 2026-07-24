@@ -447,7 +447,8 @@ export const TEMPLATES = {
   deleteBody: (name: string, lang: string) =>
     `${name} (${lang}) will be removed from your business number.`,
   deleteConfirm: "Delete template",
-  rejectedReason: (reason: string) => `Rejected: ${reason}`,
+  rejectedReason: (reason: string) => reason,
+  submittingToWhatsApp: "Sending to WhatsApp…",
   categoryUtility: "Updates & reminders",
   categoryUtilityHint: "Order updates, follow-ups — approves fastest",
   categoryMarketing: "Offers & promotions",

@@ -10,6 +10,7 @@ import {
   canEditTemplateBody,
   canEditTemplateCategory,
   sanitizeTemplateName,
+  starterById,
   validateTemplateBody,
   validateTemplateName,
 } from "@growvisi/shared";
@@ -91,6 +92,7 @@ export class MessageTemplatesService {
     if (!bodyResult.ok) throw new BadRequestException(bodyResult.error);
 
     const name = sanitizeTemplateName(dto.name);
+    const variableHints = this.resolveVariableHints(dto.body, dto.starterId);
 
     const created = await this.messaging.createMessageTemplate(
       account.wabaId,
@@ -100,6 +102,7 @@ export class MessageTemplatesService {
         language: dto.language,
         category: dto.category,
         body: dto.body.trim(),
+        variableHints,
       },
     );
 
@@ -172,12 +175,15 @@ export class MessageTemplatesService {
       );
     }
 
+    const variableHints = this.resolveVariableHints(dto.body.trim());
+
     const updated = await this.messaging.updateMessageTemplate(
       metaTemplateId,
       account.accessTokenEnc,
       {
         body: dto.body.trim(),
         category: canEditTemplateCategory(existing.status) ? dto.category : undefined,
+        variableHints,
       },
     );
 
@@ -232,6 +238,15 @@ export class MessageTemplatesService {
           ? "Template deleted. You cannot reuse this name for 30 days on WhatsApp."
           : "Template deleted from WhatsApp.",
     };
+  }
+
+  private resolveVariableHints(body: string, starterId?: string): string[] | undefined {
+    if (starterId) {
+      const starter = starterById(starterId);
+      if (starter?.variableHints?.length) return starter.variableHints;
+    }
+    const match = MESSAGE_TEMPLATE_STARTERS.find((s) => s.body === body.trim());
+    return match?.variableHints;
   }
 
   private async findTemplateOnAccount(

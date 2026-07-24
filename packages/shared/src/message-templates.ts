@@ -170,6 +170,56 @@ export function validateTemplateBody(body: string): { ok: true; variableCount: n
   return { ok: true, variableCount };
 }
 
+/** Sample values Meta requires when a body contains {{1}}, {{2}}, … placeholders. */
+const DEFAULT_VARIABLE_EXAMPLES = [
+  "Rahul",
+  "Acme Clinic",
+  "Monday, 10 AM",
+  "₹1,999",
+  "Special offer",
+  "Order #1234",
+  "Team",
+  "Mumbai",
+  "Your business",
+  "Details",
+] as const;
+
+/**
+ * Meta rejects templates with variables unless each placeholder has an example value.
+ * Returns `undefined` when the body has no variables.
+ */
+export function buildTemplateBodyExample(
+  body: string,
+  hints?: string[],
+): { body_text: string[][] } | undefined {
+  const count = countTemplateVariables(body);
+  if (count === 0) return undefined;
+
+  const row = Array.from({ length: count }, (_, i) => {
+    const hint = hints?.[i]?.trim();
+    if (hint) return hint.slice(0, 60);
+    return DEFAULT_VARIABLE_EXAMPLES[i] ?? `Sample ${i + 1}`;
+  });
+
+  return { body_text: [row] };
+}
+
+/** Turn Meta rejection codes into plain language for SMB owners. */
+export function humanizeTemplateRejectionReason(reason: string): string {
+  const key = reason.trim().toUpperCase();
+  const labels: Record<string, string> = {
+    INVALID_FORMAT:
+      "WhatsApp couldn't read the message format. Keep variables like {{1}}, {{2}} in order, with real text before and after each one.",
+    INCORRECT_CATEGORY:
+      "Wrong message type for this content. Try Updates & reminders for follow-ups and reminders.",
+    TAG_CONTENT_MISMATCH: "Message type or language doesn't match the content.",
+    ABUSIVE_CONTENT: "Content may violate WhatsApp policies. Remove promotional or sensitive wording.",
+    SCAM: "Content flagged as misleading. Use clear, honest wording about who you are.",
+    PROMOTIONAL: "Looks too promotional for this message type. Switch to Offers & promotions or soften the copy.",
+  };
+  return labels[key] ?? reason;
+}
+
 export function starterById(id: string): MessageTemplateStarter | undefined {
   return MESSAGE_TEMPLATE_STARTERS.find((s) => s.id === id);
 }
