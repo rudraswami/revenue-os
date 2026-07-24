@@ -5,12 +5,14 @@ export type DashboardRoute =
   | "analytics"
   | "automations"
   | "campaigns"
+  | "templates"
   | "pricing";
 
 const ROUTE_CAPABILITIES: Record<DashboardRoute, import("@growvisi/shared").Capability | import("@growvisi/shared").Capability[]> = {
   analytics: "analytics.view.team",
   automations: "automations.manage",
   campaigns: "campaigns.manage",
+  templates: "campaigns.manage",
   pricing: "billing.view",
 };
 

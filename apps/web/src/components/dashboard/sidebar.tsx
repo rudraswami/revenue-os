@@ -16,6 +16,7 @@ import {
   ChevronUp,
   Contact,
   CreditCard,
+  FileText,
   HelpCircle,
   Inbox,
   Kanban,
@@ -91,6 +92,7 @@ function buildNavGroups(opts: {
       labelKey: "groups.automate",
       items: [
         { href: "/dashboard/campaigns", labelKey: "nav.campaigns", icon: Megaphone },
+        { href: "/dashboard/templates", labelKey: "nav.templates", icon: FileText },
         { href: "/dashboard/automations", labelKey: "nav.automations", icon: Zap },
       ],
     },

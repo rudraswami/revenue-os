@@ -118,6 +118,18 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     void this.broadcast.publish(organizationId, "whatsapp.setup.updated", data);
   }
 
+  emitTemplatesUpdated(
+    organizationId: string,
+    data: {
+      event: string;
+      templateName?: string;
+      language?: string;
+    },
+  ) {
+    this.server?.to(`org:${organizationId}`).emit("templates.updated", data);
+    void this.broadcast.publish(organizationId, "templates.updated", data);
+  }
+
   emitLeadStageChanged(
     organizationId: string,
     data: {

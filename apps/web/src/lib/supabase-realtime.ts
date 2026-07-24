@@ -74,6 +74,9 @@ export function subscribeSupabaseOrgChannel(
       .on("broadcast", { event: "whatsapp.setup.updated" }, () => {
         handleRealtimeEvent(queryClient, "whatsapp.setup.updated");
       })
+      .on("broadcast", { event: "templates.updated" }, () => {
+        handleRealtimeEvent(queryClient, "templates.updated");
+      })
       .subscribe((status) => {
         if (destroyed) return;
         if (status === "SUBSCRIBED") {

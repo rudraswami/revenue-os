@@ -98,6 +98,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       handleRealtimeEvent(queryClient, "whatsapp.setup.updated");
     });
 
+    socket.on("templates.updated", () => {
+      handleRealtimeEvent(queryClient, "templates.updated");
+    });
+
     bindRealtimeSocket(socket);
 
     return () => {

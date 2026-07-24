@@ -45,6 +45,8 @@ describe("WhatsappService webhook ACK (P0-5)", () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
+      {} as never,
     );
 
   beforeEach(() => {

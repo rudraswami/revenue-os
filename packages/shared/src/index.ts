@@ -1,3 +1,4 @@
+export * from "./message-templates";
 export * from "./billing";
 export * from "./business-profile-compose";
 export * from "./capabilities";

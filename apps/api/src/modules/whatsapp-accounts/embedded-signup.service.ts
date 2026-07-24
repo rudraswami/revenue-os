@@ -237,7 +237,7 @@ export class EmbeddedSignupService {
       },
     });
 
-    await this.accounts.syncTemplatesAfterConnect(account.id);
+    await this.accounts.afterConnectSetup(account.id, organizationId);
 
     this.logger.log(
       `Embedded signup complete org=${organizationId} phone=${account.displayPhoneNumber}`,

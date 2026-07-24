@@ -98,6 +98,10 @@ export function handleRealtimeEvent(
     case "whatsapp.setup.updated":
       invalidateWorkspaceShellCache(queryClient);
       break;
+    case "templates.updated":
+      void queryClient.invalidateQueries({ queryKey: ["message-templates"] });
+      void queryClient.invalidateQueries({ queryKey: ["whatsapp-templates"] });
+      break;
     default:
       refreshQueueStats(queryClient);
       if (conversationId) {

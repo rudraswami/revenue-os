@@ -32,6 +32,12 @@ export interface WhatsappWebhookPayload {
         verified_name?: string;
         ban_info?: { waba_ban_state?: string; waba_ban_date?: string };
         violation_info?: { violation_type?: string };
+        message_template_id?: string | number;
+        message_template_name?: string;
+        message_template_language?: string;
+        message_template_category?: string;
+        reason?: string | null;
+        rejection_info?: { reason?: string; recommendation?: string };
       };
       field: string;
     }>;
@@ -70,6 +76,7 @@ import {
   RealtimeGateway,
   type MessageStatusEvent,
 } from "../realtime/realtime.gateway";
+import { WhatsappTemplateSyncService } from "./whatsapp-template-sync.service";
 
 @Injectable()
 export class WhatsappService {
@@ -88,6 +95,7 @@ export class WhatsappService {
     private readonly webhooks: WebhookDispatchService,
     private readonly businessEvents: BusinessEventService,
     private readonly serverCache: ServerCacheService,
+    private readonly templateSync: WhatsappTemplateSyncService,
   ) {}
 
   verifySignature(rawBody: Buffer, signature: string | undefined): boolean {
@@ -454,10 +462,11 @@ export class WhatsappService {
     return count;
   }
 
-  /** Process message + account_update webhook fields. */
+  /** Process message + account_update + template status webhook fields. */
   async processWebhookPayload(payload: WhatsappWebhookPayload): Promise<InboundMessageEvent[]> {
     const events = await this.processInboundPayload(payload);
     await this.processAccountUpdates(payload);
+    await this.processTemplateStatusUpdates(payload);
     return events;
   }
 
@@ -589,6 +598,32 @@ export class WhatsappService {
             `account_update ${event} applied for org=${account.organizationId} waba=${wabaId}`,
           );
         }
+      }
+    }
+  }
+
+  /** Meta message_template_status_update — approval, rejection, pause, disable. */
+  private async processTemplateStatusUpdates(payload: WhatsappWebhookPayload) {
+    for (const entry of payload.entry ?? []) {
+      const wabaId = entry.id;
+      if (!wabaId) continue;
+
+      for (const change of entry.changes ?? []) {
+        if (change.field !== "message_template_status_update") continue;
+
+        const value = change.value;
+        const event = value.event?.trim();
+        if (!event) continue;
+
+        await this.templateSync.handleTemplateStatusUpdate(wabaId, {
+          event,
+          messageTemplateId: value.message_template_id,
+          messageTemplateName: value.message_template_name,
+          messageTemplateLanguage: value.message_template_language,
+          messageTemplateCategory: value.message_template_category,
+          reason: value.reason,
+          rejectionInfo: value.rejection_info,
+        });
       }
     }
   }

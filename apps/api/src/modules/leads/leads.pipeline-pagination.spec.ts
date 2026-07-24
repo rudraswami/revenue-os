@@ -31,6 +31,7 @@ describe("LeadsService.listByStage pagination (P1)", () => {
     {} as AuditService,
     automations,
     {} as never,
+    {} as never,
   );
 
   beforeEach(() => {

@@ -10,6 +10,5 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [...ROBOTS_DISALLOW_PATHS],
     },
     sitemap: `${GROWVISI_WEB_URL}/sitemap.xml`,
-    host: GROWVISI_WEB_URL,
   };
 }

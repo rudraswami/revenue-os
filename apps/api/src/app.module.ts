@@ -28,6 +28,7 @@ import { TrackingModule } from "./modules/tracking/tracking.module";
 import { TagsModule } from "./modules/tags/tags.module";
 import { TasksModule } from "./modules/tasks/tasks.module";
 import { CampaignsModule } from "./modules/campaigns/campaigns.module";
+import { MessageTemplatesModule } from "./modules/message-templates/message-templates.module";
 import { AgencyModule } from "./modules/agency/agency.module";
 import { SupportModule } from "./modules/support/support.module";
 import { IntelligenceModule } from "./modules/intelligence/intelligence.module";
@@ -91,6 +92,7 @@ import { RequestLoggingInterceptor } from "./common/interceptors/request-logging
     TagsModule,
     TasksModule,
     CampaignsModule,
+    MessageTemplatesModule,
     AgencyModule,
     SupportModule,
     EventsModule,

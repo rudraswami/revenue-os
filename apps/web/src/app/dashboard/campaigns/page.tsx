@@ -228,6 +228,19 @@ export default function CampaignsPage() {
     if (campaignId) setDetailId(campaignId);
   }, [searchParams]);
 
+  useEffect(() => {
+    const template = searchParams.get("template")?.trim();
+    const lang = searchParams.get("lang")?.trim();
+    if (!template) return;
+    setTemplateName(template);
+    if (lang) setLanguageCode(lang);
+    if (searchParams.get("create") === "1") {
+      requestAnimationFrame(() => {
+        document.getElementById("new-campaign")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [searchParams]);
+
   const { data: whatsappAccounts } = useShellWhatsappAccounts<
     Array<{ id: string; displayPhoneNumber: string; isActive: boolean }>
   >();
@@ -686,7 +699,7 @@ export default function CampaignsPage() {
       )}
 
       {canManage && campaignsPlanOk === true && (
-        <div className="mb-6 overflow-hidden rounded-3xl border border-accent/20 bg-card elev-1">
+        <div id="new-campaign" className="mb-6 overflow-hidden rounded-3xl border border-accent/20 bg-card elev-1">
           <div className="border-b border-border/70 bg-gradient-to-r from-bento-mint/50 via-card to-viz-violet/10 px-5 py-6 md:px-8">
             <h3 className="font-sans text-xl font-bold tracking-tight text-foreground">
               New campaign

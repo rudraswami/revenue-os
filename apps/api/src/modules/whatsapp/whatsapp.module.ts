@@ -13,6 +13,7 @@ import { WhatsappWebhookController } from "./whatsapp-webhook.controller";
 import { WhatsappInboundProcessor } from "./processors/whatsapp-inbound.processor";
 import { WhatsappMessagingModule } from "./whatsapp-messaging.module";
 import { WhatsappService } from "./whatsapp.service";
+import { WhatsappTemplateSyncService } from "./whatsapp-template-sync.service";
 
 const registerProcessors = useBackgroundWorkers();
 
@@ -29,7 +30,7 @@ const registerProcessors = useBackgroundWorkers();
     WebhooksModule,
   ],
   controllers: [WhatsappWebhookController],
-  providers: [WhatsappService, ...(registerProcessors ? [WhatsappInboundProcessor] : [])],
-  exports: [WhatsappService, WhatsappMessagingModule],
+  providers: [WhatsappService, WhatsappTemplateSyncService, ...(registerProcessors ? [WhatsappInboundProcessor] : [])],
+  exports: [WhatsappService, WhatsappMessagingModule, WhatsappTemplateSyncService],
 })
 export class WhatsappModule {}

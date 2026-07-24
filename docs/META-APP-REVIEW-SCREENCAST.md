@@ -100,7 +100,7 @@ We do not sell customer data. Businesses control their own WABA in Meta; Growvis
 | 6 | 2:00 | Show **Refresh token** UI (paste new token, save — or show UI only) | “When Meta tokens expire, users refresh without reconnecting.” |
 | 7 | 2:30 | Settings → link to **Privacy** / **Data deletion** (quick flash) | “Customers can delete workspace data per our policy.” |
 
-**Fallback if reviewer asks for template management:** Record an extra 60s in Meta **WhatsApp Manager → Message templates → Create template**. Growvisi’s primary management flow is WABA connect + webhooks; templates are managed in Meta today.
+**Fallback if reviewer asks for template management:** Record **Automate → Templates** in Growvisi (create from starter, submit to Meta on the customer's WABA). Optionally show Meta WhatsApp Manager as the underlying approval system.
 
 **Do not:** Show raw tokens, app secrets, or `.env` files.
 

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import type { MessageTemplateCategory, MessageTemplateView } from "@growvisi/shared";
 import { decryptSecret } from "../../common/crypto/token-cipher";
 import { fetchWithTimeout } from "../../common/http/fetch-with-timeout";
 
@@ -8,6 +9,38 @@ interface WhatsappAccountRow {
   accessTokenEnc: string;
   isActive: boolean;
 }
+
+type MetaTemplateRow = {
+  id?: string;
+  name: string;
+  status: string;
+  language: string;
+  category?: string;
+  rejected_reason?: string;
+  components?: Array<{ type: string; text?: string }>;
+};
+
+export type ListMessageTemplatesOptions = {
+  /** When true (default), only APPROVED — preserves campaign picker behavior. */
+  approvedOnly?: boolean;
+};
+
+export type CreateMessageTemplateInput = {
+  name: string;
+  language: string;
+  category: MessageTemplateCategory;
+  body: string;
+};
+
+export type UpdateMessageTemplateInput = {
+  body: string;
+  category?: MessageTemplateCategory;
+};
+
+export type DeleteMessageTemplateInput = {
+  name: string;
+  metaTemplateId?: string;
+};
 
 @Injectable()
 export class WhatsappMessagingService {
@@ -141,32 +174,187 @@ export class WhatsappMessagingService {
   async listMessageTemplates(
     wabaId: string,
     accessTokenEnc: string,
-  ): Promise<
-    Array<{
-      name: string;
-      language: string;
-      status: string;
-      category?: string;
-      bodyPreview: string;
-      bodyVariableCount: number;
-    }>
-  > {
+    options: ListMessageTemplatesOptions = {},
+  ): Promise<MessageTemplateView[]> {
+    const { approvedOnly = true } = options;
+    const rows = await this.fetchMessageTemplatesFromMeta(wabaId, accessTokenEnc);
+    const mapped = rows.map((t) => this.mapMetaTemplate(t));
+    const filtered = approvedOnly
+      ? mapped.filter((t) => t.status === "APPROVED")
+      : mapped;
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createMessageTemplate(
+    wabaId: string,
+    accessTokenEnc: string,
+    input: CreateMessageTemplateInput,
+  ): Promise<MessageTemplateView> {
     const token = decryptSecret(accessTokenEnc);
     const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
 
     const res = await fetchWithTimeout(
-      `https://graph.facebook.com/${version}/${wabaId}/message_templates?limit=100&fields=name,status,language,category,components`,
+      `https://graph.facebook.com/${version}/${wabaId}/message_templates`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: input.name,
+          language: input.language,
+          category: input.category,
+          components: [{ type: "BODY", text: input.body }],
+        }),
+      },
+    );
+
+    const data = (await res.json()) as {
+      id?: string;
+      status?: string;
+      category?: string;
+      error?: { message?: string; error_user_msg?: string };
+    };
+
+    if (!res.ok) {
+      const detail = data.error?.error_user_msg ?? data.error?.message ?? res.status;
+      this.logger.warn(`Meta template create failed: ${detail}`);
+      throw new BadRequestException(
+        data.error?.message ??
+          "Could not submit template to WhatsApp. Check your WABA permissions and try again.",
+      );
+    }
+
+    return {
+      name: input.name,
+      language: input.language,
+      status: data.status ?? "PENDING",
+      category: input.category,
+      bodyPreview: input.body.slice(0, 200),
+      bodyText: input.body,
+      bodyVariableCount: (input.body.match(/\{\{\d+\}\}/g) ?? []).length,
+      metaTemplateId: data.id,
+    };
+  }
+
+  async updateMessageTemplate(
+    metaTemplateId: string,
+    accessTokenEnc: string,
+    input: UpdateMessageTemplateInput,
+  ): Promise<MessageTemplateView> {
+    const token = decryptSecret(accessTokenEnc);
+    const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+
+    const payload: Record<string, unknown> = {
+      components: [{ type: "BODY", text: input.body }],
+    };
+    if (input.category) payload.category = input.category;
+
+    const res = await fetchWithTimeout(
+      `https://graph.facebook.com/${version}/${metaTemplateId}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+
+    const data = (await res.json()) as {
+      id?: string;
+      status?: string;
+      category?: string;
+      name?: string;
+      language?: string;
+      error?: { message?: string; error_user_msg?: string };
+    };
+
+    if (!res.ok) {
+      const detail = data.error?.error_user_msg ?? data.error?.message ?? res.status;
+      this.logger.warn(`Meta template update failed: ${detail}`);
+      throw new BadRequestException(
+        data.error?.message ??
+          "Could not update template on WhatsApp. Only approved, rejected, or paused templates can be edited.",
+      );
+    }
+
+    return {
+      name: data.name ?? "",
+      language: data.language ?? "",
+      status: data.status ?? "PENDING",
+      category: data.category ?? input.category,
+      bodyPreview: input.body.slice(0, 200),
+      bodyText: input.body,
+      bodyVariableCount: (input.body.match(/\{\{\d+\}\}/g) ?? []).length,
+      metaTemplateId: data.id ?? metaTemplateId,
+    };
+  }
+
+  async deleteMessageTemplate(
+    wabaId: string,
+    accessTokenEnc: string,
+    input: DeleteMessageTemplateInput,
+  ): Promise<void> {
+    const token = decryptSecret(accessTokenEnc);
+    const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+    const params = new URLSearchParams({ name: input.name });
+    if (input.metaTemplateId) params.set("hsm_id", input.metaTemplateId);
+
+    const res = await fetchWithTimeout(
+      `https://graph.facebook.com/${version}/${wabaId}/message_templates?${params.toString()}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+
+    const data = (await res.json()) as {
+      success?: boolean;
+      error?: { message?: string; error_user_msg?: string };
+    };
+
+    if (!res.ok) {
+      const detail = data.error?.error_user_msg ?? data.error?.message ?? res.status;
+      this.logger.warn(`Meta template delete failed: ${detail}`);
+      throw new BadRequestException(
+        data.error?.message ?? "Could not delete template from WhatsApp.",
+      );
+    }
+  }
+
+  private mapMetaTemplate(t: MetaTemplateRow): MessageTemplateView {
+    const body = t.components?.find((c) => c.type === "BODY")?.text ?? "";
+    const matches = body.match(/\{\{\d+\}\}/g);
+    return {
+      name: t.name,
+      language: t.language,
+      status: t.status,
+      category: t.category,
+      bodyPreview: body.slice(0, 200),
+      bodyText: body,
+      bodyVariableCount: matches?.length ?? 0,
+      metaTemplateId: t.id,
+      rejectedReason: t.rejected_reason,
+    };
+  }
+
+  private async fetchMessageTemplatesFromMeta(
+    wabaId: string,
+    accessTokenEnc: string,
+  ): Promise<MetaTemplateRow[]> {
+    const token = decryptSecret(accessTokenEnc);
+    const version = this.config.get<string>("WHATSAPP_API_VERSION") ?? "v21.0";
+
+    const res = await fetchWithTimeout(
+      `https://graph.facebook.com/${version}/${wabaId}/message_templates?limit=100&fields=name,status,language,category,components,id,rejected_reason`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
 
     const data = (await res.json()) as {
-      data?: Array<{
-        name: string;
-        status: string;
-        language: string;
-        category?: string;
-        components?: Array<{ type: string; text?: string }>;
-      }>;
+      data?: MetaTemplateRow[];
       error?: { message?: string };
     };
 
@@ -178,21 +366,7 @@ export class WhatsappMessagingService {
       );
     }
 
-    return (data.data ?? [])
-      .filter((t) => t.status === "APPROVED")
-      .map((t) => {
-        const body = t.components?.find((c) => c.type === "BODY")?.text ?? "";
-        const matches = body.match(/\{\{\d+\}\}/g);
-        return {
-          name: t.name,
-          language: t.language,
-          status: t.status,
-          category: t.category,
-          bodyPreview: body.slice(0, 200),
-          bodyVariableCount: matches?.length ?? 0,
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return data.data ?? [];
   }
 
   /**

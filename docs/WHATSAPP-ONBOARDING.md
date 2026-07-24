@@ -18,6 +18,7 @@ Growvisi ingests messages from **your existing** WhatsApp Business number on Met
    - First AI classification
    - Deal tracked in Pipeline (stage or ₹ value)
    - Message templates synced from Meta (for Campaigns)
+   - Optional: create templates in **Automate → Templates** (Growth+) — we submit to Meta on your number
 6. Open **Conversations** to see classified threads.
 
 **Multi-number:** Growth plan supports 3 lines; Pro supports 50. Use **Add another number** in Settings → WhatsApp when under your plan limit.
@@ -127,5 +128,6 @@ After approval, set `WHATSAPP_EMBEDDED_SIGNUP_LIVE=true` on API for one-click Fa
 - Connect UI: `apps/web/src/components/settings/whatsapp-connect.tsx`
 - Go-live checklist: `apps/web/src/components/settings/whatsapp-go-live-checklist.tsx`
 - Embedded Signup API: `apps/api/src/modules/whatsapp-accounts/embedded-signup.service.ts`
-- Webhooks: `apps/api/src/modules/whatsapp/whatsapp.service.ts` (`messages` + `account_update`)
+- Webhooks: `apps/api/src/modules/whatsapp/whatsapp.service.ts` (`messages`, `account_update`, `message_template_status_update`)
+- Templates UI: `apps/web/src/app/dashboard/templates/page.tsx`
 - Token banner: `apps/web/src/components/dashboard/whatsapp-token-expiry-banner.tsx`

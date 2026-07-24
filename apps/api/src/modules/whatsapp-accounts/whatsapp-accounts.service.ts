@@ -23,6 +23,7 @@ import { ServerCacheService } from "../server-cache/server-cache.service";
 import { exchangeForLongLivedToken, normalizeMetaAccessToken } from "./meta-token.util";
 import type { WhatsappWebhookPayload } from "../whatsapp/whatsapp.service";
 import { WhatsappMessagingService } from "../whatsapp/whatsapp-messaging.service";
+import { WhatsappTemplateSyncService } from "../whatsapp/whatsapp-template-sync.service";
 import { ConnectWhatsappDto, CreateWhatsappAccountDto, UpdateWhatsappAccountDto } from "./dto/whatsapp-account.dto";
 
 export interface WhatsappAccountSafe {
@@ -69,6 +70,7 @@ export class WhatsappAccountsService {
     private readonly email: EmailService,
     private readonly entitlements: EntitlementsService,
     private readonly messaging: WhatsappMessagingService,
+    private readonly templateSync: WhatsappTemplateSyncService,
     private readonly serverCache: ServerCacheService,
     private readonly jobs: JobsService,
   ) {}
@@ -109,9 +111,17 @@ export class WhatsappAccountsService {
     const templates = await this.messaging.listMessageTemplates(
       account.wabaId,
       account.accessTokenEnc,
+      { approvedOnly: true },
     );
     return {
-      templates,
+      templates: templates.map((t) => ({
+        name: t.name,
+        language: t.language,
+        status: t.status,
+        category: t.category,
+        bodyPreview: t.bodyPreview,
+        bodyVariableCount: t.bodyVariableCount,
+      })),
       syncedAt: new Date().toISOString(),
       count: templates.length,
     };
@@ -119,37 +129,13 @@ export class WhatsappAccountsService {
 
   /** Pull Meta message templates into account metadata after connect. */
   async syncTemplatesAfterConnect(accountId: string) {
-    const account = await this.prisma.whatsappAccount.findUnique({
-      where: { id: accountId },
-      select: { id: true, wabaId: true, accessTokenEnc: true, metadata: true },
-    });
-    if (!account?.accessTokenEnc) return null;
+    return this.templateSync.syncAccountTemplates(accountId);
+  }
 
-    try {
-      const templates = await this.messaging.listMessageTemplates(
-        account.wabaId,
-        account.accessTokenEnc,
-      );
-      const approvedTemplateCount = templates.filter((t) => t.status === "APPROVED").length;
-      const metadata = {
-        ...((account.metadata ?? {}) as Record<string, unknown>),
-        templatesSyncedAt: new Date().toISOString(),
-        templateCount: templates.length,
-        approvedTemplateCount,
-      };
-
-      await this.prisma.whatsappAccount.update({
-        where: { id: account.id },
-        data: { metadata: metadata as object },
-      });
-
-      return { templateCount: templates.length, approvedTemplateCount };
-    } catch (err) {
-      this.logger.warn(
-        `Template sync failed for account ${accountId}: ${err instanceof Error ? err.message : err}`,
-      );
-      return null;
-    }
+  /** Post-connect: sync templates and optionally auto-provision a starter (Growth+). */
+  async afterConnectSetup(accountId: string, organizationId: string) {
+    await this.syncTemplatesAfterConnect(accountId);
+    void this.templateSync.provisionDefaultStarterIfNeeded(accountId, organizationId);
   }
 
   async syncTemplatesForAccount(user: JwtPayload, accountId: string) {
@@ -345,7 +331,7 @@ export class WhatsappAccountsService {
       },
     });
 
-    await this.syncTemplatesAfterConnect(account.id);
+    await this.afterConnectSetup(account.id, organizationId);
 
     void this.serverCache.invalidateShellBootstrap(organizationId);
 
@@ -819,8 +805,8 @@ export class WhatsappAccountsService {
           ? approvedTemplateCount > 0
             ? `${approvedTemplateCount} approved template${approvedTemplateCount === 1 ? "" : "s"} ready for Campaigns.`
             : templateCount > 0
-              ? `${templateCount} template${templateCount === 1 ? "" : "s"} found on your WABA.`
-              : "No templates on this WABA yet — add them in Meta when you need Campaigns."
+              ? `${templateCount} template${templateCount === 1 ? "" : "s"} on your WABA — check Automate → Templates for approval status.`
+              : "No templates yet — create one in Automate → Templates (Growth+)."
           : "Syncing templates from Meta after connect…",
       },
     ] as const;

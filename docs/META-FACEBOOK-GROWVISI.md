@@ -134,7 +134,10 @@ Click **Save changes**.
 
 1. **Use cases → WhatsApp** → must be **Set up**
 2. **Configuration** → webhook `https://api.growvisi.in/api/v1/webhooks/whatsapp`
-3. Subscribe to **messages** field
+3. Subscribe to webhook fields:
+   - **messages** (inbound + delivery status)
+   - **account_update** (phone verification, Embedded Signup completion)
+   - **message_template_status_update** (template approval/rejection — powers Automate → Templates)
 
 ### Step 7 — When ready for real customers (not just your account)
 

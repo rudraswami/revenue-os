@@ -20,6 +20,7 @@ describe("LeadsService notes", () => {
     {} as never,
     {} as never,
     {} as never,
+    {} as never,
   );
 
   const owner: JwtPayload = {

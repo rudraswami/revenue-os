@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, RefreshCw, Search } from "lucide-react";
 import { GrowvisiSpinner } from "@/components/ui/loading";
@@ -128,7 +129,7 @@ export function WhatsappTemplatePicker({
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {isError
               ? "WhatsApp connection may need attention. Fix the token, then refresh — Meta only allows approved templates for new outreach."
-              : "Create a template in Meta WhatsApp Manager, wait for approval, then refresh here. Free text can’t start a new chat."}
+              : "Create and submit templates from Templates — we send them to Meta on your number. Approval usually takes 15 minutes to 24 hours."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -141,6 +142,12 @@ export function WhatsappTemplatePicker({
             <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin")} />
             Refresh templates
           </button>
+          <Link
+            href="/dashboard/templates"
+            className="inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted/50"
+          >
+            Manage templates
+          </Link>
           <a
             href="/dashboard/connection"
             className="inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted/50"
