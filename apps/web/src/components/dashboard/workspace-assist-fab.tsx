@@ -26,8 +26,8 @@ import { cn } from "@/lib/utils";
 
 const AUTO_COLLAPSE_MS = 12_000;
 
-/** Never show a floating assist on these routes (composer / focus surfaces). */
-const HIDE_ASSIST_PATHS = [/^\/dashboard\/inbox(?:\/|$)/, /^\/dashboard\/help(?:\/|$)/];
+/** Hide floating assist on help (full-page focus). Inbox uses left-side FAB so composer stays clear. */
+const HIDE_ASSIST_PATHS = [/^\/dashboard\/help(?:\/|$)/];
 
 const OPS_STAGE_HINT: Record<string, string> = {
   setup: "Connect WhatsApp to start",
@@ -188,6 +188,7 @@ export function WorkspaceAssistFab() {
   const didAutoOpen = useRef(false);
 
   const hiddenByPath = HIDE_ASSIST_PATHS.some((re) => re.test(pathname));
+  const onInbox = /^\/dashboard\/inbox(?:\/|$)/.test(pathname);
   const visible = !hiddenByPath && showSetup;
 
   const scheduleCollapse = useCallback(() => {
@@ -224,7 +225,12 @@ export function WorkspaceAssistFab() {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-5 right-5 z-[55] flex flex-col items-end gap-2 sm:bottom-6 sm:right-6"
+      className={cn(
+        "pointer-events-none fixed bottom-5 z-[55] flex flex-col gap-2 sm:bottom-6",
+        onInbox
+          ? "left-5 items-start sm:left-6"
+          : "right-5 items-end sm:right-6",
+      )}
       data-assist-mode="setup"
     >
       {expanded && (
