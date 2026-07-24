@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, MessageCircle, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
-import { SetupHelpPanel } from "@/components/support/setup-help-panel";
+import { HelpSupportView } from "@/components/support/help-support-view";
 import type { HelpFabContext } from "@/lib/setup-help-content";
 import { useI18n } from "@/lib/i18n/locale-provider";
 import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
@@ -34,11 +33,8 @@ export default function HelpPage() {
       : defaultContext;
 
   return (
-    <div className="dashboard-page max-w-3xl">
-      <PageHeader
-        title={t("helpPage.title")}
-        description={t("helpPage.description")}
-      />
+    <div className="dashboard-page max-w-5xl">
+      <PageHeader title={t("helpPage.title")} description={t("helpPage.description")} />
 
       <div className="mb-6 grid gap-2 sm:grid-cols-3">
         {CONTEXT_OPTIONS.map((opt) => {
@@ -68,28 +64,26 @@ export default function HelpPage() {
         })}
       </div>
 
-      <DashboardPanel className="overflow-hidden p-0">
-        <SetupHelpPanel context={context} showHeader={false} />
-      </DashboardPanel>
+      <HelpSupportView context={context} />
 
-      <div className="mt-6 flex flex-wrap gap-3 text-xs">
+      <div className="mt-8 flex flex-wrap gap-4 border-t border-border/80 pt-6 text-sm">
         <Link
           href="/dashboard/connection"
-          className="inline-flex items-center gap-1 font-semibold text-accent hover:underline"
+          className="inline-flex items-center gap-1.5 font-semibold text-accent hover:underline"
         >
           Connection health
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
         <Link
           href="/dashboard/settings?tab=whatsapp"
-          className="inline-flex items-center gap-1 font-semibold text-muted-foreground hover:text-accent"
+          className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-accent"
         >
           WhatsApp settings
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
         <Link
           href="/onboarding"
-          className="inline-flex items-center gap-1 font-semibold text-muted-foreground hover:text-accent"
+          className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-accent"
         >
           Setup guide
           <ArrowRight className="h-3.5 w-3.5" />

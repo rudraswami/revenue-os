@@ -330,7 +330,8 @@ export class AgencyService {
 
   /**
    * Remove client from agency portfolio (frees a slot). Client org remains;
-   * agency staff memberships on the client are left intact for access if needed.
+   * agency-provisioned staff memberships on the client are removed so the
+   * workspace switcher stays in sync with the portfolio.
    */
   async removeClientFromPortfolio(user: JwtPayload, clientOrganizationId: string) {
     await this.assertAgencyAccessToClient(user, clientOrganizationId);
@@ -343,7 +344,21 @@ export class AgencyService {
     });
     if (!link) throw new NotFoundException("Client not in your portfolio.");
 
-    await this.prisma.agencyClient.delete({ where: { id: link.id } });
+    const agencyStaff = await this.prisma.organizationMember.findMany({
+      where: { organizationId: user.organizationId },
+      select: { userId: true },
+    });
+    const agencyStaffIds = agencyStaff.map((m) => m.userId);
+
+    await this.prisma.$transaction([
+      this.prisma.agencyClient.delete({ where: { id: link.id } }),
+      this.prisma.organizationMember.deleteMany({
+        where: {
+          organizationId: clientOrganizationId,
+          userId: { in: agencyStaffIds },
+        },
+      }),
+    ]);
 
     return { ok: true, removedOrganizationId: clientOrganizationId };
   }

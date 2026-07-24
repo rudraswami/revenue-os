@@ -252,6 +252,8 @@ export class AuthService {
       orderBy: { organization: { name: "asc" } },
     });
 
+    const workspaces = await this.filterSwitchableWorkspaces(memberships);
+
     return {
       user: {
         ...dbUser,
@@ -260,7 +262,7 @@ export class AuthService {
       organization: org,
       role: member.role as JwtPayload["role"],
       onboarding,
-      workspaces: memberships.map((m) => ({
+      workspaces: workspaces.map((m) => ({
         id: m.organization.id,
         name: m.organization.name,
         slug: m.organization.slug,
@@ -269,6 +271,38 @@ export class AuthService {
         isCurrent: m.organizationId === user.organizationId,
       })),
     };
+  }
+
+  /**
+   * Hide agency-provisioned client workspaces that were removed from portfolio.
+   * Keeps agency hubs, standalone SMB workspaces, and active portfolio clients.
+   */
+  private async filterSwitchableWorkspaces(
+    memberships: Array<{
+      organizationId: string;
+      role: string;
+      organization: { id: string; name: string; slug: string; kind: string };
+    }>,
+  ) {
+    const agencyOrgIds = memberships
+      .filter((m) => m.organization.kind === "AGENCY")
+      .map((m) => m.organizationId);
+
+    if (agencyOrgIds.length === 0) return memberships;
+
+    const portfolioLinks = await this.prisma.agencyClient.findMany({
+      where: { agencyOrganizationId: { in: agencyOrgIds } },
+      select: { clientOrganizationId: true },
+    });
+    const portfolioClientIds = new Set(portfolioLinks.map((l) => l.clientOrganizationId));
+
+    return memberships.filter((m) => {
+      if (m.organization.kind === "AGENCY") return true;
+      if (portfolioClientIds.has(m.organization.id)) return true;
+      // Stale agency-provisioned ADMIN on removed clients
+      if (m.role === "ADMIN") return false;
+      return true;
+    });
   }
 
   async updateProfile(user: JwtPayload, dto: UpdateProfileDto) {

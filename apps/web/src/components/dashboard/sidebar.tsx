@@ -10,6 +10,7 @@ import {
   BarChart3,
   Bot,
   Building2,
+  Check,
   CheckSquare,
   ChevronDown,
   ChevronUp,
@@ -151,91 +152,126 @@ const NavLink = memo(function NavLink({
   );
 });
 
+function workspaceKindLabel(
+  ws: NonNullable<MeResponse["workspaces"]>[number],
+  t: (path: string) => string,
+  hasAgencyHub: boolean,
+) {
+  if (ws.kind === "AGENCY") return t("sidebar.agencyHub");
+  if (hasAgencyHub && ws.kind === "STANDARD") return t("sidebar.clientWorkspace");
+  return t("sidebar.mainWorkspace");
+}
+
 function WorkspaceCard({
   organizationName,
+  organizationKind,
   workspaces,
   switchingId,
   onSwitch,
 }: {
   organizationName: string;
+  organizationKind?: string;
   workspaces?: MeResponse["workspaces"];
   switchingId?: string | null;
   onSwitch?: (organizationId: string) => void;
 }) {
+  const { t } = useI18n();
   const hasMultiple = (workspaces?.length ?? 0) > 1;
+  const hasAgencyHub = workspaces?.some((ws) => ws.kind === "AGENCY") ?? false;
+  const currentKind =
+    workspaces?.find((ws) => ws.isCurrent)?.kind ?? organizationKind;
+
+  const cardBody = (
+    <>
+      <AvatarInitials name={organizationName} size="sm" className="rounded-lg" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-foreground">{organizationName}</p>
+        <p className="text-xs font-medium text-muted-foreground">
+          {currentKind === "AGENCY"
+            ? t("sidebar.agencyHub")
+            : hasAgencyHub
+              ? t("sidebar.clientWorkspace")
+              : t("sidebar.mainWorkspace")}
+        </p>
+      </div>
+      {hasMultiple ? (
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      ) : null}
+    </>
+  );
 
   return (
-    <div className="mx-3 mt-3 rounded-xl border border-border bg-card p-3 elev-1">
-      <div className="flex items-center gap-3">
-        <AvatarInitials name={organizationName} size="sm" className="rounded-lg" />
-        <div className="min-w-0 flex-1">
-          {hasMultiple ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+    <div className="mx-3 mt-3">
+      {hasMultiple ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left elev-1 transition hover:border-accent/25 hover:bg-bento-mint/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              {cardBody}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[min(100vw-2rem,17rem)]">
+            <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("sidebar.switchWorkspace")}
+            </p>
+            {(() => {
+              const hubs = workspaces!.filter((ws) => ws.kind === "AGENCY");
+              const clients = workspaces!.filter((ws) => ws.kind !== "AGENCY");
+              const sections = [
+                { label: t("sidebar.agencyHub"), list: hubs },
+                { label: t("sidebar.clientWorkspace"), list: clients },
+              ].filter((s) => s.list.length > 0);
+
+              const renderItem = (ws: NonNullable<MeResponse["workspaces"]>[number]) => (
+                <DropdownMenuItem
+                  key={ws.id}
+                  disabled={ws.isCurrent || switchingId === ws.id}
+                  onSelect={() => onSwitch?.(ws.id)}
+                  className="gap-2"
                 >
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {organizationName}
-                  </p>
-                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                {(() => {
-                  const hubs = workspaces!.filter((ws) => ws.kind === "AGENCY");
-                  const clients = workspaces!.filter((ws) => ws.kind !== "AGENCY");
-                  const sections = [
-                    { label: "Agency hub", list: hubs },
-                    { label: "Client workspaces", list: clients },
-                  ].filter((s) => s.list.length > 0);
-                  if (sections.length <= 1) {
-                    return workspaces!.map((ws) => (
-                      <DropdownMenuItem
-                        key={ws.id}
-                        disabled={ws.isCurrent || switchingId === ws.id}
-                        onSelect={() => onSwitch?.(ws.id)}
-                      >
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <span className="truncate">{ws.name}</span>
-                        {ws.isCurrent && (
-                          <span className="ml-auto text-xs font-semibold text-accent">Current</span>
-                        )}
-                      </DropdownMenuItem>
-                    ));
-                  }
-                  return sections.map((section) => (
-                    <div key={section.label}>
-                      <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                        {section.label}
-                      </p>
-                      {section.list.map((ws) => (
-                        <DropdownMenuItem
-                          key={ws.id}
-                          disabled={ws.isCurrent || switchingId === ws.id}
-                          onSelect={() => onSwitch?.(ws.id)}
-                        >
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <span className="truncate">{ws.name}</span>
-                          {ws.isCurrent && (
-                            <span className="ml-auto text-xs font-semibold text-accent">Current</span>
-                          )}
-                        </DropdownMenuItem>
-                      ))}
-                    </div>
-                  ));
-                })()}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <p className="truncate text-sm font-semibold text-foreground">{organizationName}</p>
-          )}
-          <p className="text-xs font-medium text-muted-foreground">
-            Workspace
-          </p>
+                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{ws.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{workspaceKindLabel(ws, t, hasAgencyHub)}</p>
+                  </div>
+                  {ws.isCurrent ? (
+                    <Check className="ml-auto h-4 w-4 shrink-0 text-accent" aria-label={t("sidebar.current")} />
+                  ) : switchingId === ws.id ? (
+                    <span className="ml-auto text-xs text-muted-foreground">…</span>
+                  ) : null}
+                </DropdownMenuItem>
+              );
+
+              if (sections.length <= 1) {
+                return workspaces!.map(renderItem);
+              }
+              return sections.map((section) => (
+                <div key={section.label}>
+                  <p className="px-2 py-1 text-[10px] font-medium text-muted-foreground">{section.label}</p>
+                  {section.list.map(renderItem)}
+                </div>
+              ));
+            })()}
+            {hasAgencyHub ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/agency" className="gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    {t("sidebar.manageClients")}
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 elev-1">
+          {cardBody}
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -357,12 +393,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const userEmail = useAuthStore((s) => s.user?.email ?? null);
   const role = useAuthStore((s) => s.role);
   const organizationName = useAuthStore((s) => s.organization?.name ?? null);
+  const organizationKind = useAuthStore((s) => s.organization?.kind ?? null);
   const { connected: live } = useRealtime();
   const statsPollInterval = useVisibleRefetchInterval(live ? false : 30_000);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const { error: toastError } = useToast();
 
-  const { data: me } = useAuthMe({ cacheOnly: true });
+  const { data: me } = useAuthMe();
 
   const { data: accounts } = useShellWhatsappAccounts();
 
@@ -432,6 +469,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       {organizationName && (
         <WorkspaceCard
           organizationName={organizationName}
+          organizationKind={organizationKind ?? undefined}
           workspaces={me?.workspaces}
           switchingId={switchingId}
           onSwitch={(id) => void switchWorkspace(id)}
@@ -467,7 +505,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {userEmail && (
-        <div className="space-y-2 border-t border-border/80 p-3">
+        <div className="space-y-3 border-t border-border/80 p-3">
           <Link
             href="/dashboard/help"
             onClick={() => onNavigate?.()}
@@ -481,7 +519,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <HelpCircle className="h-4 w-4 shrink-0" />
             {t("nav.helpSupport")}
           </Link>
-          <ThemeToggle className="w-full" />
+
+          <div className="rounded-xl border border-border bg-card px-3 py-2.5">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("sidebar.appearance")}
+            </p>
+            <ThemeToggle className="w-full" />
+          </div>
+
           <UserAccountMenu
             userName={displayName}
             userEmail={userEmail}

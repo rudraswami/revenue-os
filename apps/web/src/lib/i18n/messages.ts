@@ -18,6 +18,15 @@ export const messages = {
       settings: "Settings",
       helpSupport: "Help & AI",
     },
+    sidebar: {
+      appearance: "Appearance",
+      switchWorkspace: "Switch workspace",
+      agencyHub: "Agency hub",
+      clientWorkspace: "Client",
+      mainWorkspace: "Workspace",
+      manageClients: "Manage clients",
+      current: "Current",
+    },
     groups: {
       overview: "Overview",
       engage: "Engage",
@@ -771,6 +780,10 @@ export const messages = {
       title: "Help & AI Support",
       description:
         "FAQ, AI chat for setup questions, and human support — always here when you need it.",
+      askAiTitle: "Ask AI",
+      askAiDescription: "Setup help for {topic} — WhatsApp connect, Meta, and go-live.",
+      faqTitle: "Common questions",
+      faqDescription: "Quick answers without waiting for chat.",
       context: {
         onboarding: {
           title: "Getting started",
@@ -1047,6 +1060,15 @@ export const messages = {
       automations: "ऑटोमेशन",
       settings: "सेटिंग्स",
       helpSupport: "मदद और AI",
+    },
+    sidebar: {
+      appearance: "दिखावट",
+      switchWorkspace: "वर्कस्पेस बदलें",
+      agencyHub: "एजेंसी हब",
+      clientWorkspace: "क्लाइंट",
+      mainWorkspace: "वर्कस्पेस",
+      manageClients: "क्लाइंट प्रबंधित करें",
+      current: "वर्तमान",
     },
     groups: {
       overview: "ओवरव्यू",
@@ -1799,6 +1821,10 @@ export const messages = {
     helpPage: {
       title: "मदद और AI सपोर्ट",
       description: "FAQ, सेटअप के लिए AI चैट, और हमारी टीम — जब चाहें यहाँ मिलेगी।",
+      askAiTitle: "AI से पूछें",
+      askAiDescription: "{topic} के लिए सेटअप मदद — WhatsApp, Meta और go-live।",
+      faqTitle: "आम सवाल",
+      faqDescription: "चैट के बिना तुरंत जवाब।",
       context: {
         onboarding: {
           title: "शुरुआत",
