@@ -18,32 +18,37 @@ export function TemplatePreviewBubble({
   body,
   params = [],
   className,
+  compact = false,
 }: {
   body: string;
   params?: string[];
   className?: string;
+  compact?: boolean;
 }) {
   const text = renderTemplateBody(body, params);
 
   return (
-    <div className={cn("rounded-2xl border border-border bg-bento-mint p-4", className)}>
-      <div className="mb-2 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-whatsapp text-xs font-bold text-white">
-          WA
-        </div>
-        <div>
-          <p className="text-xs font-medium text-whatsapp">
-            WhatsApp preview
-          </p>
-          <p className="text-xs text-muted-foreground">How customers will see it</p>
-        </div>
-      </div>
-      <div className="relative max-w-[92%] rounded-xl rounded-tl-sm bg-card px-3.5 py-2.5 text-sm leading-relaxed text-foreground shadow-sm">
-        {text || (
-          <span className="text-muted-foreground italic">Select a template to preview</span>
+    <div
+      className={cn(
+        "rounded-2xl border border-border/80 bg-muted/30",
+        compact ? "p-3" : "p-4",
+        className,
+      )}
+    >
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        Preview
+      </p>
+      <div
+        className={cn(
+          "rounded-2xl rounded-tl-md bg-card px-3 py-2.5 text-sm leading-relaxed text-foreground shadow-sm ring-1 ring-border/40",
+          compact ? "min-h-[80px]" : "min-h-[100px]",
         )}
-        <span className="mt-1 block text-right text-xs text-muted-foreground">12:30 PM</span>
+      >
+        {text || (
+          <span className="text-muted-foreground italic">Your message will appear here</span>
+        )}
       </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">How customers see it on WhatsApp</p>
     </div>
   );
 }

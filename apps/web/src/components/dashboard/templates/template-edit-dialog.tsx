@@ -21,11 +21,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { TemplatePreviewBubble } from "@/components/dashboard/template-preview-bubble";
+import { TemplateVariableChips } from "./template-variable-chips";
+import {
+  displayTemplateLanguage,
+  displayTemplateName,
+  formatTemplateRejectionReason,
+} from "./template-utils";
 import { TEMPLATES } from "@/lib/brand-copy";
-
-function displayTemplateName(name: string): string {
-  return name.replace(/_/g, " ");
-}
 
 export function TemplateEditDialog({
   template,
@@ -51,10 +53,14 @@ export function TemplateEditDialog({
   const bodyValidation = body.trim() ? validateTemplateBody(body) : null;
   const categoryEditable = template ? canEditTemplateCategory(template.status) : false;
   const hint = template ? templateEditHint(template.status) : null;
+  const rejection =
+    template?.status === "REJECTED"
+      ? formatTemplateRejectionReason(template.rejectedReason)
+      : null;
 
   const previewParams = useMemo(() => {
     const count = template?.bodyVariableCount || 0;
-    return Array.from({ length: count }, (_, i) => `[Variable ${i + 1}]`);
+    return Array.from({ length: count }, (_, i) => `Variable ${i + 1}`);
   }, [template?.bodyVariableCount]);
 
   if (!template) return null;
@@ -64,23 +70,23 @@ export function TemplateEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg" className="max-h-[min(90vh,640px)]">
+      <DialogContent size="lg" className="max-h-[min(92vh,680px)]">
         <DialogHeader>
           <DialogTitle>{TEMPLATES.editTitle}</DialogTitle>
           <DialogDescription>
-            {displayTemplateName(template.name)} · {template.language}
+            {displayTemplateName(template.name)} · {displayTemplateLanguage(template.language)}
           </DialogDescription>
         </DialogHeader>
 
         <DialogBody className="space-y-4">
           {hint && <p className="text-sm leading-relaxed text-muted-foreground">{hint}</p>}
-          {template.rejectedReason && (
-            <p className="text-sm text-destructive">
-              {TEMPLATES.rejectedReason(template.rejectedReason)}
+          {rejection && (
+            <p className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {TEMPLATES.rejectedReason(rejection)}
             </p>
           )}
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
             <div className="space-y-4">
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -89,9 +95,10 @@ export function TemplateEditDialog({
                 <Textarea
                   value={body}
                   onChange={(e) => onBodyChange(e.target.value)}
-                  rows={5}
-                  className="text-sm"
+                  rows={6}
+                  className="text-sm leading-relaxed"
                 />
+                <TemplateVariableChips body={body} onBodyChange={onBodyChange} />
                 {bodyValidation && !bodyValidation.ok && (
                   <p className="text-xs text-destructive">{bodyValidation.error}</p>
                 )}
@@ -105,7 +112,9 @@ export function TemplateEditDialog({
                   <Select
                     value={category}
                     onChange={(e) =>
-                      onCategoryChange(e.target.value as "MARKETING" | "UTILITY" | "AUTHENTICATION")
+                      onCategoryChange(
+                        e.target.value as "MARKETING" | "UTILITY" | "AUTHENTICATION",
+                      )
                     }
                     className="h-10 text-sm"
                   >
@@ -117,7 +126,9 @@ export function TemplateEditDialog({
               )}
             </div>
 
-            <TemplatePreviewBubble body={body} params={previewParams} />
+            <div className="lg:sticky lg:top-0 lg:self-start">
+              <TemplatePreviewBubble body={body} params={previewParams} compact />
+            </div>
           </div>
         </DialogBody>
 

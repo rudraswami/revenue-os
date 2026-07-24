@@ -3,14 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RefreshCw } from "lucide-react";
 import type { MessageTemplateStarter, MessageTemplateView } from "@growvisi/shared";
 import { defaultTemplateNameFromStarter, sanitizeTemplateName } from "@growvisi/shared";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/components/ui/toast";
 import { AlertDialog } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { TemplateCreateDialog } from "./template-create-dialog";
 import { TemplateEditDialog } from "./template-edit-dialog";
@@ -19,7 +17,6 @@ import {
   type TemplateStatusFilter,
 } from "./template-list-section";
 import { EYEBROW, NAV, TEMPLATES } from "@/lib/brand-copy";
-import { cn } from "@/lib/utils";
 
 type TemplatesResponse = {
   templates: MessageTemplateView[];
@@ -186,47 +183,23 @@ export function TemplateManagementView() {
   const pendingCount = counts?.pending ?? 0;
 
   return (
-    <div className="dashboard-page px-4 py-6 lg:px-8">
+    <div className="dashboard-page max-w-6xl px-4 py-6 lg:px-8">
       <PageHeader
         eyebrow={EYEBROW.automate}
         title={TEMPLATES.title}
         description={
           <>
-            Messages you can send to customers who haven&apos;t chatted with you yet. WhatsApp
-            reviews each one — usually within a day. Approved templates power{" "}
+            {TEMPLATES.description.split("Campaigns")[0]}
             <Link href="/dashboard/campaigns" className="font-medium text-accent hover:underline">
               {NAV.campaigns}
             </Link>
             .
           </>
         }
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-xl"
-              disabled={syncMutation.isPending || isFetching}
-              onClick={() => syncMutation.mutate()}
-            >
-              <RefreshCw
-                className={cn(
-                  "mr-2 h-4 w-4",
-                  (syncMutation.isPending || isFetching) && "animate-spin",
-                )}
-              />
-              {TEMPLATES.refresh}
-            </Button>
-            <Button type="button" className="rounded-xl" onClick={() => openCreate()}>
-              <Plus className="mr-2 h-4 w-4" />
-              {TEMPLATES.newTemplate}
-            </Button>
-          </div>
-        }
       />
 
       {pendingCount > 0 && (
-        <p className="-mt-4 mb-6 text-sm text-muted-foreground">
+        <p className="-mt-4 mb-5 rounded-xl border border-warning/25 bg-warning/8 px-4 py-2.5 text-sm text-foreground">
           {TEMPLATES.pendingNote(pendingCount)}
         </p>
       )}
@@ -238,17 +211,14 @@ export function TemplateManagementView() {
         counts={counts}
         isLoading={isLoading}
         isError={isError}
+        isRefreshing={syncMutation.isPending || isFetching}
+        lastSyncedAt={data?.syncedAt}
         onRetry={() => void refetch()}
+        onRefresh={() => syncMutation.mutate()}
         onCreate={() => openCreate()}
         onEdit={openEdit}
         onDelete={setDeleteTarget}
       />
-
-      {data?.syncedAt && (
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Last updated {new Date(data.syncedAt).toLocaleString("en-IN")}
-        </p>
-      )}
 
       <TemplateCreateDialog
         open={createOpen}

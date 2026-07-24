@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, FileText } from "lucide-react";
 import type { MessageTemplateStarter } from "@growvisi/shared";
 import {
   defaultTemplateNameFromStarter,
@@ -23,8 +24,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { GrowvisiSpinner } from "@/components/ui/loading";
 import { TemplatePreviewBubble } from "@/components/dashboard/template-preview-bubble";
+import { TemplateVariableChips } from "./template-variable-chips";
 import { TEMPLATES } from "@/lib/brand-copy";
 import { cn } from "@/lib/utils";
+
+type Step = "pick" | "customize";
 
 export function TemplateCreateDialog({
   open,
@@ -59,16 +63,26 @@ export function TemplateCreateDialog({
   onSubmit: () => void;
   isPending: boolean;
 }) {
+  const [step, setStep] = useState<Step>("pick");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setStep("pick");
+      setShowAdvanced(false);
+    }
+  }, [open]);
+
   const selectedStarter = selectedStarterId ? starterById(selectedStarterId) : undefined;
   const previewParams = useMemo(() => {
-    if (!selectedStarter) return [];
-    return selectedStarter.variableHints.map((h) => `[${h}]`);
+    if (selectedStarter?.variableHints?.length) {
+      return selectedStarter.variableHints.map((h) => h);
+    }
+    return [];
   }, [selectedStarter]);
   const bodyValidation = body.trim() ? validateTemplateBody(body) : null;
   const canSubmit =
-    name.trim() &&
-    body.trim() &&
-    (bodyValidation === null || bodyValidation.ok);
+    name.trim() && body.trim() && (bodyValidation === null || bodyValidation.ok);
 
   function pickStarter(starter: MessageTemplateStarter) {
     onSelectStarter(starter);
@@ -76,138 +90,201 @@ export function TemplateCreateDialog({
     onBodyChange(starter.body);
     onCategoryChange(starter.category);
     onLanguageChange(starter.language);
+    setStep("customize");
   }
 
   function pickBlank() {
     onSelectStarter(null);
-    onNameChange("");
+    const suffix = Date.now().toString(36).slice(-4);
+    onNameChange(`message_${suffix}`);
     onBodyChange("");
     onCategoryChange("UTILITY");
     onLanguageChange("en");
+    setStep("customize");
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" className="max-h-[min(90vh,720px)]">
+      <DialogContent size="xl" className="max-h-[min(92vh,760px)]">
         <DialogHeader>
-          <DialogTitle>{TEMPLATES.createTitle}</DialogTitle>
-          <DialogDescription>{TEMPLATES.createDescription}</DialogDescription>
+          <DialogTitle>
+            {step === "pick" ? TEMPLATES.createTitle : TEMPLATES.customizeTitle}
+          </DialogTitle>
+          <DialogDescription>
+            {step === "pick" ? TEMPLATES.createPickDescription : TEMPLATES.createCustomizeDescription}
+          </DialogDescription>
         </DialogHeader>
 
-        <DialogBody className="space-y-5">
-          {starters.length > 0 && (
+        <DialogBody>
+          {step === "pick" ? (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">{TEMPLATES.startersLabel}</p>
-              <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={pickBlank}
+                className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border/80 px-4 py-3 text-left transition hover:border-accent/40 hover:bg-muted/30"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{TEMPLATES.startBlank}</p>
+                  <p className="text-xs text-muted-foreground">{TEMPLATES.startBlankHint}</p>
+                </div>
+              </button>
+
+              {starters.map((s) => (
                 <button
+                  key={s.id}
                   type="button"
-                  onClick={pickBlank}
-                  className={cn(
-                    "rounded-xl border px-3 py-2 text-left text-sm transition",
-                    selectedStarterId === null && body === "" && name === ""
-                      ? "border-accent/40 bg-accent/5 text-foreground"
-                      : "border-border/80 bg-card hover:border-accent/30 hover:bg-muted/40",
-                  )}
+                  onClick={() => pickStarter(s)}
+                  className="flex w-full items-start gap-3 rounded-xl border border-border/80 px-4 py-3 text-left transition hover:border-accent/30 hover:bg-bento-mint/20"
                 >
-                  {TEMPLATES.startBlank}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-foreground">{s.title}</p>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                          s.approvalHint === "fast"
+                            ? "bg-whatsapp/10 text-whatsapp"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {s.approvalHint === "fast" ? TEMPLATES.fastApproval : TEMPLATES.standardApproval}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                      {s.description}
+                    </p>
+                  </div>
                 </button>
-                {starters.map((s) => (
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-[1fr_240px]">
+              <div className="space-y-4">
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {TEMPLATES.messageBody}
+                  </span>
+                  <Textarea
+                    value={body}
+                    onChange={(e) => onBodyChange(e.target.value)}
+                    rows={6}
+                    className="text-sm leading-relaxed"
+                    placeholder="Hi {{1}}, thanks for contacting {{2}}…"
+                  />
+                  <TemplateVariableChips
+                    hints={selectedStarter?.variableHints}
+                    body={body}
+                    onBodyChange={onBodyChange}
+                  />
+                  {bodyValidation && !bodyValidation.ok && (
+                    <p className="text-xs text-destructive">{bodyValidation.error}</p>
+                  )}
+                </label>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {TEMPLATES.category}
+                    </span>
+                    <Select
+                      value={category}
+                      onChange={(e) =>
+                        onCategoryChange(
+                          e.target.value as "MARKETING" | "UTILITY" | "AUTHENTICATION",
+                        )
+                      }
+                      className="h-10 text-sm"
+                    >
+                      <option value="UTILITY">{TEMPLATES.categoryUtility}</option>
+                      <option value="MARKETING">{TEMPLATES.categoryMarketing}</option>
+                      <option value="AUTHENTICATION">{TEMPLATES.categoryAuth}</option>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      {category === "UTILITY"
+                        ? TEMPLATES.categoryUtilityHint
+                        : category === "MARKETING"
+                          ? "Promotions and offers — may take longer to approve"
+                          : "One-time passwords and verification codes"}
+                    </p>
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {TEMPLATES.language}
+                    </span>
+                    <Select
+                      value={language}
+                      onChange={(e) => onLanguageChange(e.target.value)}
+                      className="h-10 text-sm"
+                    >
+                      <option value="en">English</option>
+                      <option value="en_IN">English (India)</option>
+                      <option value="hi">Hindi</option>
+                    </Select>
+                  </label>
+                </div>
+
+                <div>
                   <button
-                    key={s.id}
                     type="button"
-                    onClick={() => pickStarter(s)}
-                    className={cn(
-                      "max-w-[200px] rounded-xl border px-3 py-2 text-left text-sm transition",
-                      selectedStarterId === s.id
-                        ? "border-accent/40 bg-accent/5 text-foreground"
-                        : "border-border/80 bg-card hover:border-accent/30 hover:bg-muted/40",
-                    )}
+                    onClick={() => setShowAdvanced((v) => !v)}
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground"
                   >
-                    <span className="font-medium">{s.title}</span>
+                    {showAdvanced ? TEMPLATES.hideAdvanced : TEMPLATES.showAdvanced}
                   </button>
-                ))}
+                  {showAdvanced && (
+                    <label className="mt-2 block space-y-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {TEMPLATES.templateName}
+                      </span>
+                      <Input
+                        value={name}
+                        onChange={(e) => onNameChange(e.target.value)}
+                        onBlur={() => onNameChange(sanitizeTemplateName(name))}
+                        placeholder={TEMPLATES.templateNamePlaceholder}
+                        className="h-10 text-sm"
+                      />
+                      <p className="text-[11px] text-muted-foreground">{TEMPLATES.templateNameHint}</p>
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div className="lg:sticky lg:top-0 lg:self-start">
+                <TemplatePreviewBubble body={body} params={previewParams} compact />
               </div>
             </div>
           )}
-
-          <div className="grid gap-5 lg:grid-cols-2">
-            <div className="space-y-4">
-              <label className="block space-y-1.5">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {TEMPLATES.templateName}
-                </span>
-                <Input
-                  value={name}
-                  onChange={(e) => onNameChange(e.target.value)}
-                  onBlur={() => onNameChange(sanitizeTemplateName(name))}
-                  placeholder={TEMPLATES.templateNamePlaceholder}
-                  className="h-10 text-sm"
-                />
-              </label>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {TEMPLATES.category}
-                  </span>
-                  <Select
-                    value={category}
-                    onChange={(e) =>
-                      onCategoryChange(e.target.value as "MARKETING" | "UTILITY" | "AUTHENTICATION")
-                    }
-                    className="h-10 text-sm"
-                  >
-                    <option value="UTILITY">{TEMPLATES.categoryUtility}</option>
-                    <option value="MARKETING">{TEMPLATES.categoryMarketing}</option>
-                    <option value="AUTHENTICATION">{TEMPLATES.categoryAuth}</option>
-                  </Select>
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {TEMPLATES.language}
-                  </span>
-                  <Select
-                    value={language}
-                    onChange={(e) => onLanguageChange(e.target.value)}
-                    className="h-10 text-sm"
-                  >
-                    <option value="en">English</option>
-                    <option value="en_IN">English (India)</option>
-                    <option value="hi">Hindi</option>
-                  </Select>
-                </label>
-              </div>
-
-              <label className="block space-y-1.5">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {TEMPLATES.messageBody}
-                </span>
-                <Textarea
-                  value={body}
-                  onChange={(e) => onBodyChange(e.target.value)}
-                  rows={5}
-                  className="text-sm"
-                  placeholder="Hi {{1}}, thanks for contacting {{2}}…"
-                />
-                {bodyValidation && !bodyValidation.ok && (
-                  <p className="text-xs text-destructive">{bodyValidation.error}</p>
-                )}
-                <p className="text-xs text-muted-foreground">{TEMPLATES.bodyHint}</p>
-              </label>
-            </div>
-
-            <TemplatePreviewBubble body={body} params={previewParams} />
-          </div>
         </DialogBody>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="button" disabled={isPending || !canSubmit} onClick={onSubmit}>
-            {isPending ? <GrowvisiSpinner size="sm" className="mr-2" /> : null}
-            {TEMPLATES.sendForApproval}
-          </Button>
+        <DialogFooter className="justify-between sm:justify-between">
+          {step === "customize" ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setStep("pick")}
+              disabled={isPending}
+            >
+              <ChevronLeft className="mr-1 h-4 w-4" />
+              {TEMPLATES.backToStarters}
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            {step === "customize" && (
+              <Button type="button" disabled={isPending || !canSubmit} onClick={onSubmit}>
+                {isPending ? <GrowvisiSpinner size="sm" className="mr-2" /> : null}
+                {TEMPLATES.sendForApproval}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
