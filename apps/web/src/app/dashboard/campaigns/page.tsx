@@ -78,6 +78,10 @@ import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { useShellBilling } from "@/hooks/use-shell-cached-query";
 import { useShellBootstrapSettled } from "@/hooks/use-shell-bootstrap-settled";
 import { useShellWhatsappAccounts } from "@/hooks/use-shell-data";
+import {
+  canUseCampaignsFeatures,
+  type CampaignsBillingSnapshot,
+} from "@/lib/campaigns-plan-access";
 
 interface CampaignRow {
   id: string;
@@ -146,17 +150,6 @@ type RecipientFilter = "all" | "pending" | "sent" | "delivered" | "read" | "fail
 
 const CAMPAIGN_WA_ACCOUNT_KEY = "growvisi:campaign-whatsapp-account-id";
 
-function parseCampaignsPlanOk(billing?: {
-  planId: string;
-  entitlements?: { hasAccess: boolean };
-}) {
-  return (
-    billing?.entitlements?.hasAccess &&
-    billing.planId !== "trial" &&
-    billing.planId !== "starter"
-  );
-}
-
 function parseCsvRecipients(text: string): Array<{ phone: string; name?: string }> {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length === 0) return [];
@@ -184,13 +177,10 @@ export default function CampaignsPage() {
 
   const shellSettled = useShellBootstrapSettled();
 
-  const { data: billing } = useShellBilling<{
-    planId: string;
-    entitlements?: { hasAccess: boolean };
-  }>();
+  const { data: billing } = useShellBilling<CampaignsBillingSnapshot>();
 
   const billingReady = shellSettled && billing !== undefined;
-  const campaignsPlanOk = billingReady ? parseCampaignsPlanOk(billing) : null;
+  const campaignsPlanOk = billingReady ? canUseCampaignsFeatures(billing) : null;
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<CreateMode>("audience");
@@ -673,7 +663,7 @@ export default function CampaignsPage() {
         />
       </div>
 
-      {campaignsPlanOk === false && <CampaignsPlanGate className="mb-6" />}
+      {campaignsPlanOk === false && <CampaignsPlanGate className="mb-6" billing={billing} />}
 
       {campaignsPlanOk === true && (
         <CampaignsHubStats

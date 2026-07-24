@@ -29,6 +29,7 @@ import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { timeGreeting } from "@/lib/greeting";
 import { useVisibleRefetchInterval } from "@/hooks/use-visible-refetch-interval";
 import { useShellBilling } from "@/hooks/use-shell-cached-query";
+import { canUseCampaignsFeatures, type CampaignsBillingSnapshot } from "@/lib/campaigns-plan-access";
 import { useAuthStore } from "@/stores/auth-store";
 import { canViewTeamAnalytics } from "@/lib/permissions";
 
@@ -143,15 +144,9 @@ export default function DashboardPage() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: billing } = useShellBilling<{
-    planId: string;
-    entitlements?: { hasAccess: boolean };
-  }>();
+  const { data: billing } = useShellBilling<CampaignsBillingSnapshot>();
 
-  const campaignsPlanOk =
-    billing?.entitlements?.hasAccess &&
-    billing.planId !== "trial" &&
-    billing.planId !== "starter";
+  const campaignsPlanOk = canUseCampaignsFeatures(billing);
 
   const isLoading = (showAnalytics && funnelLoading) || convLoading;
   const dashboardError = showAnalytics ? funnelErrorObj ?? convErrorObj : convErrorObj;
