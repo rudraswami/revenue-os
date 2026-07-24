@@ -75,8 +75,9 @@ export function TemplateEditDialog({
         if (!isPending) onOpenChange(next);
       }}
     >
-      <DialogContent size="lg" className="relative max-h-[min(92vh,680px)]">
-        {isPending ? <TemplateDialogBusy message={TEMPLATES.submittingToWhatsApp} /> : null}
+      <DialogContent size="lg" className="max-h-[min(92vh,680px)]">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {isPending ? <TemplateDialogBusy message={TEMPLATES.submittingToWhatsApp} /> : null}
 
         <DialogHeader>
           <DialogTitle>{TEMPLATES.editTitle}</DialogTitle>
@@ -159,6 +160,7 @@ export function TemplateEditDialog({
             {TEMPLATES.saveChanges}
           </Button>
         </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

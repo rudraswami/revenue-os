@@ -110,8 +110,9 @@ export function TemplateCreateDialog({
         if (!isPending) onOpenChange(next);
       }}
     >
-      <DialogContent size="xl" className="relative max-h-[min(92vh,760px)]">
-        {isPending ? <TemplateDialogBusy message={TEMPLATES.submittingToWhatsApp} /> : null}
+      <DialogContent size="xl" className="max-h-[min(92vh,760px)]">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {isPending ? <TemplateDialogBusy message={TEMPLATES.submittingToWhatsApp} /> : null}
 
         <DialogHeader>
           <DialogTitle>
@@ -302,6 +303,7 @@ export function TemplateCreateDialog({
             )}
           </div>
         </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
