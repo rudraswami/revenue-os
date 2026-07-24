@@ -505,7 +505,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {userEmail && (
-        <div className="space-y-3 border-t border-border/80 p-3">
+        <div className="space-y-2 border-t border-border/80 p-3">
           <Link
             href="/dashboard/help"
             onClick={() => onNavigate?.()}
@@ -519,14 +519,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <HelpCircle className="h-4 w-4 shrink-0" />
             {t("nav.helpSupport")}
           </Link>
-
-          <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("sidebar.appearance")}
-            </p>
-            <ThemeToggle className="w-full" />
-          </div>
-
+          <ThemeToggle className="w-full" />
           <UserAccountMenu
             userName={displayName}
             userEmail={userEmail}
