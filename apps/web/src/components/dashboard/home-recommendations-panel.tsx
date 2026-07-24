@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -16,10 +17,12 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryErrorState } from "@/components/ui/query-state";
 import { PanelRowsSkeleton } from "@/components/ui/page-loading";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, toUserMessage } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
 import { canWrite, canViewTeamAnalytics } from "@/lib/permissions";
 import { QUERY_KEYS, STALE } from "@/lib/query-config";
 import { useAuthStore } from "@/stores/auth-store";
+import { useI18n } from "@/lib/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 
 const iconMap = {
@@ -55,6 +58,9 @@ export function HomeRecommendationsPanel() {
   const canEdit = canWrite(role);
   const showInsights = canViewTeamAnalytics(role);
   const qc = useQueryClient();
+  const { success, error: toastError } = useToast();
+  const { t } = useI18n();
+  const [creatingLeadId, setCreatingLeadId] = useState<string | null>(null);
   const period = "30d";
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
@@ -94,7 +100,20 @@ export function HomeRecommendationsPanel() {
         method: "POST",
         token: token ?? undefined,
       }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["tasks"] }),
+    onMutate: (leadId) => {
+      setCreatingLeadId(leadId);
+    },
+    onSuccess: () => {
+      success(t("toast.taskCreated"));
+      void qc.invalidateQueries({ queryKey: ["tasks"] });
+      void qc.invalidateQueries({ queryKey: ["tasks-summary"] });
+    },
+    onError: (err) => {
+      toastError(toUserMessage(err, "Could not create task"));
+    },
+    onSettled: () => {
+      setCreatingLeadId(null);
+    },
   });
 
   const insights = data?.items ?? [];
@@ -184,16 +203,18 @@ export function HomeRecommendationsPanel() {
               </div>
             ) : (
               <div className="space-y-3">
-                {actionLeads.map((lead) => (
-                  <Link
+                {actionLeads.map((lead) => {
+                  const leadHref = lead.conversationId
+                    ? `/dashboard/inbox?c=${lead.conversationId}`
+                    : `/dashboard/contacts`;
+                  const isCreating = creatingLeadId === lead.id;
+
+                  return (
+                  <div
                     key={lead.id}
-                    href={
-                      lead.conversationId
-                        ? `/dashboard/inbox?c=${lead.conversationId}`
-                        : `/dashboard/contacts`
-                    }
-                    className="block rounded-xl border border-border p-3.5 transition-all hover:border-accent/25 hover:shadow-sm"
+                    className="rounded-xl border border-border p-3.5 transition-all hover:border-accent/25 hover:shadow-sm"
                   >
+                    <Link href={leadHref} className="block">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -224,23 +245,23 @@ export function HomeRecommendationsPanel() {
                         <p className="text-xs font-medium text-accent">{lead.nextAction}</p>
                       </div>
                     )}
-                    {canEdit && lead.nextAction && (
+                    </Link>
+                    {canEdit && (
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
                         className="mt-2 h-7 w-full text-xs"
-                        disabled={createLeadTask.isPending}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          createLeadTask.mutate(lead.id);
-                        }}
+                        isLoading={isCreating}
+                        disabled={createLeadTask.isPending && !isCreating}
+                        onClick={() => createLeadTask.mutate(lead.id)}
                       >
                         Create task
                       </Button>
                     )}
-                  </Link>
-                ))}
+                  </div>
+                  );
+                })}
               </div>
             )}
           </DashboardPanel>

@@ -235,7 +235,6 @@ export class LeadsController {
   }
 
   @Post("metrics/insights/actions/lead-task/:leadId")
-  @RequireCapability("analytics.insights.act")
   @Roles(...WRITE_ROLES)
   createLeadTask(@CurrentUser() user: JwtPayload, @Param("leadId") leadId: string) {
     return this.leads.createTaskForLead(user, leadId);
