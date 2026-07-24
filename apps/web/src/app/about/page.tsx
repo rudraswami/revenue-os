@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { CTA, TAGLINE } from "@/lib/brand-copy";
 import { POSITIONING } from "@/lib/gtm-copy";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: "About Growvisi",
   description:
     "Growvisi is the revenue layer for WhatsApp sales teams — AI classifies leads, humans reply from Inbox, pipeline and revenue ₹ stay visible.",
-};
+  path: "/about",
+  ogDescription: POSITIONING.oneLiner,
+});
 
 export default function AboutPage() {
   return (

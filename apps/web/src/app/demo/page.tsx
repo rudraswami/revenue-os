@@ -6,11 +6,14 @@ import { MarketingHeader } from "@/components/marketing/header";
 import { ProductShowcase } from "@/components/marketing/product-showcase";
 import { MarketingFooter } from "@/components/marketing/footer";
 import { MarketingPageChrome } from "@/components/marketing/marketing-page-chrome";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata = {
+export const metadata = buildPageMetadata({
   title: "Demo — Growvisi",
-  description: "Explore the Growvisi AI Revenue Engine — inbox, pipeline, lead scoring, and analytics.",
-};
+  description:
+    "Explore the Growvisi AI Revenue Engine — inbox, pipeline, lead scoring, and analytics for WhatsApp sales teams.",
+  path: "/demo",
+});
 
 export default function DemoPage() {
   return (

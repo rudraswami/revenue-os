@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
 import { Hero } from "@/components/marketing/hero";
@@ -15,19 +14,21 @@ import { Faq } from "@/components/marketing/faq";
 import { CtaSection } from "@/components/marketing/cta-section";
 import { MarketingPageChrome } from "@/components/marketing/marketing-page-chrome";
 import { POSITIONING } from "@/lib/gtm-copy";
+import { buildPageMetadata } from "@/lib/seo";
+import { HomeStructuredData } from "@/components/marketing/structured-data";
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: "Growvisi — Always know whose turn it is on WhatsApp",
   description: `${POSITIONING.headline} AI classifies every lead. YOUR TURN when a human should reply. Pipeline ₹ tracked. ${POSITIONING.trialNote}.`,
-  openGraph: {
-    title: "Growvisi — WhatsApp revenue layer for Indian sales teams",
-    description: POSITIONING.subhead,
-  },
-};
+  path: "/",
+  ogTitle: "Growvisi — WhatsApp revenue layer for Indian sales teams",
+  ogDescription: POSITIONING.subhead,
+});
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
+      <HomeStructuredData />
       <MarketingHeader />
       <main>
         <Hero />

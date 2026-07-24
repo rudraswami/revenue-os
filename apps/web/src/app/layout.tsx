@@ -4,6 +4,12 @@ import { GROWVISI_WEB_URL } from "@growvisi/shared";
 import "./globals.css";
 import { Providers } from "./providers";
 import { THEME_NO_FLASH_SCRIPT } from "@/lib/theme";
+import {
+  DEFAULT_SITE_DESCRIPTION,
+  DEFAULT_SITE_TITLE,
+  OG_IMAGE_PATH,
+  SITE_NAME,
+} from "@/lib/seo";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -17,28 +23,30 @@ const inter = Inter({
   weight: ["400", "500", "600", "700"],
 });
 
-const siteTitle = "Growvisi — Always know whose turn it is on WhatsApp";
-const siteDescription =
-  "WhatsApp conversations in. Pipeline ₹ out. AI classifies every lead — YOUR TURN when a human should reply. 14-day trial, INR via Razorpay.";
-
 export const metadata: Metadata = {
   metadataBase: new URL(GROWVISI_WEB_URL),
-  title: siteTitle,
-  description: siteDescription,
+  title: {
+    default: DEFAULT_SITE_TITLE,
+    template: "%s",
+  },
+  description: DEFAULT_SITE_DESCRIPTION,
+  alternates: {
+    canonical: GROWVISI_WEB_URL,
+  },
   openGraph: {
     type: "website",
     url: GROWVISI_WEB_URL,
-    siteName: "Growvisi",
-    title: siteTitle,
-    description: siteDescription,
+    siteName: SITE_NAME,
+    title: DEFAULT_SITE_TITLE,
+    description: DEFAULT_SITE_DESCRIPTION,
     locale: "en_IN",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: siteTitle }],
+    images: [{ url: OG_IMAGE_PATH, width: 1200, height: 630, alt: DEFAULT_SITE_TITLE }],
   },
   twitter: {
-    card: "summary",
-    title: siteTitle,
-    description: siteDescription,
-    images: ["/opengraph-image"],
+    card: "summary_large_image",
+    title: DEFAULT_SITE_TITLE,
+    description: DEFAULT_SITE_DESCRIPTION,
+    images: [OG_IMAGE_PATH],
   },
   manifest: "/manifest.json",
   icons: {
@@ -49,6 +57,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "Growvisi",
+  },
+  verification: {
+    google: "wi_B5CkNTUTdldERWJv-QMmW7V7blwPvdqBfoWqWYwA",
   },
 };
 

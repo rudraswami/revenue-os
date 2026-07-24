@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Privacy Policy — Growvisi",
   description: "How Growvisi collects, uses, and protects your data when you use our AI Revenue Engine.",
-};
+  path: "/privacy",
+});
 
 const LAST_UPDATED = "13 June 2026";
 

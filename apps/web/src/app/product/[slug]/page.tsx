@@ -6,6 +6,7 @@ import {
   PRODUCT_SLUGS,
   type ProductPageSlug,
 } from "@/lib/product-pages";
+import { buildPageMetadata } from "@/lib/seo";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -17,10 +18,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = getProductPage(slug);
   if (!product) return { title: "Product" };
-  return {
+  return buildPageMetadata({
     title: `${product.navLabel} — Growvisi`,
     description: product.subhead,
-  };
+    path: `/product/${product.slug}`,
+    ogTitle: `${product.headline} — Growvisi`,
+  });
 }
 
 export default async function ProductPage({ params }: Props) {

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Cookie Policy — Growvisi",
   description: "How Growvisi uses cookies and similar technologies.",
-};
+  path: "/cookies",
+});
 
 const LAST_UPDATED = "17 June 2026";
 

@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { DashboardLayoutClient } from "./dashboard-layout-client";
 import { fetchShellBootstrapServer } from "@/lib/shell-bootstrap-server";
 import { hostFromRequestHeaders } from "@/lib/growvisi-host";
+import { NOINDEX_METADATA } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  ...NOINDEX_METADATA,
+  title: "Dashboard — Growvisi",
+};
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();

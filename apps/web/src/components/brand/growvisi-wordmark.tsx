@@ -14,7 +14,7 @@ export function GrowvisiWordmark({
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={BRAND_ASSETS.wordmark}
-      alt="GrowVisi — AI Marketing Brain for Smarter Growth"
+      alt="Growvisi — WhatsApp revenue layer for Indian sales teams"
       height={height}
       className={cn("h-auto w-auto max-w-full select-none", className)}
       style={{ height, width: "auto" }}

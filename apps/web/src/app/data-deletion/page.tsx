@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Data Deletion Instructions — Growvisi",
   description: "How to request deletion of your Growvisi account and associated data.",
-};
+  path: "/data-deletion",
+});
 
 const LAST_UPDATED = "13 June 2026";
 

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Data Processing Agreement — Growvisi",
   description: "Growvisi DPA for business customers using the AI Revenue Engine for WhatsApp sales.",
-};
+  path: "/dpa",
+});
 
 const LAST_UPDATED = "17 June 2026";
 

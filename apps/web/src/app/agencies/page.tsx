@@ -6,6 +6,16 @@ import { MarketingPageChrome } from "@/components/marketing/marketing-page-chrom
 import { Button } from "@/components/ui/button";
 import { CTA } from "@/lib/brand-copy";
 import { OUTCOME_TIERS, POSITIONING } from "@/lib/gtm-copy";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata = buildPageMetadata({
+  title: "Agencies & operators — Growvisi",
+  description:
+    "Run up to 15 client WhatsApp workspaces from one Operator hub. Agency partner kit, 50 seats, and pipeline ₹ per client.",
+  path: "/agencies",
+  ogTitle: "Growvisi for agencies — multi-client WhatsApp revenue OS",
+  ogDescription: POSITIONING.subhead,
+});
 
 const benefits = [
   {
